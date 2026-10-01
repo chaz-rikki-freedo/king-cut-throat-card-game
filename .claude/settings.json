@@ -1,9 +1,0 @@
-{
-  "worktree": {
-    "bgIsolation": "none"
-  },
-  "permissions": {
-    "allow": ["Bash(tmux new-session*)", "Bash(tmux new-window*)", "Bash(tmux send-keys*)"],
-    "deny": ["Agent"]
-  }
-}
