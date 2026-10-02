@@ -987,6 +987,14 @@ const AI = (() => {
   /* Worlds per decision, and candidates kept after heuristic pruning. */
   const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
   const CANDIDATES = { discard: 6, exchange: 6 };
+  /* Strength: a factor on every world count above (minimum 1 world). 1 is the full AI;
+     lower values make each decision rest on fewer guesses, so the AI makes more mistakes. */
+  let strength = 1;
+  function setStrength(f) {
+    if (typeof f === 'number' && isFinite(f)) strength = Math.min(1, Math.max(0.01, f));
+    return strength;
+  }
+  const getStrength = () => strength;
   const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
   /* Knowledge switches, for testing what each kind of board knowledge is worth. All on is the
      normal AI. Off means the AI acts as if it did not have that knowledge. */
@@ -1421,7 +1429,7 @@ const AI = (() => {
   function plan(view, candidates, toAction, n) {
     if (candidates.length === 1) return candidates[0];
     const rng = rngFor(view);
-    const worlds = sampleWorlds(view, n, rng);
+    const worlds = sampleWorlds(view, Math.max(1, Math.round(n * strength)), rng);
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
     for (const cand of candidates) {
@@ -1483,7 +1491,7 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, setKnowledge });
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, setKnowledge, setStrength, getStrength });
 })();
 
 /* ---------------------------------------------------------------------
