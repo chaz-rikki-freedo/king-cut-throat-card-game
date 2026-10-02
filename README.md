@@ -17,8 +17,8 @@ Click **Debug** in the top bar, or add `?debug=1` to the URL.
 
 Both settings apply to all bots, change how long the bots think, and reset on reload.
 
-- **Worlds** (1–200, default 40): how many guessed deals of the hidden cards the bots use for each decision. Fewer worlds make them sloppier. More than 40 adds no measured strength.
-- **Play-out skill** (0–100%, default 100%): how well the bots play the hands they replay in their heads. Lower values make them judge moves less well.
+- **Hunches** (1–200, default 40): how many guesses about the hidden cards the bots make for each decision. Fewer hunches make them sloppier. More than 40 adds no measured strength.
+- **Brain farts** (0–100%, default 0%): how often the bots imagine a random card when they replay a hand in their heads. More brain farts make them judge moves less well.
 
 ### AI knowledge
 
