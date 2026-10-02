@@ -203,8 +203,8 @@ button.card{cursor:pointer}
   </header>
   <div class="dbg-knowledge" id="dbgThinking">
     <strong>AI thinking</strong>
-    <label title="Guessed deals of the hidden cards for each card decision. Default 40.">Worlds <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="40" style="width:5em"> <span class="k-hint">guesses per decision (default 40)</span></label>
-    <label title="How well each replayed hand is played. 100% is the normal AI; 0% plays the replays at random.">Play-out skill <input type="range" id="dbgSkill" min="0" max="100" step="10" value="100"> <output id="dbgSkillOut">100%</output></label>
+    <label title="How many guesses about the hidden cards the bots make for each decision. Default 40.">Hunches <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="40" style="width:5em"> <span class="k-hint">per decision (default 40)</span></label>
+    <label title="How often the bots imagine a random card when they replay a hand in their heads. 0% is the normal AI.">Brain farts <input type="range" id="dbgSkill" min="0" max="100" step="10" value="0"> <output id="dbgSkillOut">0%</output></label>
     <span class="k-hint">Both settings change how long the bots think. Not saved: a reload resets them.</span>
     <button class="btn" type="button" data-action="thinking-reset">Defaults</button>
   </div>
@@ -2076,10 +2076,11 @@ const App = (() => {
   function setThinking(t) {
     const now = AI.setThinking(t);
     $('dbgWorlds').value = now.worlds;
-    $('dbgSkill').value = Math.round(now.playoutSkill * 100);
-    $('dbgSkillOut').textContent = Math.round(now.playoutSkill * 100) + '%';
+    const farts = Math.round((1 - now.playoutSkill) * 100);
+    $('dbgSkill').value = farts;
+    $('dbgSkillOut').textContent = farts + '%';
     Logger.log('AI_THINKING', now);
-    addLog('AI thinking: ' + now.worlds + ' worlds, play-out skill ' + Math.round(now.playoutSkill * 100) + '%.', 'h');
+    addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
   }
 
   function init() {
@@ -2106,7 +2107,7 @@ const App = (() => {
     $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplay = e.target.checked; schedule(); });
     $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
     $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
-    $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: Number($('dbgSkill').value) / 100 }));
+    $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('dbgSkill').value) / 100 }));
     for (const box of document.querySelectorAll('[data-knowledge]')) {
       box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
       box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
