@@ -145,11 +145,12 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:60vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:45;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:60vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 .debug[hidden]{display:none}
 .debug header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
 .debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:1;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
+.dbg-knowledge{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -197,6 +198,16 @@ button.card{cursor:pointer}
     <button class="btn" type="button" data-action="clear-log">Clear</button>
     <button class="btn" type="button" data-action="toggle-debug">Close</button>
   </header>
+  <div class="dbg-knowledge" id="dbgKnowledge">
+    <strong>AI knowledge</strong>
+    <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> Reads bids</label>
+    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> Tracks turned card</label>
+    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> Knows own discards</label>
+    <label title="Use the voids that players showed"><input type="checkbox" data-knowledge="voids" checked> Uses voids</label>
+    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> Score-aware</label>
+    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> Showdown plans</label>
+    <button class="btn" type="button" data-action="knowledge-reset">All on</button>
+  </div>
   <pre id="dbgLog"></pre>
 </div>
 
@@ -976,6 +987,21 @@ const AI = (() => {
   const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
   const CANDIDATES = { discard: 6, exchange: 6 };
   const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
+  /* Knowledge switches, for testing what each kind of board knowledge is worth. All on is the
+     normal AI. Off means the AI acts as if it did not have that knowledge. */
+  const KNOWLEDGE_DEFAULTS = Object.freeze({
+    bids: true,          /* read each player's bids as evidence about their hand */
+    turnedCard: true,    /* track where the turned card went after the bidding */
+    ownDiscards: true,   /* remember which cards it put in the outside pile */
+    voids: true,         /* use the voids that players showed */
+    scoreAware: true,    /* play for the chance to win the game (off: play for points) */
+    showdownPlans: true  /* also test the duck and balance plans (off: greedy only) */
+  });
+  const knowledge = Object.assign({}, KNOWLEDGE_DEFAULTS);
+  function setKnowledge(k) {
+    for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
+    return Object.assign({}, knowledge);
+  }
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -1041,6 +1067,11 @@ const AI = (() => {
     return winTable[tableIndex(scores[0], scores[1], scores[2]) + me];
   }
   function outcome(s, me) {
+    if (!knowledge.scoreAware) {
+      /* Points only: own points minus the opponents' average, with no idea of the race to 10. */
+      const others = s.scores.reduce((t, x) => t + x, 0) - s.scores[me];
+      return s.scores[me] - others / 2;
+    }
     if (s.gameOver) return s.winner === me ? 1 : 0;
     return winChance(s.scores, me);
   }
@@ -1240,29 +1271,32 @@ const AI = (() => {
   function layout(view) {
     const me = view.seat;
     const sd = !!(view.showdown && view.showdown.active);
-    const known = new Set(view.hand.concat(view.played, view.myOut));
+    const myOut = knowledge.ownDiscards ? view.myOut : [];
+    const known = new Set(view.hand.concat(view.played, myOut));
     const fixed = { hands: [[], [], []], kitty: [], outside: [], sdDiscards: [] };
     fixed.hands[me] = view.hand.slice();
     const cap = { hands: view.handCounts.slice(), kitty: 0, outside: 0, sdDiscards: 0 };
     cap.hands[me] = 0;
     if (sd) {
-      fixed.sdDiscards = view.myOut.slice();
-      cap.sdDiscards = view.showdown.discardCount - view.myOut.length;
+      fixed.sdDiscards = myOut.slice();
+      cap.sdDiscards = view.showdown.discardCount - myOut.length;
     } else {
-      fixed.outside = view.myOut.slice();
-      cap.outside = view.outsideCount - view.myOut.length;
+      fixed.outside = myOut.slice();
+      cap.outside = view.outsideCount - myOut.length;
       cap.kitty = view.kittyCount;
       const f = view.flipped;
       if (f && !known.has(f)) {
         if (view.kittyCount > 0 && (view.phase === P.BID1 || view.phase === P.BID2)) {
           fixed.kitty.push(f); cap.kitty--; known.add(f);
+        } else if (!knowledge.turnedCard) {
+          /* Knowledge off: the turned card is just one more unseen card. */
         } else if (view.flippedOut) {
           fixed.outside.push(f); cap.outside--; known.add(f);
         } else if (view.receiver !== null && view.receiver !== me) {
           /* Round 1 accept: everyone saw the turned card go to the receiver. A void in its
              suit shows that the receiver discarded it to the outside pile. */
           const r = view.receiver;
-          if (view.trump && view.voids[r].includes(R.getEffectiveSuit(f, view.trump))) { fixed.outside.push(f); cap.outside--; }
+          if (knowledge.voids && view.trump && view.voids[r].includes(R.getEffectiveSuit(f, view.trump))) { fixed.outside.push(f); cap.outside--; }
           else { fixed.hands[r].push(f); cap.hands[r]--; }
           known.add(f);
         }
@@ -1275,7 +1309,7 @@ const AI = (() => {
     const slots = [];
     for (let p = 0; p < 3; p++) if (lay.cap.hands[p] > 0) slots.push({ kind: 'hand', seat: p, left: lay.cap.hands[p], cards: [] });
     for (const kind of ['kitty', 'outside', 'sdDiscards']) if (lay.cap[kind] > 0) slots.push({ kind, left: lay.cap[kind], cards: [] });
-    const fits = (id, slot) => slot.kind !== 'hand' || !view.trump || !view.voids[slot.seat].includes(R.getEffectiveSuit(id, view.trump));
+    const fits = (id, slot) => !knowledge.voids || slot.kind !== 'hand' || !view.trump || !view.voids[slot.seat].includes(R.getEffectiveSuit(id, view.trump));
     const cards = RNG.shuffle(lay.unknown.slice(), rng);
     const options = id => slots.filter(sl => fits(id, sl)).length;
     cards.sort((a, b) => options(a) - options(b));
@@ -1296,7 +1330,7 @@ const AI = (() => {
   }
   /* How well a world agrees with the bids that the other players made (main hand only). */
   function bidWeight(view, w) {
-    if (view.showdown) return 1;
+    if (view.showdown || !knowledge.bids) return 1;
     let weight = 1;
     const T = TH.BID_TEMP;
     for (const b of view.bidLog) {
@@ -1382,6 +1416,7 @@ const AI = (() => {
      with fewer tricks (balance: the mediator plan for a 3-3-1 Showdown). Its value is the better plan's average over all worlds.
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
+  const activePlans = () => (knowledge.showdownPlans ? PLANS : ['greedy']);
   function plan(view, candidates, toAction, n) {
     if (candidates.length === 1) return candidates[0];
     const rng = rngFor(view);
@@ -1389,7 +1424,7 @@ const AI = (() => {
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
     for (const cand of candidates) {
-      for (const style of PLANS) {
+      for (const style of activePlans()) {
         let total = 0;
         for (let i = 0; i < worlds.length; i++) {
           const s = worldState(view, worlds[i], seeds[i]);
@@ -1447,7 +1482,7 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES });
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, setKnowledge });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1986,6 +2021,7 @@ const App = (() => {
       case 'new-game-now': newGame(); break;
       case 'toggle-debug': { const d = $('debugPanel'); d.hidden = !d.hidden; break; }
       case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; break;
+      case 'knowledge-reset': setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'run-tests': {
         const res = SelfTest.run();
         const out = res.results.filter(r => !r.ok).map(r => 'FAIL ' + r.name + (r.detail ? ' — ' + r.detail : '')).join('\n');
@@ -1994,6 +2030,16 @@ const App = (() => {
       }
       default: break;
     }
+  }
+
+  /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
+  function setKnowledge(k) {
+    const now = AI.setKnowledge(k);
+    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = now[box.getAttribute('data-knowledge')];
+    Logger.log('AI_KNOWLEDGE', now);
+    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.textContent.trim() : key; };
+    const off = Object.keys(now).filter(key => !now[key]).map(label);
+    addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
   }
 
   function init() {
@@ -2018,6 +2064,10 @@ const App = (() => {
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => { Logger.enabled = dbg.checked; });
     $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplay = e.target.checked; schedule(); });
+    for (const box of document.querySelectorAll('[data-knowledge]')) {
+      box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
+      box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
+    }
     Logger.listeners.push(line => { const pre = $('dbgLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('debug') === '1') { Logger.enabled = true; dbg.checked = true; $('debugPanel').hidden = false; }
@@ -2209,6 +2259,33 @@ const SelfTest = (() => {
       check('win chance rises with own score', AI.winChance([9, 0, 0], 0) > AI.winChance([5, 0, 0], 0) && AI.winChance([5, 0, 0], 0) > w0);
       check('win chance falls when an opponent nears 10', AI.winChance([0, 9, 0], 0) < AI.winChance([0, 5, 0], 0));
       check('win chance is symmetric between seats', Math.abs(AI.winChance([2, 6, 4], 0) - AI.winChance([2, 4, 6], 0)) < 1e-9);
+
+      /* Knowledge switches: each one changes the worlds as expected, and decisions stay legal. */
+      try {
+        eq('all knowledge switches are on by default', Object.values(AI.knowledge).every(Boolean), true);
+        AI.setKnowledge({ turnedCard: false });
+        check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40).some(w => !w.hands[2].includes('9H')));
+        AI.setKnowledge({ turnedCard: true, ownDiscards: false });
+        ws = worldsOf(s, 0, 40);
+        check('own-discards switch off: some worlds move own discards out of the outside pile', ws.some(w => !s.memory[0].out.every(id => w.outside.includes(id))));
+        check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
+        AI.setKnowledge({ ownDiscards: true, voids: false });
+        check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
+        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+        for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) {
+          AI.setKnowledge({ [key]: false });
+          const st = revealState(9, 0, '9H');
+          D(st, { type: 'FLIP' });
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          D(st, { type: 'BID', player: 1, accept: true });
+          D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
+          const ok2 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          check('switch ' + key + ' off: AI decisions stay legal', ok1 && ok2);
+          AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+        }
+      } finally {
+        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+      }
     });
 
     safeRun('planner', () => {

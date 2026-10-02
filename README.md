@@ -21,6 +21,29 @@ Use one of these methods:
 | **Run self-tests** | Runs the test suite that is in the file. The results go to the bottom of the log area. |
 | **Clear** | Clears the log area. |
 
+## AI knowledge switches
+
+The second row of the debug panel turns off one type of board knowledge for all AI players. All switches are on by default; that is the normal AI. A change applies to the next AI decision, and the table log records it. The switches are not saved: a page reload turns them all on again.
+
+| Switch | When it is on, the AI… | When it is off, the AI… |
+|---|---|---|
+| **Reads bids** | gives more weight to deals that agree with each player's bids | treats all deals that agree with the cards as equally likely |
+| **Tracks turned card** | knows where the turned card went (receiver's hand or outside pile) | treats the turned card as one more unseen card after the bidding |
+| **Knows own discards** | knows which cards it put in the outside pile | treats its own discards as unseen cards |
+| **Uses voids** | never gives a player cards of a suit that the player showed a void in | ignores voids |
+| **Score-aware** | plays for its chance to win the game | plays for points only: its own points minus the opponents' average |
+| **Showdown plans** | also tests the duck and balance plans for its later cards | tests greedy play only |
+
+**All on** turns all switches on again. The AI never gets the hidden cards, whatever the switches show.
+
+From the console:
+
+```js
+KCT.AI.knowledge                          // current switches
+KCT.AI.setKnowledge({ bids: false })      // change switches; the checkboxes do not update
+KCT.AI.setKnowledge(KCT.AI.KNOWLEDGE_DEFAULTS) // all on
+```
+
 ## Event log format
 
 Each line has this format:
@@ -90,4 +113,5 @@ By default, the simulated games use the AI's fast play-out policy. That policy s
 - The AI's decision does not change when hidden cards move, and the same view always gives the same decision.
 - The win-chance table: about 1/3 each at 0–0–0, the sum is 1, and the values are symmetric.
 - One full hand with the full AI in all seats.
+- Each AI knowledge switch changes the sampled worlds as expected, and the AI's decisions stay legal with each switch off.
 - Simulated full games. After each action, the tests check that all 33 cards are present and that no illegal card is accepted.
