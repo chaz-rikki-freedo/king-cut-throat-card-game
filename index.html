@@ -145,11 +145,13 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:60vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:45;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:80vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 .debug[hidden]{display:none}
 .debug header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
 .debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:1;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
+.dbg-knowledge{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
+
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -197,6 +199,16 @@ button.card{cursor:pointer}
     <button class="btn" type="button" data-action="clear-log">Clear</button>
     <button class="btn" type="button" data-action="toggle-debug">Close</button>
   </header>
+  <div class="dbg-knowledge" id="dbgKnowledge">
+    <strong>AI knowledge</strong>
+    <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
+    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
+    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
+    <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
+    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
+    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
+    <button class="btn" type="button" data-action="knowledge-reset">All on</button>
+  </div>
   <pre id="dbgLog"></pre>
 </div>
 
@@ -483,6 +495,7 @@ const Engine = (() => {
     state.currentPlayer = null;
     state.showdown = null;
     state.played = [];
+    state.playLog = [];
     state.voids = [[], [], []];
     state.memory = [{ out: [] }, { out: [] }, { out: [] }];
     state.handSummary = null;
@@ -843,6 +856,7 @@ const Engine = (() => {
       else if (eff !== state.trick.leadSuit && !state.voids[p].includes(state.trick.leadSuit)) state.voids[p].push(state.trick.leadSuit);
       state.trick.plays.push({ player: p, card: a.card });
       state.played.push(a.card);
+      state.playLog.push({ player: p, card: a.card });
       events.push({ type: 'CARD_PLAYED', player: p, card: a.card, number: state.trickNumber, showdown: isShowdownActive(state) });
       if (state.trick.plays.length === state.activePlayers.length) resolveTrick(state, events);
       else state.currentPlayer = nextActive(state, p);
@@ -941,6 +955,7 @@ function buildView(state, seat) {
       tricksWon: sd.tricksWon.slice(), trickWinners: sd.trickWinners.slice(), lead: sd.lead ? Object.assign({}, sd.lead) : null
     } : null,
     played: state.played.slice(),
+    playLog: state.playLog.map(x => ({ player: x.player, card: x.card })),
     voids: state.voids.map(v => v.slice()),
     myOut: state.memory[seat].out.slice(),
     handSummary: state.handSummary ? JSON.parse(JSON.stringify(state.handSummary)) : null,
@@ -950,13 +965,119 @@ function buildView(state, seat) {
 }
 
 /* ---------------------------------------------------------------------
-   6. AI — heuristic opponents. Input: a View only (no hidden data).
+   6. AI — planning opponents. Input: a View only (no hidden data).
+   For each decision the AI:
+   1. samples deals of the cards it cannot see ("worlds") that agree with
+      everything its seat knows: card counts, its own discards, the turned
+      card, known voids, and what each player's bids show;
+   2. plays each candidate action to the end of the hand in every world with
+      the real Engine (a 3-3-1 split plays the Showdown from that world's
+      outside pile);
+   3. scores each result as its chance to win the game, from a win-chance
+      table over all score positions. A game that ends in the play-out counts
+      as a win (1) or a loss (0).
+   Score pressure, Showdown steering and the value of the outside pile all
+   come from this one objective. There are no separate rules for them.
    --------------------------------------------------------------------- */
 const AI = (() => {
-  const R = Rules, P = Engine.P;
+  const R = Rules, P = Engine.P, WIN = Engine.C.WIN_SCORE;
   const TRUMP_VAL = { 18: 1.0, 17: 0.93, 16: 0.86, 14: 0.76, 13: 0.66, 12: 0.54, 10: 0.45, 9: 0.40, 8: 0.36, 7: 0.32 };
-  const TH = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, KEEP_W: 0.55 };
+  /* Heuristic bid thresholds: used for other players inside play-outs and to read their bids. */
+  const TH = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, BID_TEMP: 0.35 };
+  /* Worlds per decision, and candidates kept after heuristic pruning. */
+  const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
+  const CANDIDATES = { discard: 6, exchange: 6 };
+  const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
+  /* Knowledge switches, for testing what each kind of board knowledge is worth. All on is the
+     normal AI. Off means the AI acts as if it did not have that knowledge. */
+  const KNOWLEDGE_DEFAULTS = Object.freeze({
+    bids: true,          /* read each player's bids as evidence about their hand */
+    turnedCard: true,    /* track where the turned card went after the bidding */
+    ownDiscards: true,   /* remember which cards it put in the outside pile */
+    voids: true,         /* use the voids that players showed */
+    scoreAware: true,    /* play for the chance to win the game (off: play for points) */
+    showdownPlans: true  /* also test the duck and balance plans (off: greedy only) */
+  });
+  const knowledge = Object.assign({}, KNOWLEDGE_DEFAULTS);
+  function setKnowledge(k) {
+    for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
+    return Object.assign({}, knowledge);
+  }
 
+  /* ---- Win-chance table ----
+     Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
+     Each triple applies to the seats in every order with equal chance. */
+  const HAND_DELTAS = [
+    [[2, 0, 0], 5115], [[1, 0, 0], 4054], [[1, 1, 0], 3815], [[2, 1, 0], 1442], [[3, 0, 0], 1018],
+    [[2, 0, -1], 243], [[1, 1, 1], 239], [[1, 0, -1], 124], [[4, 0, 0], 113], [[2, 2, 0], 73],
+    [[2, 1, 1], 70], [[3, 0, -1], 68], [[1, 1, -1], 60], [[3, 1, 0], 49], [[2, 1, -1], 44],
+    [[3, 1, -1], 15], [[4, 0, -1], 4], [[5, 0, 0], 3], [[3, 2, 0], 3], [[2, 2, 1], 2], [[3, 1, 1], 1]
+  ];
+  let winTable = null;
+  const tableIndex = (a, b, c) => ((a * WIN + b) * WIN + c) * 3;
+  function uniquePerms(d) {
+    const out = new Map();
+    for (const q of [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]) {
+      const v = q.map(i => d[i]);
+      out.set(v.join(','), v);
+    }
+    return Array.from(out.values());
+  }
+  /* Value iteration over all 1,000 positions below 10. */
+  function buildWinTable() {
+    const deltas = [];
+    let total = 0;
+    for (const [, c] of HAND_DELTAS) total += c;
+    for (const [d, c] of HAND_DELTAS) {
+      const perms = uniquePerms(d);
+      for (const q of perms) deltas.push([q, c / perms.length / total]);
+    }
+    const D0 = deltas.map(x => x[0][0]), D1 = deltas.map(x => x[0][1]), D2 = deltas.map(x => x[0][2]), PR = deltas.map(x => x[1]);
+    const n = deltas.length;
+    let V = new Float64Array(WIN * WIN * WIN * 3).fill(1 / 3);
+    let next = new Float64Array(V.length);
+    for (let it = 0; it < 500; it++) {
+      let diff = 0;
+      for (let a = 0; a < WIN; a++) for (let b = 0; b < WIN; b++) for (let c = 0; c < WIN; c++) {
+        let w0 = 0, w1 = 0, w2 = 0;
+        for (let j = 0; j < n; j++) {
+          const x = Math.max(0, a + D0[j]), y = Math.max(0, b + D1[j]), z = Math.max(0, c + D2[j]), pr = PR[j];
+          const top = Math.max(x, y, z);
+          if (top >= WIN) {
+            const k = (x === top) + (y === top) + (z === top);
+            if (x === top) w0 += pr / k;
+            if (y === top) w1 += pr / k;
+            if (z === top) w2 += pr / k;
+          } else {
+            const q = tableIndex(x, y, z);
+            w0 += pr * V[q]; w1 += pr * V[q + 1]; w2 += pr * V[q + 2];
+          }
+        }
+        const q = tableIndex(a, b, c);
+        diff = Math.max(diff, Math.abs(w0 - V[q]), Math.abs(w1 - V[q + 1]), Math.abs(w2 - V[q + 2]));
+        next[q] = w0; next[q + 1] = w1; next[q + 2] = w2;
+      }
+      const t = V; V = next; next = t;
+      if (diff < 1e-9) break;
+    }
+    return V;
+  }
+  /* Chance that seat `me` wins the game from these scores (all below 10). */
+  function winChance(scores, me) {
+    if (!winTable) winTable = buildWinTable();
+    return winTable[tableIndex(scores[0], scores[1], scores[2]) + me];
+  }
+  function outcome(s, me) {
+    if (!knowledge.scoreAware) {
+      /* Points only: own points minus the opponents' average, with no idea of the race to 10. */
+      const others = s.scores.reduce((t, x) => t + x, 0) - s.scores[me];
+      return s.scores[me] - others / 2;
+    }
+    if (s.gameOver) return s.winner === me ? 1 : 0;
+    return winChance(s.scores, me);
+  }
+
+  /* ---- Heuristic card values (pruning and play-out policy) ---- */
   function combos(arr, k) {
     const out = [];
     const rec = (start, pick) => {
@@ -966,7 +1087,6 @@ const AI = (() => {
     rec(0, []);
     return out;
   }
-
   /* Estimated value of a hand with a given trump: likely tricks plus weighted King points. */
   function handValue(hand, trump) {
     let tricks = 0, kingPts = 0, t = 0;
@@ -998,152 +1118,372 @@ const AI = (() => {
     tricks += 0.2 * Math.max(0, t - 2);
     return tricks + 0.9 * kingPts;
   }
-  /* Before trump exists: reward the best possible suit, with a little credit for flexibility. */
   function flexibleValue(hand) {
     const vals = R.SUITS.map(s => handValue(hand, s)).sort((a, b) => b - a);
     return vals[0] + 0.15 * vals[1];
   }
-  function bestDiscard(hand, k, evalFn, trump) {
+  function bestSuit(hand, blocked) {
     let best = null, bestV = -Infinity;
-    for (const combo of combos(hand, k)) {
+    for (const s of R.SUITS) {
+      if (s === blocked) continue;
+      const v = handValue(hand, s);
+      if (v > bestV) { bestV = v; best = s; }
+    }
+    return { suit: best, value: bestV };
+  }
+  /* How much a single card is worth keeping. */
+  function cardKeep(id, trump) {
+    if (R.isTrump(id, trump)) return 1 + TRUMP_VAL[R.trumpRank(id, trump)];
+    const r = R.card(id).rank;
+    if (r === 'A') return 0.62;
+    if (r === 'K') return 0.4;
+    if (r === 'Q') return 0.12;
+    return R.RANK_VALUE[r] * 0.005;
+  }
+  function dropLowest(hand, k, trump) {
+    return hand.slice().sort((a, b) => (cardKeep(a, trump) - cardKeep(b, trump)) || (R.getCardStrength(a, trump) - R.getCardStrength(b, trump))).slice(0, k);
+  }
+  /* Ranked candidate discards of size k, best first. */
+  function rankedDiscards(hand, k, evalRest, trump) {
+    return combos(hand, k).map(combo => {
       const rest = hand.filter(id => !combo.includes(id));
-      const strength = combo.reduce((s, id) => s + R.getCardStrength(id, trump), 0);
-      const v = evalFn(rest) - strength * 1e-5; /* tie-break: throw away weaker cards */
-      if (v > bestV) { bestV = v; best = combo; }
+      return { combo, v: evalRest(rest) - 1e-5 * combo.reduce((s, id) => s + R.getCardStrength(id, trump), 0) };
+    }).sort((a, b) => b.v - a.v).map(x => x.combo);
+  }
+  const sigmoid = x => 1 / (1 + Math.exp(-x));
+  function round1Value(hand, flipped) {
+    const s = R.card(flipped).suit;
+    return handValue(hand, s) - 0.85 * TRUMP_VAL[R.trumpRank(flipped, s)];
+  }
+
+  /* ---- Play-out policy: fast, uses the full deal of one sampled world ---- */
+  function fastPlay(s, p) {
+    const trump = s.trump, lead = s.trick.leadSuit, plays = s.trick.plays;
+    const legal = R.legalCards(s.hands[p], lead, trump);
+    if (legal.length === 1) return legal[0];
+    const acted = new Set(plays.map(x => x.player));
+    const rem = s.activePlayers.filter(q => q !== p && !acted.has(q));
+    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
+    const byStrength = (a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump);
+    const sure = legal.filter(c => {
+      const ls = lead || R.getEffectiveSuit(c, trump);
+      if (best && R.compareCards(c, best.card, ls, trump) <= 0) return false;
+      return rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
+    }).sort(byStrength);
+    if (sure.length) return sure.find(R.isKing) || sure[0];
+    if (!plays.length) {
+      const counts = {};
+      for (const c of legal) { const e = R.getEffectiveSuit(c, trump); counts[e] = (counts[e] || 0) + 1; }
+      const off = legal.filter(c => !R.isTrump(c, trump) && !R.isKing(c));
+      const pool = off.length ? off : legal;
+      return pool.slice().sort((a, b) => (counts[R.getEffectiveSuit(a, trump)] - counts[R.getEffectiveSuit(b, trump)]) || byStrength(a, b))[0];
+    }
+    const dump = legal.filter(c => !R.isKing(c)).sort(byStrength);
+    return dump.length ? dump[0] : legal.slice().sort(byStrength)[0];
+  }
+  /* Duck plan for the planning seat: avoid tricks, but take a trick that a King surely wins.
+     A seat with a poor hand can then aim for 1 trick and a 3-3-1 Showdown between the others. */
+  function duckPlay(s, p) {
+    const trump = s.trump, lead = s.trick.leadSuit, plays = s.trick.plays;
+    const legal = R.legalCards(s.hands[p], lead, trump);
+    if (legal.length === 1) return legal[0];
+    const byStrength = (a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump);
+    const acted = new Set(plays.map(x => x.player));
+    const rem = s.activePlayers.filter(q => q !== p && !acted.has(q));
+    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
+    const kingSure = legal.filter(c => R.isKing(c)).find(c => {
+      const ls = lead || R.getEffectiveSuit(c, trump);
+      if (best && R.compareCards(c, best.card, ls, trump) <= 0) return false;
+      return rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
+    });
+    if (kingSure) return kingSure;
+    if (!best) return legal.slice().sort((a, b) => (R.isTrump(a, trump) - R.isTrump(b, trump)) || byStrength(a, b))[0];
+    const losers = legal.filter(c => R.compareCards(c, best.card, lead, trump) <= 0).sort(byStrength);
+    return losers.length ? losers[losers.length - 1] : legal.slice().sort(byStrength)[0];
+  }
+  /* Winner of the current trick if p plays c and the later players play greedy. */
+  function trickWinnerAfter(s, p, c) {
+    const plays = s.trick.plays.concat([{ player: p, card: c }]);
+    const lead = s.trick.leadSuit || R.getEffectiveSuit(c, s.trump);
+    const acted = new Set(plays.map(x => x.player));
+    for (const r of s.activePlayers) {
+      if (acted.has(r)) continue;
+      const t = { leadSuit: lead, plays: plays.slice() };
+      const saved = s.trick;
+      s.trick = t;
+      const x = fastPlay(s, r);
+      s.trick = saved;
+      plays.push({ player: r, card: x });
+    }
+    return R.getTrickWinner(plays, s.trump).player;
+  }
+  /* Balance plan (main hand only): take one trick, then give each trick to the opponent with
+     fewer tricks, to make a 3-3-1 split with this seat as mediator. */
+  function balancePlay(s, p) {
+    if (s.tricksWon[p] < 1) return fastPlay(s, p);
+    const legal = R.legalCards(s.hands[p], s.trick.leadSuit, s.trump);
+    if (legal.length === 1) return legal[0];
+    const opp = s.activePlayers.filter(q => q !== p);
+    const behind = s.tricksWon[opp[0]] <= s.tricksWon[opp[1]] ? opp[0] : opp[1];
+    const byStrength = (a, b) => R.getCardStrength(b, s.trump) - R.getCardStrength(a, s.trump);
+    const ranked = legal.slice().sort(byStrength);
+    return ranked.find(c => trickWinnerAfter(s, p, c) === behind) || ranked.find(c => trickWinnerAfter(s, p, c) !== p) || duckPlay(s, p);
+  }
+  /* The plan seat follows its plan; every other seat plays greedy. */
+  function planPlay(s, p) {
+    if (s.planSeat !== p || s.plan === 'greedy') return fastPlay(s, p);
+    if (s.plan === 'duck') return duckPlay(s, p);
+    return s.showdown && s.showdown.active ? fastPlay(s, p) : balancePlay(s, p);
+  }
+  function fastAction(s, p) {
+    switch (s.phase) {
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
+      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= TH.ROUND1 };
+      case P.BID2: {
+        const b = bestSuit(s.hands[p], R.card(s.flippedId).suit);
+        return { type: 'NAME', player: p, suit: b.value >= (p === s.dealer ? TH.ROUND2_LAST : TH.ROUND2) ? b.suit : null };
+      }
+      case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
+      case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: dropLowest(s.hands[p], 1, s.trump)[0] };
+      case P.TRICK_PLAY:
+      case P.SHOWDOWN_PLAY: return { type: 'PLAY', player: p, card: planPlay(s, p) };
+      default: throw new Error('No play-out action for phase ' + s.phase);
+    }
+  }
+  function playOut(s) {
+    for (let guard = 0; guard < 400; guard++) {
+      if (s.gameOver || TERMINAL.has(s.phase)) return;
+      const actors = Engine.actors(s);
+      const a = actors.length ? fastAction(s, actors[0]) : Engine.systemAction(s);
+      const r = Engine.dispatch(s, a);
+      if (!r.ok) throw new Error('Play-out action rejected: ' + r.error);
+    }
+    throw new Error('Play-out did not finish');
+  }
+
+  /* ---- Worlds: deals of the unseen cards that agree with the view ---- */
+  function rngFor(view) {
+    let h = 2166136261 >>> 0;
+    const str = view.seat + '|' + view.version + '|' + view.hand.join(',') + '|' + view.played.join(',');
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return { s: h };
+  }
+  /* Fixed cards and open slots for one view. */
+  function layout(view) {
+    const me = view.seat;
+    const sd = !!(view.showdown && view.showdown.active);
+    const myOut = knowledge.ownDiscards ? view.myOut : [];
+    const known = new Set(view.hand.concat(view.played, myOut));
+    const fixed = { hands: [[], [], []], kitty: [], outside: [], sdDiscards: [] };
+    fixed.hands[me] = view.hand.slice();
+    const cap = { hands: view.handCounts.slice(), kitty: 0, outside: 0, sdDiscards: 0 };
+    cap.hands[me] = 0;
+    if (sd) {
+      fixed.sdDiscards = myOut.slice();
+      cap.sdDiscards = view.showdown.discardCount - myOut.length;
+    } else {
+      fixed.outside = myOut.slice();
+      cap.outside = view.outsideCount - myOut.length;
+      cap.kitty = view.kittyCount;
+      const f = view.flipped;
+      if (f && !known.has(f)) {
+        if (view.kittyCount > 0 && (view.phase === P.BID1 || view.phase === P.BID2)) {
+          fixed.kitty.push(f); cap.kitty--; known.add(f);
+        } else if (!knowledge.turnedCard) {
+          /* Knowledge off: the turned card is just one more unseen card. */
+        } else if (view.flippedOut) {
+          fixed.outside.push(f); cap.outside--; known.add(f);
+        } else if (view.receiver !== null && view.receiver !== me) {
+          /* Round 1 accept: everyone saw the turned card go to the receiver. A void in its
+             suit shows that the receiver discarded it to the outside pile. */
+          const r = view.receiver;
+          if (knowledge.voids && view.trump && view.voids[r].includes(R.getEffectiveSuit(f, view.trump))) { fixed.outside.push(f); cap.outside--; }
+          else { fixed.hands[r].push(f); cap.hands[r]--; }
+          known.add(f);
+        }
+      }
+    }
+    const unknown = R.ALL_IDS.filter(id => !known.has(id));
+    return { fixed, cap, unknown };
+  }
+  function dealWorld(view, lay, rng) {
+    const slots = [];
+    for (let p = 0; p < 3; p++) if (lay.cap.hands[p] > 0) slots.push({ kind: 'hand', seat: p, left: lay.cap.hands[p], cards: [] });
+    for (const kind of ['kitty', 'outside', 'sdDiscards']) if (lay.cap[kind] > 0) slots.push({ kind, left: lay.cap[kind], cards: [] });
+    const fits = (id, slot) => !knowledge.voids || slot.kind !== 'hand' || !view.trump || !view.voids[slot.seat].includes(R.getEffectiveSuit(id, view.trump));
+    const cards = RNG.shuffle(lay.unknown.slice(), rng);
+    const options = id => slots.filter(sl => fits(id, sl)).length;
+    cards.sort((a, b) => options(a) - options(b));
+    for (const id of cards) {
+      const open = slots.filter(sl => sl.left > 0 && fits(id, sl));
+      if (!open.length) return null;
+      let x = RNG.next(rng) * open.reduce((t, sl) => t + sl.left, 0);
+      let pick = open[open.length - 1];
+      for (const sl of open) { x -= sl.left; if (x < 0) { pick = sl; break; } }
+      pick.cards.push(id); pick.left--;
+    }
+    const w = { hands: lay.fixed.hands.map(h => h.slice()), kitty: lay.fixed.kitty.slice(), outside: lay.fixed.outside.slice(), sdDiscards: lay.fixed.sdDiscards.slice() };
+    for (const sl of slots) {
+      if (sl.kind === 'hand') w.hands[sl.seat].push(...sl.cards);
+      else w[sl.kind].push(...sl.cards);
+    }
+    return w;
+  }
+  /* How well a world agrees with the bids that the other players made (main hand only). */
+  function bidWeight(view, w) {
+    if (view.showdown || !knowledge.bids) return 1;
+    let weight = 1;
+    const T = TH.BID_TEMP;
+    for (const b of view.bidLog) {
+      const o = b.player;
+      if (o === view.seat) continue;
+      const fromPlay = view.playLog.filter(x => x.player === o).map(x => x.card);
+      let hand = w.hands[o].concat(fromPlay);
+      if (o === view.receiver) {
+        if (view.bidLog.some(x => x.round === 1 && x.action === 'accept')) hand = hand.filter(id => id !== view.flipped);
+        else continue;
+      }
+      let f;
+      if (b.round === 1) {
+        const pa = sigmoid((round1Value(hand, view.flipped) - TH.ROUND1) / T);
+        f = b.action === 'accept' ? pa : 1 - pa;
+      } else {
+        const blocked = R.card(view.flipped).suit;
+        const best = bestSuit(hand, blocked);
+        const pc = sigmoid((best.value - (o === view.dealer ? TH.ROUND2_LAST : TH.ROUND2)) / T);
+        if (b.action === 'pass') f = 1 - pc;
+        else {
+          const suits = R.SUITS.filter(x => x !== blocked);
+          const ex = suits.map(x => Math.exp(handValue(hand, x) / T));
+          f = pc * ex[suits.indexOf(b.suit)] / ex.reduce((x, y) => x + y, 0);
+        }
+      }
+      weight *= Math.max(0.02, f);
+    }
+    return weight;
+  }
+  function sampleWorlds(view, n, rng) {
+    const lay = layout(view);
+    const free = lay.cap.hands.reduce((x, y) => x + y, 0) + lay.cap.kitty + lay.cap.outside + lay.cap.sdDiscards;
+    if (free !== lay.unknown.length) throw new Error('World layout mismatch: ' + free + ' slots, ' + lay.unknown.length + ' cards');
+    const raw = [];
+    for (let i = 0; i < n * SAMPLES.oversample && raw.length < n * SAMPLES.oversample; i++) {
+      let w = null;
+      for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng);
+      if (w) raw.push({ w, weight: bidWeight(view, w) });
+    }
+    if (!raw.length) throw new Error('No world agrees with the view');
+    /* Systematic resampling to n equal-weight worlds. */
+    const total = raw.reduce((t, x) => t + x.weight, 0);
+    const out = [];
+    let u = RNG.next(rng) * total / n, acc = 0, j = 0;
+    for (let i = 0; i < n; i++) {
+      const target = u + i * total / n;
+      while (j < raw.length - 1 && acc + raw[j].weight < target) { acc += raw[j].weight; j++; }
+      out.push(raw[j].w);
+    }
+    return out;
+  }
+  /* An Engine state for one world: public facts from the view, hidden cards from the world. */
+  function worldState(view, w, seed) {
+    const passes = view.round ? view.bidLog.filter(b => b.round === view.round && b.action === 'pass').length : 0;
+    const sd = view.showdown;
+    const hs = view.handSummary;
+    return {
+      version: 0, seed: 0, rng: { s: seed >>> 0 }, players: view.players,
+      scores: view.scores.slice(), dealer: view.dealer, handNumber: view.handNumber, phase: view.phase,
+      gameOver: false, winner: null, endEvent: null,
+      deck: [], hands: w.hands.map(h => h.slice()), kitty: w.kitty.slice(), outside: w.outside.slice(),
+      flippedId: view.flipped, flippedBlocked: view.flippedBlocked, flippedOut: view.flippedOut,
+      round: view.round, bidTurn: view.bidTurn, passes, bidLog: view.bidLog.slice(),
+      trump: view.trump, caller: view.caller, receiver: view.receiver, exchangeCount: view.exchangeCount,
+      received: view.received.slice(), pendingDiscard: view.pendingDiscard.slice(), activePlayers: view.activePlayers.slice(),
+      trick: { leader: view.trick.leader, leadSuit: view.trick.leadSuit, plays: view.trick.plays.map(x => ({ player: x.player, card: x.card })) },
+      trickNumber: view.trickNumber, totalTricks: view.totalTricks, tricksWon: view.tricksWon.slice(), trickWinners: view.trickWinners.slice(),
+      wonPile: [], lastTrick: null, leader: view.leader, currentPlayer: view.currentPlayer,
+      showdown: sd ? {
+        active: sd.active, mediator: sd.mediator, participants: sd.participants.slice(), pendingDiscard: sd.pendingDiscard.slice(),
+        discards: w.sdDiscards.slice(), tricksWon: sd.tricksWon.slice(), trickWinners: sd.trickWinners.slice(), lead: sd.lead
+      } : null,
+      played: view.played.slice(), playLog: view.playLog.map(x => ({ player: x.player, card: x.card })), voids: view.voids.map(v => v.slice()),
+      memory: [{ out: [] }, { out: [] }, { out: [] }],
+      handSummary: hs ? Object.assign({}, hs, { tricks: hs.tricks.slice() }) : null
+    };
+  }
+
+  /* ---- Planner ----
+     Each candidate is played out with three plans for this seat's later cards: take tricks
+     (greedy), avoid them (duck), or take one trick and then give each trick to the opponent
+     with fewer tricks (balance: the mediator plan for a 3-3-1 Showdown). Its value is the better plan's average over all worlds.
+     One plan holds for every world, so the AI does not assume that it can see the cards. */
+  const PLANS = ['greedy', 'duck', 'balance'];
+  const activePlans = () => (knowledge.showdownPlans ? PLANS : ['greedy']);
+  function plan(view, candidates, toAction, n) {
+    if (candidates.length === 1) return candidates[0];
+    const rng = rngFor(view);
+    const worlds = sampleWorlds(view, n, rng);
+    const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
+    let best = candidates[0], bestV = -Infinity;
+    for (const cand of candidates) {
+      for (const style of activePlans()) {
+        let total = 0;
+        for (let i = 0; i < worlds.length; i++) {
+          const s = worldState(view, worlds[i], seeds[i]);
+          s.planSeat = view.seat; s.plan = style;
+          const r = Engine.dispatch(s, toAction(cand));
+          if (!r.ok) throw new Error('Candidate rejected: ' + r.error);
+          playOut(s);
+          total += outcome(s, view.seat);
+        }
+        const v = total / worlds.length;
+        if (v > bestV + 1e-9) { bestV = v; best = cand; }
+      }
     }
     return best;
   }
 
-  function decideRound1(view) {
-    const s = R.card(view.flipped).suit;
-    const gift = 0.85 * TRUMP_VAL[R.trumpRank(view.flipped, s)];
-    const v = handValue(view.hand, s) - gift;
-    const alt = Math.max(...R.SUITS.filter(x => x !== s).map(x => handValue(view.hand, x) - 0.5));
-    return v >= TH.ROUND1 && !(alt > v + 0.6);
-  }
-  function decideRound2(view) {
-    const blocked = R.card(view.flipped).suit;
-    let best = null, bestV = -Infinity;
-    for (const s of R.SUITS) {
-      if (s === blocked) continue;
-      const v = handValue(view.hand, s) - 0.5;
-      if (v > bestV) { bestV = v; best = s; }
-    }
-    const last = view.seat === view.dealer;
-    return bestV >= (last ? TH.ROUND2_LAST : TH.ROUND2) ? best : null;
-  }
-
-  /* Cards this seat cannot locate: not in own hand, not played, not personally discarded. */
-  function unknownCards(view) {
-    const known = new Set(view.hand.concat(view.played, view.myOut));
-    const sdActive = view.showdown && view.showdown.active;
-    if (!sdActive && view.flippedOut && view.flipped) known.add(view.flipped);
-    return R.ALL_IDS.filter(id => !known.has(id));
-  }
-
-  function choosePlay(view) {
-    const legal = view.legal;
-    if (legal.length === 1) return legal[0];
-    const trump = view.trump, me = view.seat;
-    const unknown = unknownCards(view);
-    const U = unknown.length;
-    const plays = view.trick.plays;
-    const leadSuit = view.trick.leadSuit;
-    const acted = new Set(plays.map(x => x.player));
-    const rem = view.activePlayers.filter(p => p !== me && !acted.has(p));
-    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
-    const unkTrump = unknown.filter(id => R.isTrump(id, trump));
-    const myTrump = view.hand.filter(id => R.isTrump(id, trump));
-    const kingValue = view.scores[me] >= 9 ? 25 : 1.15;
-
-    const unkInSuit = s => unknown.filter(id => R.getEffectiveSuit(id, trump) === s).length;
-    const higherTrump = id => unkTrump.filter(u => R.trumpRank(u, trump) > R.trumpRank(id, trump)).length;
-    const higherInSuit = (id, s) => unknown.filter(u => !R.isTrump(u, trump) && R.getEffectiveSuit(u, trump) === s && R.RANK_VALUE[R.card(u).rank] > R.RANK_VALUE[R.card(id).rank]).length;
-    const hold = (f, k) => (k <= 0 ? 0 : 1 - Math.pow(1 - f, k));
-
-    function winProb(id) {
-      const eff = R.getEffectiveSuit(id, trump);
-      const s = leadSuit || eff;
-      if (best && R.compareCards(id, best.card, leadSuit, trump) <= 0) return 0;
-      const isT = eff === trump;
-      if (!isT && eff !== s) return 0;
-      let p = 1;
-      for (const r of rem) {
-        const f = U > 0 ? Math.min(1, view.handCounts[r] / U) : 0;
-        const knownVoidS = view.voids[r].includes(s);
-        const knownVoidT = view.voids[r].includes(trump);
-        const voidS = knownVoidS ? 1 : Math.pow(1 - f, unkInSuit(s));
-        let beat;
-        if (isT) {
-          const h = knownVoidT ? 0 : hold(f, higherTrump(id));
-          beat = s === trump ? h : voidS * h;
-        } else {
-          const holdHigher = knownVoidS ? 0 : hold(f, higherInSuit(id, s));
-          const anyTrump = knownVoidT ? 0 : hold(f, unkTrump.length);
-          beat = holdHigher + voidS * anyTrump;
-        }
-        p *= 1 - Math.min(1, beat);
-      }
-      return p;
-    }
-    function keepValue(id) {
-      let v, h;
-      if (R.isTrump(id, trump)) { h = higherTrump(id); v = 0.35 + 0.65 / (1 + h); }
-      else {
-        h = higherInSuit(id, R.getEffectiveSuit(id, trump));
-        v = h === 0 ? 0.5 : 0.3 * ((R.RANK_VALUE[R.card(id).rank] - 6) / 8) / (1 + h);
-      }
-      if (R.isKing(id)) v += 0.35 / (1 + h);
-      return v;
-    }
-    function leadBonus(id) {
-      let b = 0;
-      if (R.isTrump(id, trump)) {
-        if (myTrump.length >= 3 && higherTrump(id) === 0 && unkTrump.length > 0) b += 0.25;
-        if (myTrump.length === 1 && higherTrump(id) > 0) b -= 0.2;
-      } else {
-        const s = R.getEffectiveSuit(id, trump);
-        const n = view.hand.filter(x => R.getEffectiveSuit(x, trump) === s).length;
-        const r = R.card(id).rank;
-        if (n === 1 && myTrump.length >= 1 && r !== 'A' && r !== 'K') b += 0.15;
-      }
-      return b;
-    }
-
-    let choice = null, choiceScore = -Infinity;
-    for (const id of legal) {
-      const p = winProb(id);
-      let gain = 1;
-      if (R.isKing(id)) gain += kingValue;
-      if (best && R.isKing(best.card) && best.player !== me && p > 0) gain += view.scores[best.player] >= 9 ? 25 : 0.7;
-      let score = p * gain - TH.KEEP_W * keepValue(id) - 1e-4 * R.getCardStrength(id, trump);
-      if (!plays.length) score += leadBonus(id);
-      if (score > choiceScore) { choiceScore = score; choice = id; }
-    }
-    return choice;
-  }
-
-  function decide(view) {
-    const me = view.seat;
+  function decideInner(view) {
+    const me = view.seat, trump = view.trump;
     switch (view.phase) {
-      case P.DISCARD:
-        return { type: 'DISCARD', player: me, cards: bestDiscard(view.hand, 3, flexibleValue, null) };
-      case P.BID1:
-        return { type: 'BID', player: me, accept: decideRound1(view) };
-      case P.BID2:
-        return { type: 'NAME', player: me, suit: decideRound2(view) };
-      case P.EXCHANGE:
-        return { type: 'EXCHANGE', player: me, cards: bestDiscard(view.hand, view.exchangeCount, h => handValue(h, view.trump), view.trump) };
-      case P.SHOWDOWN_DISCARD:
-        return { type: 'SHOWDOWN_DISCARD', player: me, card: bestDiscard(view.hand, 1, h => handValue(h, view.trump), view.trump)[0] };
+      case P.DISCARD: {
+        const cands = rankedDiscards(view.hand, 3, flexibleValue, null).slice(0, CANDIDATES.discard);
+        return { type: 'DISCARD', player: me, cards: plan(view, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
+      }
+      case P.BID1: {
+        const h = round1Value(view.hand, view.flipped) >= TH.ROUND1;
+        const accept = plan(view, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid);
+        return { type: 'BID', player: me, accept };
+      }
+      case P.BID2: {
+        const blocked = R.card(view.flipped).suit;
+        const suits = R.SUITS.filter(s => s !== blocked).sort((a, b) => handValue(view.hand, b) - handValue(view.hand, a));
+        const suit = plan(view, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid);
+        return { type: 'NAME', player: me, suit };
+      }
+      case P.EXCHANGE: {
+        const cands = rankedDiscards(view.hand, view.exchangeCount, h => handValue(h, trump), trump).slice(0, CANDIDATES.exchange);
+        return { type: 'EXCHANGE', player: me, cards: plan(view, cands, c => ({ type: 'EXCHANGE', player: me, cards: c }), SAMPLES.exchange) };
+      }
+      case P.SHOWDOWN_DISCARD: {
+        const cands = view.hand.slice().sort((a, b) => cardKeep(a, trump) - cardKeep(b, trump));
+        return { type: 'SHOWDOWN_DISCARD', player: me, card: plan(view, cands, c => ({ type: 'SHOWDOWN_DISCARD', player: me, card: c }), SAMPLES.showdownDiscard) };
+      }
       case P.TRICK_PLAY:
-      case P.SHOWDOWN_PLAY:
-        return { type: 'PLAY', player: me, card: choosePlay(view) };
+      case P.SHOWDOWN_PLAY: {
+        const cands = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
+        return { type: 'PLAY', player: me, card: plan(view, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play) };
+      }
       default:
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  return Object.freeze({ decide, handValue, unknownCards, TH });
+  /* Play-outs run the real Engine; keep them out of the debug log. */
+  function decide(view) {
+    const was = Logger.enabled;
+    Logger.enabled = false;
+    try { return decideInner(view); } finally { Logger.enabled = was; }
+  }
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, setKnowledge });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1682,6 +2022,7 @@ const App = (() => {
       case 'new-game-now': newGame(); break;
       case 'toggle-debug': { const d = $('debugPanel'); d.hidden = !d.hidden; break; }
       case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; break;
+      case 'knowledge-reset': setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'run-tests': {
         const res = SelfTest.run();
         const out = res.results.filter(r => !r.ok).map(r => 'FAIL ' + r.name + (r.detail ? ' — ' + r.detail : '')).join('\n');
@@ -1690,6 +2031,16 @@ const App = (() => {
       }
       default: break;
     }
+  }
+
+  /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
+  function setKnowledge(k) {
+    const now = AI.setKnowledge(k);
+    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = now[box.getAttribute('data-knowledge')];
+    Logger.log('AI_KNOWLEDGE', now);
+    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
+    const off = Object.keys(now).filter(key => !now[key]).map(label);
+    addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
   }
 
   function init() {
@@ -1714,6 +2065,10 @@ const App = (() => {
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => { Logger.enabled = dbg.checked; });
     $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplay = e.target.checked; schedule(); });
+    for (const box of document.querySelectorAll('[data-knowledge]')) {
+      box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
+      box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
+    }
     Logger.listeners.push(line => { const pre = $('dbgLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('debug') === '1') { Logger.enabled = true; dbg.checked = true; $('debugPanel').hidden = false; }
@@ -1863,6 +2218,92 @@ const SelfTest = (() => {
     });
 
     /* --- Trick scoring --- */
+    /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
+    safeRun('ai knowledge', () => {
+      const worldsOf = (st, seat, n) => AI.sampleWorlds(buildView(st, seat), n || 30, { s: 99 });
+      const s = revealState(5, 0, '9H');
+      D(s, { type: 'FLIP' });
+      D(s, { type: 'BID', player: 1, accept: true });
+      D(s, { type: 'EXCHANGE', player: 2, cards: [s.hands[2].find(id => id !== '9H')] });
+      let ws = worldsOf(s, 0);
+      check('round 1 accept: every world puts the turned card in the receiver hand', ws.every(w => w.hands[2].includes('9H')));
+      check('worlds keep the true hand sizes', ws.every(w => w.hands[1].length === 7 && w.hands[2].length === 7 && w.outside.length === 12 && w.kitty.length === 0));
+      check('worlds hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
+      check('worlds keep own discards in the outside pile', ws.every(w => s.memory[0].out.every(id => w.outside.includes(id))));
+      check('worlds keep the seat\'s own hand', ws.every(w => JSON.stringify(w.hands[0]) === JSON.stringify(s.hands[0])));
+      const v = Object.assign(buildView(s, 0), { voids: [[], [], ['H']] });
+      check('a void in its suit moves the turned card to the outside pile', AI.sampleWorlds(v, 20, { s: 5 }).every(w => w.outside.includes('9H') && !w.hands[2].includes('9H')));
+      const v2 = Object.assign(buildView(s, 0), { voids: [[], ['S'], []] });
+      check('worlds respect known voids', AI.sampleWorlds(v2, 30, { s: 6 }).every(w => !w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
+      const n = revealState(6, 0, '9H');
+      D(n, { type: 'FLIP' });
+      for (const q of [1, 2, 0]) D(n, { type: 'BID', player: q, accept: false });
+      D(n, { type: 'NAME', player: 1, suit: 'S' });
+      check('round 2: every world puts the turned card in the outside pile', worldsOf(n, 0).every(w => w.outside.includes('9H')));
+      const b = revealState(7, 0, '9H');
+      D(b, { type: 'FLIP' });
+      check('bid phase: every world keeps the turned card on the kitty', worldsOf(b, 1).every(w => w.kitty[0] === '9H' && w.kitty.length === 3));
+
+      /* The decision depends only on the view: moving hidden cards does not change it. */
+      const g = revealState(8, 0, '9H');
+      D(g, { type: 'FLIP' });
+      const d1 = AI.decide(buildView(g, 1));
+      const swap = g.hands[2][0]; g.hands[2][0] = g.hands[0][0]; g.hands[0][0] = swap;
+      const k = g.kitty[1]; g.kitty[1] = g.outside[0]; g.outside[0] = k;
+      const d2 = AI.decide(buildView(g, 1));
+      eq('AI decision ignores hidden cards', d2, d1);
+      eq('AI decision is deterministic', AI.decide(buildView(g, 1)), d1);
+
+      const w0 = AI.winChance([0, 0, 0], 0);
+      check('win chance at 0-0-0 is about 1/3', Math.abs(w0 - 1 / 3) < 0.01, String(w0));
+      check('win chances sum to 1', Math.abs(AI.winChance([3, 7, 1], 0) + AI.winChance([3, 7, 1], 1) + AI.winChance([3, 7, 1], 2) - 1) < 1e-6);
+      check('win chance rises with own score', AI.winChance([9, 0, 0], 0) > AI.winChance([5, 0, 0], 0) && AI.winChance([5, 0, 0], 0) > w0);
+      check('win chance falls when an opponent nears 10', AI.winChance([0, 9, 0], 0) < AI.winChance([0, 5, 0], 0));
+      check('win chance is symmetric between seats', Math.abs(AI.winChance([2, 6, 4], 0) - AI.winChance([2, 4, 6], 0)) < 1e-9);
+
+      /* Knowledge switches: each one changes the worlds as expected, and decisions stay legal. */
+      try {
+        eq('all knowledge switches are on by default', Object.values(AI.knowledge).every(Boolean), true);
+        AI.setKnowledge({ turnedCard: false });
+        check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40).some(w => !w.hands[2].includes('9H')));
+        AI.setKnowledge({ turnedCard: true, ownDiscards: false });
+        ws = worldsOf(s, 0, 40);
+        check('own-discards switch off: some worlds move own discards out of the outside pile', ws.some(w => !s.memory[0].out.every(id => w.outside.includes(id))));
+        check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
+        AI.setKnowledge({ ownDiscards: true, voids: false });
+        check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
+        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+        for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) {
+          AI.setKnowledge({ [key]: false });
+          const st = revealState(9, 0, '9H');
+          D(st, { type: 'FLIP' });
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          D(st, { type: 'BID', player: 1, accept: true });
+          D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
+          const ok2 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          check('switch ' + key + ' off: AI decisions stay legal', ok1 && ok2);
+          AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+        }
+      } finally {
+        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+      }
+    });
+
+    safeRun('planner', () => {
+      const s = Engine.createGame(4242);
+      D(s, { type: 'START_GAME' });
+      let bad = null, decisions = 0;
+      for (let step = 0; step < 300 && !bad && !s.gameOver && ![P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID].includes(s.phase); step++) {
+        const actors = Engine.actors(s);
+        const a = actors.length ? AI.decide(buildView(s, actors[0])) : Engine.systemAction(s);
+        if (actors.length) decisions++;
+        const r = D(s, a);
+        if (!r.ok) bad = r.error;
+        else if (Engine.audit(s).length) bad = 'audit';
+      }
+      check('planner plays a full hand for all seats with legal actions', !bad && decisions > 20, bad || String(decisions));
+    });
+
     safeRun('scoring', () => {
       let s = playState([['KH'], ['7H'], ['9H']], 'S', 0);
       playAll(s, [[0, 'KH'], [1, '7H'], [2, '9H']]);
@@ -1923,6 +2364,7 @@ const SelfTest = (() => {
         st.tricksWon = [3, 3, 1]; st.trickWinners = [0, 1, 0, 1, 0, 1, 2];
         st.deck = []; st.outside = pool.slice();
         st.wonPile = R.ALL_IDS.filter(id => !pool.includes(id));
+        st.played = st.wonPile.slice();
         if (scores) st.scores = scores.slice();
         return st;
       };
@@ -2014,7 +2456,7 @@ const SelfTest = (() => {
               if (illegal) { if (D(s, { type: 'PLAY', player: p, card: illegal }).ok) problems.push('illegal card accepted'); else stats.illegalRejected++; }
               for (const q of [0, 1, 2]) if (q !== p && view.hand.some(id => s.hands[q].includes(id))) problems.push('view leaked a hand');
             }
-            action = AI.decide(view);
+            action = o.planner ? AI.decide(view) : AI.fastAction(s, p);
           } else action = Engine.systemAction(s);
           const phaseBefore = s.phase;
           if (phaseBefore === P.HAND_SCORE || phaseBefore === P.SHOWDOWN_SCORE || phaseBefore === P.ABANDONED) prevDealer = s.dealer;
@@ -2047,7 +2489,7 @@ const SelfTest = (() => {
           if (over !== 1 || s.scores[s.winner] < 10) problems.push('bad final scores ' + s.scores.join('-'));
         }
       }
-      check('simulated ' + games + ' AI games with no rule violations', problems.length === 0, problems.slice(0, 5).join('; '));
+      check('simulated ' + games + (o.planner ? ' planner' : ' play-out policy') + ' games with no rule violations', problems.length === 0, problems.slice(0, 5).join('; '));
       results.stats = stats;
     });
 

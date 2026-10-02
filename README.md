@@ -21,6 +21,33 @@ Use one of these methods:
 | **Run self-tests** | Runs the test suite that is in the file. The results go to the bottom of the log area. |
 | **Clear** | Clears the log area. |
 
+## AI knowledge switches
+
+The **AI knowledge** section of the debug panel turns off one type of board knowledge for all AI players. All switches are on by default; that is the normal AI. A change applies to the next AI decision, and the table log records it. The switches are not saved: a page reload turns them all on again.
+
+The switches are listed in order of their measured effect on bot strength, largest first. The panel shows only the names. The effect in the table below is the change in a bot's win rate, in percentage points, when that switch is on instead of off. The test: one bot with the switch combination under test against two normal bots, for each of the 64 combinations of switches, 25 games each (1,600 games). Each number has an uncertainty of about ±2.3 points. Only **Spots voids** is clearly above the noise.
+
+That first test showed −2.7 for **Watches score** and −5.2 for **Tracks upcard**. A second, more sensitive test checked these two switches. It replayed 2,758 hand positions from 280 real games, each one 4 times with the same cards, once for each on/off combination of the two switches. Neither switch had a measurable effect: per hand, the change in win chance was +0.16 ± 0.14 points for Watches score and +0.12 ± 0.12 points for Tracks upcard. So the earlier negative numbers were noise, and the table shows these two switches as ≈0.
+
+| Switch | Effect | When it is on, the AI… | When it is off, the AI… |
+|---|---|---|---|
+| **Spots voids** | +6.8 | never gives a player cards of a suit that the player showed a void in | ignores voids |
+| **Remembers discards** | +2.5 | knows which cards it put in the outside pile | treats its own discards as unseen cards |
+| **Plans showdowns** | +0.5 | also tests the duck and balance plans for its later cards | tests greedy play only |
+| **Reads bids** | −0.3 | gives more weight to deals that agree with each player's bids | treats all deals that agree with the cards as equally likely |
+| **Watches score** | ≈0 | plays for its chance to win the game | plays for points only: its own points minus the opponents' average |
+| **Tracks upcard** | ≈0 | knows where the turned card went (receiver's hand or outside pile) | treats the turned card as one more unseen card after the bidding |
+
+**All on** turns all switches on again. The AI never gets the hidden cards, whatever the switches show.
+
+From the console:
+
+```js
+KCT.AI.knowledge                          // current switches
+KCT.AI.setKnowledge({ bids: false })      // change switches; the checkboxes do not update
+KCT.AI.setKnowledge(KCT.AI.KNOWLEDGE_DEFAULTS) // all on
+```
+
 ## Event log format
 
 Each line has this format:
@@ -64,7 +91,8 @@ Use the speed menu (**Slow**, **Normal**, **Fast**, **Instant**) to set how fast
 The page exposes `window.KCT`:
 
 ```js
-KCT.SelfTest.run({ games: 500 })   // run the tests with 500 AI-vs-AI games (default 40)
+KCT.SelfTest.run({ games: 500 })   // run the tests with 500 simulated games (default 40)
+KCT.SelfTest.run({ games: 5, planner: true }) // simulated games with the full AI (slow)
 KCT.Logger.enabled = true          // start logging without the panel
 KCT.Logger.lines                   // all log lines (latest 1500)
 KCT.App.newGame(123456)            // start a new game with a given seed
@@ -72,6 +100,8 @@ KCT.Engine.audit(KCT.App.app.state)// card-conservation check; [] means all 33 c
 ```
 
 `KCT.SelfTest.run()` returns `{ passed, failed, results, stats, ms }`. `stats` counts what the simulated games did: hands, Showdowns, sweeps, King points, and how each game ended.
+
+By default, the simulated games use the AI's fast play-out policy. That policy sees all the cards, so these games test the rules only, not the AI. Use `planner: true` to play the games with the full AI. Each decision then takes about 5–50 ms.
 
 **Caution:** `KCT.App.app.state` is the full game state, with all hands. Use it for debugging only.
 
@@ -83,4 +113,9 @@ KCT.Engine.audit(KCT.App.app.state)// card-conservation check; [] means all 33 c
 - King points, hand scoring, sweeps, the Showdown and the 0-point floor.
 - Immediate victory during a trick, at hand end and in a Showdown.
 - Dealer rotation, redeal, abandoned hands and restart.
-- Full AI-vs-AI games. After each action, the tests check that all 33 cards are present and that no illegal card is accepted.
+- The AI's sampled worlds: hand sizes, own discards, the turned card, known voids.
+- The AI's decision does not change when hidden cards move, and the same view always gives the same decision.
+- The win-chance table: about 1/3 each at 0–0–0, the sum is 1, and the values are symmetric.
+- One full hand with the full AI in all seats.
+- Each AI knowledge switch changes the sampled worlds as expected, and the AI's decisions stay legal with each switch off.
+- Simulated full games. After each action, the tests check that all 33 cards are present and that no illegal card is accepted.
