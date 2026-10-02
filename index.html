@@ -955,7 +955,7 @@ function buildView(state, seat) {
 const AI = (() => {
   const R = Rules, P = Engine.P;
   const TRUMP_VAL = { 18: 1.0, 17: 0.93, 16: 0.86, 14: 0.76, 13: 0.66, 12: 0.54, 10: 0.45, 9: 0.40, 8: 0.36, 7: 0.32 };
-  const TH = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, KEEP_W: 0.55 };
+  const TH = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, KEEP_W: 0.55, GAME: 25, OTHERS: 0.5 };
 
   function combos(arr, k) {
     const out = [];
@@ -1055,6 +1055,54 @@ const AI = (() => {
     return out;
   }
 
+  /* Hand-end outlook: a human estimate, not a search. For each player w who can win the
+     current trick, the value of the hand-end result for this seat if w wins it, when each later
+     trick goes to each active player with equal chance. The result uses the real rules: most
+     tricks +1, sweep +2 (namer) or +3, a 3-3-1 split goes to a Showdown that each tied player
+     wins with a chance of 0.5, and in a Showdown the player with more of the 5 tricks gets +1
+     and the other -1. A game win is worth +TH.GAME and a game loss -TH.GAME; other points
+     count in full for this seat and at TH.OTHERS for each opponent. With this estimate, the AI
+     fights for a trick that an opponent near 10 needs, it sees that a trick that the third
+     player takes also stops that opponent, and it pushes for its own game-winning sweep. */
+  function handEndOutlook(view) {
+    const me = view.seat, active = view.activePlayers, base = view.scores, WIN = Engine.C.WIN_SCORE;
+    const sd = !!(view.showdown && view.showdown.active);
+    const counts = sd ? view.showdown.tricksWon : view.tricksWon;
+    const later = view.totalTricks - view.trickNumber;
+    const sum = a => a[0] + a[1] + a[2];
+    const add = (sc, p, d) => { const t = sc.slice(); t[p] = Math.max(0, t[p] + d); return t; };
+    const util = (sc, winner) => winner !== null ? (winner === me ? TH.GAME : -TH.GAME)
+      : (sc[me] - base[me]) - TH.OTHERS * (sum(sc) - sc[me] - (sum(base) - base[me]));
+    const showdown = (w, l) => { const a = add(base, w, 1); return a[w] >= WIN ? util(a, w) : util(add(a, l, -1), null); };
+    function result(c) {
+      if (sd) { const [a, b] = view.showdown.participants; return c[a] > c[b] ? showdown(a, b) : showdown(b, a); }
+      const top = Math.max(c[0], c[1], c[2]);
+      const tied = [0, 1, 2].filter(p => c[p] === top);
+      if (tied.length === 2) return (showdown(tied[0], tied[1]) + showdown(tied[1], tied[0])) / 2;
+      const w = tied[0];
+      const sc = add(base, w, top === view.totalTricks ? (w === view.caller ? 2 : 3) : 1);
+      return util(sc, sc[w] >= WIN ? w : null);
+    }
+    /* All splits of the later tricks between the active players, with their chances. */
+    const splits = [];
+    const fact = k => (k <= 1 ? 1 : k * fact(k - 1));
+    (function split(i, leftN, extra, ways) {
+      if (i === active.length - 1) { extra[active[i]] = leftN; splits.push([extra.slice(), ways / fact(leftN)]); return; }
+      for (let k = 0; k <= leftN; k++) { extra[active[i]] = k; split(i + 1, leftN - k, extra, ways / fact(k)); }
+    })(0, later, [0, 0, 0], fact(later));
+    const norm = Math.pow(active.length, later);
+    const out = new Map();
+    for (const w of active) {
+      let v = 0;
+      for (const [extra, ways] of splits) {
+        const c = [0, 1, 2].map(p => counts[p] + extra[p] + (p === w ? 1 : 0));
+        v += ways / norm * result(c);
+      }
+      out.set(w, v);
+    }
+    return out;
+  }
+
   function choosePlay(view) {
     const legal = view.legal;
     if (legal.length === 1) return legal[0];
@@ -1084,32 +1132,47 @@ const AI = (() => {
     const poolHigherInSuit = (id, s) => pool.filter(u => isHigherInSuit(u, id, s)).length;
     const hold = (f, k) => (k <= 0 ? 0 : 1 - Math.pow(1 - f, k));
 
-    function winProb(id) {
-      const eff = R.getEffectiveSuit(id, trump);
-      const s = leadSuit || eff;
-      if (best && R.compareCards(id, best.card, leadSuit, trump) <= 0) return 0;
-      const isT = eff === trump;
-      if (!isT && eff !== s) return 0;
-      let p = 1;
-      for (const r of rem) {
-        const kr = located[r];
-        const f = U > 0 ? Math.min(1, Math.max(0, view.handCounts[r] - kr.length) / U) : 0;
-        const knownVoidS = view.voids[r].includes(s);
-        const knownVoidT = view.voids[r].includes(trump);
-        const hasS = kr.some(x => R.getEffectiveSuit(x, trump) === s);
-        const voidS = knownVoidS ? 1 : hasS ? 0 : Math.pow(1 - f, poolInSuit(s));
-        let beat;
-        if (isT) {
-          const h = knownVoidT ? 0 : kr.some(x => isHigherTrump(x, id)) ? 1 : hold(f, poolHigherTrump(id));
-          beat = s === trump ? h : voidS * h;
-        } else {
-          const holdHigher = knownVoidS ? 0 : kr.some(x => isHigherInSuit(x, id, s)) ? 1 : hold(f, poolHigherInSuit(id, s));
-          const anyTrump = knownVoidT ? 0 : kr.some(x => R.isTrump(x, trump)) ? 1 : hold(f, poolTrump);
-          beat = holdHigher + voidS * anyTrump;
-        }
-        p *= 1 - Math.min(1, beat);
+    /* Chance that opponent r holds a card that beats target in a trick led in suit s. */
+    function beatProb(r, target, s) {
+      const kr = located[r];
+      const f = U > 0 ? Math.min(1, Math.max(0, view.handCounts[r] - kr.length) / U) : 0;
+      const knownVoidS = view.voids[r].includes(s);
+      const knownVoidT = view.voids[r].includes(trump);
+      const hasS = kr.some(x => R.getEffectiveSuit(x, trump) === s);
+      const voidS = knownVoidS ? 1 : hasS ? 0 : Math.pow(1 - f, poolInSuit(s));
+      let beat;
+      if (R.isTrump(target, trump)) {
+        const h = knownVoidT ? 0 : kr.some(x => isHigherTrump(x, target)) ? 1 : hold(f, poolHigherTrump(target));
+        beat = s === trump ? h : voidS * h;
+      } else {
+        const holdHigher = knownVoidS ? 0 : kr.some(x => isHigherInSuit(x, target, s)) ? 1 : hold(f, poolHigherInSuit(target, s));
+        const anyTrump = knownVoidT ? 0 : kr.some(x => R.isTrump(x, trump)) ? 1 : hold(f, poolTrump);
+        beat = holdHigher + voidS * anyTrump;
       }
+      return Math.min(1, beat);
+    }
+    /* The player and card that lead the trick after this seat plays id. */
+    function topAfter(id) {
+      return best && R.compareCards(id, best.card, leadSuit, trump) <= 0 ? best : { player: me, card: id };
+    }
+    function winProb(id) {
+      if (topAfter(id).player !== me) return 0;
+      const s = leadSuit || R.getEffectiveSuit(id, trump);
+      let p = 1;
+      for (const r of rem) p *= 1 - beatProb(r, id, s);
       return p;
+    }
+    /* Chance of each trick winner after this seat plays id. If a later player beats the top
+       card, the AI shares that chance between the later players in proportion to their odds. */
+    function winnerDist(id) {
+      const top = topAfter(id);
+      const s = leadSuit || R.getEffectiveSuit(id, trump);
+      const b = rem.map(r => beatProb(r, top.card, s));
+      const none = b.reduce((x, y) => x * (1 - y), 1);
+      const sum = b.reduce((x, y) => x + y, 0);
+      const d = new Map([[top.player, none]]);
+      rem.forEach((r, i) => d.set(r, (d.get(r) || 0) + (sum > 0 ? (1 - none) * b[i] / sum : 0)));
+      return d;
     }
     function keepValue(id) {
       let v, h;
@@ -1135,6 +1198,7 @@ const AI = (() => {
       return b;
     }
 
+    const outlook = handEndOutlook(view);
     let choice = null, choiceScore = -Infinity;
     for (const id of legal) {
       const p = winProb(id);
@@ -1143,6 +1207,7 @@ const AI = (() => {
       if (best && R.isKing(best.card) && best.player !== me && p > 0) gain += view.scores[best.player] >= 9 ? 25 : 0.7;
       let score = p * gain - TH.KEEP_W * keepValue(id) - 1e-4 * R.getCardStrength(id, trump);
       if (!plays.length) score += leadBonus(id);
+      for (const [w, pw] of winnerDist(id)) score += pw * outlook.get(w);
       if (score > choiceScore) { choiceScore = score; choice = id; }
     }
     return choice;
@@ -1168,7 +1233,7 @@ const AI = (() => {
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  return Object.freeze({ decide, handValue, unknownCards, locatedCards, TH });
+  return Object.freeze({ decide, handValue, unknownCards, locatedCards, handEndOutlook, TH });
 })();
 
 /* ---------------------------------------------------------------------
