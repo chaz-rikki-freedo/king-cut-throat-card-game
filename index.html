@@ -1040,13 +1040,31 @@ const AI = (() => {
     if (!sdActive && view.flippedOut && view.flipped) known.add(view.flipped);
     return R.ALL_IDS.filter(id => !known.has(id));
   }
+  /* Unplayed cards that are known to be in an opponent's hand, by seat. After a round 1
+     accept, all players see the turned card go to the receiver. The receiver can discard it
+     face-down, but that is rare; a void in its suit shows that the card is not in the hand. */
+  function locatedCards(view) {
+    const out = [[], [], []];
+    if (view.showdown && view.showdown.active) return out;
+    const r = view.receiver;
+    const accepted = view.bidLog.some(b => b.round === 1 && b.action === 'accept');
+    if (!accepted || r === null || r === view.seat || !view.flipped) return out;
+    const id = view.flipped;
+    if (view.played.includes(id) || view.voids[r].includes(R.getEffectiveSuit(id, view.trump))) return out;
+    out[r].push(id);
+    return out;
+  }
 
   function choosePlay(view) {
     const legal = view.legal;
     if (legal.length === 1) return legal[0];
     const trump = view.trump, me = view.seat;
     const unknown = unknownCards(view);
-    const U = unknown.length;
+    const located = locatedCards(view);
+    const locatedSet = new Set([].concat(...located));
+    /* pool: unknown cards whose position is also unknown. */
+    const pool = unknown.filter(id => !locatedSet.has(id));
+    const U = pool.length;
     const plays = view.trick.plays;
     const leadSuit = view.trick.leadSuit;
     const acted = new Set(plays.map(x => x.player));
@@ -1056,9 +1074,14 @@ const AI = (() => {
     const myTrump = view.hand.filter(id => R.isTrump(id, trump));
     const kingValue = view.scores[me] >= 9 ? 25 : 1.15;
 
-    const unkInSuit = s => unknown.filter(id => R.getEffectiveSuit(id, trump) === s).length;
-    const higherTrump = id => unkTrump.filter(u => R.trumpRank(u, trump) > R.trumpRank(id, trump)).length;
-    const higherInSuit = (id, s) => unknown.filter(u => !R.isTrump(u, trump) && R.getEffectiveSuit(u, trump) === s && R.RANK_VALUE[R.card(u).rank] > R.RANK_VALUE[R.card(id).rank]).length;
+    const isHigherTrump = (u, id) => R.isTrump(u, trump) && R.trumpRank(u, trump) > R.trumpRank(id, trump);
+    const isHigherInSuit = (u, id, s) => !R.isTrump(u, trump) && R.getEffectiveSuit(u, trump) === s && R.RANK_VALUE[R.card(u).rank] > R.RANK_VALUE[R.card(id).rank];
+    const higherTrump = id => unkTrump.filter(u => isHigherTrump(u, id)).length;
+    const higherInSuit = (id, s) => unknown.filter(u => isHigherInSuit(u, id, s)).length;
+    const poolTrump = pool.filter(id => R.isTrump(id, trump)).length;
+    const poolInSuit = s => pool.filter(id => R.getEffectiveSuit(id, trump) === s).length;
+    const poolHigherTrump = id => pool.filter(u => isHigherTrump(u, id)).length;
+    const poolHigherInSuit = (id, s) => pool.filter(u => isHigherInSuit(u, id, s)).length;
     const hold = (f, k) => (k <= 0 ? 0 : 1 - Math.pow(1 - f, k));
 
     function winProb(id) {
@@ -1069,17 +1092,19 @@ const AI = (() => {
       if (!isT && eff !== s) return 0;
       let p = 1;
       for (const r of rem) {
-        const f = U > 0 ? Math.min(1, view.handCounts[r] / U) : 0;
+        const kr = located[r];
+        const f = U > 0 ? Math.min(1, Math.max(0, view.handCounts[r] - kr.length) / U) : 0;
         const knownVoidS = view.voids[r].includes(s);
         const knownVoidT = view.voids[r].includes(trump);
-        const voidS = knownVoidS ? 1 : Math.pow(1 - f, unkInSuit(s));
+        const hasS = kr.some(x => R.getEffectiveSuit(x, trump) === s);
+        const voidS = knownVoidS ? 1 : hasS ? 0 : Math.pow(1 - f, poolInSuit(s));
         let beat;
         if (isT) {
-          const h = knownVoidT ? 0 : hold(f, higherTrump(id));
+          const h = knownVoidT ? 0 : kr.some(x => isHigherTrump(x, id)) ? 1 : hold(f, poolHigherTrump(id));
           beat = s === trump ? h : voidS * h;
         } else {
-          const holdHigher = knownVoidS ? 0 : hold(f, higherInSuit(id, s));
-          const anyTrump = knownVoidT ? 0 : hold(f, unkTrump.length);
+          const holdHigher = knownVoidS ? 0 : kr.some(x => isHigherInSuit(x, id, s)) ? 1 : hold(f, poolHigherInSuit(id, s));
+          const anyTrump = knownVoidT ? 0 : kr.some(x => R.isTrump(x, trump)) ? 1 : hold(f, poolTrump);
           beat = holdHigher + voidS * anyTrump;
         }
         p *= 1 - Math.min(1, beat);
@@ -1143,7 +1168,7 @@ const AI = (() => {
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  return Object.freeze({ decide, handValue, unknownCards, TH });
+  return Object.freeze({ decide, handValue, unknownCards, locatedCards, TH });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1863,6 +1888,24 @@ const SelfTest = (() => {
     });
 
     /* --- Trick scoring --- */
+    /* --- AI card memory --- */
+    safeRun('ai memory', () => {
+      const s = revealState(5, 0, '9H');
+      D(s, { type: 'FLIP' });
+      D(s, { type: 'BID', player: 1, accept: true });
+      D(s, { type: 'EXCHANGE', player: 2, cards: [s.hands[2].find(id => id !== '9H')] });
+      const v0 = buildView(s, 0);
+      eq('turned card is located at the receiver', AI.locatedCards(v0), [[], [], ['9H']]);
+      eq('receiver does not locate its own card', AI.locatedCards(buildView(s, 2)), [[], [], []]);
+      eq('a played turned card is not located', AI.locatedCards(Object.assign({}, v0, { played: ['9H'] })), [[], [], []]);
+      eq('a void in trump clears the located card', AI.locatedCards(Object.assign({}, v0, { voids: [[], [], ['H']] })), [[], [], []]);
+      const n = revealState(6, 0, '9H');
+      D(n, { type: 'FLIP' });
+      for (const p of [1, 2, 0]) D(n, { type: 'BID', player: p, accept: false });
+      D(n, { type: 'NAME', player: 1, suit: 'S' });
+      eq('round 2: no located cards', AI.locatedCards(buildView(n, 0)), [[], [], []]);
+    });
+
     safeRun('scoring', () => {
       let s = playState([['KH'], ['7H'], ['9H']], 'S', 0);
       playAll(s, [[0, 'KH'], [1, '7H'], [2, '9H']]);
