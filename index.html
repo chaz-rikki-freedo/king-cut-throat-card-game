@@ -201,12 +201,12 @@ button.card{cursor:pointer}
   </header>
   <div class="dbg-knowledge" id="dbgKnowledge">
     <strong>AI knowledge</strong>
-    <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Notices who's out of a suit</span></label>
-    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Knows own discards</span></label>
-    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Showdown plans</span></label>
+    <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
+    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
+    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
     <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
-    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Score-aware</span></label>
-    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks turned card</span></label>
+    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
+    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
     <button class="btn" type="button" data-action="knowledge-reset">All on</button>
   </div>
   <pre id="dbgLog"></pre>
