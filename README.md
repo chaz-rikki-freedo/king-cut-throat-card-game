@@ -1,121 +1,50 @@
 # King Cut-Throat Euchre
 
-A browser game in one file, `index.html`. Open the file in a modern browser to play. No server or build step is necessary.
+A browser game in one file, `index.html`. Open it in a browser to play. This file covers the debug tools only.
 
-This file tells you how to use the debug tools only.
+## Debug panel
 
-## Open the debug panel
-
-Use one of these methods:
-
-- Click **Debug** in the top bar. Click **Close** (or **Debug** again) to hide the panel.
-- Add `?debug=1` to the URL. The panel opens and logging starts when the page loads.
-
-## Debug panel controls
+Click **Debug** in the top bar, or add `?debug=1` to the URL.
 
 | Control | What it does |
 |---|---|
-| **Logging** | Starts or stops the event log. Logging is off by default. When it is on, each line also goes to the browser console (`console.debug`). |
-| **AI plays my seat** | The AI makes all decisions for your seat. The AI uses only the information that your seat can see. Continue screens advance automatically. Clear the box to play again yourself. |
-| **seed N** | Shows the seed of the current game. |
-| **Run self-tests** | Runs the test suite that is in the file. The results go to the bottom of the log area. |
+| **Logging** | Starts the timestamped event log (public information only). |
+| **AI plays my seat** | The AI plays for you, with only your seat's information. |
+| **Run self-tests** | Runs the built-in tests; results appear in the log area. |
 | **Clear** | Clears the log area. |
 
-## AI knowledge switches
+### AI thinking
 
-The **AI knowledge** section of the debug panel turns off one type of board knowledge for all AI players. All switches are on by default; that is the normal AI. A change applies to the next AI decision, and the table log records it. The switches are not saved: a page reload turns them all on again.
+Both settings apply to all bots, change how long the bots think, and reset on reload.
 
-The switches are listed in order of their measured effect on bot strength, largest first. The panel shows only the names. The effect in the table below is the change in a bot's win rate, in percentage points, when that switch is on instead of off. The test: one bot with the switch combination under test against two normal bots, for each of the 64 combinations of switches, 25 games each (1,600 games). Each number has an uncertainty of about ±2.3 points. Only **Spots voids** is clearly above the noise.
+- **Worlds** (1–200, default 40): how many guessed deals of the hidden cards the bots use for each decision. Fewer worlds make them sloppier. More than 40 adds no measured strength.
+- **Play-out skill** (0–100%, default 100%): how well the bots play the hands they replay in their heads. Lower values make them judge moves less well.
 
-That first test showed −2.7 for **Watches score** and −5.2 for **Tracks upcard**. A second, more sensitive test checked these two switches. It replayed 2,758 hand positions from 280 real games, each one 4 times with the same cards, once for each on/off combination of the two switches. Neither switch had a measurable effect: per hand, the change in win chance was +0.16 ± 0.14 points for Watches score and +0.12 ± 0.12 points for Tracks upcard. So the earlier negative numbers were noise, and the table shows these two switches as ≈0.
+### AI knowledge
 
-| Switch | Effect | When it is on, the AI… | When it is off, the AI… |
-|---|---|---|---|
-| **Spots voids** | +6.8 | never gives a player cards of a suit that the player showed a void in | ignores voids |
-| **Remembers discards** | +2.5 | knows which cards it put in the outside pile | treats its own discards as unseen cards |
-| **Plans showdowns** | +0.5 | also tests the duck and balance plans for its later cards | tests greedy play only |
-| **Reads bids** | −0.3 | gives more weight to deals that agree with each player's bids | treats all deals that agree with the cards as equally likely |
-| **Watches score** | ≈0 | plays for its chance to win the game | plays for points only: its own points minus the opponents' average |
-| **Tracks upcard** | ≈0 | knows where the turned card went (receiver's hand or outside pile) | treats the turned card as one more unseen card after the bidding |
+Each switch turns off one kind of knowledge for all bots. All are on by default; **All on** restores them. They are listed by measured effect on bot strength, largest first.
 
-**All on** turns all switches on again. The AI never gets the hidden cards, whatever the switches show.
-
-From the console:
-
-```js
-KCT.AI.knowledge                          // current switches
-KCT.AI.setKnowledge({ bids: false })      // change switches; the checkboxes do not update
-KCT.AI.setKnowledge(KCT.AI.KNOWLEDGE_DEFAULTS) // all on
-```
-
-## Event log format
-
-Each line has this format:
-
-```
-[+1234ms] EVENT_TYPE key=value key=value
-```
-
-The time is in milliseconds from page load, or from the last **Clear**. Seats are numbers: `0` = You, `1` = West, `2` = East. Cards use short IDs: rank + suit (`AS`, `10H`, `JC`) and `JK` for the Joker.
-
-The log shows only public information. It never shows opponent hands, unrevealed kitty cards, the contents of the outside pile, or the AI evaluations. A discard event gives the number of cards only.
-
-Event types:
-
-| Area | Events |
+| Switch | Off means the bots… |
 |---|---|
-| Game | `GAME_STARTED`, `GAME_ENDED`, `ACTION_REJECTED` |
-| Deal | `DEAL`, `DISCARD`, `DISCARDS_COMPLETE`, `KITTY_FLIPPED`, `HAND_VOID`, `REDEAL`, `DEALER_ROTATED` |
-| Bidding | `BIDDING_ROUND`, `BID_PASS`, `TRUMP_ACCEPTED`, `TRUMP_NAMED`, `KITTY_TRANSFER`, `EXCHANGE_DISCARD`, `HAND_ABANDONED` |
-| Play | `TRICK_STARTED`, `CARD_PLAYED`, `TRICK_WON`, `KING_SCORED`, `SCORE_CHANGED`, `HAND_SCORED` |
-| Showdown | `SHOWDOWN_STARTED`, `SHOWDOWN_DEAL`, `SHOWDOWN_DISCARD`, `SHOWDOWN_LEAD`, `SHOWDOWN_TRICK_WON`, `SHOWDOWN_SCORED` |
-
-`ACTION_REJECTED` shows that the engine refused an action and gives the reason. In normal play, the UI prevents illegal actions, so this event is rare.
+| **Spots voids** | ignore which suits each player is out of |
+| **Remembers discards** | forget the cards they put in the outside pile |
+| **Plans showdowns** | always try to take tricks |
+| **Reads bids** | treat bids as meaningless |
+| **Watches score** | play for points instead of the win |
+| **Tracks upcard** | lose track of the turned card after the bidding |
 
 ## Replay a game
 
-The shuffle and the AI are deterministic. The same seed gives the same deals:
+The same seed gives the same deals: `index.html?seed=123456` (the panel shows the current seed).
 
-```
-index.html?seed=123456
-```
-
-You can use both parameters together: `index.html?seed=123456&debug=1`. If you make the same decisions, the game will be the same.
-
-## Speed
-
-Use the speed menu (**Slow**, **Normal**, **Fast**, **Instant**) to set how fast play goes. **Instant** with **AI plays my seat** plays a full game in a few seconds. To skip a delay, click the table or push Space. The speed setting stays in this browser.
-
-## Browser console
-
-The page exposes `window.KCT`:
+## Console
 
 ```js
-KCT.SelfTest.run({ games: 500 })   // run the tests with 500 simulated games (default 40)
-KCT.SelfTest.run({ games: 5, planner: true }) // simulated games with the full AI (slow)
-KCT.Logger.enabled = true          // start logging without the panel
-KCT.Logger.lines                   // all log lines (latest 1500)
-KCT.App.newGame(123456)            // start a new game with a given seed
-KCT.Engine.audit(KCT.App.app.state)// card-conservation check; [] means all 33 cards are correct
+KCT.SelfTest.run({ games: 500 })            // tests, with 500 simulated games (default 40)
+KCT.AI.setThinking({ worlds: 10, playoutSkill: 0.5 })
+KCT.AI.setKnowledge({ bids: false })        // the panel controls do not update
+KCT.App.newGame(123456)                     // new game with a given seed
+KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
 ```
 
-`KCT.SelfTest.run()` returns `{ passed, failed, results, stats, ms }`. `stats` counts what the simulated games did: hands, Showdowns, sweeps, King points, and how each game ended.
-
-By default, the simulated games use the AI's fast play-out policy. That policy sees all the cards, so these games test the rules only, not the AI. Use `planner: true` to play the games with the full AI. Each decision then takes about 5–50 ms.
-
-**Caution:** `KCT.App.app.state` is the full game state, with all hands. Use it for debugging only.
-
-## What the self-tests cover
-
-- Card order: Joker, Right Bower, Left Bower, then trump and non-trump ranks.
-- Following suit, including the Left Bower and void hands.
-- The deal order, all bidding paths, the kitty transfer and the discard counts.
-- King points, hand scoring, sweeps, the Showdown and the 0-point floor.
-- Immediate victory during a trick, at hand end and in a Showdown.
-- Dealer rotation, redeal, abandoned hands and restart.
-- The AI's sampled worlds: hand sizes, own discards, the turned card, known voids.
-- The AI's decision does not change when hidden cards move, and the same view always gives the same decision.
-- The win-chance table: about 1/3 each at 0–0–0, the sum is 1, and the values are symmetric.
-- One full hand with the full AI in all seats.
-- Each AI knowledge switch changes the sampled worlds as expected, and the AI's decisions stay legal with each switch off.
-- Simulated full games. After each action, the tests check that all 33 cards are present and that no illegal card is accepted.
+`KCT.App.app.state` holds every hand, so use it for debugging only.
