@@ -145,12 +145,15 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:60vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:80vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 .debug[hidden]{display:none}
 .debug header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
 .debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:1;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
-.dbg-knowledge{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
+.dbg-knowledge{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
+.dbg-knowledge label{display:grid;grid-template-columns:auto 11em 3.5em;gap:6px;align-items:center}
+.dbg-knowledge .k-eff{text-align:right;font-variant-numeric:tabular-nums;color:#8fb89a}
+.dbg-knowledge .k-note{color:#8fb89a;font-size:12px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -200,12 +203,13 @@ button.card{cursor:pointer}
   </header>
   <div class="dbg-knowledge" id="dbgKnowledge">
     <strong>AI knowledge</strong>
-    <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> Reads bids</label>
-    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> Tracks turned card</label>
-    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> Knows own discards</label>
-    <label title="Use the voids that players showed"><input type="checkbox" data-knowledge="voids" checked> Uses voids</label>
-    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> Score-aware</label>
-    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> Showdown plans</label>
+    <span class="k-note" title="Bot win rate with the switch on minus off, against two normal bots: 64 switch combinations × 25 games (1,600 games). Each value has an uncertainty of about ±2.3 points.">Ordered by measured effect on bot strength (win-rate points, ±2.3)</span>
+    <label title="Use the voids that players showed"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Uses voids</span> <span class="k-eff">+6.8</span></label>
+    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Knows own discards</span> <span class="k-eff">+2.5</span></label>
+    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Showdown plans</span> <span class="k-eff">+0.5</span></label>
+    <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span> <span class="k-eff">−0.3</span></label>
+    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Score-aware</span> <span class="k-eff">−2.7</span></label>
+    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks turned card</span> <span class="k-eff">−5.2</span></label>
     <button class="btn" type="button" data-action="knowledge-reset">All on</button>
   </div>
   <pre id="dbgLog"></pre>
@@ -2037,7 +2041,7 @@ const App = (() => {
     const now = AI.setKnowledge(k);
     for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = now[box.getAttribute('data-knowledge')];
     Logger.log('AI_KNOWLEDGE', now);
-    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.textContent.trim() : key; };
+    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
   }

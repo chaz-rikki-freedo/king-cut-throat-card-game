@@ -23,16 +23,18 @@ Use one of these methods:
 
 ## AI knowledge switches
 
-The second row of the debug panel turns off one type of board knowledge for all AI players. All switches are on by default; that is the normal AI. A change applies to the next AI decision, and the table log records it. The switches are not saved: a page reload turns them all on again.
+The **AI knowledge** section of the debug panel turns off one type of board knowledge for all AI players. All switches are on by default; that is the normal AI. A change applies to the next AI decision, and the table log records it. The switches are not saved: a page reload turns them all on again.
 
-| Switch | When it is on, the AI… | When it is off, the AI… |
-|---|---|---|
-| **Reads bids** | gives more weight to deals that agree with each player's bids | treats all deals that agree with the cards as equally likely |
-| **Tracks turned card** | knows where the turned card went (receiver's hand or outside pile) | treats the turned card as one more unseen card after the bidding |
-| **Knows own discards** | knows which cards it put in the outside pile | treats its own discards as unseen cards |
-| **Uses voids** | never gives a player cards of a suit that the player showed a void in | ignores voids |
-| **Score-aware** | plays for its chance to win the game | plays for points only: its own points minus the opponents' average |
-| **Showdown plans** | also tests the duck and balance plans for its later cards | tests greedy play only |
+The switches are listed in order of their measured effect on bot strength, largest first. The number next to each switch is the change in a bot's win rate, in percentage points, when that switch is on instead of off. The test: one bot with the switch combination under test against two normal bots, for each of the 64 combinations of switches, 25 games each (1,600 games). Each number has an uncertainty of about ±2.3 points. Only **Uses voids** is clearly above the noise.
+
+| Switch | Effect | When it is on, the AI… | When it is off, the AI… |
+|---|---|---|---|
+| **Uses voids** | +6.8 | never gives a player cards of a suit that the player showed a void in | ignores voids |
+| **Knows own discards** | +2.5 | knows which cards it put in the outside pile | treats its own discards as unseen cards |
+| **Showdown plans** | +0.5 | also tests the duck and balance plans for its later cards | tests greedy play only |
+| **Reads bids** | −0.3 | gives more weight to deals that agree with each player's bids | treats all deals that agree with the cards as equally likely |
+| **Score-aware** | −2.7 | plays for its chance to win the game | plays for points only: its own points minus the opponents' average |
+| **Tracks turned card** | −5.2 | knows where the turned card went (receiver's hand or outside pile) | treats the turned card as one more unseen card after the bidding |
 
 **All on** turns all switches on again. The AI never gets the hidden cards, whatever the switches show.
 
