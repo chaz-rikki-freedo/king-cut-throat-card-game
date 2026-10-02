@@ -27,7 +27,7 @@ The **AI knowledge** section of the debug panel turns off one type of board know
 
 The switches are listed in order of their measured effect on bot strength, largest first. The number next to each switch is the change in a bot's win rate, in percentage points, when that switch is on instead of off. The test: one bot with the switch combination under test against two normal bots, for each of the 64 combinations of switches, 25 games each (1,600 games). Each number has an uncertainty of about ±2.3 points. Only **Uses voids** is clearly above the noise.
 
-That first test showed −2.7 for **Score-aware** and −5.2 for **Tracks turned card**. A second, more sensitive test checked these two switches. It replayed 2,674 hand positions from 271 real games, each one 4 times with the same cards, once for each on/off combination of the two switches. Neither switch had a measurable effect: per hand, the change in win chance was +0.18 ± 0.14 points for Score-aware and +0.13 ± 0.12 points for Tracks turned card. So the earlier negative numbers were noise, and the panel shows these two switches as ≈0.
+That first test showed −2.7 for **Score-aware** and −5.2 for **Tracks turned card**. A second, more sensitive test checked these two switches. It replayed 2,758 hand positions from 280 real games, each one 4 times with the same cards, once for each on/off combination of the two switches. Neither switch had a measurable effect: per hand, the change in win chance was +0.16 ± 0.14 points for Score-aware and +0.12 ± 0.12 points for Tracks turned card. So the earlier negative numbers were noise, and the panel shows these two switches as ≈0.
 
 | Switch | Effect | When it is on, the AI… | When it is off, the AI… |
 |---|---|---|---|
