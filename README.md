@@ -66,9 +66,30 @@ Click the heading to open it.
 | **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 
+## Opponents
+
+Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game seats two of them, West and East. The seed picks them, so a replay meets the same two.
+
+- Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
+- Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
+- **Personalities** (Settings → Bots, on by default): each bot plays its own skill tier, bid courage and Real table setting. Off: every bot plays with the Bots and Advanced settings.
+
+| Bot | Skill | Bid courage | Real table |
+|---|---|---|---|
+| Vex | Shark | Bold | |
+| Doc | Shark | Cautious | |
+| Ace | Club player | Bold | |
+| Mei | Shark | Normal | |
+| Gus | Casual | Bold | on |
+| Lou | Novice | Timid | |
+| Viv | Club player | Cautious | |
+| Tex | Novice | Bold | |
+| Kit | Novice | Cautious | on |
+| Zen | Casual | Normal | on |
+
 ## AI plays your seat
 
-Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back.
+Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets a personality that is not at the table. It keeps that personality for the rest of the game, however often you switch.
 
 ## Replay a game
 
