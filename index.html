@@ -83,9 +83,16 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .slot-1{grid-column:1;grid-row:1}
 .slot-2{grid-column:3;grid-row:1}
 .slot-0{grid-column:2;grid-row:2}
-.trick-trump{grid-column:2;grid-row:1;display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);position:relative;z-index:1}
-.trick-trump .sym{font-size:calc(var(--cw-small)*.9);line-height:1.1;color:var(--ink)}
-.trick-trump .sym.red{color:#ff6b6b}
+/* Ring layout: the trump symbol is the center; the three cards sit on the medallion's chevron ring
+   at 6 o'clock (You), 10 o'clock (West) and 2 o'clock (East). --R and --cy are set by the controller. */
+.trick.ring{display:block;position:relative;background:none;padding:0;min-height:0;height:var(--ringH,340px);--R:120px;--cy:120px}
+.ring .trump-anchor{position:absolute;left:50%;top:var(--cy);transform:translate(-50%,-50%);font-size:calc(var(--cw-small)*.9);line-height:1;color:var(--ink);z-index:1}
+.ring .trump-anchor.red{color:#ff6b6b}
+.ring .trump-name{position:absolute;left:50%;top:calc(var(--cy) + var(--cw-small)*.55);transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap;z-index:1}
+.ring .slot{position:absolute;left:calc(50% + var(--sx) * var(--R));top:calc(var(--cy) + var(--sy) * var(--R));transform:translate(-50%,-50%)}
+.ring .slot-1{--sx:-0.866;--sy:-0.5}
+.ring .slot-2{--sx:0.866;--sy:-0.5}
+.ring .slot-0{--sx:0;--sy:1}
 .piles .band-trick{color:var(--ink);text-align:center}
 .slot .empty{width:var(--cw);height:calc(var(--cw)*1.4);border:2px dashed rgba(255,255,255,.18);border-radius:calc(var(--cw)*.09)}
 .slot.win .card{box-shadow:0 0 0 4px var(--gold),0 6px 16px rgba(0,0,0,.45)}
@@ -1718,8 +1725,8 @@ const Render = (() => {
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
     const leader = plays.length ? plays[0].player : v.trick.leader;
-    let html = '<div class="trick">';
-    if (v.trump) html += '<div class="trick-trump"><span class="sym trump-anchor' + (R.COLOR[v.trump] === 'red' ? ' red' : '') + '">' + R.SYMBOL[v.trump] + '</span><div>Trump: ' + R.SUIT_NAME[v.trump] + '</div></div>';
+    let html = '<div class="trick ring" id="ring">';
+    if (v.trump) html += '<span class="sym trump-anchor' + (R.COLOR[v.trump] === 'red' ? ' red' : '') + '">' + R.SYMBOL[v.trump] + '</span><div class="trump-name">Trump: ' + R.SUIT_NAME[v.trump] + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
         html += '<div class="slot slot-' + p + '"><div class="who">' + v.players[p].name + ' · mediator</div></div>';
@@ -1984,16 +1991,27 @@ const App = (() => {
   function selectionKey(v) { return v.phase + ':' + v.handNumber + ':' + (v.showdown ? 'sd' : '') + ':' + v.receiver; }
 
   /* Center the felt medallion on the trump symbol (or on the center column when there is none).
-     Its size is the smaller of the table width and the height above your own panel. */
+     Its size is the table width (up to 460 px). */
   function placeMedallion() {
     const t = $('table'), m = $('feltMark');
     if (!t || !m) return;
-    const tr = t.getBoundingClientRect();
+    let tr = t.getBoundingClientRect();
+    const d = Math.max(200, Math.min(tr.width - 16, 460));
+    /* During trick play, put the cards on the chevron ring (radius 70% of the medallion's). */
+    const ring = $('ring');
+    if (ring) {
+      const R = d / 2 * 0.7;
+      let slotH = 0;
+      for (const sl of ring.querySelectorAll('.slot')) slotH = Math.max(slotH, sl.offsetHeight);
+      const cy = 0.5 * R + slotH / 2 + 8;
+      ring.style.setProperty('--R', R + 'px');
+      ring.style.setProperty('--cy', cy + 'px');
+      ring.style.setProperty('--ringH', (cy + R + slotH / 2 + 8) + 'px');
+      tr = t.getBoundingClientRect();
+    }
     const a = document.querySelector('#center .trump-anchor') || document.querySelector('#center .trump-big .sym') || $('center');
     const ar = a.getBoundingClientRect();
     const cx = ar.left + ar.width / 2 - tr.left, cy = ar.top + ar.height / 2 - tr.top;
-    const upper = $('seat0').getBoundingClientRect().top - tr.top;
-    const d = Math.max(160, Math.min(tr.width - 16, upper));
     m.style.left = (cx - d / 2) + 'px'; m.style.top = (cy - d / 2) + 'px';
     m.style.width = d + 'px'; m.style.height = d + 'px';
   }
