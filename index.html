@@ -253,7 +253,7 @@ button.card{cursor:pointer}
 </header>
 
 <div class="layout">
-  <main class="table" id="table" aria-live="polite">
+  <main class="table" id="table">
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
@@ -280,6 +280,7 @@ button.card{cursor:pointer}
   </div>
 </footer>
 
+<div class="sr" id="liveStatus" aria-live="polite"></div>
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
 
@@ -1777,7 +1778,9 @@ const Render = (() => {
   const suitLabel = s => symHTML(s) + ' ' + R.SUIT_NAME[s];
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
   const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive' };
-  const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)/g, (m, paren, w) => 'You' + (paren || '') + ' ' + (YOU_VERB[w] || w)).replace(/You won 1 trick and is/g, 'You won 1 trick and are');
+  /* "You" takes the plural verb, also for each verb after "and" in the same sentence (#4). */
+  const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
+    'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
 
   function cardHTML(id, trump, opts) {
     const o = opts || {};
@@ -1985,6 +1988,8 @@ const Render = (() => {
   function summaryHTML(v) {
     const n = p => v.players[p].name;
     const hs = v.handSummary;
+    /* Hand or Showdown points can end the game: show that result, not an empty center (#5). */
+    if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }));
     switch (v.phase) {
       case P.ABANDONED:
         return '<div class="summary"><h3>Hand ' + v.handNumber + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
@@ -2138,6 +2143,9 @@ const Render = (() => {
     else if (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick)) center += trickHTML(v, ctx);
     center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
     $('center').innerHTML = center;
+    /* Screen readers hear only the status line, from one stable live region (#7). */
+    const said = $('center').querySelector('.status').textContent, live = $('liveStatus');
+    if (live && live.textContent !== said) live.textContent = said;
 
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
@@ -2151,7 +2159,7 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, personaHTML, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML, scoreText });
+  return Object.freeze({ render, personaHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2461,7 +2469,7 @@ const App = (() => {
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
       case 'close-overlay': $('overlay').hidden = true; break;
       case 'new-game':
-        if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
+        if (app.state.gameOver || app.state.scores.every(x => x === 0) || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
       case 'replay-seed': newGame(app.state.seed); break;
@@ -2588,7 +2596,7 @@ const App = (() => {
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
       const a = ev.target.closest('[data-action]');
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
-      if (ev.target.closest('#table') && app.timerFn) skip();
+      if (ev.target.closest('#center') && app.timerFn) skip();
     });
     document.addEventListener('keydown', ev => {
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
@@ -3073,6 +3081,16 @@ const SelfTest = (() => {
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
       eq('You-grammar: "You wins." reads "You win."', Render.youText('Game over — You wins.'), 'Game over — You win.');
+      eq('You-grammar: the verb after "and" agrees too', Render.youText('You (left of the namer) takes the kitty card and discards 2.'), 'You (left of the namer) take the kitty card and discard 2.');
+      eq('You-grammar: "won 1 trick and is" reads "and are"', Render.youText('You won 1 trick and is the mediator.'), 'You won 1 trick and are the mediator.');
+      eq('You-grammar: other players keep the singular verb', Render.youText('Gus takes the kitty card and discards 2.'), 'Gus takes the kitty card and discards 2.');
+      {
+        const g = Engine.createGame(14); D(g, { type: 'START_GAME' });
+        g.phase = P.TRICK_DONE; g.trickNumber = 7; g.totalTricks = 7; g.tricksWon = [5, 1, 1]; g.caller = 1; g.trump = 'S'; g.scores = [9, 0, 0];
+        D(g, { type: 'ADVANCE' });
+        const sv = buildView(g, 0);
+        check('game ended by hand points still shows the hand result', g.phase === P.GAME_OVER && /result/.test(Render.summaryText(sv)));
+      }
       eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
 
       const st = Engine.createGame(12); D(st, { type: 'START_GAME' });
