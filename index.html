@@ -2076,6 +2076,9 @@ const App = (() => {
     }).replace(/(10|[2-9JQKA])?([♠♣♥♦])/g, (m, rank, c) => '<span class="card-tag">' + (rank ? '<span class="rank">' + rank + '</span>' : '') + '<span class="' + (c === '♥' || c === '♦' ? 'pip-red' : 'pip-black') + '">' + c + '</span></span>');
   }
 
+  /* The log is cleared at each new game. This cap only guards against a very long game. */
+  const LOG_MAX = 5000;
+
   /* sd: a Showdown message, indented two steps. */
   function addLog(text, cls, sd) {
     const li = document.createElement('li');
@@ -2085,7 +2088,7 @@ const App = (() => {
     if (classes.length) li.className = classes.join(' ');
     const ol = $('gameLog');
     ol.appendChild(li);
-    while (ol.children.length > 400) ol.removeChild(ol.firstChild);
+    while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
     ol.scrollTop = ol.scrollHeight;
   }
   function toast(text, cls) {
