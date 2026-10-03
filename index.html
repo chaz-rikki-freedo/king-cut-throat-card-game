@@ -1855,7 +1855,7 @@ const Render = (() => {
     const n = p => v.players[p].name;
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
-    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">Play again</button>';
+    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button>';
     if (ui.autoplay && isTurn(v, you)) return '';
     switch (v.phase) {
       case P.DISCARD:
@@ -1956,7 +1956,7 @@ const Render = (() => {
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat, ui.autoplay) +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
-      '<div class="actionbar">' + actionBarHTML(v, ui, ctx) + '</div>' + handHTML(v, ui);
+      '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
@@ -2006,6 +2006,15 @@ const App = (() => {
     draw(res.events);
     schedule();
     return res;
+  }
+
+  /* Sets the game speed, the Speed menu and the saved choice. */
+  function setSpeed(value) {
+    $('speedSel').value = value;
+    if (app.ui.speed === value) return;
+    app.ui.speed = value;
+    safe(() => localStorage.setItem('kct-speed', value));
+    schedule();
   }
 
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
@@ -2191,7 +2200,7 @@ const App = (() => {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
-      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">Play again</button></div></div>';
+      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button></div></div>';
     ov.hidden = false;
   }
 
@@ -2251,6 +2260,7 @@ const App = (() => {
         if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
+      case 'replay-seed': newGame(app.state.seed); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-debug': {
         const d = $('debugPanel'); d.hidden = !d.hidden;
@@ -2258,10 +2268,11 @@ const App = (() => {
         if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
         break;
       }
-      case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
+      case 'clear-log': setSpeed('normal'); Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
+        setSpeed('normal');
         const box = $('dbgTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
@@ -2352,7 +2363,7 @@ const App = (() => {
     const speed = $('speedSel');
     const saved = safe(() => localStorage.getItem('kct-speed'));
     if (saved && DELAYS[saved]) { app.ui.speed = saved; speed.value = saved; }
-    speed.addEventListener('change', () => { app.ui.speed = speed.value; safe(() => localStorage.setItem('kct-speed', speed.value)); schedule(); });
+    speed.addEventListener('change', () => setSpeed(speed.value));
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => {
       Logger.enabled = dbg.checked;
@@ -2760,6 +2771,7 @@ const SelfTest = (() => {
       check('summary table shows King pts and Hand pts', /King pts/.test(html) && /Hand pts/.test(html) && !/\/ 10/.test(html));
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
+      eq('You-grammar: "You wins." reads "You win."', Render.youText('Game over — You wins.'), 'Game over — You win.');
       eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
 
       const st = Engine.createGame(12); D(st, { type: 'START_GAME' });
