@@ -2153,7 +2153,7 @@ const App = (() => {
       case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
       case 'SHOWDOWN_STARTED': addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true); toast('SHOWDOWN!', 'neg'); break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
-      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', 'ind', true); break;
+      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
       case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true); break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
       case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end'); break;
