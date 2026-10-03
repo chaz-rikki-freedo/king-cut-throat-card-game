@@ -93,7 +93,13 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .ring .slot-1{--sx:-0.866;--sy:-0.5}
 .ring .slot-2{--sx:0.866;--sy:-0.5}
 .ring .slot-0{--sx:0;--sy:1}
-.piles .band-trick{color:var(--ink);text-align:center}
+.band{display:flex;flex-direction:column;align-items:center;gap:8px}
+.band-row{display:flex;flex-wrap:nowrap;justify-content:center;align-items:center;gap:14px}
+.band .band-trick{color:var(--ink);text-align:center}
+.band .lasttrick{flex-wrap:nowrap;white-space:nowrap}
+.lt-cards{display:flex;gap:6px}
+@media (max-width:520px){.band-row{gap:12px;align-items:flex-end}.band .lasttrick{flex-direction:column;gap:3px;font-size:11px}}
+.lasttrick .card.back{--w:30px;height:42px}
 .slot .empty{width:var(--cw);height:calc(var(--cw)*1.4);border:2px dashed rgba(255,255,255,.18);border-radius:calc(var(--cw)*.09)}
 .slot.win .card{box-shadow:0 0 0 4px var(--gold),0 6px 16px rgba(0,0,0,.45)}
 .slot.win .who{color:var(--gold);font-weight:800}
@@ -1706,18 +1712,20 @@ const Render = (() => {
       '<g stroke-width="4">' + chev + '</g></g></svg>';
   })();
 
-  /* Top row during trick play: the outside pile, the trick label and the turned card. The trump
+  /* Top row during trick play: the outside pile, the last trick, the trick label and the turned card. The trump
      symbol moves into the middle of the trick area, at the center of the medallion. */
   function bandHTML(v) {
     const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
     const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
     const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
     const sd = v.showdown && v.showdown.active;
-    const parts = [];
-    if (v.outsideCount > 0) parts.push('<div class="pile"><div class="pile-cards">' + backHTML() + '</div><div>Outside pile (' + v.outsideCount + ')</div></div>');
+    const top = [], parts = [];
+    if (v.outsideCount > 0) top.push('<div class="lasttrick band-out">' + backHTML() + '<span>Outside pile (' + v.outsideCount + ')</span></div>');
+    const last = lastTrickHTML(v);
+    if (last) top.push(last);
     parts.push('<div class="pile band-trick"><div><b>' + (sd ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks + '</b></div><div>' + (leadSuit ? 'Led: ' + symHTML(leadSuit) : '&nbsp;') + '</div></div>');
     if (v.flipped && !sd) parts.push('<div class="pile"><div>Turned card: <b>' + R.shortName(v.flipped) + '</b></div></div>');
-    return '<div class="piles">' + parts.join('') + '</div>';
+    return '<div class="band">' + (top.length ? '<div class="band-row">' + top.join('') + '</div>' : '') + '<div class="band-row">' + parts.join('') + '</div></div>';
   }
 
   function trickHTML(v, ctx) {
@@ -1746,7 +1754,7 @@ const Render = (() => {
     if (!Engine.PLAY_PHASES.includes(v.phase)) return '';
     const lt = v.lastTrick;
     const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
-    return '<div class="lasttrick">Last trick (' + v.players[lt.winner].name + ' won' + (lt.king ? ', +1 King' : '') + '):' + cards + '</div>';
+    return '<div class="lasttrick"><span>Last trick (' + v.players[lt.winner].name + ' won' + (lt.king ? ', +1 King' : '') + '):</span><span class="lt-cards">' + cards + '</span></div>';
   }
 
   const OUTCOME_TEXT = {
@@ -1896,7 +1904,7 @@ const Render = (() => {
     center += trickShown ? bandHTML(v) : pilesHTML(v);
     if (summary) center += summary;
     else if (trickShown) center += trickHTML(v, ctx);
-    center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
+    center += '<div class="status">' + statusText(v) + '</div>';
     $('center').innerHTML = center;
 
     const me = $('seat0');
