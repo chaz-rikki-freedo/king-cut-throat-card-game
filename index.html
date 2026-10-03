@@ -149,6 +149,7 @@ button.card{cursor:pointer}
 .gamelog .hl-joker{font-weight:800;color:var(--gold);background:#000;border-radius:4px;padding:0 4px}
 .gamelog li.sd{padding-left:4em}
 .gamelog li.gap{margin-top:1.3em}
+.gamelog li.trick-head{color:var(--muted)}
 .gamelog .card-tag{background:#fff;border-radius:3px;padding:0 2px;white-space:nowrap}
 .gamelog .card-tag .rank{color:#6b6b6b}
 .gamelog .pip-red{color:#d32f2f}
@@ -2103,8 +2104,11 @@ const App = (() => {
       case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', ''); break;
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', ''); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
-      case 'TRICK_STARTED': app.ui.logGap = true; if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', '', e.showdown); break;
-      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', app.ui.logGap ? 'play gap' : 'play', e.showdown); app.ui.logGap = false; break;
+      case 'TRICK_STARTED':
+        if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', '', e.showdown);
+        addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'Showdown trick ' : 'Trick ') + e.number + '/' + st.totalTricks, 'gap trick-head', e.showdown);
+        break;
+      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
       case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k', e.showdown); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
