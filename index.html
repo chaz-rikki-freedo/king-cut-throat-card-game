@@ -1240,7 +1240,9 @@ const AI = (() => {
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
   const REAL_TABLE_BID_BUMP = 0.5;
-  const bidLimit = key => TH[key] + (style.realTable ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
+  /* A personality's own courage sets how loose it bids, so the Real table step does not stack on top of it. */
+  let personaActive = false;
+  const bidLimit = key => TH[key] + (style.realTable && !personaActive ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -1753,7 +1755,8 @@ const AI = (() => {
     const saved = { t: Object.assign({}, thinking), k: Object.assign({}, knowledge), s: Object.assign({}, style) };
     setSkillTier(persona.tier);
     setStyle({ courage: persona.courage, realTable: persona.realTable });
-    try { return decide(view); } finally { setThinking(saved.t); setKnowledge(saved.k); setStyle(saved.s); }
+    personaActive = true;
+    try { return decide(view); } finally { personaActive = false; setThinking(saved.t); setKnowledge(saved.k); setStyle(saved.s); }
   }
   /* Play-outs run the real Engine; keep them out of the event log. */
   function decide(view) {
