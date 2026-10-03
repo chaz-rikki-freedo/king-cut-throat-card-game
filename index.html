@@ -2138,7 +2138,7 @@ const App = (() => {
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED':
-        addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'Showdown trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
+        addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'SD Trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
         break;
       case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
