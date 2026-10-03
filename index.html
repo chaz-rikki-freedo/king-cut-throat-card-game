@@ -1657,7 +1657,7 @@ const Render = (() => {
     if (v.phase === P.DISCARD) note = v.pendingDiscard[p] ? '<div class="discard-note">Choosing 3 discards…</div>' : '<div class="discard-note">Discarded 3 ✓</div>';
     if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = v.showdown.pendingDiscard[p] ? '<div class="discard-note">Choosing 1 discard…</div>' : '<div class="discard-note">Discarded 1 ✓</div>';
     return '<div class="seat-head"><span class="seat-name">' + v.players[p].name + '</span>' + badges(v, p) + '</div>' +
-      '<div class="score-row"><span class="score' + flash + '">' + v.scores[p] + '<small> / 10</small></span></div>' +
+      '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p]) + '<small> / 10</small></span></div>' +
       tricksLine(v, p) +
       '<div class="backs" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + note + bidBubble(v, p);
   }
@@ -1724,6 +1724,12 @@ const Render = (() => {
     CLEAR_WINNER: 'Most tricks', NAMER_SWEEP: 'Namer sweep (all 7)', NON_NAMER_SWEEP: 'Non-namer sweep (all 7)', SHOWDOWN: 'Tie 3–3–1: Showdown'
   };
 
+  /* The game ends at 10, but the last trick's King point plus the hand points can pass it.
+     The board caps the score at 10; tables and the log show a star for a score over 10. */
+  const WIN = Engine.C.WIN_SCORE;
+  const boardScore = sc => Math.min(sc, WIN);
+  const scoreText = sc => sc > WIN ? '⭐' : String(sc);
+
   /* Signed points: +2 green, −1 red, 0 as a dash. */
   const signed = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
 
@@ -1756,7 +1762,7 @@ const Render = (() => {
       const c = [n(p) + role(p), hs.tricks[p]];
       if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
       if (!opts.preShowdown) c.push(signed(sd ? st.pts[p].showdown : st.pts[p].hand));
-      c.push(signed(st.pts[p].king), v.scores[p]);
+      c.push(signed(st.pts[p].king), scoreText(v.scores[p]));
       return '<tr><td>' + c.join('</td><td>') + '</td></tr>';
     }).join('');
     return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
@@ -1921,12 +1927,12 @@ const Render = (() => {
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat) +
-      '<span class="score' + flash + '">' + v.scores[v.seat] + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
+      '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + actionBarHTML(v, ui, ctx) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML });
+  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2067,7 +2073,7 @@ const App = (() => {
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
-          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + e.score + '.', e.delta < 0 || e.requested < 0 ? 's' : 'k');
+          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's' : 'k');
           toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason], e.requested < 0 ? 'neg' : '');
         }
         break;
@@ -2077,7 +2083,7 @@ const App = (() => {
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', ''); break;
       case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's'); break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's'); break;
-      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + ' reaches ' + e.scores[e.winner] + ' points and wins the game.', 'w'); break;
+      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w'); break;
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
@@ -2094,7 +2100,7 @@ const App = (() => {
     const sd = v.showdown && v.showdown.active;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const k = st.pts[p].king;
-      return '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + v.scores[p] + '</td></tr>';
+      return '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
     }).join('');
     return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.handMetaHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
@@ -2107,7 +2113,7 @@ const App = (() => {
       KING: 'a King won a trick', SHOWDOWN_KING: 'a King won a Showdown trick', CLEAR_WINNER: 'taking the most tricks',
       NAMER_SWEEP: 'a namer sweep', NON_NAMER_SWEEP: 'a non-namer sweep', SHOWDOWN_WIN: 'winning the Showdown'
     }[v.endEvent.reason] || v.endEvent.reason;
-    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.scores[p] + '</td></tr>').join('');
+    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
@@ -2670,6 +2676,7 @@ const SelfTest = (() => {
       check('summary table shows King pts and Hand pts', /King pts/.test(html) && /Hand pts/.test(html) && !/\/ 10/.test(html));
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
+      eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
 
       const st = Engine.createGame(12); D(st, { type: 'START_GAME' });
       st.trump = 'S'; st.caller = 0; st.tricksWon = [3, 3, 1];
