@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>King Cut-Throat Euchre</title>
+<title>King Cut-Throat</title>
 <style>
 :root{
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
@@ -20,7 +20,6 @@ body{background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-syst
 button{font:inherit;color:inherit}
 .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08)}
 .brand{font-weight:800;letter-spacing:.02em;font-size:18px;margin-right:auto}
-.brand small{font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
 .footbar{display:flex;justify-content:center;padding:10px 16px 16px;border-top:1px solid rgba(255,255,255,.08);background:var(--felt-edge)}
 .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -209,7 +208,7 @@ button.card{cursor:pointer}
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">King Cut-Throat <small>Euchre</small></div>
+  <div class="brand">King Cut-Throat</div>
   <span class="trump-chip" id="trumpChip">Trump: —</span>
   <span class="hand-chip" id="handChip"></span>
 </header>
@@ -286,7 +285,7 @@ button.card{cursor:pointer}
 <script>
 'use strict';
 /* =====================================================================
-   King Cut-Throat Euchre — single-file implementation.
+   King Cut-Throat — single-file implementation.
    Layers (top to bottom): Rules -> RNG -> Logger -> Engine (state machine)
    -> View (information boundary) -> AI -> Render -> Controller -> SelfTest.
    The Engine state object is the only source of truth. The DOM is a
@@ -2205,16 +2204,18 @@ const App = (() => {
 
   function showRules() {
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal" role="dialog" aria-label="Rules"><h2>King Cut-Throat Euchre — quick rules</h2><ul>' +
+    ov.innerHTML = '<div class="modal" role="dialog" aria-label="Rules"><h2>King Cut-Throat — quick rules</h2><ul>' +
       '<li>3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.</li>' +
       '<li>33-card deck: 7–A in four suits plus the Joker. Deal: 3 each, 3 to the kitty, 4 each, 3 each.</li>' +
       '<li>Trump order: Joker, Right Bower (Jack of trump), Left Bower (other Jack of the same color, counts as trump), A, K, Q, 10, 9, 8, 7.</li>' +
+      '<li><b>Bower</b> comes from the German <i>Bauer</i>, “farmer”. The Jacks are the farmers.</li>' +
       '<li>Before bidding, everyone discards 3 face-down to the outside pile (7 cards left).</li>' +
       '<li>Round 1: the dealer turns the top kitty card (a Joker voids the hand). Accept its suit or pass. If accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1.</li>' +
       '<li>Round 2: name another suit or pass. If named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned.</li>' +
       '<li>7 tricks. The player left of the dealer leads. Follow suit if you can.</li>' +
       '<li><b>King points:</b> +1 at once when a King wins a trick. A losing King scores nothing.</li>' +
-      '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3. There is no euchre penalty.</li>' +
+      '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3.</li>' +
+      '<li>The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</li>' +
       '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1 and they play 5 tricks with the same trump. The player who won the latest main trick between them leads. Winner +1, loser −1 (not below 0).</li>' +
       '</ul><div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
     ov.hidden = false;

@@ -1,4 +1,4 @@
-# King Cut-Throat Euchre
+# King Cut-Throat
 
 A browser game in one file, `index.html`. Open it in a browser to play. This file covers the debug tools only.
 
