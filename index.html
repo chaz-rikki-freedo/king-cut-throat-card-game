@@ -21,6 +21,7 @@ button{font:inherit;color:inherit}
 .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08)}
 .brand{font-weight:800;letter-spacing:.02em;font-size:18px;margin-right:auto}
 .brand small{font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
+.footbar{display:flex;justify-content:center;padding:10px 16px 16px;border-top:1px solid rgba(255,255,255,.08);background:var(--felt-edge)}
 .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.18)}
@@ -89,6 +90,13 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .summary table{margin:8px auto;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .summary td,.summary th{padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
 .summary .pos{color:var(--good);font-weight:800}.summary .neg{color:var(--danger);font-weight:800}
+.summary .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.summary .stats-wrap{overflow-x:auto;max-width:100%}
+.summary table.stats{font-size:13px}
+.summary table.stats td,.summary table.stats th{padding:3px 6px}
+.summary table.stats th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.summary table.stats td:first-child{text-align:left}
+.hand-chip{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
 .status{text-align:center;font-weight:600;min-height:1.4em}
 .lasttrick{display:flex;justify-content:center;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .lasttrick .card{--w:30px}
@@ -131,6 +139,16 @@ button.card{cursor:pointer}
 .gamelog li.h{color:var(--accent);font-weight:700}
 .gamelog li.s{color:#ff9ad5;font-weight:700}
 .gamelog li.w{color:var(--good);font-weight:800}
+.gamelog li.play{padding-left:2em}
+.gamelog .hl-trick{color:#c792ff;font-weight:700}
+.gamelog .hl-blocked{color:var(--gold);font-weight:700}
+.gamelog .hl-discard{color:#ff6b6b;font-weight:700}
+.gamelog .hl-deal{color:#ffa94d;font-weight:700}
+.gamelog .hl-pass{color:#69db7c;font-weight:700}
+.gamelog .hl-turn{color:#ff4fd8;font-weight:700}
+.gamelog .hl-joker{font-weight:800;animation:jokerBlink 1s steps(1) infinite}
+@keyframes jokerBlink{0%{color:#ffe066}50%{color:#c792ff}}
+@media (prefers-reduced-motion:reduce){.gamelog .hl-joker{animation:none;color:#ffe066}}
 .toasts{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
@@ -176,6 +194,23 @@ button.card{cursor:pointer}
 <header class="topbar">
   <div class="brand">King Cut-Throat <small>Euchre</small></div>
   <span class="trump-chip" id="trumpChip">Trump: —</span>
+  <span class="hand-chip" id="handChip"></span>
+</header>
+
+<div class="layout">
+  <main class="table" id="table" aria-live="polite">
+    <section class="seat seat-west" id="seat1"></section>
+    <section class="center" id="center"></section>
+    <section class="seat seat-east" id="seat2"></section>
+    <section class="me" id="seat0"></section>
+  </main>
+  <aside class="logpanel">
+    <h2>Latest Scroll</h2>
+    <ol class="gamelog" id="gameLog"></ol>
+  </aside>
+</div>
+
+<footer class="footbar">
   <div class="controls">
     <label class="sr" for="speedSel">Speed</label>
     <select id="speedSel" title="Game speed">
@@ -188,20 +223,7 @@ button.card{cursor:pointer}
     <button class="btn" type="button" data-action="new-game">New game</button>
     <button class="btn" type="button" data-action="toggle-debug">Debug</button>
   </div>
-</header>
-
-<div class="layout">
-  <main class="table" id="table" aria-live="polite">
-    <section class="seat seat-west" id="seat1"></section>
-    <section class="center" id="center"></section>
-    <section class="seat seat-east" id="seat2"></section>
-    <section class="me" id="seat0"></section>
-  </main>
-  <aside class="logpanel">
-    <h2>Table log</h2>
-    <ol class="gamelog" id="gameLog"></ol>
-  </aside>
-</div>
+</footer>
 
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
@@ -530,6 +552,11 @@ const Engine = (() => {
     state.voids = [[], [], []];
     state.memory = [{ out: [] }, { out: [] }, { out: [] }];
     state.handSummary = null;
+    /* Per-hand stats for the end-of-hand summary. Points are actual score changes (after the 0 floor). */
+    state.handStats = {
+      kings: [[], [], []], sdKings: [[], [], []],
+      pts: [0, 1, 2].map(() => ({ king: 0, hand: 0, showdown: 0 }))
+    };
   }
 
   const seatAfter = p => (p + 1) % C.PLAYERS;
@@ -646,12 +673,18 @@ const Engine = (() => {
     return { ok: true, events };
   }
 
+  const SCORE_KIND = Object.freeze({
+    KING: 'king', SHOWDOWN_KING: 'king', CLEAR_WINNER: 'hand', NAMER_SWEEP: 'hand', NON_NAMER_SWEEP: 'hand',
+    SHOWDOWN_WIN: 'showdown', SHOWDOWN_LOSS: 'showdown'
+  });
+
   /* The only way scores change. Victory is checked immediately. */
   function addScore(state, player, delta, reason, events) {
     const old = state.scores[player];
     const next = Math.max(0, old + delta);
     state.scores[player] = next;
     events.push({ type: 'SCORE_CHANGED', player, delta: next - old, requested: delta, reason, score: next });
+    if (state.handStats) state.handStats.pts[player][SCORE_KIND[reason]] += next - old;
     if (next >= C.WIN_SCORE && !state.gameOver) {
       state.gameOver = true;
       state.winner = player;
@@ -709,6 +742,7 @@ const Engine = (() => {
     events.push({ type: sd ? 'SHOWDOWN_TRICK_WON' : 'TRICK_WON', number: state.trickNumber, winner: w.player, card: w.card, king });
     if (king) {
       events.push({ type: 'KING_SCORED', player: w.player, card: w.card, number: state.trickNumber, showdown: sd });
+      if (state.handStats) state.handStats[sd ? 'sdKings' : 'kings'][w.player].push(w.card);
       addScore(state, w.player, 1, sd ? 'SHOWDOWN_KING' : 'KING', events);
     }
   }
@@ -990,6 +1024,7 @@ function buildView(state, seat) {
     voids: state.voids.map(v => v.slice()),
     myOut: state.memory[seat].out.slice(),
     handSummary: state.handSummary ? JSON.parse(JSON.stringify(state.handSummary)) : null,
+    handStats: state.handStats ? JSON.parse(JSON.stringify(state.handStats)) : null,
     gameOver: state.gameOver, winner: state.winner, endEvent: state.endEvent ? Object.assign({}, state.endEvent) : null,
     legal: inPlay ? R.legalCards(hand, state.trick.leadSuit, state.trump) : []
   };
@@ -1632,7 +1667,7 @@ const Render = (() => {
     if (v.phase === P.DISCARD) note = v.pendingDiscard[p] ? '<div class="discard-note">Choosing 3 discards…</div>' : '<div class="discard-note">Discarded 3 ✓</div>';
     if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = v.showdown.pendingDiscard[p] ? '<div class="discard-note">Choosing 1 discard…</div>' : '<div class="discard-note">Discarded 1 ✓</div>';
     return '<div class="seat-head"><span class="seat-name">' + v.players[p].name + '</span>' + badges(v, p) + '</div>' +
-      '<div class="score-row"><span class="score' + flash + '">' + v.scores[p] + '<small> / 10</small></span></div>' +
+      '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p]) + '<small> / 10</small></span></div>' +
       tricksLine(v, p) +
       '<div class="backs" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + note + bidBubble(v, p);
   }
@@ -1699,26 +1734,71 @@ const Render = (() => {
     CLEAR_WINNER: 'Most tricks', NAMER_SWEEP: 'Namer sweep (all 7)', NON_NAMER_SWEEP: 'Non-namer sweep (all 7)', SHOWDOWN: 'Tie 3–3–1: Showdown'
   };
 
+  /* The game ends at 10, but the last trick's King point plus the hand points can pass it.
+     The board caps the score at 10; tables and the log show a star for a score over 10. */
+  const WIN = Engine.C.WIN_SCORE;
+  const boardScore = sc => Math.min(sc, WIN);
+  const scoreText = sc => sc > WIN ? '⭐' : String(sc);
+
+  /* Signed points: +2 green, −1 red, 0 as a dash. */
+  const signed = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
+
+  /* Who named trump, in which round, and who dealt. */
+  function handMetaHTML(v) {
+    const n = p => v.players[p].name;
+    const call = v.bidLog.filter(b => b.action !== 'pass').pop();
+    const parts = [];
+    if (v.trump) parts.push('Trump ' + suitLabel(v.trump) + (call ? ' · ' + (call.action === 'accept' ? 'accepted' : 'named') + ' by ' + n(call.player) + ' (round ' + call.round + ')' : ''));
+    if (v.dealer !== null) parts.push('Dealer ' + n(v.dealer));
+    return parts.length ? '<div class="meta">' + parts.join(' · ') + '</div>' : '';
+  }
+
+  /* Full per-player table for the hand. Rows are sorted by score. */
+  function statsTableHTML(v, opts) {
+    const n = p => v.players[p].name;
+    const st = v.handStats, hs = v.handSummary;
+    const sd = opts.showdown ? hs.showdown : null;
+    const role = p => {
+      const r = [];
+      if (hs && p === hs.caller) r.push('namer');
+      if (hs && p === hs.mediator) r.push('mediator');
+      return (r.length ? ' (' + r.join(', ') + ')' : '') + (v.gameOver && p === v.winner ? ' 🏆' : '');
+    };
+    const head = ['Player', 'Tricks'];
+    if (sd) head.push('SD tricks');
+    if (!opts.preShowdown) head.push(sd ? 'SD pts' : 'Hand pts');
+    head.push('King pts', 'Score');
+    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
+      const c = [n(p) + role(p), hs.tricks[p]];
+      if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
+      if (!opts.preShowdown) c.push(signed(sd ? st.pts[p].showdown : st.pts[p].hand));
+      c.push(signed(st.pts[p].king), scoreText(v.scores[p]));
+      return '<tr><td>' + c.join('</td><td>') + '</td></tr>';
+    }).join('');
+    return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
+  }
+
   function summaryHTML(v) {
     const n = p => v.players[p].name;
     const hs = v.handSummary;
     switch (v.phase) {
       case P.ABANDONED:
-        return '<div class="summary"><h3>Hand abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
       case P.JOKER_VOID:
         return '<div class="summary"><h3>The Joker was turned up</h3><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
-      case P.HAND_SCORE: {
-        const rows = [0, 1, 2].map(p => '<tr><td>' + n(p) + (p === hs.caller ? ' (namer)' : '') + '</td><td>' + hs.tricks[p] + '</td><td>' + (p === hs.winner ? '<span class="pos">+' + hs.points + '</span>' : '—') + '</td><td>' + v.scores[p] + '</td></tr>').join('');
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div><table><tr><th>Player</th><th>Tricks</th><th>Hand pts</th><th>Score</th></tr>' + rows + '</table></div>';
-      }
+      case P.HAND_SCORE:
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + handMetaHTML(v) +
+          statsTableHTML(v, {}) + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
-        return '<div class="summary"><h3>Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p><p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1, then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + handMetaHTML(v) +
+          statsTableHTML(v, { preShowdown: true }) +
+          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1, then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
-        const rows = hs.participants.map(p => '<tr><td>' + n(p) + '</td><td>' + s.tricks[p] + '</td><td>' + (p === s.winner ? '<span class="pos">+1</span>' : '<span class="neg">−1</span>') + '</td><td>' + v.scores[p] + '</td></tr>').join('');
-        return '<div class="summary"><h3>Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown.</div><table><tr><th>Player</th><th>Tricks</th><th>Pts</th><th>Score</th></tr>' + rows + '</table><div class="discard-note">Score cannot fall below 0.</div></div>';
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + handMetaHTML(v) +
+          statsTableHTML(v, { showdown: true }) + '<div class="discard-note">SD = Showdown. Score cannot fall below 0.</div></div>';
       }
       default: return '';
     }
@@ -1821,10 +1901,21 @@ const Render = (() => {
     return '<div class="hand" id="hand">' + cards + '</div>';
   }
 
+  /* Small counter in the top bar: hand number, and the trick number while tricks are played. */
+  function handChipText(v) {
+    if (!v.handNumber) return '';
+    let t = 'Hand ' + v.handNumber;
+    if (v.trickNumber > 0 && v.trick && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE)) {
+      t += ' · ' + (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + '/' + v.totalTricks;
+    }
+    return t;
+  }
+
   function render(v, ui, ctx) {
     const table = $('table');
     table.classList.toggle('showdown', !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP)));
     $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
+    $('handChip').textContent = handChipText(v);
     for (const p of [1, 2]) {
       const el = $('seat' + p);
       el.innerHTML = seatHTML(v, p, ctx);
@@ -1846,12 +1937,12 @@ const Render = (() => {
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat) +
-      '<span class="score' + flash + '">' + v.scores[v.seat] + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
+      '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + actionBarHTML(v, ui, ctx) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL });
+  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1948,9 +2039,29 @@ const App = (() => {
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
+  /* Latest Scroll highlights: each phrase gets its own color (see .hl-* styles). */
+  const LOG_HIGHLIGHTS = [
+    [/\bwins? (?:Showdown )?trick\b/, 'hl-trick'],
+    [/\bis blocked\b/, 'hl-blocked'],
+    [/\bdiscards?\b/, 'hl-discard'],
+    [/\bdeals?\b/, 'hl-deal'],
+    [/\bpass(?:es)?\b/, 'hl-pass'],
+    [/\bgo(?:es)? to\b/, 'hl-pass'],
+    [/\bturns? up\b/, 'hl-turn'],
+    [/\bJoker\b/, 'hl-joker']
+  ];
+  const LOG_RE = new RegExp(LOG_HIGHLIGHTS.map(([re]) => '(' + re.source + ')').join('|'), 'g');
+  const escHTML = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function logHTML(text) {
+    return escHTML(text).replace(LOG_RE, (m, ...groups) => {
+      const i = groups.findIndex(g => g !== undefined);
+      return '<span class="' + LOG_HIGHLIGHTS[i][1] + '">' + m + '</span>';
+    });
+  }
+
   function addLog(text, cls) {
     const li = document.createElement('li');
-    li.textContent = Render.youText(text);
+    li.innerHTML = logHTML(Render.youText(text));
     if (cls) li.className = cls;
     const ol = $('gameLog');
     ol.appendChild(li);
@@ -1986,13 +2097,13 @@ const App = (() => {
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', ''); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED': if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', ''); break;
-      case 'CARD_PLAYED': addLog(n(e.player) + ' plays ' + R.shortName(e.card) + '.', ''); break;
+      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play'); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', ''); break;
       case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k'); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
-          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + e.score + '.', e.delta < 0 || e.requested < 0 ? 's' : 'k');
+          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's' : 'k');
           toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason], e.requested < 0 ? 'neg' : '');
         }
         break;
@@ -2002,11 +2113,26 @@ const App = (() => {
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', ''); break;
       case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's'); break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's'); break;
-      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + ' reaches ' + e.scores[e.winner] + ' points and wins the game.', 'w'); break;
+      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w'); break;
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
     }
+  }
+
+  /* This hand's stats in the game-over box. Mid-hand (no hand result yet) shows tricks and Kings so far. */
+  function gameOverHandHTML(v) {
+    if (!v.handStats) return '';
+    const n = p => v.players[p].name;
+    const hs = v.handSummary;
+    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>Hand ' + v.handNumber + ' stats</h3>' + Render.handMetaHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
+    const st = v.handStats;
+    const sd = v.showdown && v.showdown.active;
+    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
+      const k = st.pts[p].king;
+      return '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
+    }).join('');
+    return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.handMetaHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
 
   function showGameOver() {
@@ -2017,10 +2143,10 @@ const App = (() => {
       KING: 'a King won a trick', SHOWDOWN_KING: 'a King won a Showdown trick', CLEAR_WINNER: 'taking the most tricks',
       NAMER_SWEEP: 'a namer sweep', NON_NAMER_SWEEP: 'a non-namer sweep', SHOWDOWN_WIN: 'winning the Showdown'
     }[v.endEvent.reason] || v.endEvent.reason;
-    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.scores[p] + '</td></tr>').join('');
+    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
-      '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p><table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>' +
+      '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">Play again</button></div></div>';
     ov.hidden = false;
   }
@@ -2563,6 +2689,32 @@ const SelfTest = (() => {
       check('showdown King event', k.r3.events.some(e => e.type === 'KING_SCORED' && e.showdown));
       k = sk([0, 9, 3]);
       eq('showdown King to 10 ends the game', [k.st.phase, k.st.winner], [P.GAME_OVER, 1]);
+      k = sk();
+      eq('stats: showdown King is logged apart', [k.st.handStats.sdKings[1], k.st.handStats.kings[1], k.st.handStats.pts[1].king], [['KH'], [], 1]);
+    });
+
+    /* --- Hand stats --- */
+    safeRun('hand stats', () => {
+      let s = playState([['KH'], ['7H'], ['9H']], 'S', 0);
+      playAll(s, [[0, 'KH'], [1, '7H'], [2, '9H']]);
+      eq('King card and King point logged', [s.handStats.kings[0], s.handStats.pts[0].king], [['KH'], 1]);
+      s.phase = P.TRICK_DONE; s.trickNumber = 7; s.tricksWon = [4, 2, 1];
+      D(s, { type: 'ADVANCE' });
+      eq('hand point logged apart from King point', [s.handStats.pts[0], s.scores[0]], [{ king: 1, hand: 1, showdown: 0 }, 2]);
+      const v = buildView(s, 0);
+      const html = Render.statsTableHTML(v, {});
+      check('summary table shows King pts and Hand pts', /King pts/.test(html) && /Hand pts/.test(html) && !/\/ 10/.test(html));
+      D(s, { type: 'ADVANCE' });
+      eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
+      eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
+
+      const st = Engine.createGame(12); D(st, { type: 'START_GAME' });
+      st.trump = 'S'; st.caller = 0; st.tricksWon = [3, 3, 1];
+      st.handSummary = { tricks: [3, 3, 1], outcome: 'SHOWDOWN', mediator: 2, participants: [0, 1], caller: 0 };
+      st.showdown = { active: true, mediator: 2, participants: [0, 1], pendingDiscard: [false, false, false], discards: [], tricksWon: [3, 2, 0], trickWinners: [], lead: null };
+      st.scores = [4, 0, 0]; st.phase = P.SHOWDOWN_TRICK_DONE; st.trickNumber = 5; st.totalTricks = 5;
+      D(st, { type: 'ADVANCE' });
+      eq('showdown pts are actual changes (loser at 0 logs 0)', [st.handStats.pts[0].showdown, st.handStats.pts[1].showdown], [1, 0]);
     });
 
     /* --- Restart --- */

@@ -4,7 +4,7 @@ A browser game in one file, `index.html`. Open it in a browser to play. This fil
 
 ## Debug panel
 
-Click **Debug** in the top bar, or add `?debug=1` to the URL.
+Click **Debug** in the footer, or add `?debug=1` to the URL.
 
 | Control | What it does |
 |---|---|
