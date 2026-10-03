@@ -93,13 +93,24 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .ring .slot-1{--sx:-0.866;--sy:-0.5}
 .ring .slot-2{--sx:0.866;--sy:-0.5}
 .ring .slot-0{--sx:0;--sy:1}
-.band{display:flex;flex-direction:column;align-items:center;gap:8px}
-.band-row{display:flex;flex-wrap:nowrap;justify-content:center;align-items:center;gap:14px}
-.band .band-trick{color:var(--ink);text-align:center}
-.band .lasttrick{flex-wrap:nowrap;white-space:nowrap}
-.lt-cards{display:flex;gap:6px}
-@media (max-width:520px){.band-row{gap:12px;align-items:flex-end}.band .lasttrick{flex-direction:column;gap:3px;font-size:11px}}
-.lasttrick .card.back{--w:30px;height:42px}
+/* Record row at the top of the ring: turned card over West's card, last trick over the center, outside pile
+   over East's card. Same label size, same mini-card size, same top line. */
+.ring .rec{position:absolute;top:0;left:calc(50% + var(--sx) * var(--R));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--muted);white-space:nowrap;z-index:1}
+.ring .rec-l{--sx:-0.866}.ring .rec-m{--sx:0}.ring .rec-r{--sx:0.866}
+.rec-cards{display:flex;gap:4px;position:relative;height:42px}
+.rec .card{--w:30px}
+.rec .card.back{border-width:1.5px}
+.rec .card .c-tl{font-size:9px}
+.rec .card .c-br,.rec .card .c-tag,.rec .card .c-joker{display:none}
+.rec .card .c-mid{font-size:15px}
+.rec .card.win-mini{box-shadow:0 0 0 2px var(--gold)}
+.mini-empty{width:30px;height:42px;border:1.5px dashed rgba(255,255,255,.18);border-radius:3px;box-sizing:border-box}
+.back-n{position:relative}
+.back-n span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 2px #000}
+.king-tag{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);font-size:9px;font-weight:800;line-height:1.4;padding:0 5px;border-radius:6px}
+/* Hub text in the inner circle: trick number above the trump symbol, trump and led suit below it. */
+.ring .hub-top{position:absolute;left:50%;top:calc(var(--cy) - var(--cw-small)*.55);transform:translate(-50%,-100%);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;z-index:1}
+.ring .hub-led{position:absolute;left:50%;top:calc(var(--cy) + var(--cw-small)*.55 + 17px);transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap;z-index:1}
 .slot .empty{width:var(--cw);height:calc(var(--cw)*1.4);border:2px dashed rgba(255,255,255,.18);border-radius:calc(var(--cw)*.09)}
 .slot.win .card{box-shadow:0 0 0 4px var(--gold),0 6px 16px rgba(0,0,0,.45)}
 .slot.win .who{color:var(--gold);font-weight:800}
@@ -110,12 +121,6 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .summary td,.summary th{padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
 .summary .pos{color:var(--good);font-weight:800}.summary .neg{color:var(--danger);font-weight:800}
 .status{text-align:center;font-weight:600;min-height:1.4em}
-.lasttrick{display:flex;justify-content:center;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
-.lasttrick .card{--w:30px}
-.lasttrick .card .c-tl{font-size:9px}
-.lasttrick .card .c-br,.lasttrick .card .c-tag,.lasttrick .card .c-joker{display:none}
-.lasttrick .card .c-mid{font-size:15px}
-.lasttrick .card.win-mini{box-shadow:0 0 0 2px var(--gold)}
 .me{grid-area:me;background:var(--panel);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;border:2px solid transparent;min-width:0}
 .me.turn{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,193,78,.25)}
 .me-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
@@ -1712,20 +1717,21 @@ const Render = (() => {
       '<g stroke-width="4">' + chev + '</g></g></svg>';
   })();
 
-  /* Top row during trick play: the outside pile, the last trick, the trick label and the turned card. The trump
-     symbol moves into the middle of the trick area, at the center of the medallion. */
-  function bandHTML(v) {
-    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
-    const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
-    const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
+  /* Record row during trick play, at the top of the ring: the turned card (left), the last trick (middle) and
+     the outside pile (right). Each part keeps its place for the whole hand; an empty part shows dashed slots. */
+  function recordsHTML(v, done) {
     const sd = v.showdown && v.showdown.active;
-    const top = [], parts = [];
-    if (v.outsideCount > 0) top.push('<div class="lasttrick band-out">' + backHTML() + '<span>Outside pile (' + v.outsideCount + ')</span></div>');
-    const last = lastTrickHTML(v);
-    if (last) top.push(last);
-    parts.push('<div class="pile band-trick"><div><b>' + (sd ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks + '</b></div><div>' + (leadSuit ? 'Led: ' + symHTML(leadSuit) : '&nbsp;') + '</div></div>');
-    if (v.flipped && !sd) parts.push('<div class="pile"><div>Turned card: <b>' + R.shortName(v.flipped) + '</b></div></div>');
-    return '<div class="band">' + (top.length ? '<div class="band-row">' + top.join('') + '</div>' : '') + '<div class="band-row">' + parts.join('') + '</div></div>';
+    const rec = (pos, label, cards) => '<div class="rec rec-' + pos + '"><div class="rec-label">' + label + '</div><div class="rec-cards">' + cards + '</div></div>';
+    const blank = '<div class="mini-empty"></div>';
+    let html = '';
+    if (v.flipped && !sd) html += rec('l', 'Turned card', cardHTML(v.flipped, v.trump));
+    const lt = v.lastTrick, showLt = lt && !done && Engine.PLAY_PHASES.includes(v.phase);
+    if (showLt) {
+      const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
+      html += rec('m', 'Last trick · ' + v.players[lt.winner].name + ' won', cards + (lt.king ? '<span class="king-tag">+1 King</span>' : ''));
+    } else html += rec('m', 'Last trick', blank.repeat(v.activePlayers.length));
+    html += rec('r', 'Outside pile', v.outsideCount > 0 ? '<div class="back-n">' + backHTML() + '<span>' + v.outsideCount + '</span></div>' : blank);
+    return html;
   }
 
   function trickHTML(v, ctx) {
@@ -1733,8 +1739,13 @@ const Render = (() => {
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
     const leader = plays.length ? plays[0].player : v.trick.leader;
-    let html = '<div class="trick ring" id="ring">';
+    const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
+    const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
+    const sd = v.showdown && v.showdown.active;
+    let html = '<div class="trick ring" id="ring">' + recordsHTML(v, done);
+    html += '<div class="hub-top">' + (sd ? 'Showdown ' : 'Trick ') + number + ' of ' + v.totalTricks + '</div>';
     if (v.trump) html += '<span class="sym trump-anchor' + (R.COLOR[v.trump] === 'red' ? ' red' : '') + '">' + R.SYMBOL[v.trump] + '</span><div class="trump-name">Trump: ' + R.SUIT_NAME[v.trump] + '</div>';
+    html += '<div class="hub-led">' + (leadSuit ? 'Led: ' + symHTML(leadSuit) : '&nbsp;') + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
         html += '<div class="slot slot-' + p + '"><div class="who">' + v.players[p].name + ' · mediator</div></div>';
@@ -1747,14 +1758,6 @@ const Render = (() => {
       html += '<div class="slot slot-' + p + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
     }
     return html + '</div>';
-  }
-
-  function lastTrickHTML(v) {
-    if (!v.lastTrick || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || v.phase === P.GAME_OVER) return '';
-    if (!Engine.PLAY_PHASES.includes(v.phase)) return '';
-    const lt = v.lastTrick;
-    const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
-    return '<div class="lasttrick"><span>Last trick (' + v.players[lt.winner].name + ' won' + (lt.king ? ', +1 King' : '') + '):</span><span class="lt-cards">' + cards + '</span></div>';
   }
 
   const OUTCOME_TEXT = {
@@ -1900,8 +1903,8 @@ const Render = (() => {
     }
     const summary = summaryText(v);
     const trickShown = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
-    /* During trick play the piles shrink to one info strip, so the trick has room. */
-    center += trickShown ? bandHTML(v) : pilesHTML(v);
+    /* During trick play the piles move into the ring's record row (see recordsHTML). */
+    if (!trickShown) center += pilesHTML(v);
     if (summary) center += summary;
     else if (trickShown) center += trickHTML(v, ctx);
     center += '<div class="status">' + statusText(v) + '</div>';
@@ -2011,7 +2014,9 @@ const App = (() => {
       const R = d / 2 * 0.7;
       let slotH = 0;
       for (const sl of ring.querySelectorAll('.slot')) slotH = Math.max(slotH, sl.offsetHeight);
-      const cy = 0.5 * R + slotH / 2 + 8;
+      let recH = 0;
+      for (const rc of ring.querySelectorAll('.rec')) recH = Math.max(recH, rc.offsetHeight);
+      const cy = recH + 14 + 0.5 * R + slotH / 2;
       ring.style.setProperty('--R', R + 'px');
       ring.style.setProperty('--cy', cy + 'px');
       ring.style.setProperty('--ringH', (cy + R + slotH / 2 + 8) + 'px');
