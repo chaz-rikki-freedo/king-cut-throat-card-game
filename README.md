@@ -10,8 +10,10 @@ Click **Debug** in the top bar, or add `?debug=1` to the URL.
 |---|---|
 | **Logging** | Starts the timestamped event log (public information only). |
 | **AI plays my seat** | The AI plays for you, with only your seat's information. |
-| **Run self-tests** | Runs the built-in tests; results appear in the log area. |
-| **Clear** | Clears the log area. |
+| **Seed / Copy** | Shows the current game's seed and copies it. |
+| **Defaults** | Resets hunches, brain farts and all knowledge switches. |
+| **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
+| **Clear** | At the bottom. Clears the log and the test results. |
 
 ### AI thinking
 
@@ -22,7 +24,7 @@ Both settings apply to all bots, change how long the bots think, and reset on re
 
 ### AI knowledge
 
-Each switch turns one kind of knowledge on or off for all bots. By default only **Watches score** is on; **Defaults** restores that. All on, with 40 hunches and 0% brain farts, is the strongest AI. The switches are listed by measured effect on bot strength, largest first.
+Each switch turns one kind of knowledge on or off for all bots. By default only **Watches score** is on. All on, with 40 hunches and 0% brain farts, is the strongest AI. The switches are listed by measured effect on bot strength, largest first.
 
 | Switch | Off means the bots… |
 |---|---|
@@ -35,7 +37,7 @@ Each switch turns one kind of knowledge on or off for all bots. By default only 
 
 ## Replay a game
 
-The same seed gives the same deals: `index.html?seed=123456` (the panel shows the current seed).
+The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
 
 ## Console
 
