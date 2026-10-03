@@ -10,7 +10,7 @@ Click **Debug** in the footer, or add `?debug=1` to the URL.
 |---|---|
 | **Logging** | Starts the timestamped event log (public information only). |
 | **Seed / Copy** | Shows the current game's seed and copies it. |
-| **Defaults** | Resets hunches, brain farts and all knowledge switches. |
+| **Defaults** | Resets hunches, brain farts, all knowledge switches and the table style. |
 | **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 
@@ -34,6 +34,16 @@ Each switch turns one kind of knowledge on or off for all bots. By default only 
 | **Watches score** | play for points only. On, the bots watch the race to 10 more and more as the leading score passes 5 (6: 25%, 7: 50%, 8: 75%, 9: 100%). |
 | **Tracks upcard** | lose track of the turned card after the bidding |
 
+### Table style
+
+**Real table** (off by default) makes the bots play more like a typical human table:
+
+- They pass more in both bidding rounds. They need 0.5 more hand value before they call trump, and they bid by this rule instead of planning the bid.
+- In the first discard, they pitch their lowest cards. Jacks and the Joker stay. On equal rank, the card from the shorter suit goes first.
+- When the bots read bids and play hands out in their heads, they expect the other seats to play the same way.
+
+On, the bots are weaker. **Defaults** turns the switch off.
+
 ## AI plays your seat
 
 Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back.
@@ -48,6 +58,7 @@ The same seed gives the same deals: `index.html?seed=123456`. The panel shows th
 KCT.SelfTest.run({ games: 500 })            // tests, with 500 simulated games (default 40)
 KCT.AI.setThinking({ worlds: 10, playoutSkill: 0.5 })
 KCT.AI.setKnowledge({ bids: false })        // the panel controls do not update
+KCT.AI.setStyle({ realTable: true })        // real-table bots; the panel checkbox does not update
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
 ```

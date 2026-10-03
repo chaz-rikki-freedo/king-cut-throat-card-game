@@ -268,6 +268,11 @@ button.card{cursor:pointer}
     <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
     <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
   </div>
+  <div class="dbg-section" id="dbgStyle">
+    <strong>Table style</strong>
+    <label title="Bots play like a typical human table: they pass more in both bidding rounds and pitch their lowest cards in the first discard"><input type="checkbox" id="dbgRealTable"> <span class="k-name">Real table</span></label>
+    <span class="k-hint">Off by default. On makes the bots weaker.</span>
+  </div>
   <div class="dbg-section dbg-row">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
     <span class="k-hint">Resets hunches, brain farts and all switches. A reload also resets them.</span>
@@ -1098,6 +1103,17 @@ const AI = (() => {
     for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
     return Object.assign({}, knowledge);
   }
+  /* Table style (debug panel). Real table: the bots play like a typical human table.
+     They pass more in both bidding rounds and pitch their lowest cards in the first discard. */
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false });
+  const style = Object.assign({}, STYLE_DEFAULTS);
+  function setStyle(t) {
+    if (typeof t.realTable === 'boolean') style.realTable = t.realTable;
+    return Object.assign({}, style);
+  }
+  /* Extra hand value that a real-table bot needs before it calls trump. */
+  const REAL_TABLE_BID_BUMP = 0.5;
+  const bidLimit = key => TH[key] + (style.realTable ? REAL_TABLE_BID_BUMP : 0);
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -1247,6 +1263,13 @@ const AI = (() => {
   function dropLowest(hand, k, trump) {
     return hand.slice().sort((a, b) => (cardKeep(a, trump) - cardKeep(b, trump)) || (R.getCardStrength(a, trump) - R.getCardStrength(b, trump))).slice(0, k);
   }
+  /* Real-table first discard: the lowest cards go first. Jacks (possible Bowers) and the Joker stay.
+     On equal rank, the card from the shorter suit goes first. */
+  function pitchLowest(hand, k) {
+    const keep = id => { const c = R.card(id); return c.isJoker ? 99 : c.rank === 'J' ? 15 : R.RANK_VALUE[c.rank]; };
+    const len = id => hand.filter(x => R.card(x).suit === R.card(id).suit).length;
+    return hand.slice().sort((a, b) => (keep(a) - keep(b)) || (len(a) - len(b))).slice(0, k);
+  }
   /* Ranked candidate discards of size k, best first. */
   function rankedDiscards(hand, k, evalRest, trump) {
     return combos(hand, k).map(combo => {
@@ -1341,11 +1364,11 @@ const AI = (() => {
   }
   function fastAction(s, p) {
     switch (s.phase) {
-      case P.DISCARD: return { type: 'DISCARD', player: p, cards: dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
-      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= TH.ROUND1 };
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
+      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= bidLimit('ROUND1') };
       case P.BID2: {
         const b = bestSuit(s.hands[p], R.card(s.flippedId).suit);
-        return { type: 'NAME', player: p, suit: b.value >= (p === s.dealer ? TH.ROUND2_LAST : TH.ROUND2) ? b.suit : null };
+        return { type: 'NAME', player: p, suit: b.value >= bidLimit(p === s.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
       }
       case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
       case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: dropLowest(s.hands[p], 1, s.trump)[0] };
@@ -1456,12 +1479,12 @@ const AI = (() => {
       }
       let f;
       if (b.round === 1) {
-        const pa = sigmoid((round1Value(hand, view.flipped) - TH.ROUND1) / T);
+        const pa = sigmoid((round1Value(hand, view.flipped) - bidLimit('ROUND1')) / T);
         f = b.action === 'accept' ? pa : 1 - pa;
       } else {
         const blocked = R.card(view.flipped).suit;
         const best = bestSuit(hand, blocked);
-        const pc = sigmoid((best.value - (o === view.dealer ? TH.ROUND2_LAST : TH.ROUND2)) / T);
+        const pc = sigmoid((best.value - bidLimit(o === view.dealer ? 'ROUND2_LAST' : 'ROUND2')) / T);
         if (b.action === 'pass') f = 1 - pc;
         else {
           const suits = R.SUITS.filter(x => x !== blocked);
@@ -1557,16 +1580,22 @@ const AI = (() => {
     const me = view.seat, trump = view.trump;
     switch (view.phase) {
       case P.DISCARD: {
+        if (style.realTable) return fastAction({ phase: P.DISCARD, hands: { [me]: view.hand } }, me);
         const cands = rankedDiscards(view.hand, 3, flexibleValue, null).slice(0, CANDIDATES.discard);
         return { type: 'DISCARD', player: me, cards: plan(view, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
       }
       case P.BID1: {
-        const h = round1Value(view.hand, view.flipped) >= TH.ROUND1;
+        const h = round1Value(view.hand, view.flipped) >= bidLimit('ROUND1');
+        if (style.realTable) return { type: 'BID', player: me, accept: h };
         const accept = plan(view, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid);
         return { type: 'BID', player: me, accept };
       }
       case P.BID2: {
         const blocked = R.card(view.flipped).suit;
+        if (style.realTable) {
+          const b = bestSuit(view.hand, blocked);
+          return { type: 'NAME', player: me, suit: b.value >= bidLimit(me === view.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
+        }
         const suits = R.SUITS.filter(s => s !== blocked).sort((a, b) => handValue(view.hand, b) - handValue(view.hand, a));
         const suit = plan(view, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid);
         return { type: 'NAME', player: me, suit };
@@ -1594,7 +1623,7 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, style, STYLE_DEFAULTS, setStyle, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2269,7 +2298,7 @@ const App = (() => {
         break;
       }
       case 'clear-log': setSpeed('normal'); Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
-      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
+      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         setSpeed('normal');
@@ -2291,6 +2320,14 @@ const App = (() => {
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
+  }
+
+  /* Table style switch: change the AI, keep the checkbox in step, and log the change. */
+  function setStyle(t) {
+    const now = AI.setStyle(t);
+    $('dbgRealTable').checked = now.realTable;
+    Logger.log('AI_STYLE', now);
+    addLog('Table style: ' + (now.realTable ? 'real table' : 'bots') + '.', 'h');
   }
 
   /* Debug panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
@@ -2376,6 +2413,8 @@ const App = (() => {
       box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
       box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
     }
+    $('dbgRealTable').checked = AI.style.realTable;
+    $('dbgRealTable').addEventListener('change', () => setStyle({ realTable: $('dbgRealTable').checked }));
     Logger.listeners.push(line => { const pre = $('dbgLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('debug') === '1') { Logger.enabled = true; dbg.checked = true; $('debugPanel').hidden = false; }
@@ -2609,9 +2648,23 @@ const SelfTest = (() => {
           check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1))) === null);
         }
         eq('thinking settings clamp to their ranges', AI.setThinking({ worlds: 999, playoutSkill: -1 }), { worlds: 200, playoutSkill: 0 });
+        eq('table style default: bots', AI.STYLE_DEFAULTS, { realTable: false });
+        AI.setStyle({ realTable: true });
+        {
+          const st = revealState(11, 0, '9H');
+          const hand = ['KS', 'QS', 'JH', '9H', 'AC', 'QC', '10C', '7C', 'JD', '8D'];
+          const dv = Object.assign(buildView(st, 1), { phase: P.DISCARD, hand });
+          eq('real table: first discard pitches the lowest cards, Jacks stay', AI.decide(dv).cards.slice().sort(), ['7C', '8D', '9H']);
+          D(st, { type: 'FLIP' });
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          D(st, { type: 'BID', player: 1, accept: true });
+          D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
+          check('real table: AI decisions stay legal', ok1 && Engine.validate(st, AI.decide(buildView(st, 1))) === null);
+        }
       } finally {
         AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
         AI.setThinking(AI.THINKING_DEFAULTS);
+        AI.setStyle(AI.STYLE_DEFAULTS);
       }
     });
 
