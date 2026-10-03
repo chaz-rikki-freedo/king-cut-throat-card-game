@@ -1855,7 +1855,7 @@ const Render = (() => {
     const n = p => v.players[p].name;
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
-    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">Play again</button>';
+    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button>';
     if (ui.autoplay && isTurn(v, you)) return '';
     switch (v.phase) {
       case P.DISCARD:
@@ -2191,7 +2191,7 @@ const App = (() => {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
-      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">Play again</button></div></div>';
+      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button></div></div>';
     ov.hidden = false;
   }
 
@@ -2251,6 +2251,7 @@ const App = (() => {
         if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
+      case 'replay-seed': newGame(app.state.seed); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-debug': {
         const d = $('debugPanel'); d.hidden = !d.hidden;
