@@ -139,6 +139,16 @@ button.card{cursor:pointer}
 .gamelog li.h{color:var(--accent);font-weight:700}
 .gamelog li.s{color:#ff9ad5;font-weight:700}
 .gamelog li.w{color:var(--good);font-weight:800}
+.gamelog li.play{padding-left:2em}
+.gamelog .hl-trick{color:#c792ff;font-weight:700}
+.gamelog .hl-blocked{color:var(--gold);font-weight:700}
+.gamelog .hl-discard{color:#ff6b6b;font-weight:700}
+.gamelog .hl-deal{color:#ffa94d;font-weight:700}
+.gamelog .hl-pass{color:#69db7c;font-weight:700}
+.gamelog .hl-turn{color:#ff4fd8;font-weight:700}
+.gamelog .hl-joker{font-weight:800;animation:jokerBlink 1s steps(1) infinite}
+@keyframes jokerBlink{0%{color:#ffe066}50%{color:#c792ff}}
+@media (prefers-reduced-motion:reduce){.gamelog .hl-joker{animation:none;color:#ffe066}}
 .toasts{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
@@ -195,7 +205,7 @@ button.card{cursor:pointer}
     <section class="me" id="seat0"></section>
   </main>
   <aside class="logpanel">
-    <h2>Table log</h2>
+    <h2>Latest Scroll</h2>
     <ol class="gamelog" id="gameLog"></ol>
   </aside>
 </div>
@@ -2029,9 +2039,29 @@ const App = (() => {
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
+  /* Latest Scroll highlights: each phrase gets its own color (see .hl-* styles). */
+  const LOG_HIGHLIGHTS = [
+    [/\bwins? (?:Showdown )?trick\b/, 'hl-trick'],
+    [/\bis blocked\b/, 'hl-blocked'],
+    [/\bdiscards?\b/, 'hl-discard'],
+    [/\bdeals?\b/, 'hl-deal'],
+    [/\bpass(?:es)?\b/, 'hl-pass'],
+    [/\bgo(?:es)? to\b/, 'hl-pass'],
+    [/\bturns? up\b/, 'hl-turn'],
+    [/\bJoker\b/, 'hl-joker']
+  ];
+  const LOG_RE = new RegExp(LOG_HIGHLIGHTS.map(([re]) => '(' + re.source + ')').join('|'), 'g');
+  const escHTML = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function logHTML(text) {
+    return escHTML(text).replace(LOG_RE, (m, ...groups) => {
+      const i = groups.findIndex(g => g !== undefined);
+      return '<span class="' + LOG_HIGHLIGHTS[i][1] + '">' + m + '</span>';
+    });
+  }
+
   function addLog(text, cls) {
     const li = document.createElement('li');
-    li.textContent = Render.youText(text);
+    li.innerHTML = logHTML(Render.youText(text));
     if (cls) li.className = cls;
     const ol = $('gameLog');
     ol.appendChild(li);
@@ -2067,7 +2097,7 @@ const App = (() => {
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', ''); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED': if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', ''); break;
-      case 'CARD_PLAYED': addLog(n(e.player) + ' plays ' + R.shortName(e.card) + '.', ''); break;
+      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play'); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', ''); break;
       case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k'); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
