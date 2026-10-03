@@ -136,8 +136,14 @@ button.card{cursor:pointer}
 .gamelog{list-style:none;margin:0;padding:0;overflow:auto;font-size:13px;flex:1;max-height:60vh}
 .gamelog li{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .gamelog li.k{color:var(--gold);font-weight:700}
-.gamelog li.h{color:var(--accent);font-weight:700}
-.gamelog li.s{color:#ff9ad5;font-weight:700}
+.gamelog li.h,.gamelog li.s{font-weight:600}
+.gamelog .lead-h{color:var(--accent);font-weight:800}
+.gamelog .lead-s{color:#ff9ad5;font-weight:800}
+.gamelog .hl-sd{color:#ff9ad5;font-weight:700}
+.gamelog .hl-trump{color:var(--accent);font-weight:700}
+.gamelog .hl-loss{color:var(--danger);font-weight:800}
+.gamelog li.ind{padding-left:2em}
+.gamelog li.sd.ind{padding-left:6em}
 .gamelog li.w{color:var(--good);font-weight:800}
 .gamelog li.play{padding-left:2em}
 .gamelog .hl-trick{color:#c792ff;font-weight:700}
@@ -2053,12 +2059,18 @@ const App = (() => {
     [/\bpass(?:es)?\b/, 'hl-pass'],
     [/\bgo(?:es)? to\b/, 'hl-pass'],
     [/\bturns? up\b/, 'hl-turn'],
-    [/\bJoker\b/, 'hl-joker']
+    [/\bJoker\b/, 'hl-joker'],
+    [/\b(?:accepts?|names?) \w+ as trump\b/, 'hl-trump'],
+    [/\b(?:Showdown|SHOWDOWN!?|mediator)/, 'hl-sd']
   ];
   const LOG_RE = new RegExp(LOG_HIGHLIGHTS.map(([re]) => '(' + re.source + ')').join('|'), 'g');
   const escHTML = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  function logHTML(text) {
-    return escHTML(text).replace(LOG_RE, (m, ...groups) => {
+  function logHTML(text, cls) {
+    let html = escHTML(text);
+    /* Blue and pink lines: color only the lead label (or a leading −1), not the whole line. */
+    const lead = /\bh\b/.test(cls) ? 'lead-h' : /\bs\b/.test(cls) ? 'lead-s' : '';
+    if (lead) html = html.replace(/^(?:[^:!(]{1,24}[:!]|−\d+)/, m => '<span class="' + (m[0] === '−' ? 'hl-loss' : lead) + '">' + m + '</span>');
+    return html.replace(LOG_RE, (m, ...groups) => {
       const i = groups.findIndex(g => g !== undefined);
       return '<span class="' + LOG_HIGHLIGHTS[i][1] + '">' + m + '</span>';
     }).replace(/(10|[2-9JQKA])?([♠♣♥♦])/g, (m, rank, c) => '<span class="card-tag">' + (rank ? '<span class="rank">' + rank + '</span>' : '') + '<span class="' + (c === '♥' || c === '♦' ? 'pip-red' : 'pip-black') + '">' + c + '</span></span>');
@@ -2067,7 +2079,7 @@ const App = (() => {
   /* sd: a Showdown message, indented two steps. */
   function addLog(text, cls, sd) {
     const li = document.createElement('li');
-    li.innerHTML = logHTML(Render.youText(text));
+    li.innerHTML = logHTML(Render.youText(text), cls || '');
     const classes = (cls || '').split(' ').filter(Boolean);
     if (sd) classes.push('sd');
     if (classes.length) li.className = classes.join(' ');
@@ -2094,7 +2106,7 @@ const App = (() => {
     const n = p => st.players[p].name;
     switch (e.type) {
       case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h'); break;
-      case 'DISCARD': addLog(n(e.player) + ' discards 3 cards to the outside pile.', ''); break;
+      case 'DISCARD': addLog(n(e.player) + ' discards 3 cards to the outside pile.', 'ind'); break;
       case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', ''); break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', ''); break;
@@ -2102,7 +2114,7 @@ const App = (() => {
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', ''); break;
-      case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', ''); break;
+      case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED':
         if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', '', e.showdown);
@@ -2118,10 +2130,10 @@ const App = (() => {
           toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason], e.requested < 0 ? 'neg' : '');
         }
         break;
-      case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h'); break;
+      case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
       case 'SHOWDOWN_STARTED': addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's', true); toast('SHOWDOWN!', 'neg'); break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
-      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', '', true); break;
+      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', 'ind', true); break;
       case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true); break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
       case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w'); break;
