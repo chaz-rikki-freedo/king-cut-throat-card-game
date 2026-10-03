@@ -75,8 +75,9 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .trump-big .sym{font-size:calc(var(--cw-small)*.9);line-height:1.1;color:var(--ink)}
 .trump-big .sym.red{color:#ff6b6b}
 .trick{position:relative;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto;gap:6px 12px;align-items:center;justify-items:center;min-height:calc(var(--cw)*2.2);background:rgba(0,0,0,.14);border-radius:14px;padding:10px}
-.trick-label{grid-column:2;grid-row:1;font-size:12px;color:var(--muted);text-align:center;align-self:start}
-.slot{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);min-width:var(--cw)}
+.trick-label{grid-column:2;grid-row:1;font-size:12px;color:var(--muted);text-align:center;align-self:start;position:relative;z-index:1}
+.slot{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);min-width:var(--cw);position:relative;z-index:1}
+.flow{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px);pointer-events:none;z-index:0}
 .slot-1{grid-column:1;grid-row:1 / span 2}
 .slot-2{grid-column:3;grid-row:1 / span 2}
 .slot-0{grid-column:2;grid-row:2}
@@ -1663,6 +1664,33 @@ const Render = (() => {
     return parts.length ? '<div class="piles">' + parts.join('') + '</div>' : '';
   }
 
+  /* Play-flow medallion pressed into the felt: an outer ring, an inner circle, and 12 chevrons
+     between them pointing clockwise (the direction of play). The emboss filter draws only a
+     slightly darker body, a shadow on the upper-left inner edges and a highlight on the
+     lower-right inner edges, so the shape reads as pressed into the cloth. Built once. */
+  const FLOW_MEDALLION = (() => {
+    const c = 100, rad = d => d * Math.PI / 180, f = n => n.toFixed(2);
+    let chev = '';
+    for (let i = 0; i < 12; i++) {
+      const th = rad(i * 30), tx = -Math.sin(th), ty = Math.cos(th), nx = Math.cos(th), ny = Math.sin(th);
+      const ax = c + 70 * nx + 6 * tx, ay = c + 70 * ny + 6 * ty;
+      const e = sgn => [ax - 9 * tx + sgn * 9 * nx, ay - 9 * ty + sgn * 9 * ny];
+      const [x1, y1] = e(1), [x2, y2] = e(-1);
+      chev += '<path d="M' + f(x1) + ' ' + f(y1) + ' L' + f(ax) + ' ' + f(ay) + ' L' + f(x2) + ' ' + f(y2) + '"/>';
+    }
+    return '<svg class="flow" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' +
+      '<defs><filter id="kctEmboss" x="-5%" y="-5%" width="110%" height="110%">' +
+      '<feOffset in="SourceAlpha" dx="1.3" dy="1.3" result="dn"/><feComposite in="SourceAlpha" in2="dn" operator="out" result="tl"/>' +
+      '<feOffset in="SourceAlpha" dx="-1.3" dy="-1.3" result="up"/><feComposite in="SourceAlpha" in2="up" operator="out" result="br"/>' +
+      '<feFlood flood-color="#000" flood-opacity=".38"/><feComposite in2="tl" operator="in" result="shadow"/>' +
+      '<feFlood flood-color="#fff" flood-opacity=".10"/><feComposite in2="br" operator="in" result="light"/>' +
+      '<feFlood flood-color="#000" flood-opacity=".08"/><feComposite in2="SourceAlpha" operator="in" result="body"/>' +
+      '<feMerge><feMergeNode in="body"/><feMergeNode in="shadow"/><feMergeNode in="light"/></feMerge></filter></defs>' +
+      '<g filter="url(#kctEmboss)" fill="none" stroke="#000" stroke-linejoin="miter" stroke-linecap="butt">' +
+      '<circle cx="100" cy="100" r="92" stroke-width="7"/><circle cx="100" cy="100" r="47" stroke-width="4.5"/>' +
+      '<g stroke-width="6">' + chev + '</g></g></svg>';
+  })();
+
   function trickHTML(v, ctx) {
     const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
@@ -1672,7 +1700,7 @@ const Render = (() => {
     const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
     let label = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks;
     if (leadSuit) label += '<br>Led: ' + symHTML(leadSuit);
-    let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
+    let html = '<div class="trick">' + FLOW_MEDALLION + '<div class="trick-label">' + label + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
         html += '<div class="slot slot-' + p + '"><div class="who">' + v.players[p].name + ' · mediator</div></div>';
