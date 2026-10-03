@@ -1746,15 +1746,13 @@ const Render = (() => {
     };
     const head = ['Player', 'Tricks'];
     if (sd) head.push('SD tricks');
-    head.push('King pts');
     if (!opts.preShowdown) head.push(sd ? 'SD pts' : 'Hand pts');
-    head.push('Score');
+    head.push('King pts', 'Score');
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const c = [n(p) + role(p), hs.tricks[p]];
       if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
-      c.push(signed(st.pts[p].king));
       if (!opts.preShowdown) c.push(signed(sd ? st.pts[p].showdown : st.pts[p].hand));
-      c.push(v.scores[p]);
+      c.push(signed(st.pts[p].king), v.scores[p]);
       return '<tr><td>' + c.join('</td><td>') + '</td></tr>';
     }).join('');
     return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
