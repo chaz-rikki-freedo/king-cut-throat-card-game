@@ -37,13 +37,17 @@ h1,h2,h3,p{margin:0}
 .thinking i:nth-child(2){animation-delay:.2s}.thinking i:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
 .center{grid-column:1 / -1;display:flex;flex-direction:column;gap:var(--s2);background:var(--panel-strong);border-radius:12px;padding:var(--s3) var(--s4)}
-.logline{display:flex;align-items:center;gap:var(--s2);font-size:14px}
+.logline{font-size:14px}
 .logline .who{font-weight:700}
 .me{grid-column:1 / -1}
+.tag-btn{all:unset;cursor:pointer;display:inline-flex;border-radius:5px}
+.tag-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.as{font-size:13px;color:var(--muted)}
+.as b{color:var(--ink)}
 
 /* Figures: the transparent art itself, no frame. Board sizes stay small. */
 .av{flex:none;display:inline-block;background:center bottom/contain no-repeat}
-.av.board{width:30px;height:30px}.av.log{width:16px;height:16px}.av.big{width:132px;height:132px}
+.av.board{width:30px;height:30px}.av.big{width:132px;height:132px}
 .face{all:unset;cursor:pointer;display:inline-flex;border-radius:6px;line-height:0}
 .face:hover .av{transform:scale(1.08)}
 .face .av{transition:transform .12s}
@@ -75,7 +79,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="intro">
     <span class="eyebrow">King Cut-Throat · visual mockup</span>
     <h1>Bot opponents at the table</h1>
-    <p>Tap a bot's figure, in its seat or in the log, to open its profile.</p>
+    <p>Tap a bot's figure to open its profile. Tap your HUMAN tag to let a bot play your seat. That bot stays yours for the whole game.</p>
   </div>
 
   <div class="table" id="table"></div>
@@ -118,9 +122,9 @@ function render() {
     seatHTML(w, { score: 4, tricks: 2, dealer: true }) +
     seatHTML(e, { score: 6, tricks: 1, turn: true }) +
     `<div class="center"><span class="eyebrow">Latest scroll</span>
-      <div class="logline">${face(w, 'log')}<span><span class="who">${w.name}</span> ${w.quip}</span></div>
-      <div class="logline">${face(e, 'log')}<span><span class="who">${e.name}</span> ${e.quip}</span></div></div>` +
-    `<div class="seat me"><div class="seat-id"><span class="seat-name">You</span><span class="tag you">Human</span></div><div class="seat-meta"><span>Score <b>3</b> / 10</span><span>Tricks: <b>2</b></span></div></div>`;
+      <div class="logline"><span class="who">${w.name}</span> ${w.quip}</div>
+      <div class="logline"><span class="who">${e.name}</span> ${e.quip}</div></div>` +
+    meHTML();
 }
 const dlg = document.getElementById('profile');
 function openProfile(c) {
@@ -135,6 +139,25 @@ function openProfile(c) {
 document.getElementById('table').addEventListener('click', ev => { const b = ev.target.closest('.face'); if (b) openProfile(byId[b.dataset.id]); });
 document.getElementById('pClose').addEventListener('click', () => dlg.close());
 dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
-document.getElementById('deal').addEventListener('click', () => { seats = [order[next % 10], order[(next + 1) % 10]]; next += 2; render(); });
+/* Your seat: the HUMAN tag switches to AI. The first switch assigns a personality that is not at the table,
+   and it stays with your seat for the whole game, however often you switch back and forth. */
+let myBot = null, meIsBot = false;
+function meHTML() {
+  const b = meIsBot ? byId[myBot] : null;
+  return `<div class="seat me"><div class="seat-id">${b ? face(b, 'board') : ''}<span class="seat-name">You</span>` +
+    `<button class="tag-btn" type="button" id="meToggle" title="${b ? 'Take your seat back' : 'Let a bot play your seat'}"><span class="tag ${b ? 'ai' : 'you'}">${b ? 'AI' : 'Human'}</span></button>` +
+    `${b ? `<span class="as">playing as <b>${b.name}</b></span>` : ''}</div>` +
+    `<div class="seat-meta"><span>Score <b>3</b> / 10</span><span>Tricks: <b>2</b></span></div></div>`;
+}
+const free = () => order.filter(id => !seats.includes(id) && id !== myBot);
+document.getElementById('table').addEventListener('click', ev => {
+  if (!ev.target.closest('#meToggle')) return;
+  if (!myBot) { const f = free(); myBot = f[Math.floor(Math.random() * f.length)]; }
+  meIsBot = !meIsBot; render();
+});
+document.getElementById('deal').addEventListener('click', () => {
+  const pool = order.filter(id => id !== myBot);
+  seats = [pool[next % pool.length], pool[(next + 1) % pool.length]]; next += 2; render();
+});
 render();
 </script>
