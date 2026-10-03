@@ -1956,7 +1956,7 @@ const Render = (() => {
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat, ui.autoplay) +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
-      '<div class="actionbar">' + actionBarHTML(v, ui, ctx) + '</div>' + handHTML(v, ui);
+      '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
@@ -2760,6 +2760,7 @@ const SelfTest = (() => {
       check('summary table shows King pts and Hand pts', /King pts/.test(html) && /Hand pts/.test(html) && !/\/ 10/.test(html));
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
+      eq('You-grammar: "You wins." reads "You win."', Render.youText('Game over — You wins.'), 'Game over — You win.');
       eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
 
       const st = Engine.createGame(12); D(st, { type: 'START_GAME' });
