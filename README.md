@@ -9,7 +9,6 @@ Click **Debug** in the footer, or add `?debug=1` to the URL.
 | Control | What it does |
 |---|---|
 | **Logging** | Starts the timestamped event log (public information only). |
-| **AI plays my seat** | The AI plays for you, with only your seat's information. |
 | **Seed / Copy** | Shows the current game's seed and copies it. |
 | **Defaults** | Resets hunches, brain farts and all knowledge switches. |
 | **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
@@ -34,6 +33,10 @@ Each switch turns one kind of knowledge on or off for all bots. By default only 
 | **Reads bids** | treat bids as meaningless |
 | **Watches score** | play for points only. On, the bots watch the race to 10 more and more as the leading score passes 5 (6: 25%, 7: 50%, 8: 75%, 9: 100%). |
 | **Tracks upcard** | lose track of the turned card after the bidding |
+
+## AI plays your seat
+
+Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back.
 
 ## Replay a game
 

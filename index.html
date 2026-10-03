@@ -47,7 +47,8 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .seat-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .seat-name{font-weight:800;font-size:16px}
 .tag{font-size:11px;font-weight:700;letter-spacing:.05em;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.16);text-transform:uppercase}
-.tag.ai{background:#33507a}.tag.you{background:#7a5c13}
+.tag.ai{background:#33507a}
+.tag.seat-toggle{cursor:pointer;user-select:none}.tag.you{background:#7a5c13}
 .tag.dealer{background:#ece6d4;color:#222}.tag.caller{background:var(--gold);color:var(--gold-ink)}
 .tag.receiver{background:#5e7d5e}.tag.mediator{background:#8e5aa8}.tag.duelist{background:#c2185b}
 .score-row{display:flex;align-items:baseline;gap:10px}
@@ -252,7 +253,6 @@ button.card{cursor:pointer}
   </header>
   <div class="dbg-section dbg-row">
     <label><input type="checkbox" id="dbgEnable"> Logging</label>
-    <label><input type="checkbox" id="dbgAutoplay"> AI plays my seat</label>
   </div>
   <div class="dbg-section" id="dbgThinking">
     <strong>AI thinking</strong>
@@ -1632,9 +1632,11 @@ const Render = (() => {
   }
   const backHTML = () => '<div class="card back" aria-hidden="true"></div>';
 
-  function badges(v, p) {
+  /* auto: the AI is playing the human seat. The human seat's tag toggles it. */
+  function badges(v, p, auto) {
     const b = [];
-    b.push(v.players[p].human ? '<span class="tag you">Human</span>' : '<span class="tag ai">AI</span>');
+    if (v.players[p].human) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
+    else b.push('<span class="tag ai">AI</span>');
     if (v.dealer === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
     if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) b.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
@@ -1854,7 +1856,7 @@ const Render = (() => {
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
     if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">Play again</button>';
-    if (ui.autoplay && isTurn(v, you)) return '<div class="prompt">AI is playing your seat (debug autoplay).</div>';
+    if (ui.autoplay && isTurn(v, you)) return '';
     switch (v.phase) {
       case P.DISCARD:
         if (v.pendingDiscard[you]) return '<div class="prompt">Choose 3 cards to discard face-down to the outside pile (' + sel + '/3).</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 ? '' : ' disabled') + '>Discard 3</button>';
@@ -1952,7 +1954,7 @@ const Render = (() => {
 
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
-    me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat) +
+    me.innerHTML = '<div class="me-head"><span class="seat-name">' + v.players[v.seat].name + '</span>' + badges(v, v.seat, ui.autoplay) +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + actionBarHTML(v, ui, ctx) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
@@ -1977,7 +1979,7 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false, autoplayWanted: false },
+    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false },
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -2006,11 +2008,10 @@ const App = (() => {
     return res;
   }
 
-  /* "AI plays my seat" starts only when the debug panel is closed. Turning it off acts at once. */
-  function syncAutoplay() {
-    const on = app.ui.autoplayWanted && $('debugPanel').hidden;
-    if (on === app.ui.autoplay) return;
-    app.ui.autoplay = on;
+  /* Clicking the human seat's tag switches the AI on or off for that seat. */
+  function toggleAutoplay() {
+    app.ui.autoplay = !app.ui.autoplay;
+    app.ui.selected.clear();
     draw([]);
     schedule();
   }
@@ -2250,11 +2251,12 @@ const App = (() => {
         if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
+      case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-debug': {
         const d = $('debugPanel'); d.hidden = !d.hidden;
         /* Lines logged while the panel was closed are shown when it opens. */
         if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
-        syncAutoplay(); break;
+        break;
       }
       case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
@@ -2342,6 +2344,7 @@ const App = (() => {
     document.addEventListener('keydown', ev => {
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       if (ev.target && /^(BUTTON|SELECT|INPUT)$/.test(ev.target.tagName)) return;
+      if (ev.target && ev.target.classList && ev.target.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
       ev.preventDefault();
       if (app.timerFn) skip();
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
@@ -2356,7 +2359,6 @@ const App = (() => {
       /* A first line confirms that logging is on, even while the game waits for you. */
       if (dbg.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
     });
-    $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplayWanted = e.target.checked; syncAutoplay(); });
     $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
     $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
     $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('dbgSkill').value) / 100 }));
