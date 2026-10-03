@@ -1,29 +1,52 @@
 # King Cut-Throat
 
-A browser game in one file, `index.html`. Open it in a browser to play. This file covers the debug tools only.
+A browser game in one file, `index.html`. Open it in a browser to play. This file covers the settings panel only.
 
-## Debug panel
+## Settings panel
 
-Click **Debug** in the footer, or add `?debug=1` to the URL.
+Click **Settings** in the footer, or add `?settings=1` to the URL (this also turns on logging). The panel has four parts, from top to bottom.
 
-| Control | What it does |
+### Bots
+
+All bot settings apply to all bots and reset on reload. **Defaults** resets them all.
+
+| Setting | What it does |
 |---|---|
-| **Logging** | Starts the timestamped event log (public information only). |
-| **Seed / Copy** | Shows the current game's seed and copies it. |
-| **Defaults** | Resets hunches, brain farts, all knowledge switches and the table style. |
-| **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
-| **Clear** | At the bottom. Clears the log and the test results. |
+| **Skill** | Sets AI thinking and AI knowledge together. Shows **Custom** when you change them under Advanced. |
+| **Bid courage** | How readily the bots call trump in both bidding rounds. |
+| **Real table** | The bots play like a typical human table (see below). |
 
-### AI thinking
+Skill tiers, weakest first:
 
-Both settings apply to all bots, change how long the bots think, and reset on reload.
+| Tier | Hunches | Brain farts | Knowledge on |
+|---|---|---|---|
+| **Novice** | 3 | 60% | none |
+| **Casual** (default) | 10 | 30% | Watches score |
+| **Club player** | 20 | 10% | Spots voids, Remembers discards, Plans showdowns, Watches score |
+| **Shark** | 40 | 0% | all |
+
+Stronger tiers think longer before each move.
+
+Bid courage: **Timid**, **Cautious**, **Normal** (default), **Bold**. When a bot plans a bid, courage adds a fixed amount to the win chance of a call: −10%, −5%, 0, +5%. When a bot bids by rule (Real table, and the bots' model of the other seats), courage changes the hand value needed to call: +1.0, +0.5, 0, −0.4. In a test of 15 Casual games, the bots passed 72%, 64%, 61% and 48% of their bids.
+
+**Real table** (off by default):
+
+- The bots pass more in both bidding rounds. They need 0.5 more hand value before they call trump (added to bid courage), and they bid by this rule instead of planning the bid.
+- In the first discard, they pitch their lowest cards. Jacks and the Joker stay. On equal rank, the card from the shorter suit goes first.
+- When the bots read bids and play hands out in their heads, they expect the other seats to play the same way.
+
+On, the bots are weaker.
+
+### Advanced: AI thinking and knowledge
+
+Click the heading to open it.
+
+**AI thinking.** Both settings change how long the bots think.
 
 - **Hunches** (1–200, default 10): how many guesses about the hidden cards the bots make for each decision. Fewer hunches make them sloppier. More than 40 adds no measured strength.
 - **Brain farts** (0–100%, default 30%): how often the bots imagine a random card when they replay a hand in their heads. More brain farts make them judge moves less well. 0% is the strongest setting.
 
-### AI knowledge
-
-Each switch turns one kind of knowledge on or off for all bots. By default only **Watches score** is on. All on, with 40 hunches and 0% brain farts, is the strongest AI. The switches are listed by measured effect on bot strength, largest first.
+**AI knowledge.** Each switch turns one kind of knowledge on or off. All on, with 40 hunches and 0% brain farts (Shark), is the strongest AI. The switches are listed by measured effect on bot strength, largest first.
 
 | Switch | Off means the bots… |
 |---|---|
@@ -34,15 +57,14 @@ Each switch turns one kind of knowledge on or off for all bots. By default only 
 | **Watches score** | play for points only. On, the bots watch the race to 10 more and more as the leading score passes 5 (6: 25%, 7: 50%, 8: 75%, 9: 100%). |
 | **Tracks upcard** | lose track of the turned card after the bidding |
 
-### Table style
+### Tools
 
-**Real table** (off by default) makes the bots play more like a typical human table:
-
-- They pass more in both bidding rounds. They need 0.5 more hand value before they call trump, and they bid by this rule instead of planning the bid.
-- In the first discard, they pitch their lowest cards. Jacks and the Joker stay. On equal rank, the card from the shorter suit goes first.
-- When the bots read bids and play hands out in their heads, they expect the other seats to play the same way.
-
-On, the bots are weaker. **Defaults** turns the switch off.
+| Control | What it does |
+|---|---|
+| **Logging** | Starts the timestamped event log (public information only). |
+| **Seed / Copy** | Shows the current game's seed and copies it. |
+| **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
+| **Clear** | At the bottom. Clears the log and the test results. |
 
 ## AI plays your seat
 
@@ -54,13 +76,17 @@ The same seed gives the same deals: `index.html?seed=123456`. The panel shows th
 
 ## Console
 
+The panel controls do not update after these calls.
+
 ```js
 KCT.SelfTest.run({ games: 500 })            // tests, with 500 simulated games (default 40)
+KCT.AI.setSkillTier('shark')                // novice, casual, club or shark
+KCT.AI.setStyle({ courage: 'bold' })        // timid, cautious, normal or bold
+KCT.AI.setStyle({ realTable: true })        // real-table bots
 KCT.AI.setThinking({ worlds: 10, playoutSkill: 0.5 })
-KCT.AI.setKnowledge({ bids: false })        // the panel controls do not update
-KCT.AI.setStyle({ realTable: true })        // real-table bots; the panel checkbox does not update
+KCT.AI.setKnowledge({ bids: false })
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
 ```
 
-`KCT.App.app.state` holds every hand, so use it for debugging only.
+`KCT.App.app.state` holds every hand, so use it for testing only.
