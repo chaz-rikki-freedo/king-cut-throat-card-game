@@ -178,18 +178,41 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.settings{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.settings{--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--set-bg:#0b0f0c;--set-line:#2c4434;--set-field:#11201a;--set-hint:#8fb89a;position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:var(--set-bg);border:1px solid var(--set-line);border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6);font-size:14px;line-height:1.4}
 .settings[hidden]{display:none}
-.settings .set-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:14px;position:sticky;top:0;background:#0b0f0c;z-index:1}
-.settings .set-seed{display:inline-flex;gap:6px;align-items:center}
-.settings .set-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4}
-.settings .btn-sm{padding:3px 9px;font-size:12px}
-.settings .set-close{margin-left:auto;font-size:16px;font-weight:700;padding:9px 18px;min-height:44px}
-.settings .set-section{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
-.settings .set-row{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.settings .k-hint{color:#8fb89a;font-size:12px}
-.settings input[type=number]{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
-.settings .set-tests{padding:10px;border-bottom:1px solid #2c4434;font-size:13px}
+.settings .set-top{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);position:sticky;top:0;background:var(--set-bg);z-index:1}
+.settings .set-title{margin:0;font-size:17px;font-weight:800}
+.settings .set-close{margin-left:auto;font-size:15px;font-weight:700;padding:8px 16px;min-height:44px}
+.settings .set-section{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s5) var(--s4);border-bottom:1px solid var(--set-line)}
+.settings .set-head{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--set-hint)}
+.settings .set-sub{margin:0;font-size:14px;font-weight:700}
+.settings .set-fields{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--s3) var(--s4);align-items:center}
+.settings .set-fields > label{font-weight:600}
+.settings .set-fields > :nth-child(even){justify-self:start}
+.settings select,.settings input[type=number]{background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:6px;padding:6px 10px;min-height:36px;font:inherit}
+.settings input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--gold)}
+.settings input[type=range]{accent-color:var(--gold)}
+.settings label{display:inline-flex;gap:var(--s2);align-items:center}
+.settings .set-range{display:inline-flex;gap:var(--s3);align-items:center}
+.settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums}
+.settings .k-hint{margin:0;color:var(--set-hint);font-size:13px;line-height:1.45;max-width:60ch}
+.settings details.set-section{display:block}
+.settings summary{cursor:pointer;display:flex;align-items:center;gap:var(--s2);min-height:24px}
+.settings details[open] > summary{margin-bottom:var(--s5)}
+.settings summary::-webkit-details-marker{display:none}
+.settings summary::before{content:'▸';color:var(--set-hint);font-size:12px;transition:transform .15s}
+.settings details[open] > summary::before{transform:rotate(90deg)}
+.settings summary:focus-visible{outline:2px solid var(--gold);outline-offset:4px;border-radius:4px}
+.settings .set-group{display:flex;flex-direction:column;gap:var(--s3)}
+.settings .set-group + .set-group{margin-top:var(--s5);padding-top:var(--s5);border-top:1px dashed var(--set-line)}
+.settings .set-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--s2) var(--s4)}
+.settings .set-checks label{min-height:32px}
+.settings .set-actions{flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
+.settings .set-inline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5)}
+.settings .set-seed{display:inline-flex;gap:var(--s2);align-items:center}
+.settings .set-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;font-variant-numeric:tabular-nums}
+.settings .btn-sm{padding:4px 10px;font-size:12px}
+.settings .set-tests{padding:var(--s4);border-bottom:1px solid #2c4434;font-size:13px}
 .settings .set-tests .t-sum{font-size:15px;font-weight:800;margin-bottom:6px}
 .settings .set-tests .t-sum.ok{color:#9be59b}.settings .set-tests .t-sum.bad{color:#ff8a80}
 .settings .set-tests ul{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px}
@@ -197,14 +220,9 @@ button.card{cursor:pointer}
 .settings .set-tests .t-fail{margin:6px 0;padding:6px 8px;background:#2a1212;border-radius:6px}
 .settings .set-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
 .settings .set-tests .t-stats{color:#8fb89a}
-.settings .set-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
+.settings .set-bottom{display:flex;gap:var(--s3);padding:var(--s3) var(--s4);border-top:1px solid var(--set-line);position:sticky;bottom:0;background:var(--set-bg)}
 .settings pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
-.settings pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
-.settings label{display:inline-flex;gap:4px;align-items:center}
-.settings select{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
-.settings details.set-section{display:block}
-.settings summary{cursor:pointer;padding:2px 0}
-.settings .set-group{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px 0 4px 12px}
+.settings pre{margin:0;padding:var(--s3) var(--s4);overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -250,54 +268,67 @@ button.card{cursor:pointer}
 
 <div class="settings" id="settingsPanel" hidden>
   <header class="set-top">
-    <strong>Settings</strong>
+    <h2 class="set-title">Settings</h2>
     <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close the settings panel">✕ Close</button>
   </header>
-  <div class="set-section" id="setBots">
-    <strong>Bots</strong>
-    <label title="Sets AI thinking and AI knowledge together. Custom: you changed them under Advanced">Skill <select id="setTier">
-      <option value="novice">Novice</option>
-      <option value="casual">Casual</option>
-      <option value="club">Club player</option>
-      <option value="shark">Shark</option>
-      <option value="custom" disabled>Custom</option>
-    </select></label>
-    <label title="How readily the bots call trump in both bidding rounds">Bid courage <select id="setCourage">
-      <option value="timid">Timid</option>
-      <option value="cautious">Cautious</option>
-      <option value="normal">Normal</option>
-      <option value="bold">Bold</option>
-    </select></label>
-    <label title="Bots play like a typical human table: they pass more in both bidding rounds and pitch their lowest cards in the first discard"><input type="checkbox" id="setRealTable"> <span class="k-name">Real table</span></label>
-    <span class="k-hint">Defaults: Casual, Normal, Real table off. Stronger skill makes the bots think longer.</span>
-  </div>
+  <section class="set-section" id="setBots">
+    <h3 class="set-head">Bots</h3>
+    <div class="set-fields">
+      <label for="setTier" title="Sets AI thinking and AI knowledge together. Custom: you changed them under Advanced">Skill</label>
+      <select id="setTier">
+        <option value="novice">Novice</option>
+        <option value="casual">Casual</option>
+        <option value="club">Club player</option>
+        <option value="shark">Shark</option>
+        <option value="custom" disabled>Custom</option>
+      </select>
+      <label for="setCourage" title="How readily the bots call trump in both bidding rounds">Bid courage</label>
+      <select id="setCourage">
+        <option value="timid">Timid</option>
+        <option value="cautious">Cautious</option>
+        <option value="normal">Normal</option>
+        <option value="bold">Bold</option>
+      </select>
+      <label for="setRealTable">Real table</label>
+      <label title="Bots play like a typical human table: they pass more in both bidding rounds and pitch their lowest cards in the first discard"><input type="checkbox" id="setRealTable"> <span class="k-name">Human habits</span></label>
+    </div>
+    <p class="k-hint">Defaults: Casual, Normal, Real table off. Stronger skill makes the bots think longer.</p>
+  </section>
   <details class="set-section" id="setAdvanced">
-    <summary><strong>Advanced: AI thinking and knowledge</strong></summary>
+    <summary><h3 class="set-head">Advanced</h3></summary>
     <div class="set-group" id="setThinking">
-      <strong>AI thinking</strong>
-      <label title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches <input type="number" id="setWorlds" min="1" max="200" step="1" value="10" style="width:5em"> <span class="k-hint">per decision (default 10)</span></label>
-      <label title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts <input type="range" id="setSkill" min="0" max="100" step="10" value="30"> <output id="setSkillOut">30%</output></label>
-      <span class="k-hint">Both settings change how long the bots think.</span>
+      <h4 class="set-sub">AI thinking</h4>
+      <div class="set-fields">
+        <label for="setWorlds" title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches</label>
+        <span class="set-range"><input type="number" id="setWorlds" min="1" max="200" step="1" value="10" style="width:5.5em"> <span class="k-hint">per decision</span></span>
+        <label for="setSkill" title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts</label>
+        <span class="set-range"><input type="range" id="setSkill" min="0" max="100" step="10" value="30"> <output id="setSkillOut">30%</output></span>
+      </div>
+      <p class="k-hint">Defaults: 10 hunches, 30% brain farts. Both change how long the bots think.</p>
     </div>
     <div class="set-group" id="setKnowledge">
-      <strong>AI knowledge</strong>
-      <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
-      <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
-      <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
-      <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
-      <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
-      <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
+      <h4 class="set-sub">AI knowledge</h4>
+      <div class="set-checks">
+        <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
+        <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
+        <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
+        <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
+        <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
+        <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
+      </div>
     </div>
   </details>
-  <div class="set-section set-row">
+  <section class="set-section set-actions">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
-    <span class="k-hint">Resets all bot settings. A reload also resets them.</span>
-  </div>
-  <div class="set-section set-row" id="setTools">
-    <strong>Tools</strong>
-    <label><input type="checkbox" id="setEnable"> Logging</label>
-    <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
-  </div>
+    <p class="k-hint">Resets all bot settings. A reload also resets them.</p>
+  </section>
+  <section class="set-section" id="setTools">
+    <h3 class="set-head">Tools</h3>
+    <div class="set-inline">
+      <label><input type="checkbox" id="setEnable"> Logging</label>
+      <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
+    </div>
+  </section>
   <div class="set-tests" id="setTests" hidden></div>
   <pre id="setLog"></pre>
   <footer class="set-bottom">
