@@ -231,8 +231,8 @@ button.card{cursor:pointer}
   <div class="controls">
     <label class="sr" for="speedSel">Speed</label>
     <select id="speedSel" title="Game speed">
-      <option value="slow" selected>Slow</option>
-      <option value="normal">Normal</option>
+      <option value="slow">Slow</option>
+      <option value="normal" selected>Normal</option>
       <option value="fast">Fast</option>
       <option value="instant">Instant</option>
     </select>
@@ -1979,7 +1979,7 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false },
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false },
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -2008,12 +2008,11 @@ const App = (() => {
     return res;
   }
 
-  /* Sets the game speed, the Speed menu and the saved choice. */
+  /* Sets the game speed and the Speed menu. Each page load starts at Normal. */
   function setSpeed(value) {
     $('speedSel').value = value;
     if (app.ui.speed === value) return;
     app.ui.speed = value;
-    safe(() => localStorage.setItem('kct-speed', value));
     schedule();
   }
 
@@ -2361,8 +2360,7 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     const speed = $('speedSel');
-    const saved = safe(() => localStorage.getItem('kct-speed'));
-    if (saved && DELAYS[saved]) { app.ui.speed = saved; speed.value = saved; }
+    speed.value = app.ui.speed;
     speed.addEventListener('change', () => setSpeed(speed.value));
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => {
