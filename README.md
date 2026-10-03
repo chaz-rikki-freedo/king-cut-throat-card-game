@@ -17,12 +17,12 @@ Click **Debug** in the top bar, or add `?debug=1` to the URL.
 
 Both settings apply to all bots, change how long the bots think, and reset on reload.
 
-- **Hunches** (1–200, default 40): how many guesses about the hidden cards the bots make for each decision. Fewer hunches make them sloppier. More than 40 adds no measured strength.
-- **Brain farts** (0–100%, default 0%): how often the bots imagine a random card when they replay a hand in their heads. More brain farts make them judge moves less well.
+- **Hunches** (1–200, default 10): how many guesses about the hidden cards the bots make for each decision. Fewer hunches make them sloppier. More than 40 adds no measured strength.
+- **Brain farts** (0–100%, default 30%): how often the bots imagine a random card when they replay a hand in their heads. More brain farts make them judge moves less well. 0% is the strongest setting.
 
 ### AI knowledge
 
-Each switch turns off one kind of knowledge for all bots. All are on by default; **All on** restores them. They are listed by measured effect on bot strength, largest first.
+Each switch turns one kind of knowledge on or off for all bots. By default only **Watches score** is on; **Defaults** restores that. All on, with 40 hunches and 0% brain farts, is the strongest AI. The switches are listed by measured effect on bot strength, largest first.
 
 | Switch | Off means the bots… |
 |---|---|
@@ -30,7 +30,7 @@ Each switch turns off one kind of knowledge for all bots. All are on by default;
 | **Remembers discards** | forget the cards they put in the outside pile |
 | **Plans showdowns** | always try to take tricks |
 | **Reads bids** | treat bids as meaningless |
-| **Watches score** | play for points instead of the win |
+| **Watches score** | play for points only. On, the bots watch the race to 10 more and more as the leading score passes 5 (6: 25%, 7: 50%, 8: 75%, 9: 100%). |
 | **Tracks upcard** | lose track of the turned card after the bidding |
 
 ## Replay a game

@@ -164,8 +164,8 @@ button.card{cursor:pointer}
   <div class="controls">
     <label class="sr" for="speedSel">Speed</label>
     <select id="speedSel" title="Game speed">
-      <option value="slow">Slow</option>
-      <option value="normal" selected>Normal</option>
+      <option value="slow" selected>Slow</option>
+      <option value="normal">Normal</option>
       <option value="fast">Fast</option>
       <option value="instant">Instant</option>
     </select>
@@ -203,8 +203,8 @@ button.card{cursor:pointer}
   </header>
   <div class="dbg-knowledge" id="dbgThinking">
     <strong>AI thinking</strong>
-    <label title="How many guesses about the hidden cards the bots make for each decision. Default 40.">Hunches <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="40" style="width:5em"> <span class="k-hint">per decision (default 40)</span></label>
-    <label title="How often the bots imagine a random card when they replay a hand in their heads. 0% is the normal AI.">Brain farts <input type="range" id="dbgSkill" min="0" max="100" step="10" value="0"> <output id="dbgSkillOut">0%</output></label>
+    <label title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="10" style="width:5em"> <span class="k-hint">per decision (default 10)</span></label>
+    <label title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts <input type="range" id="dbgSkill" min="0" max="100" step="10" value="30"> <output id="dbgSkillOut">30%</output></label>
     <span class="k-hint">Both settings change how long the bots think. Not saved: a reload resets them.</span>
     <button class="btn" type="button" data-action="thinking-reset">Defaults</button>
   </div>
@@ -214,9 +214,9 @@ button.card{cursor:pointer}
     <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
     <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
     <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
-    <label title="Play for the chance to win the game. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
+    <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
     <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
-    <button class="btn" type="button" data-action="knowledge-reset">All on</button>
+    <button class="btn" type="button" data-action="knowledge-reset">Defaults</button>
   </div>
   <pre id="dbgLog"></pre>
 </div>
@@ -1001,7 +1001,8 @@ const AI = (() => {
        Fewer worlds give noisier guesses; more worlds than the default add no measured strength.
      playoutSkill: chance (0..1) that each card in a play-out follows the play-out policy;
        otherwise the card is a random legal card. Lower values make the AI judge moves less well. */
-  const THINKING_DEFAULTS = Object.freeze({ worlds: SAMPLES.play, playoutSkill: 1 });
+  const THINKING_DEFAULTS = Object.freeze({ worlds: 10, playoutSkill: 0.7 });
+  const THINKING_FULL = Object.freeze({ worlds: SAMPLES.play, playoutSkill: 1 });
   const thinking = Object.assign({}, THINKING_DEFAULTS);
   function setThinking(t) {
     if (typeof t.worlds === 'number' && isFinite(t.worlds)) thinking.worlds = Math.min(200, Math.max(1, Math.round(t.worlds)));
@@ -1009,16 +1010,17 @@ const AI = (() => {
     return Object.assign({}, thinking);
   }
   const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
-  /* Knowledge switches, for testing what each kind of board knowledge is worth. All on is the
-     normal AI. Off means the AI acts as if it did not have that knowledge. */
+  /* Knowledge switches. Off means the AI acts as if it did not have that knowledge.
+     The defaults give a friendlier table: only score watching is on. */
   const KNOWLEDGE_DEFAULTS = Object.freeze({
-    bids: true,          /* read each player's bids as evidence about their hand */
-    turnedCard: true,    /* track where the turned card went after the bidding */
-    ownDiscards: true,   /* remember which cards it put in the outside pile */
-    voids: true,         /* use the voids that players showed */
-    scoreAware: true,    /* play for the chance to win the game (off: play for points) */
-    showdownPlans: true  /* also test the duck and balance plans (off: greedy only) */
+    bids: false,          /* read each player's bids as evidence about their hand */
+    turnedCard: false,    /* track where the turned card went after the bidding */
+    ownDiscards: false,   /* remember which cards it put in the outside pile */
+    voids: false,         /* use the voids that players showed */
+    scoreAware: true,     /* watch the race to 10 as the leading score passes 5 (off: points only) */
+    showdownPlans: false  /* also test the duck and balance plans (off: greedy only) */
   });
+  const KNOWLEDGE_ALL_ON = Object.freeze({ bids: true, turnedCard: true, ownDiscards: true, voids: true, scoreAware: true, showdownPlans: true });
   const knowledge = Object.assign({}, KNOWLEDGE_DEFAULTS);
   function setKnowledge(k) {
     for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
@@ -1088,14 +1090,23 @@ const AI = (() => {
     if (!winTable) winTable = buildWinTable();
     return winTable[tableIndex(scores[0], scores[1], scores[2]) + me];
   }
-  function outcome(s, me) {
-    if (!knowledge.scoreAware) {
-      /* Points only: own points minus the opponents' average, with no idea of the race to 10. */
-      const others = s.scores.reduce((t, x) => t + x, 0) - s.scores[me];
-      return s.scores[me] - others / 2;
-    }
-    if (s.gameOver) return s.winner === me ? 1 : 0;
-    return winChance(s.scores, me);
+  /* Value of a play-out's end for seat me, given the scores when the AI decided (base).
+     Points view: the same score changes applied to a neutral, early-game position, so the
+     race to 10 plays no part. Race view: the real chance to win the game from the new scores.
+     With score watching on, the race view counts more as the leading score passes 5:
+     6 -> 25%, 7 -> 50%, 8 -> 75%, 9 -> 100%. With it off, only the points view counts. */
+  const NEUTRAL_BASE = 2;
+  function scoreWatch(base) {
+    if (!knowledge.scoreAware) return 0;
+    return Math.min(1, Math.max(0, (Math.max(base[0], base[1], base[2]) - 5) / 4));
+  }
+  function outcome(s, me, base) {
+    const w = scoreWatch(base);
+    const neutral = s.scores.map((x, i) => Math.min(WIN - 1, Math.max(0, NEUTRAL_BASE + x - base[i])));
+    const pointsView = winChance(neutral, me);
+    if (w === 0) return pointsView;
+    const raceView = s.gameOver ? (s.winner === me ? 1 : 0) : winChance(s.scores, me);
+    return (1 - w) * pointsView + w * raceView;
   }
 
   /* ---- Heuristic card values (pruning and play-out policy) ---- */
@@ -1461,7 +1472,7 @@ const AI = (() => {
           const r = Engine.dispatch(s, toAction(cand));
           if (!r.ok) throw new Error('Candidate rejected: ' + r.error);
           playOut(s);
-          total += outcome(s, view.seat);
+          total += outcome(s, view.seat, view.scores);
         }
         const v = total / worlds.length;
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
@@ -1511,7 +1522,7 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, setKnowledge, thinking, THINKING_DEFAULTS, setThinking });
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1837,7 +1848,7 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false },
+    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false },
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -2263,6 +2274,9 @@ const SelfTest = (() => {
     /* --- Trick scoring --- */
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
     safeRun('ai knowledge', () => {
+      /* These checks test each kind of knowledge with all the others on. */
+      AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
+      AI.setThinking(AI.THINKING_FULL);
       const worldsOf = (st, seat, n) => AI.sampleWorlds(buildView(st, seat), n || 30, { s: 99 });
       const s = revealState(5, 0, '9H');
       D(s, { type: 'FLIP' });
@@ -2306,7 +2320,12 @@ const SelfTest = (() => {
 
       /* Knowledge switches: each one changes the worlds as expected, and decisions stay legal. */
       try {
-        eq('all knowledge switches are on by default', Object.values(AI.knowledge).every(Boolean), true);
+        eq('knowledge defaults: only score watching is on', AI.KNOWLEDGE_DEFAULTS, { bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: true, showdownPlans: false });
+        eq('thinking defaults: 10 hunches, 30% brain farts', AI.THINKING_DEFAULTS, { worlds: 10, playoutSkill: 0.7 });
+        eq('score watching ramps from 6 to 9 points', [[5, 3, 2], [6, 0, 0], [0, 7, 1], [2, 4, 8], [0, 0, 9]].map(AI.scoreWatch), [0, 0.25, 0.5, 0.75, 1]);
+        AI.setKnowledge({ scoreAware: false });
+        eq('score watching off: no race weight', AI.scoreWatch([0, 0, 9]), 0);
+        AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
         AI.setKnowledge({ turnedCard: false });
         check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40).some(w => !w.hands[2].includes('9H')));
         AI.setKnowledge({ turnedCard: true, ownDiscards: false });
@@ -2315,7 +2334,7 @@ const SelfTest = (() => {
         check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
         AI.setKnowledge({ ownDiscards: true, voids: false });
         check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
-        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+        AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
         for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) {
           AI.setKnowledge({ [key]: false });
           const st = revealState(9, 0, '9H');
@@ -2325,7 +2344,7 @@ const SelfTest = (() => {
           D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
           const ok2 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
           check('switch ' + key + ' off: AI decisions stay legal', ok1 && ok2);
-          AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
+          AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
         }
         for (const t of [{ worlds: 1, playoutSkill: 0 }, { worlds: 80, playoutSkill: 0.5 }]) {
           AI.setThinking(t);
