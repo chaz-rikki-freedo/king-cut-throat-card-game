@@ -178,29 +178,33 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
-.debug[hidden]{display:none}
-.debug .dbg-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:14px;position:sticky;top:0;background:#0b0f0c;z-index:1}
-.debug .dbg-seed{display:inline-flex;gap:6px;align-items:center}
-.debug .dbg-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4}
-.debug .btn-sm{padding:3px 9px;font-size:12px}
-.debug .dbg-close{margin-left:auto;font-size:16px;font-weight:700;padding:9px 18px;min-height:44px}
-.debug .dbg-section{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
-.debug .dbg-row{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.debug .k-hint{color:#8fb89a;font-size:12px}
-.debug input[type=number]{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
-.debug .dbg-tests{padding:10px;border-bottom:1px solid #2c4434;font-size:13px}
-.debug .dbg-tests .t-sum{font-size:15px;font-weight:800;margin-bottom:6px}
-.debug .dbg-tests .t-sum.ok{color:#9be59b}.debug .dbg-tests .t-sum.bad{color:#ff8a80}
-.debug .dbg-tests ul{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px}
-.debug .dbg-tests li.bad{color:#ff8a80;font-weight:700}
-.debug .dbg-tests .t-fail{margin:6px 0;padding:6px 8px;background:#2a1212;border-radius:6px}
-.debug .dbg-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
-.debug .dbg-tests .t-stats{color:#8fb89a}
-.debug .dbg-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
-.debug pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
-.debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
-.debug label{display:inline-flex;gap:4px;align-items:center}
+.settings{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.settings[hidden]{display:none}
+.settings .set-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:14px;position:sticky;top:0;background:#0b0f0c;z-index:1}
+.settings .set-seed{display:inline-flex;gap:6px;align-items:center}
+.settings .set-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4}
+.settings .btn-sm{padding:3px 9px;font-size:12px}
+.settings .set-close{margin-left:auto;font-size:16px;font-weight:700;padding:9px 18px;min-height:44px}
+.settings .set-section{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
+.settings .set-row{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.settings .k-hint{color:#8fb89a;font-size:12px}
+.settings input[type=number]{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
+.settings .set-tests{padding:10px;border-bottom:1px solid #2c4434;font-size:13px}
+.settings .set-tests .t-sum{font-size:15px;font-weight:800;margin-bottom:6px}
+.settings .set-tests .t-sum.ok{color:#9be59b}.settings .set-tests .t-sum.bad{color:#ff8a80}
+.settings .set-tests ul{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px}
+.settings .set-tests li.bad{color:#ff8a80;font-weight:700}
+.settings .set-tests .t-fail{margin:6px 0;padding:6px 8px;background:#2a1212;border-radius:6px}
+.settings .set-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
+.settings .set-tests .t-stats{color:#8fb89a}
+.settings .set-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
+.settings pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
+.settings pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
+.settings label{display:inline-flex;gap:4px;align-items:center}
+.settings select{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
+.settings details.set-section{display:block}
+.settings summary{cursor:pointer;padding:2px 0}
+.settings .set-group{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px 0 4px 12px}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -237,44 +241,66 @@ button.card{cursor:pointer}
     </select>
     <button class="btn" type="button" data-action="rules">Rules</button>
     <button class="btn" type="button" data-action="new-game">New game</button>
-    <button class="btn" type="button" data-action="toggle-debug">Debug</button>
+    <button class="btn" type="button" data-action="toggle-settings">Settings</button>
   </div>
 </footer>
 
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
 
-<div class="debug" id="debugPanel" hidden>
-  <header class="dbg-top">
-    <strong>Debug</strong>
-    <span class="dbg-seed">Seed <code id="dbgSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="dbgCopied" aria-live="polite"></span></span>
-    <button class="btn dbg-close" type="button" data-action="toggle-debug" aria-label="Close the debug panel">✕ Close</button>
+<div class="settings" id="settingsPanel" hidden>
+  <header class="set-top">
+    <strong>Settings</strong>
+    <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close the settings panel">✕ Close</button>
   </header>
-  <div class="dbg-section dbg-row">
-    <label><input type="checkbox" id="dbgEnable"> Logging</label>
+  <div class="set-section" id="setBots">
+    <strong>Bots</strong>
+    <label title="Sets AI thinking and AI knowledge together. Custom: you changed them under Advanced">Skill <select id="setTier">
+      <option value="novice">Novice</option>
+      <option value="casual">Casual</option>
+      <option value="club">Club player</option>
+      <option value="shark">Shark</option>
+      <option value="custom" disabled>Custom</option>
+    </select></label>
+    <label title="How readily the bots call trump in both bidding rounds">Bid courage <select id="setCourage">
+      <option value="timid">Timid</option>
+      <option value="cautious">Cautious</option>
+      <option value="normal">Normal</option>
+      <option value="bold">Bold</option>
+    </select></label>
+    <label title="Bots play like a typical human table: they pass more in both bidding rounds and pitch their lowest cards in the first discard"><input type="checkbox" id="setRealTable"> <span class="k-name">Real table</span></label>
+    <span class="k-hint">Defaults: Casual, Normal, Real table off. Stronger skill makes the bots think longer.</span>
   </div>
-  <div class="dbg-section" id="dbgThinking">
-    <strong>AI thinking</strong>
-    <label title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="10" style="width:5em"> <span class="k-hint">per decision (default 10)</span></label>
-    <label title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts <input type="range" id="dbgSkill" min="0" max="100" step="10" value="30"> <output id="dbgSkillOut">30%</output></label>
-    <span class="k-hint">Both settings change how long the bots think.</span>
-  </div>
-  <div class="dbg-section" id="dbgKnowledge">
-    <strong>AI knowledge</strong>
-    <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
-    <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
-    <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
-    <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
-    <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
-    <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
-  </div>
-  <div class="dbg-section dbg-row">
+  <details class="set-section" id="setAdvanced">
+    <summary><strong>Advanced: AI thinking and knowledge</strong></summary>
+    <div class="set-group" id="setThinking">
+      <strong>AI thinking</strong>
+      <label title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches <input type="number" id="setWorlds" min="1" max="200" step="1" value="10" style="width:5em"> <span class="k-hint">per decision (default 10)</span></label>
+      <label title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts <input type="range" id="setSkill" min="0" max="100" step="10" value="30"> <output id="setSkillOut">30%</output></label>
+      <span class="k-hint">Both settings change how long the bots think.</span>
+    </div>
+    <div class="set-group" id="setKnowledge">
+      <strong>AI knowledge</strong>
+      <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
+      <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
+      <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
+      <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
+      <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
+      <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
+    </div>
+  </details>
+  <div class="set-section set-row">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
-    <span class="k-hint">Resets hunches, brain farts and all switches. A reload also resets them.</span>
+    <span class="k-hint">Resets all bot settings. A reload also resets them.</span>
   </div>
-  <div class="dbg-tests" id="dbgTests" hidden></div>
-  <pre id="dbgLog"></pre>
-  <footer class="dbg-bottom">
+  <div class="set-section set-row" id="setTools">
+    <strong>Tools</strong>
+    <label><input type="checkbox" id="setEnable"> Logging</label>
+    <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
+  </div>
+  <div class="set-tests" id="setTests" hidden></div>
+  <pre id="setLog"></pre>
+  <footer class="set-bottom">
     <button class="btn" type="button" data-action="run-tests">Run self-tests</button>
     <button class="btn" type="button" data-action="clear-log">Clear</button>
   </footer>
@@ -1068,7 +1094,7 @@ const AI = (() => {
   /* Worlds per decision, and candidates kept after heuristic pruning. */
   const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
   const CANDIDATES = { discard: 6, exchange: 6 };
-  /* Thinking settings (debug panel).
+  /* Thinking settings (settings panel).
      worlds: guessed deals per card decision; the other world counts scale with it (minimum 1).
        Fewer worlds give noisier guesses; more worlds than the default add no measured strength.
      playoutSkill: chance (0..1) that each card in a play-out follows the play-out policy;
@@ -1098,6 +1124,50 @@ const AI = (() => {
     for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
     return Object.assign({}, knowledge);
   }
+  /* Skill tiers (settings panel): named sets of thinking and knowledge settings. */
+  const SKILL_TIERS = Object.freeze({
+    novice: Object.freeze({ thinking: { worlds: 3, playoutSkill: 0.4 }, knowledge: { bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false } }),
+    casual: Object.freeze({ thinking: THINKING_DEFAULTS, knowledge: KNOWLEDGE_DEFAULTS }),
+    club: Object.freeze({ thinking: { worlds: 20, playoutSkill: 0.9 }, knowledge: { bids: false, turnedCard: false, ownDiscards: true, voids: true, scoreAware: true, showdownPlans: true } }),
+    shark: Object.freeze({ thinking: THINKING_FULL, knowledge: KNOWLEDGE_ALL_ON })
+  });
+  function setSkillTier(name) {
+    const tier = SKILL_TIERS[name];
+    if (!tier) return skillTier();
+    setThinking(tier.thinking);
+    setKnowledge(tier.knowledge);
+    return name;
+  }
+  /* The tier that matches the current settings, or 'custom'. */
+  function skillTier() {
+    const same = (a, b) => Object.keys(b).every(k => a[k] === b[k]);
+    for (const name of Object.keys(SKILL_TIERS)) {
+      const tier = SKILL_TIERS[name];
+      if (same(thinking, tier.thinking) && same(knowledge, tier.knowledge)) return name;
+    }
+    return 'custom';
+  }
+  /* Bid courage (settings panel): how readily the bots call trump.
+     offset: extra hand value that rule-based bids need (play-outs, bid reading, real table).
+     bias: win chance added to a call when the bot plans its bid. */
+  const COURAGE = Object.freeze({
+    timid: Object.freeze({ offset: 1.0, bias: -0.1 }),
+    cautious: Object.freeze({ offset: 0.5, bias: -0.05 }),
+    normal: Object.freeze({ offset: 0, bias: 0 }),
+    bold: Object.freeze({ offset: -0.4, bias: 0.05 })
+  });
+  /* Table style (settings panel). Real table: the bots play like a typical human table.
+     They pass more in both bidding rounds and pitch their lowest cards in the first discard. */
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal' });
+  const style = Object.assign({}, STYLE_DEFAULTS);
+  function setStyle(t) {
+    if (typeof t.realTable === 'boolean') style.realTable = t.realTable;
+    if (Object.prototype.hasOwnProperty.call(COURAGE, t.courage)) style.courage = t.courage;
+    return Object.assign({}, style);
+  }
+  /* Extra hand value that a real-table bot needs before it calls trump. */
+  const REAL_TABLE_BID_BUMP = 0.5;
+  const bidLimit = key => TH[key] + (style.realTable ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -1247,6 +1317,13 @@ const AI = (() => {
   function dropLowest(hand, k, trump) {
     return hand.slice().sort((a, b) => (cardKeep(a, trump) - cardKeep(b, trump)) || (R.getCardStrength(a, trump) - R.getCardStrength(b, trump))).slice(0, k);
   }
+  /* Real-table first discard: the lowest cards go first. Jacks (possible Bowers) and the Joker stay.
+     On equal rank, the card from the shorter suit goes first. */
+  function pitchLowest(hand, k) {
+    const keep = id => { const c = R.card(id); return c.isJoker ? 99 : c.rank === 'J' ? 15 : R.RANK_VALUE[c.rank]; };
+    const len = id => hand.filter(x => R.card(x).suit === R.card(id).suit).length;
+    return hand.slice().sort((a, b) => (keep(a) - keep(b)) || (len(a) - len(b))).slice(0, k);
+  }
   /* Ranked candidate discards of size k, best first. */
   function rankedDiscards(hand, k, evalRest, trump) {
     return combos(hand, k).map(combo => {
@@ -1341,11 +1418,11 @@ const AI = (() => {
   }
   function fastAction(s, p) {
     switch (s.phase) {
-      case P.DISCARD: return { type: 'DISCARD', player: p, cards: dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
-      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= TH.ROUND1 };
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
+      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= bidLimit('ROUND1') };
       case P.BID2: {
         const b = bestSuit(s.hands[p], R.card(s.flippedId).suit);
-        return { type: 'NAME', player: p, suit: b.value >= (p === s.dealer ? TH.ROUND2_LAST : TH.ROUND2) ? b.suit : null };
+        return { type: 'NAME', player: p, suit: b.value >= bidLimit(p === s.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
       }
       case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
       case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: dropLowest(s.hands[p], 1, s.trump)[0] };
@@ -1456,12 +1533,12 @@ const AI = (() => {
       }
       let f;
       if (b.round === 1) {
-        const pa = sigmoid((round1Value(hand, view.flipped) - TH.ROUND1) / T);
+        const pa = sigmoid((round1Value(hand, view.flipped) - bidLimit('ROUND1')) / T);
         f = b.action === 'accept' ? pa : 1 - pa;
       } else {
         const blocked = R.card(view.flipped).suit;
         const best = bestSuit(hand, blocked);
-        const pc = sigmoid((best.value - (o === view.dealer ? TH.ROUND2_LAST : TH.ROUND2)) / T);
+        const pc = sigmoid((best.value - bidLimit(o === view.dealer ? 'ROUND2_LAST' : 'ROUND2')) / T);
         if (b.action === 'pass') f = 1 - pc;
         else {
           const suits = R.SUITS.filter(x => x !== blocked);
@@ -1529,7 +1606,8 @@ const AI = (() => {
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
   const activePlans = () => (knowledge.showdownPlans ? PLANS : ['greedy']);
-  function plan(view, candidates, toAction, n) {
+  /* bonus (optional): a fixed amount added to a candidate's value, such as bid courage. */
+  function plan(view, candidates, toAction, n, bonus) {
     if (candidates.length === 1) return candidates[0];
     const rng = rngFor(view);
     const worlds = sampleWorlds(view, Math.max(1, Math.round(n * thinking.worlds / SAMPLES.play)), rng);
@@ -1546,7 +1624,7 @@ const AI = (() => {
           playOut(s);
           total += outcome(s, view.seat, view.scores);
         }
-        const v = total / worlds.length;
+        const v = total / worlds.length + (bonus ? bonus(cand) : 0);
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
       }
     }
@@ -1557,18 +1635,26 @@ const AI = (() => {
     const me = view.seat, trump = view.trump;
     switch (view.phase) {
       case P.DISCARD: {
+        if (style.realTable) return fastAction({ phase: P.DISCARD, hands: { [me]: view.hand } }, me);
         const cands = rankedDiscards(view.hand, 3, flexibleValue, null).slice(0, CANDIDATES.discard);
         return { type: 'DISCARD', player: me, cards: plan(view, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
       }
       case P.BID1: {
-        const h = round1Value(view.hand, view.flipped) >= TH.ROUND1;
-        const accept = plan(view, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid);
+        const h = round1Value(view.hand, view.flipped) >= bidLimit('ROUND1');
+        if (style.realTable) return { type: 'BID', player: me, accept: h };
+        const bias = COURAGE[style.courage].bias;
+        const accept = plan(view, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid, a => (a ? bias : 0));
         return { type: 'BID', player: me, accept };
       }
       case P.BID2: {
         const blocked = R.card(view.flipped).suit;
+        if (style.realTable) {
+          const b = bestSuit(view.hand, blocked);
+          return { type: 'NAME', player: me, suit: b.value >= bidLimit(me === view.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
+        }
         const suits = R.SUITS.filter(s => s !== blocked).sort((a, b) => handValue(view.hand, b) - handValue(view.hand, a));
-        const suit = plan(view, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid);
+        const bias = COURAGE[style.courage].bias;
+        const suit = plan(view, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid, x => (x ? bias : 0));
         return { type: 'NAME', player: me, suit };
       }
       case P.EXCHANGE: {
@@ -1588,13 +1674,13 @@ const AI = (() => {
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  /* Play-outs run the real Engine; keep them out of the debug log. */
+  /* Play-outs run the real Engine; keep them out of the event log. */
   function decide(view) {
     const was = Logger.enabled;
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
+  return Object.freeze({ decide, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, style, STYLE_DEFAULTS, setStyle, COURAGE, SKILL_TIERS, setSkillTier, skillTier, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1991,8 +2077,8 @@ const App = (() => {
     app.ui.selected.clear();
     $('gameLog').innerHTML = '';
     $('overlay').hidden = true;
-    const dbgSeed = $('dbgSeed');
-    if (dbgSeed) dbgSeed.textContent = String(s);
+    const setSeed = $('setSeed');
+    if (setSeed) setSeed.textContent = String(s);
     addLog('New game (seed ' + s + ').', '');
     act({ type: 'START_GAME' });
   }
@@ -2262,18 +2348,18 @@ const App = (() => {
       case 'new-game-now': newGame(); break;
       case 'replay-seed': newGame(app.state.seed); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
-      case 'toggle-debug': {
-        const d = $('debugPanel'); d.hidden = !d.hidden;
+      case 'toggle-settings': {
+        const d = $('settingsPanel'); d.hidden = !d.hidden;
         /* Lines logged while the panel was closed are shown when it opens. */
-        if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
+        if (!d.hidden) { const pre = $('setLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
         break;
       }
-      case 'clear-log': setSpeed('normal'); Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
-      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
+      case 'clear-log': setSpeed('normal'); Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
+      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         setSpeed('normal');
-        const box = $('dbgTests');
+        const box = $('setTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
         setTimeout(() => showTests(SelfTest.run()), 30);
@@ -2284,19 +2370,40 @@ const App = (() => {
   }
 
   /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
+  function syncKnowledge() {
+    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
+    syncTier();
+  }
   function setKnowledge(k) {
     const now = AI.setKnowledge(k);
-    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = now[box.getAttribute('data-knowledge')];
+    syncKnowledge();
     Logger.log('AI_KNOWLEDGE', now);
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
   }
 
-  /* Debug panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
+  /* Table style switch: change the AI, keep the checkbox in step, and log the change. */
+  function setStyle(t) {
+    const now = AI.setStyle(t);
+    $('setRealTable').checked = now.realTable;
+    $('setCourage').value = now.courage;
+    Logger.log('AI_STYLE', now);
+    addLog('Bot style: bid courage ' + $('setCourage').selectedOptions[0].textContent + ', real table ' + (now.realTable ? 'on' : 'off') + '.', 'h');
+  }
+  /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
+  function setSkillTier(name) {
+    AI.setSkillTier(name);
+    syncThinking(); syncKnowledge();
+    Logger.log('AI_SKILL', { tier: AI.skillTier() });
+    addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
+  }
+  function syncTier() { $('setTier').value = AI.skillTier(); }
+
+  /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
   function copySeed() {
     const seed = String(app.state.seed);
-    const done = ok => { $('dbgCopied').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('dbgCopied').textContent = ''; }, 1500); };
+    const done = ok => { $('setCopied').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('setCopied').textContent = ''; }, 1500); };
     const fallback = () => {
       const t = document.createElement('textarea');
       t.value = seed; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
@@ -2308,7 +2415,7 @@ const App = (() => {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(() => done(true), fallback);
     else fallback();
   }
-  /* Debug panel: self-test results as a summary, one line per area, and any failures. */
+  /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games'
@@ -2330,16 +2437,21 @@ const App = (() => {
     const st = res.stats;
     const n = x => Number(x).toLocaleString('en-US');
     if (st) html += '<div class="t-stats">Simulated ' + n(st.games) + ' games: ' + n(st.hands) + ' hands, ' + n(st.showdowns) + ' Showdowns, ' + n(st.kingPts) + ' King points. Every one of ' + n(st.illegalRejected) + ' illegal plays was refused.</div>';
-    $('dbgTests').innerHTML = html;
+    $('setTests').innerHTML = html;
   }
 
   /* AI thinking settings: change the AI, keep the controls in step, and log the change. */
+  function syncThinking() {
+    $('setWorlds').value = AI.thinking.worlds;
+    const farts = Math.round((1 - AI.thinking.playoutSkill) * 100);
+    $('setSkill').value = farts;
+    $('setSkillOut').textContent = farts + '%';
+    syncTier();
+  }
   function setThinking(t) {
     const now = AI.setThinking(t);
-    $('dbgWorlds').value = now.worlds;
+    syncThinking();
     const farts = Math.round((1 - now.playoutSkill) * 100);
-    $('dbgSkill').value = farts;
-    $('dbgSkillOut').textContent = farts + '%';
     Logger.log('AI_THINKING', now);
     addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
   }
@@ -2363,22 +2475,28 @@ const App = (() => {
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     speed.addEventListener('change', () => setSpeed(speed.value));
-    const dbg = $('dbgEnable');
-    dbg.addEventListener('change', () => {
-      Logger.enabled = dbg.checked;
+    const logBox = $('setEnable');
+    logBox.addEventListener('change', () => {
+      Logger.enabled = logBox.checked;
       /* A first line confirms that logging is on, even while the game waits for you. */
-      if (dbg.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
+      if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
     });
-    $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
-    $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
-    $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('dbgSkill').value) / 100 }));
+    $('setWorlds').addEventListener('change', () => setThinking({ worlds: Number($('setWorlds').value) }));
+    $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
+    $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
     for (const box of document.querySelectorAll('[data-knowledge]')) {
       box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
       box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
     }
-    Logger.listeners.push(line => { const pre = $('dbgLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
+    syncThinking(); syncKnowledge();
+    $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
+    $('setCourage').value = AI.style.courage;
+    $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
+    $('setRealTable').checked = AI.style.realTable;
+    $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
+    Logger.listeners.push(line => { const pre = $('setLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
-    if (params.get('debug') === '1') { Logger.enabled = true; dbg.checked = true; $('debugPanel').hidden = false; }
+    if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; $('settingsPanel').hidden = false; }
     const seedParam = params.get('seed');
     newGame(seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined);
   }
@@ -2387,7 +2505,7 @@ const App = (() => {
 })();
 
 /* ---------------------------------------------------------------------
-   9. SELF-TEST — rule and flow verification. Run from the Debug panel.
+   9. SELF-TEST — rule and flow verification. Run from the Settings panel.
    --------------------------------------------------------------------- */
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -2609,9 +2727,50 @@ const SelfTest = (() => {
           check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1))) === null);
         }
         eq('thinking settings clamp to their ranges', AI.setThinking({ worlds: 999, playoutSkill: -1 }), { worlds: 200, playoutSkill: 0 });
+        eq('bot style defaults: normal courage, real table off', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal' });
+        AI.setStyle({ realTable: true });
+        {
+          const st = revealState(11, 0, '9H');
+          const hand = ['KS', 'QS', 'JH', '9H', 'AC', 'QC', '10C', '7C', 'JD', '8D'];
+          const dv = Object.assign(buildView(st, 1), { phase: P.DISCARD, hand });
+          eq('real table: first discard pitches the lowest cards, Jacks stay', AI.decide(dv).cards.slice().sort(), ['7C', '8D', '9H']);
+          D(st, { type: 'FLIP' });
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          D(st, { type: 'BID', player: 1, accept: true });
+          D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
+          check('real table: AI decisions stay legal', ok1 && Engine.validate(st, AI.decide(buildView(st, 1))) === null);
+        }
+        AI.setStyle(AI.STYLE_DEFAULTS);
+        for (const name of Object.keys(AI.SKILL_TIERS)) { AI.setSkillTier(name); eq('skill tier ' + name + ' round-trips', AI.skillTier(), name); }
+        AI.setSkillTier('casual');
+        eq('casual tier is the default settings', [AI.thinking, AI.knowledge], [AI.THINKING_DEFAULTS, AI.KNOWLEDGE_DEFAULTS]);
+        AI.setThinking({ worlds: 7 });
+        eq('settings that match no tier read as custom', AI.skillTier(), 'custom');
+        eq('unknown bid courage is ignored', AI.setStyle({ courage: 'reckless' }).courage, 'normal');
+        {
+          const calls = courage => {
+            AI.setStyle({ courage });
+            let n = 0;
+            for (let seed = 1; seed <= 40; seed++) {
+              const st = revealState(seed, seed % 3, '9H');
+              D(st, { type: 'FLIP' });
+              if (AI.fastAction(st, st.bidTurn).accept) n++;
+            }
+            return n;
+          };
+          const timid = calls('timid'), normal = calls('normal'), bold = calls('bold');
+          check('bid courage: bold calls more than normal, normal more than timid (' + [timid, normal, bold].join('/') + ')', timid < normal && normal < bold);
+        }
+        AI.setStyle({ realTable: true, courage: 'bold' });
+        {
+          const st = revealState(12, 0, '9H');
+          D(st, { type: 'FLIP' });
+          check('bold real-table bid is legal', Engine.validate(st, AI.decide(buildView(st, st.bidTurn))) === null);
+        }
       } finally {
         AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
         AI.setThinking(AI.THINKING_DEFAULTS);
+        AI.setStyle(AI.STYLE_DEFAULTS);
       }
     });
 
