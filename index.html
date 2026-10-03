@@ -133,11 +133,17 @@ button.card{cursor:pointer}
 @keyframes enter{from{transform:translateY(14px) scale(.92);opacity:0}to{transform:none;opacity:1}}
 .logpanel{background:var(--felt-edge);border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:200px;max-height:80vh}
 .logpanel h2{font-size:14px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.gamelog{list-style:none;margin:0;padding:0;overflow:auto;font-size:13px;flex:1;max-height:60vh}
-.gamelog li{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.gamelog{list-style:none;margin:0;padding:8px 10px;overflow:auto;font-size:13px;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
+.gamelog li{padding:3px 0}
 .gamelog li.k{color:var(--gold);font-weight:700}
-.gamelog li.h{color:var(--accent);font-weight:700}
-.gamelog li.s{color:#ff9ad5;font-weight:700}
+.gamelog li.h,.gamelog li.s{font-weight:600}
+.gamelog .lead-h{color:var(--accent);font-weight:800}
+.gamelog .lead-s{color:#ff9ad5;font-weight:800}
+.gamelog .hl-sd{color:#ff9ad5;font-weight:700}
+.gamelog .hl-trump{color:var(--accent);font-weight:700}
+.gamelog .hl-loss{color:var(--danger);font-weight:800}
+.gamelog li.ind{padding-left:2em}
+.gamelog li.sd.ind,.gamelog li.sd.play{padding-left:6em}
 .gamelog li.w{color:var(--good);font-weight:800}
 .gamelog li.play{padding-left:2em}
 .gamelog .hl-trick{color:#c792ff;font-weight:700}
@@ -146,9 +152,18 @@ button.card{cursor:pointer}
 .gamelog .hl-deal{color:#ffa94d;font-weight:700}
 .gamelog .hl-pass{color:#69db7c;font-weight:700}
 .gamelog .hl-turn{color:#ff4fd8;font-weight:700}
-.gamelog .hl-joker{font-weight:800;animation:jokerBlink 1s steps(1) infinite}
-@keyframes jokerBlink{0%{color:#ffe066}50%{color:#c792ff}}
-@media (prefers-reduced-motion:reduce){.gamelog .hl-joker{animation:none;color:#ffe066}}
+.gamelog .hl-joker{font-weight:800;color:var(--gold);background:#000;border-radius:4px;padding:0 4px}
+.gamelog li.sd{padding-left:4em}
+.gamelog li.gap{margin-top:1.3em}
+.gamelog li.trick-head{color:var(--muted)}
+.gamelog li.end{font-size:17px;line-height:1.35}
+.gamelog .p0{color:#5eead4;font-weight:700}
+.gamelog .p1{color:#a3e635;font-weight:700}
+.gamelog .p2{color:#a5b4fc;font-weight:700}
+.gamelog .card-tag{background:#fff;border-radius:3px;padding:0 2px;white-space:nowrap}
+.gamelog .card-tag .rank{color:#6b6b6b}
+.gamelog .pip-red{color:#d32f2f}
+.gamelog .pip-black{color:#000}
 .toasts{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
@@ -183,6 +198,7 @@ button.card{cursor:pointer}
 .debug .dbg-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
 .debug .dbg-tests .t-stats{color:#8fb89a}
 .debug .dbg-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
+.debug pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
 .debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
 
@@ -1618,7 +1634,7 @@ const Render = (() => {
 
   function badges(v, p) {
     const b = [];
-    b.push(v.players[p].human ? '<span class="tag you">You</span>' : '<span class="tag ai">AI</span>');
+    b.push(v.players[p].human ? '<span class="tag you">Human</span>' : '<span class="tag ai">AI</span>');
     if (v.dealer === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
     if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) b.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
@@ -1961,7 +1977,7 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false },
+    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false, autoplayWanted: false },
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -1988,6 +2004,15 @@ const App = (() => {
     draw(res.events);
     schedule();
     return res;
+  }
+
+  /* "AI plays my seat" starts only when the debug panel is closed. Turning it off acts at once. */
+  function syncAutoplay() {
+    const on = app.ui.autoplayWanted && $('debugPanel').hidden;
+    if (on === app.ui.autoplay) return;
+    app.ui.autoplay = on;
+    draw([]);
+    schedule();
   }
 
   function clearTimer() {
@@ -2048,24 +2073,40 @@ const App = (() => {
     [/\bpass(?:es)?\b/, 'hl-pass'],
     [/\bgo(?:es)? to\b/, 'hl-pass'],
     [/\bturns? up\b/, 'hl-turn'],
-    [/\bJoker\b/, 'hl-joker']
+    [/\bJoker\b/, 'hl-joker'],
+    [/\b(?:accepts?|names?) \w+ as trump\b/, 'hl-trump'],
+    [/\b(?:Showdown|SHOWDOWN!?|mediator)/, 'hl-sd']
   ];
   const LOG_RE = new RegExp(LOG_HIGHLIGHTS.map(([re]) => '(' + re.source + ')').join('|'), 'g');
   const escHTML = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  function logHTML(text) {
-    return escHTML(text).replace(LOG_RE, (m, ...groups) => {
+  function logHTML(text, cls) {
+    let html = escHTML(text);
+    /* Blue and pink lines: color only the lead label (or a leading −1), not the whole line. */
+    const lead = /\bh\b/.test(cls) ? 'lead-h' : /\bs\b/.test(cls) ? 'lead-s' : '';
+    if (lead) html = html.replace(/^(?:[^:!(]{1,24}[:!]|−\d+)/, m => '<span class="' + (m[0] === '−' ? 'hl-loss' : lead) + '">' + m + '</span>');
+    html = html.replace(LOG_RE, (m, ...groups) => {
       const i = groups.findIndex(g => g !== undefined);
       return '<span class="' + LOG_HIGHLIGHTS[i][1] + '">' + m + '</span>';
     });
+    /* Each player's name has its own color (seat 0 is shown as "You"). */
+    const names = app.state.players.map((p, i) => i === HUMAN ? 'You' : p.name);
+    const nameRe = new RegExp('\\b(' + names.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b(?![^<]*>)', 'g');
+    return html.replace(nameRe, m => '<span class="p' + names.indexOf(m) + '">' + m + '</span>').replace(/(10|[2-9JQKA])?([♠♣♥♦])/g, (m, rank, c) => '<span class="card-tag">' + (rank ? '<span class="rank">' + rank + '</span>' : '') + '<span class="' + (c === '♥' || c === '♦' ? 'pip-red' : 'pip-black') + '">' + c + '</span></span>');
   }
 
-  function addLog(text, cls) {
+  /* The log is cleared at each new game. This cap only guards against a very long game. */
+  const LOG_MAX = 5000;
+
+  /* sd: a Showdown message, indented two steps. */
+  function addLog(text, cls, sd) {
     const li = document.createElement('li');
-    li.innerHTML = logHTML(Render.youText(text));
-    if (cls) li.className = cls;
+    li.innerHTML = logHTML(Render.youText(text), cls || '');
+    const classes = (cls || '').split(' ').filter(Boolean);
+    if (sd) classes.push('sd');
+    if (classes.length) li.className = classes.join(' ');
     const ol = $('gameLog');
     ol.appendChild(li);
-    while (ol.children.length > 400) ol.removeChild(ol.firstChild);
+    while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
     ol.scrollTop = ol.scrollHeight;
   }
   function toast(text, cls) {
@@ -2085,35 +2126,37 @@ const App = (() => {
     const st = app.state;
     const n = p => st.players[p].name;
     switch (e.type) {
-      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h'); break;
-      case 'DISCARD': addLog(n(e.player) + ' discards 3 cards to the outside pile.', ''); break;
-      case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', ''); break;
+      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
+      case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
+      case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind'); break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
-      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', ''); break;
-      case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', ''); break;
+      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
+      case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
-      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', ''); break;
-      case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + ' to the outside pile.', ''); break;
+      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', 'ind'); break;
+      case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
-      case 'TRICK_STARTED': if (e.number === 1) addLog((e.showdown ? 'Showdown' : 'Play') + ' begins. ' + n(e.leader) + ' leads.', ''); break;
-      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play'); break;
-      case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', ''); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k'); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'TRICK_STARTED':
+        addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'Showdown trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
+        break;
+      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play', e.showdown); break;
+      case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
-          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's' : 'k');
+          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's ind' : 'k ind', e.reason === 'SHOWDOWN_WIN' || e.reason === 'SHOWDOWN_LOSS');
           toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason], e.requested < 0 ? 'neg' : '');
         }
         break;
-      case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h'); break;
-      case 'SHOWDOWN_STARTED': addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's'); toast('SHOWDOWN!', 'neg'); break;
-      case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards and deals 6 to each Showdown player.', 's'); break;
-      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1 Showdown card.', ''); break;
-      case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's'); break;
-      case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's'); break;
-      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w'); break;
+      case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
+      case 'SHOWDOWN_STARTED': addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true); toast('SHOWDOWN!', 'neg'); break;
+      case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
+      case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
+      case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true); break;
+      case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
+      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end'); break;
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
@@ -2207,7 +2250,12 @@ const App = (() => {
         if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
-      case 'toggle-debug': { const d = $('debugPanel'); d.hidden = !d.hidden; break; }
+      case 'toggle-debug': {
+        const d = $('debugPanel'); d.hidden = !d.hidden;
+        /* Lines logged while the panel was closed are shown when it opens. */
+        if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
+        syncAutoplay(); break;
+      }
       case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
@@ -2303,8 +2351,12 @@ const App = (() => {
     if (saved && DELAYS[saved]) { app.ui.speed = saved; speed.value = saved; }
     speed.addEventListener('change', () => { app.ui.speed = speed.value; safe(() => localStorage.setItem('kct-speed', speed.value)); schedule(); });
     const dbg = $('dbgEnable');
-    dbg.addEventListener('change', () => { Logger.enabled = dbg.checked; });
-    $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplay = e.target.checked; schedule(); });
+    dbg.addEventListener('change', () => {
+      Logger.enabled = dbg.checked;
+      /* A first line confirms that logging is on, even while the game waits for you. */
+      if (dbg.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
+    });
+    $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplayWanted = e.target.checked; syncAutoplay(); });
     $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
     $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
     $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('dbgSkill').value) / 100 }));
