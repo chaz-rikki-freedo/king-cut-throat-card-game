@@ -63,6 +63,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .read{font-size:15px;font-style:italic}
 .style{font-size:13px;color:var(--muted);text-align:center}
 .close{align-self:center}
+.dials{display:grid;grid-template-columns:auto 1fr;gap:var(--s2) var(--s4);align-items:center;font-size:13px;color:var(--muted);background:var(--panel);border-radius:10px;padding:var(--s3) var(--s4)}
+.pips{display:inline-flex;gap:4px}
+.pips b{width:18px;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
+.pips b.on{background:var(--gold)}
+.habit{grid-column:1 / -1;justify-self:start;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.3);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.thinking i{animation:none;opacity:1}.face .av{transition:none}}
 </style>
 
@@ -85,6 +90,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   <div class="sheet">
     <div class="sheet-top"><span class="av big" id="pImg" role="img"></span><h2 id="pName"></h2><p class="read" id="pRead"></p></div>
     <p class="style" id="pStyle"></p>
+    <div class="dials" id="pDials"></div>
     <button class="btn close" type="button" id="pClose">Close</button>
   </div>
 </dialog>
@@ -96,6 +102,7 @@ const byId = Object.fromEntries(CHARS.map(c => [c.id, c]));
 let next = 2;
 const order = ['gus', 'prof', 'tex', 'auditor', 'sweat', 'shade', 'monk', 'hustler', 'rookie', 'diva'];
 seats = [order[0], order[1]];
+const pips = n => `<span class="pips" aria-label="${n} of 4">${[1,2,3,4].map(i => `<b class="${i <= n ? 'on' : ''}"></b>`).join('')}</span>`;
 const face = (c, size) => `<button class="face" type="button" data-id="${c.id}" aria-label="About ${c.name}"><span class="av ${size}" style="background-image:url(${c.img})"></span></button>`;
 
 function seatHTML(c, opts) {
@@ -122,6 +129,7 @@ function openProfile(c) {
   document.getElementById('pName').textContent = c.name;
   document.getElementById('pRead').textContent = '“' + c.read + '”';
   document.getElementById('pStyle').textContent = c.style;
+  document.getElementById('pDials').innerHTML = `<span>Card sense</span>${pips(c.skill)}<span>Nerve</span>${pips(c.courage)}${c.real ? '<span class="habit">Set in their ways</span>' : ''}`;
   dlg.showModal();
 }
 document.getElementById('table').addEventListener('click', ev => { const b = ev.target.closest('.face'); if (b) openProfile(byId[b.dataset.id]); });
