@@ -145,14 +145,29 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:80vh;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.debug{position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:#0b0f0c;border:1px solid #2c4434;border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 .debug[hidden]{display:none}
-.debug header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
-.debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:1;white-space:pre-wrap;word-break:break-word}
+.debug .dbg-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #2c4434;font-size:14px;position:sticky;top:0;background:#0b0f0c;z-index:1}
+.debug .dbg-seed{display:inline-flex;gap:6px;align-items:center}
+.debug .dbg-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4}
+.debug .btn-sm{padding:3px 9px;font-size:12px}
+.debug .dbg-close{margin-left:auto;font-size:16px;font-weight:700;padding:9px 18px;min-height:44px}
+.debug .dbg-section{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
+.debug .dbg-row{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.debug .k-hint{color:#8fb89a;font-size:12px}
+.debug input[type=number]{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
+.debug .dbg-tests{padding:10px;border-bottom:1px solid #2c4434;font-size:13px}
+.debug .dbg-tests .t-sum{font-size:15px;font-weight:800;margin-bottom:6px}
+.debug .dbg-tests .t-sum.ok{color:#9be59b}.debug .dbg-tests .t-sum.bad{color:#ff8a80}
+.debug .dbg-tests ul{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px}
+.debug .dbg-tests li.bad{color:#ff8a80;font-weight:700}
+.debug .dbg-tests .t-fail{margin:6px 0;padding:6px 8px;background:#2a1212;border-radius:6px}
+.debug .dbg-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
+.debug .dbg-tests .t-stats{color:#8fb89a}
+.debug .dbg-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
+.debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
-.dbg-knowledge{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:8px;border-bottom:1px solid #2c4434;font-size:13px}
-.dbg-knowledge .k-hint{color:#8fb89a;font-size:12px}
-.dbg-knowledge input[type=number]{background:#11201a;color:inherit;border:1px solid #2c4434;border-radius:6px;padding:2px 4px}
+
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
@@ -192,23 +207,22 @@ button.card{cursor:pointer}
 <div class="overlay" id="overlay" hidden></div>
 
 <div class="debug" id="debugPanel" hidden>
-  <header>
+  <header class="dbg-top">
     <strong>Debug</strong>
+    <span class="dbg-seed">Seed <code id="dbgSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="dbgCopied" aria-live="polite"></span></span>
+    <button class="btn dbg-close" type="button" data-action="toggle-debug" aria-label="Close the debug panel">✕ Close</button>
+  </header>
+  <div class="dbg-section dbg-row">
     <label><input type="checkbox" id="dbgEnable"> Logging</label>
     <label><input type="checkbox" id="dbgAutoplay"> AI plays my seat</label>
-    <span id="dbgSeed"></span>
-    <button class="btn" type="button" data-action="run-tests">Run self-tests</button>
-    <button class="btn" type="button" data-action="clear-log">Clear</button>
-    <button class="btn" type="button" data-action="toggle-debug">Close</button>
-  </header>
-  <div class="dbg-knowledge" id="dbgThinking">
+  </div>
+  <div class="dbg-section" id="dbgThinking">
     <strong>AI thinking</strong>
     <label title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches <input type="number" id="dbgWorlds" min="1" max="200" step="1" value="10" style="width:5em"> <span class="k-hint">per decision (default 10)</span></label>
     <label title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts <input type="range" id="dbgSkill" min="0" max="100" step="10" value="30"> <output id="dbgSkillOut">30%</output></label>
-    <span class="k-hint">Both settings change how long the bots think. Not saved: a reload resets them.</span>
-    <button class="btn" type="button" data-action="thinking-reset">Defaults</button>
+    <span class="k-hint">Both settings change how long the bots think.</span>
   </div>
-  <div class="dbg-knowledge" id="dbgKnowledge">
+  <div class="dbg-section" id="dbgKnowledge">
     <strong>AI knowledge</strong>
     <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
     <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
@@ -216,9 +230,17 @@ button.card{cursor:pointer}
     <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
     <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
     <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
-    <button class="btn" type="button" data-action="knowledge-reset">Defaults</button>
   </div>
+  <div class="dbg-section dbg-row">
+    <button class="btn" type="button" data-action="settings-reset">Defaults</button>
+    <span class="k-hint">Resets hunches, brain farts and all switches. A reload also resets them.</span>
+  </div>
+  <div class="dbg-tests" id="dbgTests" hidden></div>
   <pre id="dbgLog"></pre>
+  <footer class="dbg-bottom">
+    <button class="btn" type="button" data-action="run-tests">Run self-tests</button>
+    <button class="btn" type="button" data-action="clear-log">Clear</button>
+  </footer>
 </div>
 
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
@@ -1862,7 +1884,7 @@ const App = (() => {
     $('gameLog').innerHTML = '';
     $('overlay').hidden = true;
     const dbgSeed = $('dbgSeed');
-    if (dbgSeed) dbgSeed.textContent = 'seed ' + s;
+    if (dbgSeed) dbgSeed.textContent = String(s);
     addLog('New game (seed ' + s + ').', '');
     act({ type: 'START_GAME' });
   }
@@ -2060,13 +2082,14 @@ const App = (() => {
         break;
       case 'new-game-now': newGame(); break;
       case 'toggle-debug': { const d = $('debugPanel'); d.hidden = !d.hidden; break; }
-      case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; break;
-      case 'knowledge-reset': setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
-      case 'thinking-reset': setThinking(AI.THINKING_DEFAULTS); break;
+      case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
+      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
+      case 'copy-seed': copySeed(); break;
       case 'run-tests': {
-        const res = SelfTest.run();
-        const out = res.results.filter(r => !r.ok).map(r => 'FAIL ' + r.name + (r.detail ? ' — ' + r.detail : '')).join('\n');
-        $('dbgLog').textContent += '\n=== Self-tests: ' + res.passed + ' passed, ' + res.failed + ' failed (' + res.ms + 'ms) ===\n' + (out || 'All tests passed.') + '\n';
+        const box = $('dbgTests');
+        box.hidden = false;
+        box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
+        setTimeout(() => showTests(SelfTest.run()), 30);
         break;
       }
       default: break;
@@ -2081,6 +2104,46 @@ const App = (() => {
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
+  }
+
+  /* Debug panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
+  function copySeed() {
+    const seed = String(app.state.seed);
+    const done = ok => { $('dbgCopied').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('dbgCopied').textContent = ''; }, 1500); };
+    const fallback = () => {
+      const t = document.createElement('textarea');
+      t.value = seed; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      t.remove(); done(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(() => done(true), fallback);
+    else fallback();
+  }
+  /* Debug panel: self-test results as a summary, one line per area, and any failures. */
+  const TEST_AREAS = {
+    cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
+    planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games'
+  };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function showTests(res) {
+    const areas = new Map();
+    for (const r of res.results) {
+      const a = areas.get(r.section) || { ok: 0, all: 0 };
+      a.all++; if (r.ok) a.ok++;
+      areas.set(r.section, a);
+    }
+    const total = res.results.length;
+    const sum = res.failed ? '⚠️ ' + res.failed + ' of ' + total + ' checks failed' : '✅ All ' + total + ' checks passed';
+    let html = '<div class="t-sum ' + (res.failed ? 'bad' : 'ok') + '">' + sum + ' <span class="k-hint">(' + (res.ms / 1000).toFixed(1) + ' s)</span></div><ul>';
+    for (const [sec, a] of areas) html += '<li class="' + (a.ok === a.all ? '' : 'bad') + '">' + (a.ok === a.all ? '✔ ' : '✖ ') + esc(TEST_AREAS[sec] || sec) + ' <span class="k-hint">' + a.ok + '/' + a.all + '</span></li>';
+    html += '</ul>';
+    for (const r of res.results.filter(x => !x.ok)) html += '<div class="t-fail">✖ ' + esc(TEST_AREAS[r.section] || r.section) + ': ' + esc(r.name) + (r.detail ? '<small>' + esc(r.detail) + '</small>' : '') + '</div>';
+    const st = res.stats;
+    const n = x => Number(x).toLocaleString('en-US');
+    if (st) html += '<div class="t-stats">Simulated ' + n(st.games) + ' games: ' + n(st.hands) + ' hands, ' + n(st.showdowns) + ' Showdowns, ' + n(st.kingPts) + ' King points. Every one of ' + n(st.illegalRejected) + ' illegal plays was refused.</div>';
+    $('dbgTests').innerHTML = html;
   }
 
   /* AI thinking settings: change the AI, keep the controls in step, and log the change. */
@@ -2144,10 +2207,11 @@ const SelfTest = (() => {
     const t0 = Date.now();
     const wasLogging = Logger.enabled;
     Logger.enabled = false;
-    const check = (name, ok, detail) => results.push({ name, ok: !!ok, detail: ok ? '' : (detail || '') });
+    let section = '';
+    const check = (name, ok, detail) => results.push({ section, name, ok: !!ok, detail: ok ? '' : (detail || '') });
     const eq = (name, a, b) => check(name, JSON.stringify(a) === JSON.stringify(b), 'got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b));
     const D = (s, a) => Engine.dispatch(s, a);
-    const safeRun = (name, fn) => { try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } };
+    const safeRun = (name, fn) => { section = name; try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } };
 
     /* --- Card mechanics --- */
     safeRun('cards', () => {
@@ -2510,7 +2574,7 @@ const SelfTest = (() => {
     /* --- Full AI-vs-AI simulations with invariants --- */
     safeRun('simulation', () => {
       const games = o.games || 40;
-      const stats = { hands: 0, showdowns: 0, abandoned: 0, jokerVoid: 0, namerSweep: 0, nonNamerSweep: 0, kingPts: 0, endKing: 0, endShowdown: 0, endHand: 0, illegalRejected: 0, steps: 0 };
+      const stats = { games, hands: 0, showdowns: 0, abandoned: 0, jokerVoid: 0, namerSweep: 0, nonNamerSweep: 0, kingPts: 0, endKing: 0, endShowdown: 0, endHand: 0, illegalRejected: 0, steps: 0 };
       let problems = [];
       for (let g = 0; g < games && problems.length < 5; g++) {
         const s = Engine.createGame(1000 + g);
