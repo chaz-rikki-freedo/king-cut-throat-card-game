@@ -2008,6 +2008,15 @@ const App = (() => {
     return res;
   }
 
+  /* Sets the game speed, the Speed menu and the saved choice. */
+  function setSpeed(value) {
+    $('speedSel').value = value;
+    if (app.ui.speed === value) return;
+    app.ui.speed = value;
+    safe(() => localStorage.setItem('kct-speed', value));
+    schedule();
+  }
+
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
   function toggleAutoplay() {
     app.ui.autoplay = !app.ui.autoplay;
@@ -2259,10 +2268,11 @@ const App = (() => {
         if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
         break;
       }
-      case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
+      case 'clear-log': setSpeed('normal'); Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
+        setSpeed('normal');
         const box = $('dbgTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
@@ -2353,7 +2363,7 @@ const App = (() => {
     const speed = $('speedSel');
     const saved = safe(() => localStorage.getItem('kct-speed'));
     if (saved && DELAYS[saved]) { app.ui.speed = saved; speed.value = saved; }
-    speed.addEventListener('change', () => { app.ui.speed = speed.value; safe(() => localStorage.setItem('kct-speed', speed.value)); schedule(); });
+    speed.addEventListener('change', () => setSpeed(speed.value));
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => {
       Logger.enabled = dbg.checked;
