@@ -198,6 +198,7 @@ button.card{cursor:pointer}
 .debug .dbg-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
 .debug .dbg-tests .t-stats{color:#8fb89a}
 .debug .dbg-bottom{display:flex;gap:8px;padding:8px;border-top:1px solid #2c4434;position:sticky;bottom:0;background:#0b0f0c}
+.debug pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
 .debug pre{margin:0;padding:8px;overflow:auto;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
 .debug label{display:inline-flex;gap:4px;align-items:center}
 
@@ -2350,7 +2351,11 @@ const App = (() => {
     if (saved && DELAYS[saved]) { app.ui.speed = saved; speed.value = saved; }
     speed.addEventListener('change', () => { app.ui.speed = speed.value; safe(() => localStorage.setItem('kct-speed', speed.value)); schedule(); });
     const dbg = $('dbgEnable');
-    dbg.addEventListener('change', () => { Logger.enabled = dbg.checked; });
+    dbg.addEventListener('change', () => {
+      Logger.enabled = dbg.checked;
+      /* A first line confirms that logging is on, even while the game waits for you. */
+      if (dbg.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
+    });
     $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplayWanted = e.target.checked; syncAutoplay(); });
     $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
     $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
