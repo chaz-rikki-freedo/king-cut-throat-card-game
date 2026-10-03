@@ -21,6 +21,7 @@ button{font:inherit;color:inherit}
 .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08)}
 .brand{font-weight:800;letter-spacing:.02em;font-size:18px;margin-right:auto}
 .brand small{font-weight:500;color:var(--muted);font-size:13px;margin-left:6px}
+.footbar{display:flex;justify-content:center;padding:10px 16px 16px;border-top:1px solid rgba(255,255,255,.08);background:var(--felt-edge)}
 .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.18)}
@@ -184,18 +185,6 @@ button.card{cursor:pointer}
   <div class="brand">King Cut-Throat <small>Euchre</small></div>
   <span class="trump-chip" id="trumpChip">Trump: —</span>
   <span class="hand-chip" id="handChip"></span>
-  <div class="controls">
-    <label class="sr" for="speedSel">Speed</label>
-    <select id="speedSel" title="Game speed">
-      <option value="slow" selected>Slow</option>
-      <option value="normal">Normal</option>
-      <option value="fast">Fast</option>
-      <option value="instant">Instant</option>
-    </select>
-    <button class="btn" type="button" data-action="rules">Rules</button>
-    <button class="btn" type="button" data-action="new-game">New game</button>
-    <button class="btn" type="button" data-action="toggle-debug">Debug</button>
-  </div>
 </header>
 
 <div class="layout">
@@ -210,6 +199,21 @@ button.card{cursor:pointer}
     <ol class="gamelog" id="gameLog"></ol>
   </aside>
 </div>
+
+<footer class="footbar">
+  <div class="controls">
+    <label class="sr" for="speedSel">Speed</label>
+    <select id="speedSel" title="Game speed">
+      <option value="slow" selected>Slow</option>
+      <option value="normal">Normal</option>
+      <option value="fast">Fast</option>
+      <option value="instant">Instant</option>
+    </select>
+    <button class="btn" type="button" data-action="rules">Rules</button>
+    <button class="btn" type="button" data-action="new-game">New game</button>
+    <button class="btn" type="button" data-action="toggle-debug">Debug</button>
+  </div>
+</footer>
 
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
