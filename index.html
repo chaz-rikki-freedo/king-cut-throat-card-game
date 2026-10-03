@@ -38,7 +38,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 @media (min-width:1150px){.layout{grid-template-columns:minmax(0,1fr) 300px}}
 .table{position:relative;display:grid;gap:10px;grid-template-columns:minmax(0,1fr) minmax(0,2.3fr) minmax(0,1fr);grid-template-areas:"west center east" "me me me";background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%);border-radius:18px;padding:12px;border:1px solid rgba(255,255,255,.08);transition:background .4s}
 .table.showdown{background:radial-gradient(ellipse at center,var(--felt-showdown) 0%,var(--felt-showdown-edge) 100%)}
-@media (max-width:720px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"west east" "center center" "me me";padding:8px}}
+@media (max-width:720px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"west east" "center center" "me me";padding:8px}.table .felt-mark{grid-row:1 / 3}}
 .seat{background:var(--panel);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0;border:2px solid transparent;transition:border-color .2s, box-shadow .2s}
 .seat-west{grid-area:west}.seat-east{grid-area:east}
 .seat.turn{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,193,78,.25)}
@@ -77,7 +77,9 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .trick{position:relative;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto;gap:6px 12px;align-items:center;justify-items:center;min-height:calc(var(--cw)*2.2);background:rgba(0,0,0,.14);border-radius:14px;padding:10px}
 .trick-label{grid-column:2;grid-row:1;font-size:12px;color:var(--muted);text-align:center;align-self:start;position:relative;z-index:1}
 .slot{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--muted);min-width:var(--cw);position:relative;z-index:1}
-.flow{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px);pointer-events:none;z-index:0}
+.felt-mark{grid-column:1 / -1;grid-row:1 / 2;position:relative;pointer-events:none;z-index:0;align-self:stretch;min-height:0}
+.felt-mark .flow{position:absolute;inset:0;width:100%;height:100%}
+.seat,.center,.me{position:relative;z-index:1}
 .slot-1{grid-column:1;grid-row:1 / span 2}
 .slot-2{grid-column:3;grid-row:1 / span 2}
 .slot-0{grid-column:2;grid-row:2}
@@ -193,6 +195,7 @@ button.card{cursor:pointer}
 
 <div class="layout">
   <main class="table" id="table" aria-live="polite">
+    <div class="felt-mark" id="feltMark" aria-hidden="true"></div>
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
@@ -1664,10 +1667,11 @@ const Render = (() => {
     return parts.length ? '<div class="piles">' + parts.join('') + '</div>' : '';
   }
 
-  /* Play-flow medallion pressed into the felt: an outer ring, an inner circle, and 12 chevrons
-     between them pointing clockwise (the direction of play). The emboss filter draws only a
-     slightly darker body, a shadow on the upper-left inner edges and a highlight on the
-     lower-right inner edges, so the shape reads as pressed into the cloth. Built once. */
+  /* Play-flow medallion pressed into the felt, under the seats and the center of the table:
+     an outer ring, an inner circle, and 12 chevrons between them pointing clockwise (the
+     direction of play). The emboss filter draws only a slightly darker body, a shadow on the
+     upper-left inner edges and a highlight on the lower-right inner edges, so the shape reads
+     as pressed into the cloth. Built once; App.init places it in the table. */
   const FLOW_MEDALLION = (() => {
     const c = 100, rad = d => d * Math.PI / 180, f = n => n.toFixed(2);
     let chev = '';
@@ -1680,15 +1684,15 @@ const Render = (() => {
     }
     return '<svg class="flow" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' +
       '<defs><filter id="kctEmboss" x="-5%" y="-5%" width="110%" height="110%">' +
-      '<feOffset in="SourceAlpha" dx="1.3" dy="1.3" result="dn"/><feComposite in="SourceAlpha" in2="dn" operator="out" result="tl"/>' +
-      '<feOffset in="SourceAlpha" dx="-1.3" dy="-1.3" result="up"/><feComposite in="SourceAlpha" in2="up" operator="out" result="br"/>' +
+      '<feOffset in="SourceAlpha" dx="0.8" dy="0.8" result="dn"/><feComposite in="SourceAlpha" in2="dn" operator="out" result="tl"/>' +
+      '<feOffset in="SourceAlpha" dx="-0.8" dy="-0.8" result="up"/><feComposite in="SourceAlpha" in2="up" operator="out" result="br"/>' +
       '<feFlood flood-color="#000" flood-opacity=".38"/><feComposite in2="tl" operator="in" result="shadow"/>' +
       '<feFlood flood-color="#fff" flood-opacity=".10"/><feComposite in2="br" operator="in" result="light"/>' +
       '<feFlood flood-color="#000" flood-opacity=".08"/><feComposite in2="SourceAlpha" operator="in" result="body"/>' +
       '<feMerge><feMergeNode in="body"/><feMergeNode in="shadow"/><feMergeNode in="light"/></feMerge></filter></defs>' +
       '<g filter="url(#kctEmboss)" fill="none" stroke="#000" stroke-linejoin="miter" stroke-linecap="butt">' +
-      '<circle cx="100" cy="100" r="92" stroke-width="7"/><circle cx="100" cy="100" r="47" stroke-width="4.5"/>' +
-      '<g stroke-width="6">' + chev + '</g></g></svg>';
+      '<circle cx="100" cy="100" r="94" stroke-width="4.5"/><circle cx="100" cy="100" r="47" stroke-width="3"/>' +
+      '<g stroke-width="4">' + chev + '</g></g></svg>';
   })();
 
   function trickHTML(v, ctx) {
@@ -1700,7 +1704,7 @@ const Render = (() => {
     const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
     let label = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks;
     if (leadSuit) label += '<br>Led: ' + symHTML(leadSuit);
-    let html = '<div class="trick">' + FLOW_MEDALLION + '<div class="trick-label">' + label + '</div>';
+    let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
         html += '<div class="slot slot-' + p + '"><div class="who">' + v.players[p].name + ' · mediator</div></div>';
@@ -1879,7 +1883,7 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL });
+  return Object.freeze({ render, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, FLOW_MEDALLION });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2186,6 +2190,7 @@ const App = (() => {
   }
 
   function init() {
+    $('feltMark').innerHTML = Render.FLOW_MEDALLION;
     document.addEventListener('click', ev => {
       const cardEl = ev.target.closest('button[data-card]');
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
