@@ -158,7 +158,7 @@ button.card{cursor:pointer}
 .gamelog li.trick-head{color:var(--muted)}
 .gamelog li.end{font-size:17px;line-height:1.35}
 .gamelog .p0{color:#5eead4;font-weight:700}
-.gamelog .p1{color:#fde047;font-weight:700}
+.gamelog .p1{color:#a3e635;font-weight:700}
 .gamelog .p2{color:#a5b4fc;font-weight:700}
 .gamelog .card-tag{background:#fff;border-radius:3px;padding:0 2px;white-space:nowrap}
 .gamelog .card-tag .rank{color:#6b6b6b}
@@ -1633,7 +1633,7 @@ const Render = (() => {
 
   function badges(v, p) {
     const b = [];
-    b.push(v.players[p].human ? '<span class="tag you">You</span>' : '<span class="tag ai">AI</span>');
+    b.push(v.players[p].human ? '<span class="tag you">Human</span>' : '<span class="tag ai">AI</span>');
     if (v.dealer === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
     if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) b.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
@@ -1976,7 +1976,7 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false },
+    ui: { selected: new Set(), selKey: '', speed: 'slow', autoplay: false, autoplayWanted: false },
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -2003,6 +2003,15 @@ const App = (() => {
     draw(res.events);
     schedule();
     return res;
+  }
+
+  /* "AI plays my seat" starts only when the debug panel is closed. Turning it off acts at once. */
+  function syncAutoplay() {
+    const on = app.ui.autoplayWanted && $('debugPanel').hidden;
+    if (on === app.ui.autoplay) return;
+    app.ui.autoplay = on;
+    draw([]);
+    schedule();
   }
 
   function clearTimer() {
@@ -2240,7 +2249,12 @@ const App = (() => {
         if (app.state.gameOver || app.state.handNumber <= 1 || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
-      case 'toggle-debug': { const d = $('debugPanel'); d.hidden = !d.hidden; break; }
+      case 'toggle-debug': {
+        const d = $('debugPanel'); d.hidden = !d.hidden;
+        /* Lines logged while the panel was closed are shown when it opens. */
+        if (!d.hidden) { const pre = $('dbgLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
+        syncAutoplay(); break;
+      }
       case 'clear-log': Logger.clear(); $('dbgLog').textContent = ''; $('dbgTests').hidden = true; $('dbgTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); break;
       case 'copy-seed': copySeed(); break;
@@ -2337,7 +2351,7 @@ const App = (() => {
     speed.addEventListener('change', () => { app.ui.speed = speed.value; safe(() => localStorage.setItem('kct-speed', speed.value)); schedule(); });
     const dbg = $('dbgEnable');
     dbg.addEventListener('change', () => { Logger.enabled = dbg.checked; });
-    $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplay = e.target.checked; schedule(); });
+    $('dbgAutoplay').addEventListener('change', e => { app.ui.autoplayWanted = e.target.checked; syncAutoplay(); });
     $('dbgWorlds').addEventListener('change', () => setThinking({ worlds: Number($('dbgWorlds').value) }));
     $('dbgSkill').addEventListener('input', () => { $('dbgSkillOut').textContent = $('dbgSkill').value + '%'; });
     $('dbgSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('dbgSkill').value) / 100 }));
