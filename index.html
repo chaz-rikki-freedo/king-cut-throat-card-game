@@ -4134,6 +4134,21 @@ const SelfTest = (() => {
       const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
       for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k });
       eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+      /* Capacity (spec 11.1): 20 hands, each a showdown with the longest bidding and a 2-card exchange. */
+      const big = [], ids = R.ALL_IDS;
+      for (let h = 0; h < 20; h++) {
+        for (const p of [0, 1, 2]) big.push({ type: 'DISCARD', player: p, cards: ids.slice(p * 3, p * 3 + 3) });
+        for (const p of [0, 1, 2]) big.push({ type: 'BID', player: p, accept: false });
+        big.push({ type: 'NAME', player: 0, suit: null }, { type: 'NAME', player: 1, suit: null }, { type: 'NAME', player: 2, suit: 'C' });
+        big.push({ type: 'EXCHANGE', player: 2, cards: ['7S', '8S'] });
+        for (let k = 0; k < 21; k++) big.push({ type: 'PLAY', player: k % 3, card: ids[k] });
+        big.push({ type: 'SHOWDOWN_DISCARD', player: 0, card: 'AS' }, { type: 'SHOWDOWN_DISCARD', player: 1, card: 'AH' });
+        for (let k = 0; k < 10; k++) big.push({ type: 'PLAY', player: k % 2, card: ids[k] });
+      }
+      const worst = Object.assign(JSON.parse(JSON.stringify(rec)), { seed: 0xFFFFFFFF, wave: 18, seats: ['zen', 'vex', 'doc'], decisions: big, result: { finished: true, winner: 2, scores: [9, 9, 10], hands: 20 } });
+      const wc = Replay.encode(worst);
+      check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
+      eq('20 showdown hands decode the same', Replay.decode(wc), worst);
     });
 
     safeRun('planner', () => {
