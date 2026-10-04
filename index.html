@@ -1146,6 +1146,69 @@ const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, 
 const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, timid: 1, cautious: 2, normal: 3, bold: 4 });
 
 /* ---------------------------------------------------------------------
+   5c. WAVES — eighteen fixed tables, easiest first. Each wave seats two
+   personalities, West and East. The seat order is part of the wave: East
+   gives you the trump gift when East calls, so a bold bot is easier on
+   your right (East) than on your left (West). youWin is the measured win
+   rate (%) of a human-style player at that table, from 150 bot games.
+   A rematch is an earlier wave with the two seats swapped.
+   --------------------------------------------------------------------- */
+const WAVES = Object.freeze([
+  { west: 'kit', east: 'tex', youWin: 61, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
+  { west: 'kit', east: 'gus', youWin: 51, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
+  { west: 'zen', east: 'tex', youWin: 51, rematchOf: null, purpose: 'Practice. A table like real players.' },
+  { west: 'lou', east: 'gus', youWin: 49, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
+  { west: 'lou', east: 'zen', youWin: 47, rematchOf: null, purpose: 'Two calm players.' },
+  { west: 'viv', east: 'tex', youWin: 47, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
+  { west: 'kit', east: 'zen', youWin: 46, rematchOf: null, purpose: 'Two relaxed players.' },
+  { west: 'mei', east: 'tex', youWin: 40, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
+  { west: 'kit', east: 'ace', youWin: 37, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
+  { west: 'viv', east: 'gus', youWin: 37, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
+  { west: 'lou', east: 'vex', youWin: 35, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
+  { west: 'doc', east: 'ace', youWin: 29, rematchOf: null, purpose: 'Two strong bots.' },
+  { west: 'tex', east: 'mei', youWin: 24, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
+  { west: 'ace', east: 'doc', youWin: 21, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
+  { west: 'vex', east: 'lou', youWin: 18, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
+  { west: 'tex', east: 'viv', youWin: 18, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
+  { west: 'mei', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
+  { west: 'vex', east: 'doc', youWin: 7, rematchOf: null, purpose: 'Final boss.' }
+].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
+
+/* Wave progress: the highest wave you may play and the waves you have won.
+   A win clears a wave. A win on the highest open wave opens the next one.
+   A loss changes nothing. The store is any { get(), set(text) } pair. */
+function createWaveProgress(store) {
+  const blank = () => ({ unlocked: 1, cleared: [] });
+  const valid = p => !!p && Number.isInteger(p.unlocked) && p.unlocked >= 1 && p.unlocked <= WAVES.length &&
+    Array.isArray(p.cleared) && p.cleared.every(n => Number.isInteger(n) && n >= 1 && n <= WAVES.length);
+  let p = blank();
+  try { const saved = JSON.parse(store.get()); if (valid(saved)) p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].sort((a, b) => a - b) }; } catch (e) { /* keep blank */ }
+  const save = () => { try { store.set(JSON.stringify(p)); } catch (e) { /* progress lasts this page load only */ } };
+  const get = n => WAVES[n - 1] || null;
+  const snapshot = () => ({ unlocked: p.unlocked, cleared: p.cleared.slice(), total: WAVES.length, complete: p.cleared.length === WAVES.length });
+  return Object.freeze({
+    get,
+    /* [You, West, East] personality ids for a wave. */
+    seats: n => { const w = get(n); return w ? [null, w.west, w.east] : null; },
+    isUnlocked: n => Number.isInteger(n) && n >= 1 && n <= p.unlocked,
+    progress: snapshot,
+    record(n, won) {
+      if (!get(n) || !won) return snapshot();
+      if (!p.cleared.includes(n)) { p.cleared.push(n); p.cleared.sort((a, b) => a - b); }
+      if (n === p.unlocked && n < WAVES.length) p.unlocked = n + 1;
+      save();
+      return snapshot();
+    },
+    reset() { p = blank(); save(); return snapshot(); },
+    unlockAll() { p.unlocked = WAVES.length; save(); return snapshot(); }
+  });
+}
+const Waves = createWaveProgress({
+  get: () => localStorage.getItem('kct.waves'),
+  set: text => localStorage.setItem('kct.waves', text)
+});
+
+/* ---------------------------------------------------------------------
    6. AI — planning opponents. Input: a View only (no hidden data).
    For each decision the AI:
    1. samples deals of the cards it cannot see ("worlds") that agree with
@@ -2179,18 +2242,24 @@ const App = (() => {
   const app = {
     state: null,
     ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, personas: [null, null, null] },
+    /* wave: the wave being played, or null. counts: a win clears it (it was open at the start
+       and the AI never played your seat). result: the progress after the game ended. */
+    wave: { n: null, counts: false, result: null },
     usePersonas: true,
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
 
-  function newGame(seed) {
+  /* wave (optional): play that wave's table. Without it, the seed picks the table. */
+  function newGame(seed, wave) {
     clearTimer();
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
     /* Two personalities sit West and East, picked from the seed so a replay meets the same bots.
-       Your seat gets one only when you hand it to the AI, and keeps it for the game. */
-    const pool = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+       A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
+    const w = Waves.get(wave);
+    const pool = w ? [w.west, w.east] : RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+    app.wave = { n: w ? w.n : null, counts: !!w && Waves.isUnlocked(w.n) && !app.ui.autoplay, result: null };
     app.ui.personas = [null, pool[0], pool[1]];
     app.state = Engine.createGame(s, ['You', PERSONA_BY_ID[pool[0]].name, PERSONA_BY_ID[pool[1]].name]);
     for (const p of [1, 2]) document.documentElement.style.setProperty('--name' + p, PERSONA_BY_ID[pool[p - 1]].color);
@@ -2207,6 +2276,10 @@ const App = (() => {
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
     app.lastEvents = res.events;
+    if (app.wave.n && app.state.gameOver && !app.wave.result) {
+      app.wave.result = app.wave.counts ? Waves.record(app.wave.n, app.state.winner === HUMAN) : Waves.progress();
+      Logger.log('WAVE_RESULT', { wave: app.wave.n, won: app.state.winner === HUMAN, counted: app.wave.counts, unlocked: app.wave.result.unlocked });
+    }
     for (const e of res.events) narrate(e);
     draw(res.events);
     schedule();
@@ -2224,6 +2297,7 @@ const App = (() => {
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
   function toggleAutoplay() {
     app.ui.autoplay = !app.ui.autoplay;
+    if (app.ui.autoplay) app.wave.counts = false;
     if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
       const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
       app.ui.personas[HUMAN] = free[Math.floor(Math.random() * free.length)].id;
@@ -2254,7 +2328,8 @@ const App = (() => {
     const ai = actors.filter(p => !st.players[p].human || (app.ui.autoplay && p === HUMAN));
     if (ai.length) {
       const p = ai[0];
-      const persona = app.usePersonas ? PERSONA_BY_ID[app.ui.personas[p]] : null;
+      /* A wave always uses its personalities: they set its difficulty. */
+      const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
       later(d.ai, () => act(AI.decideAs(buildView(app.state, p), persona)));
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
@@ -2472,7 +2547,7 @@ const App = (() => {
         if (app.state.gameOver || app.state.scores.every(x => x === 0) || window.confirm('Abandon this game and start a new one?')) newGame();
         break;
       case 'new-game-now': newGame(); break;
-      case 'replay-seed': newGame(app.state.seed); break;
+      case 'replay-seed': newGame(app.state.seed, app.wave.n); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': {
         const d = $('settingsPanel'); d.hidden = !d.hidden;
@@ -2634,7 +2709,9 @@ const App = (() => {
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; $('settingsPanel').hidden = false; }
     const seedParam = params.get('seed');
-    newGame(seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined);
+    const waveParam = params.get('wave');
+    newGame(seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined,
+      waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined);
   }
 
   return { init, newGame, act, skip, app };
@@ -2923,6 +3000,39 @@ const SelfTest = (() => {
         AI.setThinking(AI.THINKING_DEFAULTS);
         AI.setStyle(AI.STYLE_DEFAULTS);
       }
+    });
+
+    safeRun('waves', () => {
+      eq('eighteen waves', WAVES.length, 18);
+      check('waves are numbered 1 to 18', WAVES.every((w, i) => w.n === i + 1));
+      check('every wave seats two different known personalities', WAVES.every(w => PERSONA_BY_ID[w.west] && PERSONA_BY_ID[w.east] && w.west !== w.east));
+      check('every personality plays at least one wave', PERSONAS.every(x => WAVES.some(w => w.west === x.id || w.east === x.id)));
+      check('no table repeats', new Set(WAVES.map(w => w.west + '/' + w.east)).size === WAVES.length);
+      check('waves go from easiest to hardest', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin));
+      check('a rematch is an earlier wave with the seats swapped', WAVES.filter(w => w.rematchOf).every(w => {
+        const r = WAVES[w.rematchOf - 1];
+        return r && r.n < w.n && r.west === w.east && r.east === w.west;
+      }));
+      eq('wave seats are You, West, East', Waves.seats(1), [null, 'kit', 'tex']);
+      eq('an unknown wave has no seats', Waves.seats(19), null);
+
+      let text = null;
+      const store = { get: () => text, set: t => { text = t; } };
+      const wp = createWaveProgress(store);
+      eq('new progress opens wave 1 only', [wp.progress().unlocked, wp.progress().cleared], [1, []]);
+      check('wave 2 is locked at the start', !wp.isUnlocked(2));
+      eq('a loss changes nothing', wp.record(1, false).unlocked, 1);
+      eq('a win opens the next wave', wp.record(1, true).unlocked, 2);
+      eq('a win on an earlier wave opens nothing new', [wp.record(1, true).unlocked, wp.progress().cleared], [2, [1]]);
+      eq('progress is saved to the store', JSON.parse(text), { unlocked: 2, cleared: [1] });
+      eq('progress loads from the store', createWaveProgress(store).progress().unlocked, 2);
+      eq('the last wave opens nothing past it', (() => { wp.unlockAll(); return wp.record(18, true); })().unlocked, 18);
+      check('all clear is complete', (() => { for (let n = 1; n <= 18; n++) wp.record(n, true); return wp.progress().complete; })());
+      eq('reset opens wave 1 only', wp.reset().unlocked, 1);
+      text = '{"unlocked":99,"cleared":[1]}';
+      eq('bad saved progress starts fresh', createWaveProgress(store).progress().unlocked, 1);
+      const broken = createWaveProgress({ get: () => { throw new Error('no storage'); }, set: () => { throw new Error('no storage'); } });
+      eq('progress works without storage', broken.record(1, true).unlocked, 2);
     });
 
     safeRun('planner', () => {
@@ -3218,7 +3328,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, buildView, AI, Render, App, SelfTest });
+window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

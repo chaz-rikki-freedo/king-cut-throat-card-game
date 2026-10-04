@@ -87,6 +87,52 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 | Kit | Novice | Cautious | on |
 | Zen | Casual | Normal | on |
 
+## Waves
+
+Eighteen fixed tables, easiest first. Each wave seats two personalities, West and East. The game has no wave screen yet: start a wave from the URL or the console.
+
+- The seat order is part of the wave. East gives you the trump gift when East calls, so a bold bot is easier on your right (East) than on your left (West).
+- A wave always uses its personalities, also when **Personalities** is off.
+- A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing.
+- A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game.
+- **Replay Seed** replays the same wave. **New Game** starts a game without a wave.
+- Progress is kept in the browser (`localStorage`, key `kct.waves`). Without storage, it lasts until the page reloads.
+
+**Your win** is the win rate of a human-style bot (Casual, Real table) in your seat, from 150 bot games per table. A real first-time player wins less. A rematch is an earlier wave with the seats swapped.
+
+| Wave | West | East | Your win | Rematch of |
+|---|---|---|---|---|
+| 1 | Kit | Tex | 61% | |
+| 2 | Kit | Gus | 51% | |
+| 3 | Zen | Tex | 51% | |
+| 4 | Lou | Gus | 49% | |
+| 5 | Lou | Zen | 47% | |
+| 6 | Viv | Tex | 47% | |
+| 7 | Kit | Zen | 46% | |
+| 8 | Mei | Tex | 40% | |
+| 9 | Kit | Ace | 37% | |
+| 10 | Viv | Gus | 37% | |
+| 11 | Lou | Vex | 35% | |
+| 12 | Doc | Ace | 29% | |
+| 13 | Tex | Mei | 24% | 8 |
+| 14 | Ace | Doc | 21% | 12 |
+| 15 | Vex | Lou | 18% | 11 |
+| 16 | Tex | Viv | 18% | 6 |
+| 17 | Mei | Doc | 12% | |
+| 18 | Vex | Doc | 7% | |
+
+Start a wave: `index.html?wave=3` (add `&seed=123` to fix the deals too).
+
+```js
+KCT.App.newGame(undefined, 3)      // play wave 3 with a new seed
+KCT.Waves.progress()               // { unlocked, cleared, total, complete }
+KCT.Waves.isUnlocked(5)
+KCT.Waves.unlockAll()              // open every wave (for testing)
+KCT.Waves.reset()                  // back to wave 1
+KCT.WAVES                          // the table above, with a purpose line for each wave
+KCT.App.app.wave                   // { n, counts, result } for the current game
+```
+
 ## AI plays your seat
 
 Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets a personality that is not at the table. It keeps that personality for the rest of the game, however often you switch.
