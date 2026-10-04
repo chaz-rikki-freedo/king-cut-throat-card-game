@@ -1,6 +1,35 @@
 # King Cut-Throat
 
-A browser game in one file, `index.html`. Open it in a browser to play. This file covers the settings panel only.
+A browser game in one file, `index.html`. Open it in a browser to play, or install it as an app (see **Install and offline play**). This file covers the menu, waves, saved games, the app files and the settings panel.
+
+## Menu
+
+Each launch opens on the menu. Click **Menu** in the footer to open it during a game (the game waits).
+
+| Item | What it does |
+|---|---|
+| **Resume Waves** / **Resume Free play** | Continues the unfinished game of that mode. Shown only when one is saved. At launch, the last game played is the main button. |
+| **Play wave** | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. |
+| **New game** | Free play: the seed picks two random opponents. |
+| **Tutorial** | Coming soon (disabled). |
+| **Just enter** (launch) / **Close** | Closes the menu. At launch, the table stays empty: Rules, Settings and the profiles work, and **Choose a game** opens the menu. |
+
+A link with `?seed=` or `?wave=` starts that game at once, without the menu.
+
+### Free play: choose seats
+
+In Free play only, after the deal and before anyone discards in hand 1, a dialog shows your two opponents: West (your left) and East (your right). **⇄** swaps them and **Play** starts the discard. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
+
+## Saved games, settings and results
+
+The app keeps these in the browser (`localStorage`), so a closed tab loses nothing:
+
+- **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
+- **Wave progress** (`kct.waves`).
+- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging. Speed is not kept: each load starts at Normal.
+- **Results** (`kct.stats`): played and won, per mode, per table (West/East) and per opponent. A game where the AI played your seat adds no results. There is no results screen yet.
+
+If a new version cannot load a saved game, the game is dropped and the menu says so once. Wave progress and results are kept. Change `SAVE_FORMAT` in `index.html` when the Engine state changes shape.
 
 ## Settings panel
 
@@ -89,13 +118,14 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 ## Waves
 
-Eighteen fixed tables, easiest first. Each wave seats two personalities, West and East. The game has no wave screen yet: start a wave from the URL or the console.
+Eighteen fixed tables, easiest first. Each wave seats two personalities, West and East. Start a wave from the menu, the URL or the console.
 
 - The seat order is part of the wave. East gives you the trump gift when East calls, so a bold bot is easier on your right (East) than on your left (West).
 - A wave always uses its personalities, also when **Personalities** is off.
 - A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing.
 - A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game.
-- **Replay Seed** replays the same wave. **New Game** starts a game without a wave.
+- A win with **Replay Seed** counts too.
+- At the end of a wave: after a win, **Next wave**, **Replay Seed** and **Menu**; after a loss, **Try again** (same wave, new deal), **Replay Seed** and **Menu**.
 - Progress is kept in the browser (`localStorage`, key `kct.waves`). Without storage, it lasts until the page reloads.
 
 **Your win** is the win rate of a human-style bot (Casual, Real table) in your seat, from 150 bot games per table. A real first-time player wins less. A rematch is an earlier wave with the seats swapped.
@@ -130,7 +160,9 @@ KCT.Waves.isUnlocked(5)
 KCT.Waves.unlockAll()              // open every wave (for testing)
 KCT.Waves.reset()                  // back to wave 1
 KCT.WAVES                          // the table above, with a purpose line for each wave
-KCT.App.app.wave                   // { n, counts, result } for the current game
+KCT.App.app.wave                   // { n, open, result } for the current game
+KCT.App.stats.get()                // results per mode, table and opponent
+KCT.App.slots.get('free')          // the saved Free play game, or null
 ```
 
 ## AI plays your seat
@@ -157,3 +189,21 @@ KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are account
 ```
 
 `KCT.App.app.state` holds every hand, so use it for testing only.
+
+## Install and offline play
+
+The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser offers **Install** or **Add to Home Screen**. It then opens in its own window, as **Cut-Throat**, with the keycap 3 icon, and plays offline.
+
+| File | What it is |
+|---|---|
+| `manifest.webmanifest` | App name, colors and icons. |
+| `sw.js` | Service worker: offline play and the update prompt. |
+| `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
+
+**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. Change `sw.js` only to change how caching works.
+
+The service worker does not run from `file://`. The game still works there, without install or offline play.
+
+## Publishing
+
+GitHub Pages serves the `gh-pages` branch. Copy all of these from `main` to it: `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll`.

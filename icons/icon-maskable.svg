@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable version: full-bleed background, the keycap inside the 80% safe zone. -->
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7395bd"/><stop offset="1" stop-color="#4f73a0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#3f5f86"/>
+  <rect x="96" y="90" width="320" height="320" rx="64" fill="url(#face)"/>
+  <text x="256" y="350" text-anchor="middle" font-family="Arial, 'Helvetica Neue', 'DejaVu Sans', sans-serif" font-weight="700" font-size="250" fill="#ffffff">3</text>
+</svg>
