@@ -4,7 +4,7 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 ## Menu
 
-Each launch opens on the menu. Click **Menu** in the footer to open it during a game (the game waits).
+Each launch opens on the menu. The header shows the current mode: **Wave N of 18**, **Free play** or **No game**. Click **Menu** in the footer to open it during a game (the game waits).
 
 | Item | What it does |
 |---|---|
@@ -37,7 +37,7 @@ Click **Settings** in the footer, or add `?settings=1` to the URL (this also tur
 
 ### Bots
 
-All bot settings apply to all bots and reset on reload. **Defaults** resets them all.
+All bot settings apply to all bots and are kept after a reload. **Defaults** resets them all. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
 
 | Setting | What it does |
 |---|---|
