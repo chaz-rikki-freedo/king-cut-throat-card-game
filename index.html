@@ -49,6 +49,14 @@ button{font:inherit;color:inherit}
 .mode-chip{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
 .mode-chip.waves{background:var(--gold);color:var(--gold-ink)}
 .mode-chip.free{background:var(--accent);color:#07233a}
+button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:28px}
+button.mode-chip:hover{filter:brightness(1.1)}
+button.mode-chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.modal.results{max-width:460px}
+.modal.results td.num,.modal.results th.num{text-align:right;font-variant-numeric:tabular-nums}
+.modal.results tr.now td{background:rgba(255,255,255,.08)}
+.modal.results .dim{color:var(--muted)}
+.modal.results .note{font-size:13px;color:var(--muted);margin:6px 0 0}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.18)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -299,7 +307,7 @@ button.card{cursor:pointer}
 <header class="topbar" id="topbar">
   <button class="icon-btn" type="button" data-action="menu" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="brand">King Cut-Throat</div>
-  <span class="mode-chip" id="modeChip" title="The current game mode">No game</span>
+  <button type="button" class="mode-chip" id="modeChip" data-action="mode-results" hidden></button>
   <div class="game-chips">
     <span class="trump-chip" id="trumpChip">Trump: —</span>
     <span class="hand-chip" id="handChip"></span>
@@ -1239,26 +1247,46 @@ const WAVES = Object.freeze([
   { west: 'vex', east: 'doc', youWin: 7, rematchOf: null, purpose: 'Final boss.' }
 ].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
 
-/* Wave progress: the highest wave you may play and the waves you have won.
+/* Wave progress: the highest wave you may play, the waves you have won and the tries per wave.
    A win clears a wave. A win on the highest open wave opens the next one.
-   A loss changes nothing. The store is any { get(), set(text) } pair. */
-function createWaveProgress(store) {
-  const blank = () => ({ unlocked: 1, cleared: [] });
+   A loss changes nothing but the tries. A try is a counted game on a wave that is not cleared yet,
+   so the tries of a cleared wave are the games it took to clear it.
+   Progress saved before tries were kept gets 1-4 random tries for each cleared wave (rand: 0..1).
+   The store is any { get(), set(text) } pair. */
+function createWaveProgress(store, rand) {
+  const blank = () => ({ unlocked: 1, cleared: [], tries: {} });
   const valid = p => !!p && Number.isInteger(p.unlocked) && p.unlocked >= 1 && p.unlocked <= WAVES.length &&
     Array.isArray(p.cleared) && p.cleared.every(n => Number.isInteger(n) && n >= 1 && n <= WAVES.length);
-  let p = blank();
-  try { const saved = JSON.parse(store.get()); if (valid(saved)) p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].sort((a, b) => a - b) }; } catch (e) { /* keep blank */ }
+  let p = blank(), migrated = false;
+  try {
+    const saved = JSON.parse(store.get());
+    if (valid(saved)) {
+      p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].sort((a, b) => a - b), tries: {} };
+      if (saved.tries && typeof saved.tries === 'object') {
+        for (const [k, v] of Object.entries(saved.tries)) if (get(Number(k)) && Number.isInteger(v) && v > 0) p.tries[k] = v;
+      } else {
+        const r = rand || Math.random;
+        for (const n of p.cleared) p.tries[n] = 1 + Math.min(3, Math.floor(r() * 4));
+        migrated = true;
+      }
+    }
+  } catch (e) { /* keep blank */ }
+  function get(n) { return WAVES[n - 1] || null; }
   const save = () => { try { store.set(JSON.stringify(p)); } catch (e) { /* progress lasts this page load only */ } };
-  const get = n => WAVES[n - 1] || null;
-  const snapshot = () => ({ unlocked: p.unlocked, cleared: p.cleared.slice(), total: WAVES.length, complete: p.cleared.length === WAVES.length });
+  if (migrated) save();
+  const snapshot = () => ({ unlocked: p.unlocked, cleared: p.cleared.slice(), tries: Object.assign({}, p.tries), total: WAVES.length, complete: p.cleared.length === WAVES.length });
   return Object.freeze({
     get,
     /* [You, West, East] personality ids for a wave. */
     seats: n => { const w = get(n); return w ? [null, w.west, w.east] : null; },
     isUnlocked: n => Number.isInteger(n) && n >= 1 && n <= p.unlocked,
     progress: snapshot,
+    /* Tries for a wave: the games it took to clear it, or the games so far. */
+    tries: n => p.tries[n] || 0,
     record(n, won) {
-      if (!get(n) || !won) return snapshot();
+      if (!get(n)) return snapshot();
+      if (!p.cleared.includes(n)) p.tries[n] = (p.tries[n] || 0) + 1;
+      if (!won) { save(); return snapshot(); }
       if (!p.cleared.includes(n)) { p.cleared.push(n); p.cleared.sort((a, b) => a - b); }
       if (n === p.unlocked && n < WAVES.length) p.unlocked = n + 1;
       save();
@@ -1320,12 +1348,14 @@ function createSlots(store) {
   });
 }
 
-/* Results of finished games: per mode, per table (West/East) and per opponent. */
+/* Results of finished games: per mode, per table (West/East), per opponent, and per opponent
+   in each mode (modeOpponents, kept since the results pop-up: older games are not in it). */
 function createStats(store) {
   const js = jsonStore(store);
-  const blank = () => ({ modes: {}, tables: {}, opponents: {} });
+  const blank = () => ({ modes: {}, tables: {}, opponents: {}, modeOpponents: {} });
   let s = js.load();
   if (!s || typeof s.modes !== 'object' || typeof s.tables !== 'object' || typeof s.opponents !== 'object') s = blank();
+  if (!s.modeOpponents || typeof s.modeOpponents !== 'object') s.modeOpponents = {};
   const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
   return Object.freeze({
     record({ mode, west, east, won }) {
@@ -1333,6 +1363,9 @@ function createStats(store) {
       add(s.tables, west + '/' + east, won);
       add(s.opponents, west, won);
       add(s.opponents, east, won);
+      const mine = s.modeOpponents[mode] || (s.modeOpponents[mode] = {});
+      add(mine, west, won);
+      add(mine, east, won);
       js.save(s);
       return this.get();
     },
@@ -2636,8 +2669,10 @@ const App = (() => {
   function syncModeUI() {
     const waves = app.mode === 'waves';
     const chip = $('modeChip');
-    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode === 'free' ? 'Free play' : 'No game';
+    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode === 'free' ? 'Free play' : '';
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
+    chip.hidden = !app.mode;
+    chip.title = waves ? 'Your tries for each wave' : 'Your wins against each opponent';
     $('setPersonas').disabled = waves;
     $('setPersonaRow').classList.toggle('set-off', waves);
     $('setWaveNote').hidden = !waves;
@@ -2983,6 +3018,40 @@ const App = (() => {
     ov.hidden = false;
   }
 
+  /* The mode chip opens your results for the mode: tries per wave, or Free play wins per opponent. */
+  function resultsHTML() {
+    const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + x.color + '">' + x.name + '</span>'; };
+    const close = '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+    if (app.mode === 'waves') {
+      const pr = Waves.progress();
+      const rows = WAVES.map(w => {
+        const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
+        const tries = done ? t + ' ✓' : w.n > pr.unlocked ? '<span class="dim">locked</span>' : t ? t + ' so far' : '<span class="dim">—</span>';
+        return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.n + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
+      }).join('');
+      const total = pr.cleared.reduce((t, n) => t + Waves.tries(n), 0);
+      return '<div class="modal results" role="dialog" aria-label="Wave tries"><h2>Wave tries</h2>' +
+        '<p>Cleared ' + pr.cleared.length + ' of ' + pr.total + (pr.cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared wave.</p>' +
+        '<table><tr><th>Wave</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
+        '<p class="note">A try is a game that counts for the wave. A game where the AI played your seat is not a try.</p>' + close;
+    }
+    const mine = (stats.get().modeOpponents.free) || {};
+    const rows = PERSONAS.map(x => {
+      const r = mine[x.id] || { played: 0, won: 0 };
+      return '<tr><td>' + who(x.id) + '</td><td class="num">' + r.won + '</td><td class="num">' + r.played + '</td></tr>';
+    }).join('');
+    return '<div class="modal results" role="dialog" aria-label="Free play wins"><h2>Free play wins</h2>' +
+      '<p>Games you won against each opponent, and games you played against them.</p>' +
+      '<table><tr><th>Opponent</th><th class="num">Wins</th><th class="num">Games</th></tr>' + rows + '</table>' +
+      '<p class="note">A game where the AI played your seat does not count.</p>' + close;
+  }
+  function showResults() {
+    if (!app.mode) return;
+    const ov = $('overlay');
+    ov.innerHTML = resultsHTML();
+    ov.hidden = false;
+  }
+
   /* ---- Human input. Engine.validate is the final guard for every action. ---- */
   function onCard(id) {
     const v = buildView(app.state, HUMAN);
@@ -3018,6 +3087,7 @@ const App = (() => {
       case 'skip': skip(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
       case 'close-overlay': $('overlay').hidden = true; break;
+      case 'mode-results': showResults(); break;
       case 'menu': showMenu(false); break;
       case 'menu-rules': showRules(); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
@@ -3554,11 +3624,21 @@ const SelfTest = (() => {
       eq('a loss changes nothing', wp.record(1, false).unlocked, 1);
       eq('a win opens the next wave', wp.record(1, true).unlocked, 2);
       eq('a win on an earlier wave opens nothing new', [wp.record(1, true).unlocked, wp.progress().cleared], [2, [1]]);
-      eq('progress is saved to the store', JSON.parse(text), { unlocked: 2, cleared: [1] });
+      eq('progress is saved to the store', JSON.parse(text), { unlocked: 2, cleared: [1], tries: { 1: 2 } });
       eq('progress loads from the store', createWaveProgress(store).progress().unlocked, 2);
+      eq('tries count games until the wave is cleared', [wp.tries(1), wp.tries(2)], [2, 0]);
+      wp.record(2, false); wp.record(2, false);
+      eq('a loss adds a try to an open wave', wp.tries(2), 2);
+      eq('a win clears the wave with its tries', [wp.record(2, true).tries[2], wp.record(2, false).tries[2]], [3, 3]);
       eq('the last wave opens nothing past it', (() => { wp.unlockAll(); return wp.record(18, true); })().unlocked, 18);
       check('all clear is complete', (() => { for (let n = 1; n <= 18; n++) wp.record(n, true); return wp.progress().complete; })());
       eq('reset opens wave 1 only', wp.reset().unlocked, 1);
+      text = '{"unlocked":4,"cleared":[1,2,3]}';
+      const old = createWaveProgress(store, () => 0.99);
+      eq('old progress gets 1-4 random tries for each cleared wave', [old.tries(1), old.tries(3), old.tries(4)], [4, 4, 0]);
+      eq('the random tries are saved once', [JSON.parse(text).tries, createWaveProgress(store, () => 0).tries(2)], [{ 1: 4, 2: 4, 3: 4 }, 4]);
+      eq('random tries are at least 1', createWaveProgress({ get: () => '{"unlocked":2,"cleared":[1]}', set: () => {} }, () => 0).tries(1), 1);
+      eq('new progress gets no random tries', createWaveProgress({ get: () => null, set: () => {} }, () => 0.99).progress().tries, {});
       text = '{"unlocked":99,"cleared":[1]}';
       eq('bad saved progress starts fresh', createWaveProgress(store).progress().unlocked, 1);
       const broken = createWaveProgress({ get: () => { throw new Error('no storage'); }, set: () => { throw new Error('no storage'); } });
@@ -3607,6 +3687,9 @@ const SelfTest = (() => {
       eq('results per mode', r.modes, { free: { played: 1, won: 1 }, waves: { played: 1, won: 0 } });
       eq('results per table keep the seat order', [r.tables['vex/doc'], r.tables['doc/vex']], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
       eq('results per opponent', r.opponents.vex, { played: 2, won: 1 });
+      eq('results per opponent in each mode', [r.modeOpponents.free.vex, r.modeOpponents.waves.vex], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
+      const oldStats = mem(); oldStats.set(JSON.stringify({ modes: { free: { played: 3, won: 1 } }, tables: {}, opponents: {} }));
+      eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
     safeRun('planner', () => {

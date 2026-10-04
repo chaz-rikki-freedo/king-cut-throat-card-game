@@ -11,7 +11,7 @@ Each launch opens on the menu. To open it during a game, click **☰** in the he
 The header stays at the top of the window, and the page scrolls under it. From left to right:
 
 - **☰** opens the menu (games and Rules).
-- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play** or **No game**.
+- The title (hidden on narrow phones) and the mode: **Wave N of 18** or **Free play**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
 - **Settings** (the sliders icon).
@@ -36,11 +36,19 @@ In Free play only, after the deal and before anyone discards in hand 1, a dialog
 The app keeps these in the browser (`localStorage`), so a closed tab loses nothing:
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
-- **Wave progress** (`kct.waves`).
+- **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
 - **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging. Speed is not kept: each load starts at Normal.
-- **Results** (`kct.stats`): played and won, per mode, per table (West/East) and per opponent. A game where the AI played your seat adds no results. There is no results screen yet.
+- **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 If a new version cannot load a saved game, the game is dropped and the menu says so once. Wave progress and results are kept. Change `SAVE_FORMAT` in `index.html` when the Engine state changes shape.
+
+## Results pop-up
+
+Click the mode in the header.
+
+- **Waves: Wave tries.** Each wave, its two opponents and your tries. A try is a game that counts for the wave (see **Waves**). For a cleared wave (✓), the tries are the games it took to clear it, and the number does not change after that. For the open wave that is not cleared, the tries are the games so far. Later waves show **locked**. The current wave is highlighted.
+- **Free play: Free play wins.** For each of the ten bots: the Free play games you won and played with that bot at the table. Waves games do not count here.
+- Progress saved before tries were kept gets a random number of tries, 1 to 4, for each cleared wave. Free play wins count from this version on.
 
 ## Settings panel
 
@@ -134,7 +142,8 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 
 - The seat order is part of the wave. East gives you the trump gift when East calls, so a bold bot is easier on your right (East) than on your left (West).
 - A wave always uses its personalities, also when **Personalities** is off.
-- A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing.
+- A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing except the tries.
+- Each counted game on a wave that is not cleared yet adds one try. Click **Wave N of 18** in the header to see your tries.
 - A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game. The first time you hand your seat to the AI in a wave that can still be cleared, the game asks first.
 - A win with **Replay Seed** counts too.
 - At the end of a wave: after a win, **Next wave**, **Replay Seed** and **Menu**; after a loss, **Try again** (same wave, new deal), **Replay Seed** and **Menu**.
@@ -167,8 +176,9 @@ Start a wave: `index.html?wave=3` (add `&seed=123` to fix the deals too).
 
 ```js
 KCT.App.newGame(undefined, 3)      // play wave 3 with a new seed
-KCT.Waves.progress()               // { unlocked, cleared, total, complete }
+KCT.Waves.progress()               // { unlocked, cleared, tries, total, complete }
 KCT.Waves.isUnlocked(5)
+KCT.Waves.tries(5)                 // games it took to clear wave 5 (or games so far)
 KCT.Waves.unlockAll()              // open every wave (for testing)
 KCT.Waves.reset()                  // back to wave 1
 KCT.WAVES                          // the table above, with a purpose line for each wave
