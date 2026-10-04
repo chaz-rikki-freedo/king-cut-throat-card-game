@@ -3024,8 +3024,8 @@ const App = (() => {
     const close = '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
     if (app.mode === 'waves') {
       const pr = Waves.progress();
-      /* Locked waves are not listed: their opponents are a surprise. */
-      const rows = WAVES.filter(w => w.n <= pr.unlocked).map(w => {
+      /* Newest wave first. Locked waves are not listed: their opponents are a surprise. */
+      const rows = WAVES.filter(w => w.n <= pr.unlocked).reverse().map(w => {
         const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
         const tries = done ? t + ' ✓' : t ? t + ' so far' : '<span class="dim">—</span>';
         return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.n + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
