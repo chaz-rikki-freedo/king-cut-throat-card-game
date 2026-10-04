@@ -667,6 +667,8 @@ const Engine = (() => {
       version: 0,
       seed: seed >>> 0,
       rng: { s: seed >>> 0 },
+      /* Every player decision, in order. With the seed, it rebuilds the game (see REPLAY). */
+      decisions: [],
       players: [
         { name: n[0], human: true },
         { name: n[1], human: false },
@@ -787,6 +789,17 @@ const Engine = (() => {
     }
   }
 
+  const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
+  /* Only the fields that the handler reads, so a decision list holds no extra data. */
+  function decisionOf(a) {
+    switch (a.type) {
+      case 'DISCARD': case 'EXCHANGE': return { type: a.type, player: a.player, cards: a.cards.slice() };
+      case 'BID': return { type: a.type, player: a.player, accept: a.accept };
+      case 'NAME': return { type: a.type, player: a.player, suit: a.suit };
+      default: return { type: a.type, player: a.player, card: a.card };
+    }
+  }
+
   function validate(state, a) {
     if (!a || typeof a.type !== 'string') return 'malformed action';
     if (state.gameOver) return 'the game is over';
@@ -836,6 +849,8 @@ const Engine = (() => {
     const events = [];
     HANDLERS[action.type](state, action, events);
     state.version++;
+    /* System steps are not kept: the state alone sets them. AI play-out states have no list. */
+    if (state.decisions && !SYSTEM_TYPES.has(action.type)) state.decisions.push(decisionOf(action));
     for (const e of events) Logger.log(e.type, e);
     return { ok: true, events };
   }
@@ -1152,6 +1167,130 @@ const Engine = (() => {
 })();
 
 /* ---------------------------------------------------------------------
+   4b. REPLAY — rebuilds a game from its seed and its decision list.
+   The seed (32 bits) sets the deals only. A replay record adds the table
+   and every player decision. A replay code is that record as one short
+   text: 'KCT1-' + base64url bytes. No UI: the App keeps the codes.
+   --------------------------------------------------------------------- */
+const Replay = (() => {
+  const R = Rules;
+  const VERSION = 1;
+  const PREFIX = 'KCT' + VERSION + '-';
+  const TYPES = Object.freeze(['DISCARD', 'BID', 'NAME', 'EXCHANGE', 'PLAY', 'SHOWDOWN_DISCARD']);
+  const NO_WAVE = 0, NO_NAME = 0;
+
+  /* The record of a game, finished or not. Null for a state from before decisions were kept. */
+  function fromState(state, meta) {
+    if (!state || !Array.isArray(state.decisions)) return null;
+    const m = meta || {};
+    return {
+      v: VERSION, seed: state.seed >>> 0, wave: m.wave || null, west: m.west || null, east: m.east || null,
+      decisions: state.decisions.map(d => JSON.parse(JSON.stringify(d))),
+      finished: !!state.gameOver, winner: state.gameOver ? state.winner : null, scores: state.scores.slice()
+    };
+  }
+
+  /* Bytes: version, seed (4, big-endian), wave, west and east ids (length + ASCII), then per decision:
+     (type << 2 | player) and its data. A card is its index in Rules.ALL_IDS. */
+  function encode(rec) {
+    const b = [VERSION, (rec.seed >>> 24) & 255, (rec.seed >>> 16) & 255, (rec.seed >>> 8) & 255, rec.seed & 255, rec.wave || NO_WAVE];
+    const text = s => { const x = String(s || ''); if (x.length > 255) throw new Error('name too long'); b.push(x.length); for (const ch of x) b.push(ch.charCodeAt(0) & 255); };
+    const card = id => { const k = R.ALL_IDS.indexOf(id); if (k < 0) throw new Error('unknown card ' + id); b.push(k); };
+    text(rec.west); text(rec.east);
+    for (const d of rec.decisions) {
+      const t = TYPES.indexOf(d.type);
+      if (t < 0 || !(d.player >= 0 && d.player < 3)) throw new Error('bad decision ' + JSON.stringify(d));
+      b.push((t << 2) | d.player);
+      switch (d.type) {
+        case 'DISCARD': d.cards.forEach(card); break;
+        case 'EXCHANGE': b.push(d.cards.length); d.cards.forEach(card); break;
+        case 'BID': b.push(d.accept ? 1 : 0); break;
+        case 'NAME': b.push(d.suit ? R.SUITS.indexOf(d.suit) + 1 : NO_NAME); break;
+        default: card(d.card);
+      }
+    }
+    let bin = '';
+    for (const x of b) bin += String.fromCharCode(x);
+    return PREFIX + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /* The record in a code. A bad code throws an Error that says why. */
+  function decode(code) {
+    const c = String(code || '').trim();
+    if (!c.startsWith(PREFIX)) throw new Error('not a replay code (version ' + VERSION + ')');
+    let bin;
+    try { bin = atob(c.slice(PREFIX.length).replace(/-/g, '+').replace(/_/g, '/')); } catch (e) { throw new Error('replay code is not base64url'); }
+    let i = 0;
+    const byte = () => { if (i >= bin.length) throw new Error('replay code is cut short'); return bin.charCodeAt(i++); };
+    const text = () => { const n = byte(); let s = ''; for (let k = 0; k < n; k++) s += String.fromCharCode(byte()); return s || null; };
+    const card = () => { const id = R.ALL_IDS[byte()]; if (!id) throw new Error('unknown card in replay code'); return id; };
+    if (byte() !== VERSION) throw new Error('replay code version mismatch');
+    const seed = ((byte() << 24) | (byte() << 16) | (byte() << 8) | byte()) >>> 0;
+    const wave = byte() || null;
+    const west = text(), east = text();
+    const decisions = [];
+    while (i < bin.length) {
+      const h = byte(), type = TYPES[h >> 2], player = h & 3;
+      if (!type || player > 2) throw new Error('bad decision at byte ' + (i - 1));
+      if (type === 'DISCARD') decisions.push({ type, player, cards: [card(), card(), card()] });
+      else if (type === 'EXCHANGE') { const n = byte(), cards = []; for (let k = 0; k < n; k++) cards.push(card()); decisions.push({ type, player, cards }); }
+      else if (type === 'BID') decisions.push({ type, player, accept: byte() === 1 });
+      else if (type === 'NAME') { const s = byte(); if (s > R.SUITS.length) throw new Error('unknown suit in replay code'); decisions.push({ type, player, suit: s ? R.SUITS[s - 1] : null }); }
+      else decisions.push({ type, player, card: card() });
+    }
+    return { v: VERSION, seed, wave, west, east, decisions };
+  }
+
+  const toRecord = x => typeof x === 'string' ? decode(x) : x;
+
+  /* A step-by-step player over a record or a code. Each step is one Engine action: a system step
+     or the next decision. It stops at the end, or where it needs a decision that is not there.
+     seek(n) rebuilds from the seed, so it also goes back. names (optional) are the seat names. */
+  function cursor(recOrCode, names) {
+    const rec = toRecord(recOrCode);
+    let state, next, steps;
+    function reset() { state = Engine.createGame(rec.seed, names); next = 0; steps = 0; }
+    function step() {
+      if (state.gameOver) return null;
+      const sys = Engine.systemAction(state);
+      if (!sys && next >= rec.decisions.length) return null;
+      const action = sys || rec.decisions[next];
+      const res = Engine.dispatch(state, action);
+      if (!res.ok) throw new Error('replay step ' + steps + ' (' + action.type + ') rejected: ' + res.error);
+      if (!sys) next++;
+      steps++;
+      return { action, events: res.events };
+    }
+    function seek(n) { if (n < steps) reset(); while (steps < n && step()); return steps; }
+    reset();
+    return {
+      record: rec,
+      get state() { return state; },
+      get steps() { return steps; },
+      get decisionsUsed() { return next; },
+      step, seek, reset,
+      done: () => state.gameOver || (!Engine.systemAction(state) && next >= rec.decisions.length)
+    };
+  }
+
+  /* Plays the whole record. ok is false when a decision is illegal or is left over after the end. */
+  function run(recOrCode, names) {
+    let cur;
+    try {
+      cur = cursor(recOrCode, names);
+      while (cur.step());
+    } catch (e) {
+      return { ok: false, error: String(e.message || e), state: cur ? cur.state : null, steps: cur ? cur.steps : 0 };
+    }
+    const left = cur.record.decisions.length - cur.decisionsUsed;
+    if (left) return { ok: false, error: left + ' decision(s) after the game ended', state: cur.state, steps: cur.steps };
+    return { ok: true, finished: cur.state.gameOver, state: cur.state, steps: cur.steps };
+  }
+
+  return Object.freeze({ VERSION, fromState, encode, decode, cursor, run });
+})();
+
+/* ---------------------------------------------------------------------
    5. VIEW — the information boundary. Each seat sees only public data
    plus its own hand and its own private memory. AI and Render use this.
    --------------------------------------------------------------------- */
@@ -1345,6 +1484,19 @@ function createSlots(store) {
     put(m, data) { slots[m] = Object.assign({ format: SAVE_FORMAT, mode: m, savedAt: Date.now() }, data); last = m; write(); },
     clear(m) { slots[m] = null; if (last === m) last = null; write(); },
     dropped: () => lost.splice(0)
+  });
+}
+
+/* Replay codes of the last REPLAYS_MAX finished games, newest first. */
+const REPLAYS_MAX = 20;
+function createReplays(store) {
+  const js = jsonStore(store);
+  let list = js.load();
+  if (!Array.isArray(list)) list = [];
+  return Object.freeze({
+    add(entry) { list.unshift(entry); list.length = Math.min(list.length, REPLAYS_MAX); js.save(list); return entry; },
+    list: () => JSON.parse(JSON.stringify(list)),
+    clear() { list = []; js.save(list); }
   });
 }
 
@@ -2427,6 +2579,7 @@ const App = (() => {
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
   const slots = createSlots(localStore('kct.slots'));
   const stats = createStats(localStore('kct.stats'));
+  const replays = createReplays(localStore('kct.replays'));
   const settingsStore = jsonStore(localStore('kct.settings'));
 
   /* Seats two personalities (West, East) and gives the table their names and colors. */
@@ -2494,6 +2647,13 @@ const App = (() => {
     return res;
   }
 
+  /* The running (or just finished) game as a replay code. Null with no game, or for a game
+     resumed from a save made before decisions were kept. */
+  function replayCode() {
+    const rec = app.mode && app.state && Replay.fromState(app.state, { wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2] });
+    return rec ? Replay.encode(rec) : null;
+  }
+
   /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
   function finishGame() {
     const won = app.state.winner === HUMAN;
@@ -2503,6 +2663,8 @@ const App = (() => {
       Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
     }
     if (!app.assisted) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
+    const code = replayCode();
+    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.assisted, at: Date.now() });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
@@ -3317,7 +3479,7 @@ const App = (() => {
     else { enterIdle(); showMenu(true); }
   }
 
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode };
 })();
 
 /* ---------------------------------------------------------------------
@@ -3695,6 +3857,47 @@ const SelfTest = (() => {
       eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
+    safeRun('replay', () => {
+      /* A full game with the fast AI, then rebuilt from its code alone. */
+      const s = Engine.createGame(4242);
+      for (let g = 0; g < 5000 && !s.gameOver; g++) { const ac = Engine.actors(s); D(s, ac.length ? AI.fastAction(s, ac[0]) : Engine.systemAction(s)); }
+      check('test game finished', s.gameOver);
+      check('only player decisions are kept', s.decisions.length > 0 && s.decisions.every(d => !['START_GAME', 'DEAL', 'FLIP', 'ADVANCE'].includes(d.type)));
+      const rec = Replay.fromState(s, { wave: 3, west: 'vex', east: 'doc' });
+      const code = Replay.encode(rec);
+      check('code is short base64url text', /^KCT1-[A-Za-z0-9_-]+$/.test(code) && code.length < 1200, code.length + ' chars');
+      const back = Replay.decode(code);
+      eq('decoded record matches', [back.seed, back.wave, back.west, back.east, back.decisions], [rec.seed, rec.wave, rec.west, rec.east, rec.decisions]);
+      const r = Replay.run(code);
+      check('replay runs to the end', r.ok && r.finished, r.error);
+      eq('replayed state equals the original', JSON.stringify(r.state), JSON.stringify(s));
+      const cur = Replay.cursor(code);
+      cur.seek(40);
+      const mid = JSON.stringify(cur.state);
+      cur.seek(r.steps); cur.seek(40);
+      eq('cursor can go back', JSON.stringify(cur.state), mid);
+      eq('cursor reaches the same end', [cur.seek(1e9), cur.state.winner, cur.done()], [r.steps, s.winner, true]);
+      /* An unfinished game replays to where it stopped. */
+      const u = Engine.createGame(77);
+      for (let g = 0; g < 60 || !Engine.actors(u).length; g++) { const ac = Engine.actors(u); D(u, ac.length ? AI.fastAction(u, ac[0]) : Engine.systemAction(u)); }
+      const ru = Replay.run(Replay.encode(Replay.fromState(u)));
+      eq('unfinished game replays to the same point', [ru.ok, ru.finished, ru.state.version], [true, false, u.version]);
+      /* Bad input. */
+      const bad = JSON.parse(JSON.stringify(rec)); bad.decisions[0] = Object.assign({}, bad.decisions[0], { player: (bad.decisions[0].player + 1) % 3 });
+      const rb = Replay.run(bad);
+      check('an illegal decision is rejected', !rb.ok && /rejected/.test(rb.error), rb.error);
+      const extra = JSON.parse(JSON.stringify(rec)); extra.decisions.push(rec.decisions[rec.decisions.length - 1]);
+      check('decisions after the end are rejected', !Replay.run(extra).ok);
+      let threw = 0;
+      for (const c of ['', 'KCT9-AAAA', 'KCT1-!!', code.slice(0, 8)]) { try { Replay.decode(c); } catch (e) { threw++; } }
+      eq('bad codes throw', threw, 4);
+      const old = JSON.parse(JSON.stringify(s)); delete old.decisions;
+      eq('a state from before decisions were kept has no record', Replay.fromState(old), null);
+      const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
+      for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k });
+      eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+    });
+
     safeRun('planner', () => {
       const s = Engine.createGame(4242);
       D(s, { type: 'START_GAME' });
@@ -3988,7 +4191,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, buildView, AI, Render, App, SelfTest, WAVES, Waves });
+window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
