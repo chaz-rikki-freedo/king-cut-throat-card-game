@@ -103,6 +103,7 @@ Click the heading to open it.
 |---|---|
 | **Logging** | Starts the timestamped event log (public information only). |
 | **Seed / Copy** | Shows the current game's seed and copies it. |
+| **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 

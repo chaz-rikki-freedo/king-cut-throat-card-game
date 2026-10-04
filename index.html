@@ -285,6 +285,8 @@ button.card{cursor:pointer}
 .swap-seat small{font-size:12px;color:var(--muted)}
 .swap-side{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .swap-btn{font-size:22px;padding:8px 14px;flex:none}
+.install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:#8fb89a}
 .update-note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
 .update-note[hidden]{display:none}
 </style>
@@ -402,6 +404,11 @@ button.card{cursor:pointer}
     <div class="set-inline">
       <label><input type="checkbox" id="setEnable"> Logging</label>
       <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
+    </div>
+    <div class="set-group">
+      <h4 class="set-sub">Install</h4>
+      <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
+      <div class="set-inline"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button> <button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></div>
     </div>
   </section>
   <div class="set-tests" id="setTests" hidden></div>
@@ -2781,6 +2788,7 @@ const App = (() => {
       menuItem('play-wave', 'Play wave', p.cleared.length + ' of ' + p.total + ' cleared' + (slots.get('waves') ? ' · replaces the saved Waves game' : '')) + '</div>';
     html += menuItem('new-free', 'New game', 'Free play: two random opponents' + (slots.get('free') && !(playing && app.mode === 'free') ? ' · replaces the saved Free play game' : ''));
     html += menuItem('tutorial', 'Tutorial', 'Coming soon', { disabled: true });
+    if (install.prompt) html += menuItem('install-app', 'Install app', 'Play it from your home screen, also offline');
     html += menuItem('menu-rules', 'Rules', 'How to play King Cut-Throat');
     html += menuItem(launch ? 'just-enter' : 'close-menu', launch ? 'Just enter' : 'Close', launch ? 'The table without a game. The menu and Settings work.' : '');
     html += '</div></div>';
@@ -2818,6 +2826,59 @@ const App = (() => {
     if (sw) sw.postMessage({ type: 'apply-update' });
     else location.reload();
   }
+  /* ---- Install: the browser's own install offer, and a check that shows why it may be missing. ---- */
+  const install = { prompt: null, offered: false, installed: false };
+  window.addEventListener('beforeinstallprompt', ev => {
+    ev.preventDefault();
+    install.prompt = ev; install.offered = true;
+    checkInstall();
+  });
+  window.addEventListener('appinstalled', () => { install.prompt = null; install.installed = true; checkInstall(); });
+  function installApp() {
+    const ev = install.prompt;
+    if (!ev) { checkInstall(); return; }
+    install.prompt = null;
+    ev.prompt();
+    ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') toast('Install cancelled.', 'info'); checkInstall(); }).catch(() => checkInstall());
+    if (app.menuOpen) showMenu(app.menuLaunch);
+  }
+  /* Lists what the browser needs for an install, as this browser sees it. */
+  async function checkInstall() {
+    const rows = [];
+    const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + esc(text) + '</li>');
+    const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    if (standalone || install.installed) row('ok', 'Running as an installed app.');
+    else row('wait', 'Running in a browser tab.');
+    row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
+    const link = document.querySelector('link[rel="manifest"]');
+    try {
+      const res = await fetch(link.href, { cache: 'no-store' });
+      const m = await res.json();
+      row(res.ok ? 'ok' : 'bad', 'Manifest loaded (' + res.status + ', ' + (res.headers.get('content-type') || 'no type') + '): ' + m.name + '.');
+      for (const ic of m.icons || []) {
+        const url = new URL(ic.src, res.url).href;
+        let st = 'error';
+        try { const r = await fetch(url, { cache: 'no-store' }); st = r.status + (r.ok ? '' : ' (failed)'); } catch (e) { st = 'failed: ' + e.message; }
+        row(/^200/.test(st) ? 'ok' : 'bad', 'Icon ' + ic.sizes + ' (' + (ic.purpose || 'any') + '): ' + st + '.');
+      }
+    } catch (e) { row('bad', 'Manifest could not be loaded: ' + e.message + '.'); }
+    if (!('serviceWorker' in navigator)) row('bad', 'This browser has no service workers.');
+    else {
+      const reg = await safe(() => navigator.serviceWorker.getRegistration());
+      row(reg && reg.active ? 'ok' : 'bad', reg && reg.active ? 'Service worker is active.' : 'Service worker is not active yet.');
+      row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
+    }
+    if (install.prompt) row('ok', 'The browser offers an install: press Install app.');
+    else if (install.offered) row('wait', 'The browser offered an install earlier in this visit.');
+    else row('wait', 'The browser has not offered an install in this visit. Chrome offers it only when it thinks the page can be installed.');
+    row('wait', 'Browser: ' + navigator.userAgent);
+    const box = $('setInstall');
+    if (box) box.innerHTML = rows.join('');
+    const btn = $('setInstallBtn');
+    if (btn) btn.hidden = !install.prompt;
+    return rows;
+  }
+
   function initUpdates() {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
     navigator.serviceWorker.addEventListener('message', ev => {
@@ -2936,11 +2997,14 @@ const App = (() => {
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
       case 'update-reload': applyUpdate(); break;
+      case 'install-app': installApp(); break;
+      case 'install-check': checkInstall(); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': {
         const d = $('settingsPanel'); d.hidden = !d.hidden;
         /* Lines logged while the panel was closed are shown when it opens. */
+        if (!d.hidden) checkInstall();
         if (!d.hidden) { const pre = $('setLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
         break;
       }
