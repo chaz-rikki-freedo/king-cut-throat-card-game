@@ -3024,15 +3024,18 @@ const App = (() => {
     const close = '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
     if (app.mode === 'waves') {
       const pr = Waves.progress();
-      const rows = WAVES.map(w => {
+      /* Locked waves are not listed: their opponents are a surprise. */
+      const rows = WAVES.filter(w => w.n <= pr.unlocked).map(w => {
         const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
-        const tries = done ? t + ' ✓' : w.n > pr.unlocked ? '<span class="dim">locked</span>' : t ? t + ' so far' : '<span class="dim">—</span>';
+        const tries = done ? t + ' ✓' : t ? t + ' so far' : '<span class="dim">—</span>';
         return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.n + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
       }).join('');
       const total = pr.cleared.reduce((t, n) => t + Waves.tries(n), 0);
+      const locked = pr.total - pr.unlocked;
       return '<div class="modal results" role="dialog" aria-label="Wave tries"><h2>Wave tries</h2>' +
         '<p>Cleared ' + pr.cleared.length + ' of ' + pr.total + (pr.cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared wave.</p>' +
         '<table><tr><th>Wave</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
+        (locked ? '<p class="note">' + locked + (locked === 1 ? ' more wave opens' : ' more waves open') + ' as you clear them.</p>' : '') +
         '<p class="note">A try is a game that counts for the wave. A game where the AI played your seat is not a try.</p>' + close;
     }
     const mine = (stats.get().modeOpponents.free) || {};
