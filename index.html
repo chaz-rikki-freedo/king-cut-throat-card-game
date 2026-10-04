@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>King Cut-Throat</title>
+<meta name="description" content="A three-player trick-taking card game against ten bot personalities.">
+<meta name="theme-color" content="#0c3a22">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cut-Throat">
 <style>
 :root{
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
@@ -243,6 +250,24 @@ button.card{cursor:pointer}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.menu{max-width:440px}
+.menu-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.menu-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 14px;min-height:48px;width:100%}
+.menu-item small{font-size:12px;font-weight:400;color:var(--muted)}
+.menu-item.primary small{color:var(--gold-ink)}
+.menu-wave{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:rgba(0,0,0,.2)}
+.menu-wave select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 10px;min-height:40px;font:inherit}
+.wave-note{margin:8px 0;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.25);font-weight:600}
+.swap{max-width:520px;text-align:center}
+.swap-seats{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px 0}
+.swap-seat{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:12px;background:rgba(0,0,0,.25)}
+.swap-seat .p-face{width:84px;height:84px;background:center bottom/contain no-repeat}
+.swap-seat b{font-size:18px}
+.swap-seat small{font-size:12px;color:var(--muted)}
+.swap-side{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.swap-btn{font-size:22px;padding:8px 14px;flex:none}
+.update-note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
+.update-note[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -275,7 +300,7 @@ button.card{cursor:pointer}
       <option value="instant">Instant</option>
     </select>
     <button class="btn" type="button" data-action="rules">Rules</button>
-    <button class="btn" type="button" data-action="new-game">New game</button>
+    <button class="btn" type="button" data-action="menu">Menu</button>
     <button class="btn" type="button" data-action="toggle-settings">Settings</button>
   </div>
 </footer>
@@ -283,6 +308,11 @@ button.card{cursor:pointer}
 <div class="sr" id="liveStatus" aria-live="polite"></div>
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
+<div class="update-note" id="updateNote" role="status" hidden>
+  <span>A new version is ready.</span>
+  <button class="btn primary" type="button" data-action="update-reload">Reload</button>
+  <button class="btn" type="button" data-action="update-later">Later</button>
+</div>
 
 <div class="settings" id="settingsPanel" hidden>
   <header class="set-top">
@@ -1144,6 +1174,137 @@ const PERSONAS = Object.freeze([
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
 const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, timid: 1, cautious: 2, normal: 3, bold: 4 });
+
+/* ---------------------------------------------------------------------
+   5c. WAVES — eighteen fixed tables, easiest first. Each wave seats two
+   personalities, West and East. The seat order is part of the wave: East
+   gives you the trump gift when East calls, so a bold bot is easier on
+   your right (East) than on your left (West). youWin is the measured win
+   rate (%) of a human-style player at that table, from 150 bot games.
+   A rematch is an earlier wave with the two seats swapped.
+   --------------------------------------------------------------------- */
+const WAVES = Object.freeze([
+  { west: 'kit', east: 'tex', youWin: 61, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
+  { west: 'kit', east: 'gus', youWin: 51, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
+  { west: 'zen', east: 'tex', youWin: 51, rematchOf: null, purpose: 'Practice. A table like real players.' },
+  { west: 'lou', east: 'gus', youWin: 49, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
+  { west: 'lou', east: 'zen', youWin: 47, rematchOf: null, purpose: 'Two calm players.' },
+  { west: 'viv', east: 'tex', youWin: 47, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
+  { west: 'kit', east: 'zen', youWin: 46, rematchOf: null, purpose: 'Two relaxed players.' },
+  { west: 'mei', east: 'tex', youWin: 40, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
+  { west: 'kit', east: 'ace', youWin: 37, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
+  { west: 'viv', east: 'gus', youWin: 37, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
+  { west: 'lou', east: 'vex', youWin: 35, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
+  { west: 'doc', east: 'ace', youWin: 29, rematchOf: null, purpose: 'Two strong bots.' },
+  { west: 'tex', east: 'mei', youWin: 24, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
+  { west: 'ace', east: 'doc', youWin: 21, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
+  { west: 'vex', east: 'lou', youWin: 18, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
+  { west: 'tex', east: 'viv', youWin: 18, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
+  { west: 'mei', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
+  { west: 'vex', east: 'doc', youWin: 7, rematchOf: null, purpose: 'Final boss.' }
+].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
+
+/* Wave progress: the highest wave you may play and the waves you have won.
+   A win clears a wave. A win on the highest open wave opens the next one.
+   A loss changes nothing. The store is any { get(), set(text) } pair. */
+function createWaveProgress(store) {
+  const blank = () => ({ unlocked: 1, cleared: [] });
+  const valid = p => !!p && Number.isInteger(p.unlocked) && p.unlocked >= 1 && p.unlocked <= WAVES.length &&
+    Array.isArray(p.cleared) && p.cleared.every(n => Number.isInteger(n) && n >= 1 && n <= WAVES.length);
+  let p = blank();
+  try { const saved = JSON.parse(store.get()); if (valid(saved)) p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].sort((a, b) => a - b) }; } catch (e) { /* keep blank */ }
+  const save = () => { try { store.set(JSON.stringify(p)); } catch (e) { /* progress lasts this page load only */ } };
+  const get = n => WAVES[n - 1] || null;
+  const snapshot = () => ({ unlocked: p.unlocked, cleared: p.cleared.slice(), total: WAVES.length, complete: p.cleared.length === WAVES.length });
+  return Object.freeze({
+    get,
+    /* [You, West, East] personality ids for a wave. */
+    seats: n => { const w = get(n); return w ? [null, w.west, w.east] : null; },
+    isUnlocked: n => Number.isInteger(n) && n >= 1 && n <= p.unlocked,
+    progress: snapshot,
+    record(n, won) {
+      if (!get(n) || !won) return snapshot();
+      if (!p.cleared.includes(n)) { p.cleared.push(n); p.cleared.sort((a, b) => a - b); }
+      if (n === p.unlocked && n < WAVES.length) p.unlocked = n + 1;
+      save();
+      return snapshot();
+    },
+    reset() { p = blank(); save(); return snapshot(); },
+    unlockAll() { p.unlocked = WAVES.length; save(); return snapshot(); }
+  });
+}
+const Waves = createWaveProgress({
+  get: () => localStorage.getItem('kct.waves'),
+  set: text => localStorage.setItem('kct.waves', text)
+});
+
+/* ---------------------------------------------------------------------
+   5d. MEMORY — what the app keeps between visits, in this browser only:
+   one unfinished game per mode, settings (not speed) and results. Every
+   store is a { get(), set(text) } pair, so tests can use a plain object.
+   --------------------------------------------------------------------- */
+/* Change SAVE_FORMAT when a saved Engine state from an older version can no longer be resumed. */
+const SAVE_FORMAT = 1;
+const MODES = Object.freeze(['waves', 'free']);
+function localStore(key) {
+  return { get: () => localStorage.getItem(key), set: text => localStorage.setItem(key, text) };
+}
+/* JSON in a store. A missing, broken or blocked store reads as null and ignores writes. */
+function jsonStore(store) {
+  return {
+    load() { try { const t = store.get(); return t ? JSON.parse(t) : null; } catch (e) { return null; } },
+    save(x) { try { store.set(JSON.stringify(x)); return true; } catch (e) { return false; } }
+  };
+}
+
+/* Save slots: one unfinished game per mode. A slot from another SAVE_FORMAT, or with an
+   Engine state that fails the card audit, is dropped; dropped() names those modes once. */
+function createSlots(store) {
+  const js = jsonStore(store);
+  const raw = js.load();
+  const slots = { waves: null, free: null };
+  const lost = [];
+  if (raw && typeof raw === 'object') {
+    for (const m of MODES) {
+      const s = raw[m];
+      if (!s) continue;
+      let ok = false;
+      try { ok = s.format === SAVE_FORMAT && !!s.state && !s.state.gameOver && Engine.audit(s.state).length === 0; } catch (e) { ok = false; }
+      if (ok) slots[m] = s; else lost.push(m);
+    }
+  }
+  let last = raw && MODES.includes(raw.last) && slots[raw.last] ? raw.last : null;
+  const write = () => js.save({ waves: slots.waves, free: slots.free, last });
+  if (lost.length) write();
+  return Object.freeze({
+    get: m => slots[m] || null,
+    last: () => last,
+    put(m, data) { slots[m] = Object.assign({ format: SAVE_FORMAT, mode: m, savedAt: Date.now() }, data); last = m; write(); },
+    clear(m) { slots[m] = null; if (last === m) last = null; write(); },
+    dropped: () => lost.splice(0)
+  });
+}
+
+/* Results of finished games: per mode, per table (West/East) and per opponent. */
+function createStats(store) {
+  const js = jsonStore(store);
+  const blank = () => ({ modes: {}, tables: {}, opponents: {} });
+  let s = js.load();
+  if (!s || typeof s.modes !== 'object' || typeof s.tables !== 'object' || typeof s.opponents !== 'object') s = blank();
+  const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
+  return Object.freeze({
+    record({ mode, west, east, won }) {
+      add(s.modes, mode, won);
+      add(s.tables, west + '/' + east, won);
+      add(s.opponents, west, won);
+      add(s.opponents, east, won);
+      js.save(s);
+      return this.get();
+    },
+    get: () => JSON.parse(JSON.stringify(s)),
+    reset() { s = blank(); js.save(s); }
+  });
+}
 
 /* ---------------------------------------------------------------------
    6. AI — planning opponents. Input: a View only (no hidden data).
@@ -2026,7 +2187,7 @@ const Render = (() => {
     const n = p => v.players[p].name;
     const you = v.seat;
     switch (v.phase) {
-      case P.SETUP: return 'Setting up…';
+      case P.SETUP: return 'No game is running.';
       case P.HAND_START: return 'Hand ' + (v.handNumber + 1) + ' · ' + n(v.dealer) + ' deals.';
       case P.DISCARD: return 'Everyone discards 3 cards face-down to the outside pile.';
       case P.REVEAL: return n(v.dealer) + ' turns up the top kitty card…';
@@ -2046,7 +2207,9 @@ const Render = (() => {
     const n = p => v.players[p].name;
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
-    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button>';
+    /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
+    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div>' + (ui.endButtons || '');
+    if (v.phase === P.SETUP) return '<div class="prompt">No game is running.</div><button class="btn primary" type="button" data-action="menu">Choose a game</button>';
     if (ui.autoplay && isTurn(v, you)) return '';
     switch (v.phase) {
       case P.DISCARD:
@@ -2178,39 +2341,154 @@ const App = (() => {
   const HUMAN = 0;
   const app = {
     state: null,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, personas: [null, null, null] },
+    /* mode: 'waves', 'free', or null when no game is running (the empty table). */
+    mode: null,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, personas: [null, null, null], endButtons: '' },
+    /* wave: the wave being played, or null. open: it was open at the start.
+       result: the progress after the game ended. */
+    wave: { n: null, open: false, result: null },
+    /* assisted: the AI played your seat at some time in this game. Such a game clears no wave and adds no results. */
+    assisted: false,
+    /* swapDone: Free play only. The seat swap was offered (or skipped). It is offered once, before the first discard. */
+    swapDone: true,
     usePersonas: true,
+    updateReady: false, menuOpen: false,
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
+  const slots = createSlots(localStore('kct.slots'));
+  const stats = createStats(localStore('kct.stats'));
+  const settingsStore = jsonStore(localStore('kct.settings'));
 
-  function newGame(seed) {
+  /* Seats two personalities (West, East) and gives the table their names and colors. */
+  function seatBots(west, east) {
+    app.ui.personas = [null, west, east];
+    if (!app.state) return;
+    [west, east].forEach((id, i) => {
+      const x = PERSONA_BY_ID[id];
+      app.state.players[i + 1].name = x ? x.name : (i ? 'East' : 'West');
+      if (x) document.documentElement.style.setProperty('--name' + (i + 1), x.color);
+      else document.documentElement.style.removeProperty('--name' + (i + 1));
+    });
+  }
+
+  /* wave (optional): play that wave's table. Without it, the game is Free play and the seed picks the table. */
+  function newGame(seed, wave) {
     clearTimer();
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
     /* Two personalities sit West and East, picked from the seed so a replay meets the same bots.
-       Your seat gets one only when you hand it to the AI, and keeps it for the game. */
-    const pool = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
-    app.ui.personas = [null, pool[0], pool[1]];
-    app.state = Engine.createGame(s, ['You', PERSONA_BY_ID[pool[0]].name, PERSONA_BY_ID[pool[1]].name]);
-    for (const p of [1, 2]) document.documentElement.style.setProperty('--name' + p, PERSONA_BY_ID[pool[p - 1]].color);
+       A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
+    const w = Waves.get(wave);
+    const pool = w ? [w.west, w.east] : RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+    app.mode = w ? 'waves' : 'free';
+    app.wave = { n: w ? w.n : null, open: !!w && Waves.isUnlocked(w.n), result: null };
+    app.assisted = app.ui.autoplay;
+    app.swapDone = !!w || app.ui.autoplay;
+    app.ui.endButtons = '';
+    app.state = Engine.createGame(s, ['You', 'West', 'East']);
+    seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
     $('gameLog').innerHTML = '';
     $('overlay').hidden = true;
+    hideUpdateNote();
     const setSeed = $('setSeed');
     if (setSeed) setSeed.textContent = String(s);
-    addLog('New game (seed ' + s + ').', '');
+    addLog((w ? 'Wave ' + w.n + ': ' : 'Free play: ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
     act({ type: 'START_GAME' });
+  }
+
+  /* The empty table: no game runs, but Rules, Settings, profiles and the menu work. */
+  function enterIdle() {
+    clearTimer();
+    app.mode = null;
+    app.wave = { n: null, open: false, result: null };
+    app.swapDone = true;
+    app.ui.endButtons = '';
+    app.state = Engine.createGame(0, ['You', 'West', 'East']);
+    seatBots(null, null);
+    $('gameLog').innerHTML = '';
+    const setSeed = $('setSeed');
+    if (setSeed) setSeed.textContent = '—';
+    draw([]);
+    maybeOfferUpdate();
   }
 
   function act(action) {
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
     app.lastEvents = res.events;
+    if (app.state.gameOver && res.events.some(e => e.type === 'GAME_ENDED')) finishGame();
     for (const e of res.events) narrate(e);
     draw(res.events);
     schedule();
+    saveGame();
     return res;
+  }
+
+  /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
+  function finishGame() {
+    const won = app.state.winner === HUMAN;
+    if (app.wave.n) {
+      const counts = app.wave.open && !app.assisted;
+      app.wave.result = counts ? Waves.record(app.wave.n, won) : Waves.progress();
+      Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
+    }
+    if (!app.assisted) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
+    app.ui.endButtons = endButtonsHTML();
+    slots.clear(app.mode);
+  }
+  function endButtonsHTML() {
+    const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
+    const menu = b('menu', 'Menu');
+    if (app.mode !== 'waves') return b('new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
+    const n = app.wave.n, won = app.state.winner === HUMAN;
+    if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + b('replay-seed', 'Replay Seed') + menu;
+    if (won) return b('replay-seed', 'Replay Seed') + b('menu', 'Menu', true);
+    return b('retry-wave', 'Try again', true) + b('replay-seed', 'Replay Seed') + menu;
+  }
+
+  /* Saves the running game to its mode's slot after every action. Finished games are not kept. */
+  function saveGame() {
+    if (!app.mode || !app.state || app.state.gameOver) return;
+    /* The saved Latest Scroll keeps its last LOG_SAVE_MAX lines. */
+    const lines = Array.from($('gameLog').children).slice(-LOG_SAVE_MAX);
+    slots.put(app.mode, {
+      state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.open },
+      assisted: app.assisted, autoplay: app.ui.autoplay, swapDone: app.swapDone, log: lines.map(li => li.outerHTML).join('')
+    });
+  }
+  /* Continues a saved game. If it cannot be drawn, the slot is dropped and the table is empty. */
+  function resumeGame(mode) {
+    const s = slots.get(mode);
+    if (!s) return false;
+    clearTimer();
+    try {
+      app.mode = mode;
+      app.state = JSON.parse(JSON.stringify(s.state));
+      app.wave = { n: s.wave.n, open: !!s.wave.open, result: null };
+      app.assisted = !!s.assisted;
+      app.ui.autoplay = !!s.autoplay;
+      app.swapDone = s.swapDone !== false;
+      app.ui.endButtons = '';
+      app.ui.selected.clear();
+      seatBots(s.personas[1], s.personas[2]);
+      app.ui.personas[HUMAN] = s.personas[HUMAN] || null;
+      $('gameLog').innerHTML = s.log || '';
+      $('gameLog').scrollTop = $('gameLog').scrollHeight;
+      $('setSeed').textContent = String(app.state.seed);
+      $('overlay').hidden = true;
+      hideUpdateNote();
+      draw([]);
+    } catch (e) {
+      slots.clear(mode);
+      enterIdle();
+      toast('The saved game could not be loaded.', 'neg');
+      return false;
+    }
+    addLog('Game resumed.', '');
+    schedule();
+    return true;
   }
 
   /* Sets the game speed and the Speed menu. Each page load starts at Normal. */
@@ -2223,7 +2501,12 @@ const App = (() => {
 
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
   function toggleAutoplay() {
+    if (!app.mode) return;
+    /* Waves: the first hand-over in a game that could still clear its wave asks first. */
+    if (!app.ui.autoplay && app.mode === 'waves' && app.wave.open && !app.assisted && !app.state.gameOver &&
+      !window.confirm('If the AI plays your seat, a win in this game will not clear wave ' + app.wave.n + '. This stays true if you take your seat back.\n\nLet the AI play your seat?')) return;
     app.ui.autoplay = !app.ui.autoplay;
+    if (app.ui.autoplay) app.assisted = true;
     if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
       const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
       app.ui.personas[HUMAN] = free[Math.floor(Math.random() * free.length)].id;
@@ -2231,6 +2514,7 @@ const App = (() => {
     app.ui.selected.clear();
     draw([]);
     schedule();
+    saveGame();
   }
 
   function clearTimer() {
@@ -2248,13 +2532,18 @@ const App = (() => {
   function schedule() {
     clearTimer();
     const st = app.state;
+    /* The game waits while the menu is open. */
+    if (app.menuOpen) return;
+    if (!app.mode) { draw([]); return; }
     if (st.gameOver) { showGameOver(); return; }
+    if (needsSwap()) { draw([]); showSwap(); return; }
     const d = DELAYS[app.ui.speed];
     const actors = Engine.actors(st);
     const ai = actors.filter(p => !st.players[p].human || (app.ui.autoplay && p === HUMAN));
     if (ai.length) {
       const p = ai[0];
-      const persona = app.usePersonas ? PERSONA_BY_ID[app.ui.personas[p]] : null;
+      /* A wave always uses its personalities: they set its difficulty. */
+      const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
       later(d.ai, () => act(AI.decideAs(buildView(app.state, p), persona)));
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
@@ -2314,7 +2603,7 @@ const App = (() => {
   }
 
   /* The log is cleared at each new game. This cap only guards against a very long game. */
-  const LOG_MAX = 5000;
+  const LOG_MAX = 5000, LOG_SAVE_MAX = 1500;
 
   /* sd: a Showdown message, indented two steps. */
   function addLog(text, cls, sd) {
@@ -2409,8 +2698,132 @@ const App = (() => {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
-      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button><button class="btn primary" type="button" data-action="new-game-now">New Game</button><button class="btn" type="button" data-action="replay-seed">Replay Seed</button></div></div>';
+      waveEndHTML() +
+      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
+    maybeOfferUpdate();
+  }
+  function waveEndHTML() {
+    if (!app.wave.n || !app.wave.result) return '';
+    const n = app.wave.n, won = app.state.winner === HUMAN;
+    if (won && app.assisted) return '<p class="wave-note">Wave ' + n + ': the AI played your seat, so this win does not clear the wave.</p>';
+    if (won && !app.wave.open) return '<p class="wave-note">Wave ' + n + ' was locked, so this win does not clear it.</p>';
+    if (won && app.wave.result.complete) return '<p class="wave-note">Wave ' + n + ' cleared. You have cleared every wave!</p>';
+    if (won) return '<p class="wave-note">Wave ' + n + ' cleared.' + (n < WAVES.length ? ' Wave ' + (n + 1) + ' is open.' : '') + '</p>';
+    return '<p class="wave-note">Wave ' + n + ' is not cleared yet.</p>';
+  }
+
+  /* ---- The menu. At launch it is the "welcome back" dialog; Just enter closes it on the empty table. ---- */
+  function slotLine(m) {
+    const sl = slots.get(m);
+    if (!sl) return '';
+    const st = sl.state;
+    const name = id => (PERSONA_BY_ID[id] || {}).name || '?';
+    const who = name(sl.personas[1]) + ' / ' + name(sl.personas[2]);
+    const score = 'You ' + st.scores[0] + ' · ' + name(sl.personas[1]) + ' ' + st.scores[1] + ' · ' + name(sl.personas[2]) + ' ' + st.scores[2];
+    return (m === 'waves' ? 'Wave ' + sl.wave.n + ' · ' : '') + who + ' · hand ' + st.handNumber + ' · ' + score;
+  }
+  function menuItem(action, title, sub, opts) {
+    const o = opts || {};
+    return '<button class="btn menu-item' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' + (o.disabled ? ' disabled' : '') + '><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</button>';
+  }
+  function showMenu(launch) {
+    clearTimer();
+    const p = Waves.progress();
+    const playing = app.mode && !app.state.gameOver;
+    const lost = slots.dropped();
+    const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
+      '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + PERSONA_BY_ID[w.west].name + ' / ' + PERSONA_BY_ID[w.east].name + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
+    const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
+    let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
+    if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + (lost[0] === 'waves' ? 'Waves' : 'Free play') + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
+    html += '<div class="menu-list">';
+    for (const m of resumable) html += menuItem('resume-' + m, 'Resume ' + (m === 'waves' ? 'Waves' : 'Free play'), slotLine(m), { primary: launch && m === (slots.last() || resumable[0]) });
+    html += '<div class="menu-wave"><label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>' +
+      menuItem('play-wave', 'Play wave', p.cleared.length + ' of ' + p.total + ' cleared' + (slots.get('waves') ? ' · replaces the saved Waves game' : '')) + '</div>';
+    html += menuItem('new-free', 'New game', 'Free play: two random opponents' + (slots.get('free') && !(playing && app.mode === 'free') ? ' · replaces the saved Free play game' : ''));
+    html += menuItem('tutorial', 'Tutorial', 'Coming soon', { disabled: true });
+    html += menuItem(launch ? 'just-enter' : 'close-menu', launch ? 'Just enter' : 'Close', launch ? 'The table without a game. Rules and Settings work.' : '');
+    html += '</div></div>';
+    const ov = $('overlay');
+    ov.innerHTML = html;
+    ov.hidden = false;
+    app.menuOpen = true;
+    maybeOfferUpdate();
+  }
+  function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
+  /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
+  function confirmReplace(mode) {
+    const playingThis = app.mode === mode && !app.state.gameOver;
+    const sl = playingThis ? { state: app.state } : slots.get(mode);
+    if (!sl || sl.state.scores.every(x => x === 0) && sl.state.handNumber <= 1) return true;
+    return window.confirm('Abandon the unfinished ' + (mode === 'waves' ? 'Waves' : 'Free play') + ' game and start a new one?');
+  }
+  function startMode(mode, seed, wave) {
+    app.menuOpen = false;
+    /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
+    newGame(seed, mode === 'waves' ? wave : undefined);
+  }
+
+  /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
+  function gameRunning() { return !!app.mode && !!app.state && !app.state.gameOver; }
+  function maybeOfferUpdate() {
+    if (!app.updateReady || gameRunning()) return;
+    $('updateNote').hidden = false;
+  }
+  function hideUpdateNote() { const n = $('updateNote'); if (n) n.hidden = true; }
+  function applyUpdate() {
+    hideUpdateNote();
+    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (sw) sw.postMessage({ type: 'apply-update' });
+    else location.reload();
+  }
+  function initUpdates() {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+    navigator.serviceWorker.addEventListener('message', ev => {
+      const t = ev.data && ev.data.type;
+      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); }
+      if (t === 'update-applied') location.reload();
+    });
+    navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+      if (reg.active) reg.active.postMessage({ type: 'update-status' });
+    }).catch(() => { /* no offline play, the game still works */ });
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }
+
+  /* ---- Free play seat swap: offered once, before the first discard of the game. ---- */
+  function needsSwap() {
+    const st = app.state;
+    return app.mode === 'free' && !app.swapDone && !app.ui.autoplay && st.handNumber === 1 && st.phase === P.DISCARD && st.pendingDiscard.every(Boolean);
+  }
+  function seatCardHTML(id, side) {
+    const x = PERSONA_BY_ID[id];
+    return '<div class="swap-seat"><span class="swap-side">' + side + '</span>' +
+      '<div class="p-face" role="img" aria-label="' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>' +
+      '<b style="color:' + x.color + '">' + x.name + '</b><small>' + x.hint + '</small></div>';
+  }
+  function showSwap() {
+    const [, west, east] = app.ui.personas;
+    const ov = $('overlay');
+    ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><h2>Choose seats</h2>' +
+      '<p>You may swap your two opponents now. This is your only chance: after the discard, the seats stay for the whole game.</p>' +
+      '<div class="swap-seats">' + seatCardHTML(west, 'Your left · West') + '<button class="btn swap-btn" type="button" data-action="swap-preview" aria-label="Swap the two seats">⇄</button>' + seatCardHTML(east, 'Your right · East') + '</div>' +
+      '<div class="row"><button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
+    ov.hidden = false;
+  }
+  function swapPreview() {
+    const [, west, east] = app.ui.personas;
+    seatBots(east, west);
+    draw([]);
+    showSwap();
+  }
+  function swapDone() {
+    app.swapDone = true;
+    $('overlay').hidden = true;
+    const [, west, east] = app.ui.personas;
+    addLog('Seats: ' + PERSONA_BY_ID[west].name + ' (West, your left) and ' + PERSONA_BY_ID[east].name + ' (East, your right).', '');
+    saveGame();
+    schedule();
   }
 
   function showRules() {
@@ -2468,11 +2881,20 @@ const App = (() => {
       case 'rules': showRules(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
       case 'close-overlay': $('overlay').hidden = true; break;
-      case 'new-game':
-        if (app.state.gameOver || app.state.scores.every(x => x === 0) || window.confirm('Abandon this game and start a new one?')) newGame();
-        break;
-      case 'new-game-now': newGame(); break;
-      case 'replay-seed': newGame(app.state.seed); break;
+      case 'menu': showMenu(false); break;
+      case 'close-menu': closeMenu(); break;
+      case 'just-enter': app.menuOpen = false; $('overlay').hidden = true; enterIdle(); break;
+      case 'resume-waves': case 'resume-free': app.menuOpen = false; resumeGame(name.slice(7)); break;
+      case 'play-wave': { const n = Number($('waveSel').value); if (Waves.isUnlocked(n) && confirmReplace('waves')) startMode('waves', undefined, n); break; }
+      case 'new-free': if (confirmReplace('free')) startMode('free'); break;
+      case 'new-game-now': startMode('free'); break;
+      case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
+      case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
+      case 'replay-seed': startMode(app.mode, app.state.seed, app.wave.n); break;
+      case 'swap-preview': swapPreview(); break;
+      case 'swap-done': swapDone(); break;
+      case 'update-reload': applyUpdate(); break;
+      case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': {
         const d = $('settingsPanel'); d.hidden = !d.hidden;
@@ -2488,7 +2910,8 @@ const App = (() => {
         const box = $('setTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
-        setTimeout(() => showTests(SelfTest.run()), 30);
+        /* The tests reset the AI to its defaults, so the saved settings go back in after them. */
+        setTimeout(() => { showTests(SelfTest.run()); loadSettings(); syncThinking(); syncKnowledge(); $('setCourage').value = AI.style.courage; $('setRealTable').checked = AI.style.realTable; }, 30);
         break;
       }
       default: break;
@@ -2507,6 +2930,7 @@ const App = (() => {
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
+    saveSettings();
   }
 
   /* Table style switch: change the AI, keep the checkbox in step, and log the change. */
@@ -2516,6 +2940,7 @@ const App = (() => {
     $('setCourage').value = now.courage;
     Logger.log('AI_STYLE', now);
     addLog('Bot style: bid courage ' + $('setCourage').selectedOptions[0].textContent + ', real table ' + (now.realTable ? 'on' : 'off') + '.', 'h');
+    saveSettings();
   }
   /* Personalities switch: on, each bot plays its own style; off, all bots use the settings below. */
   function setPersonas(on, quiet) {
@@ -2523,7 +2948,7 @@ const App = (() => {
     $('setPersonas').checked = on;
     $('setBotFields').classList.toggle('set-off', on);
     $('setAdvanced').classList.toggle('set-off', on);
-    if (!quiet) addLog('Personalities: ' + (on ? 'on' : 'off') + '.', 'h');
+    if (!quiet) { addLog('Personalities: ' + (on ? 'on' : 'off') + '.', 'h'); saveSettings(); }
   }
   /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
   function setSkillTier(name) {
@@ -2531,6 +2956,7 @@ const App = (() => {
     syncThinking(); syncKnowledge();
     Logger.log('AI_SKILL', { tier: AI.skillTier() });
     addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
+    saveSettings();
   }
   function syncTier() { $('setTier').value = AI.skillTier(); }
 
@@ -2552,7 +2978,8 @@ const App = (() => {
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
-    planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games'
+    planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
+    waves: 'Waves', memory: 'Saved games and results'
   };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function showTests(res) {
@@ -2588,6 +3015,22 @@ const App = (() => {
     const farts = Math.round((1 - now.playoutSkill) * 100);
     Logger.log('AI_THINKING', now);
     addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
+    saveSettings();
+  }
+
+  /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
+  function saveSettings() {
+    settingsStore.save({ personas: app.usePersonas, thinking: AI.thinking, knowledge: AI.knowledge, style: AI.style, logging: Logger.enabled });
+  }
+  /* Puts the saved settings into the AI (quietly: no log lines). The AI checks every value. */
+  function loadSettings() {
+    const x = settingsStore.load();
+    if (!x || typeof x !== 'object') return;
+    if (x.thinking && typeof x.thinking === 'object') AI.setThinking(x.thinking);
+    if (x.knowledge && typeof x.knowledge === 'object') AI.setKnowledge(x.knowledge);
+    if (x.style && typeof x.style === 'object') AI.setStyle(x.style);
+    if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
+    if (x.logging === true) Logger.enabled = true;
   }
 
   function init() {
@@ -2602,18 +3045,22 @@ const App = (() => {
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       if (ev.target && /^(BUTTON|SELECT|INPUT)$/.test(ev.target.tagName)) return;
       if (ev.target && ev.target.classList && ev.target.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
+      if (!$('overlay').hidden) return; /* a dialog is open: its buttons take the keys */
       ev.preventDefault();
       if (app.timerFn) skip();
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
+    loadSettings();
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     speed.addEventListener('change', () => setSpeed(speed.value));
     const logBox = $('setEnable');
+    logBox.checked = Logger.enabled;
     logBox.addEventListener('change', () => {
       Logger.enabled = logBox.checked;
       /* A first line confirms that logging is on, even while the game waits for you. */
       if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
+      saveSettings();
     });
     $('setWorlds').addEventListener('change', () => setThinking({ worlds: Number($('setWorlds').value) }));
     $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
@@ -2633,11 +3080,17 @@ const App = (() => {
     Logger.listeners.push(line => { const pre = $('setLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; $('settingsPanel').hidden = false; }
+    initUpdates();
+    /* A ?seed= or ?wave= link starts that game at once. Otherwise every launch opens on the menu. */
     const seedParam = params.get('seed');
-    newGame(seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined);
+    const waveParam = params.get('wave');
+    const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined;
+    const wave = waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined;
+    if (seed !== undefined || Waves.get(wave)) newGame(seed, wave);
+    else { enterIdle(); showMenu(true); }
   }
 
-  return { init, newGame, act, skip, app };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats };
 })();
 
 /* ---------------------------------------------------------------------
@@ -2923,6 +3376,83 @@ const SelfTest = (() => {
         AI.setThinking(AI.THINKING_DEFAULTS);
         AI.setStyle(AI.STYLE_DEFAULTS);
       }
+    });
+
+    safeRun('waves', () => {
+      eq('eighteen waves', WAVES.length, 18);
+      check('waves are numbered 1 to 18', WAVES.every((w, i) => w.n === i + 1));
+      check('every wave seats two different known personalities', WAVES.every(w => PERSONA_BY_ID[w.west] && PERSONA_BY_ID[w.east] && w.west !== w.east));
+      check('every personality plays at least one wave', PERSONAS.every(x => WAVES.some(w => w.west === x.id || w.east === x.id)));
+      check('no table repeats', new Set(WAVES.map(w => w.west + '/' + w.east)).size === WAVES.length);
+      check('waves go from easiest to hardest', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin));
+      check('a rematch is an earlier wave with the seats swapped', WAVES.filter(w => w.rematchOf).every(w => {
+        const r = WAVES[w.rematchOf - 1];
+        return r && r.n < w.n && r.west === w.east && r.east === w.west;
+      }));
+      eq('wave seats are You, West, East', Waves.seats(1), [null, 'kit', 'tex']);
+      eq('an unknown wave has no seats', Waves.seats(19), null);
+
+      let text = null;
+      const store = { get: () => text, set: t => { text = t; } };
+      const wp = createWaveProgress(store);
+      eq('new progress opens wave 1 only', [wp.progress().unlocked, wp.progress().cleared], [1, []]);
+      check('wave 2 is locked at the start', !wp.isUnlocked(2));
+      eq('a loss changes nothing', wp.record(1, false).unlocked, 1);
+      eq('a win opens the next wave', wp.record(1, true).unlocked, 2);
+      eq('a win on an earlier wave opens nothing new', [wp.record(1, true).unlocked, wp.progress().cleared], [2, [1]]);
+      eq('progress is saved to the store', JSON.parse(text), { unlocked: 2, cleared: [1] });
+      eq('progress loads from the store', createWaveProgress(store).progress().unlocked, 2);
+      eq('the last wave opens nothing past it', (() => { wp.unlockAll(); return wp.record(18, true); })().unlocked, 18);
+      check('all clear is complete', (() => { for (let n = 1; n <= 18; n++) wp.record(n, true); return wp.progress().complete; })());
+      eq('reset opens wave 1 only', wp.reset().unlocked, 1);
+      text = '{"unlocked":99,"cleared":[1]}';
+      eq('bad saved progress starts fresh', createWaveProgress(store).progress().unlocked, 1);
+      const broken = createWaveProgress({ get: () => { throw new Error('no storage'); }, set: () => { throw new Error('no storage'); } });
+      eq('progress works without storage', broken.record(1, true).unlocked, 2);
+    });
+
+    safeRun('memory', () => {
+      const mem = () => { let t = null; return { get: () => t, set: x => { t = x; }, peek: () => t, poke: x => { t = x; } }; };
+      /* A game in hand 2, mid-trick, with the fast AI. */
+      const s = Engine.createGame(31337);
+      D(s, { type: 'START_GAME' });
+      for (let g = 0; g < 2000 && !(s.handNumber === 2 && s.phase === P.TRICK_PLAY && s.trick.plays.length === 1); g++) {
+        const ac = Engine.actors(s);
+        D(s, ac.length ? AI.fastAction(s, ac[0]) : Engine.systemAction(s));
+      }
+      check('test game reached hand 2 mid-trick', s.handNumber === 2 && s.phase === P.TRICK_PLAY);
+      const store = mem();
+      const sl = createSlots(store);
+      eq('new slots are empty', [sl.get('waves'), sl.get('free'), sl.last()], [null, null, null]);
+      sl.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null, open: false } });
+      const back = createSlots(store).get('free');
+      eq('a saved game loads with its table', [back.mode, back.personas, back.format], ['free', [null, 'vex', 'doc'], SAVE_FORMAT]);
+      eq('the last mode is remembered', createSlots(store).last(), 'free');
+      /* Resumed and original games, played on with the same deterministic AI, end the same way. */
+      const a = JSON.parse(JSON.stringify(s)), b = back.state;
+      const finish = x => { for (let g = 0; g < 5000 && !x.gameOver; g++) { const ac = Engine.actors(x); D(x, ac.length ? AI.fastAction(x, ac[0]) : Engine.systemAction(x)); } return [x.scores, x.winner, x.handNumber, x.version]; };
+      eq('a resumed game plays on exactly as the original', finish(b), finish(a));
+      sl.put('waves', { state: s, personas: [null, 'kit', 'tex'], wave: { n: 1, open: true } });
+      sl.clear('free');
+      eq('clearing one mode keeps the other', [!!createSlots(store).get('waves'), createSlots(store).get('free')], [true, null]);
+      const old = JSON.parse(store.peek()); old.waves.format = SAVE_FORMAT + 1; store.poke(JSON.stringify(old));
+      const sl2 = createSlots(store);
+      eq('a game saved in another format is dropped and named once', [sl2.get('waves'), sl2.dropped(), sl2.dropped()], [null, ['waves'], []]);
+      const bad = JSON.parse(JSON.stringify(s)); bad.hands[0].push('AS', 'AS');
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: bad, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
+      eq('a game that fails the card audit is dropped', createSlots(store).get('free'), null);
+      store.poke('{not json');
+      eq('a broken save reads as empty', createSlots(store).get('free'), null);
+      const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
+      blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } });
+      check('blocked storage keeps the game for this page load', !!blocked.get('free'));
+
+      const st = createStats(mem());
+      st.record({ mode: 'free', west: 'vex', east: 'doc', won: true });
+      const r = st.record({ mode: 'waves', west: 'doc', east: 'vex', won: false });
+      eq('results per mode', r.modes, { free: { played: 1, won: 1 }, waves: { played: 1, won: 0 } });
+      eq('results per table keep the seat order', [r.tables['vex/doc'], r.tables['doc/vex']], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
+      eq('results per opponent', r.opponents.vex, { played: 2, won: 1 });
     });
 
     safeRun('planner', () => {
@@ -3218,7 +3748,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, buildView, AI, Render, App, SelfTest });
+window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
