@@ -195,9 +195,9 @@ Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for
 
 The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
 
-The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and AI settings as generic variables. The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 500 to 1,000 characters, for example `KCT2-AgEFAZIhAgMC…`.
+The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and AI settings as generic variables. The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 750 to 2,000 characters, for example `KCT2-AgEFAZIhAgMC…`.
 
-The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). Codes from the first release (`KCT1-`) still read.
+The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). The format holds at least 20 hands with a showdown in each hand (about 2,650 characters). Codes from the first release (`KCT1-`) still read.
 
 The app keeps the codes of the last 20 finished games in this browser (`kct.replays`). There is no replay UI yet. Use the console:
 

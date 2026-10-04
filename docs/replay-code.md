@@ -222,8 +222,38 @@ The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes
 | A rule change that changes the game for the same decisions | Raise `Engine.RULES_VERSION`. |
 | A change to the layout of section 4 itself | Raise the format version (`KCT3-`). Keep a reader for the old versions. |
 
-## 11. Limits
+## 11. Size and limits
 
-- The app keeps the codes of the last 20 finished games in `localStorage` (`kct.replays`).
-- A full game is about 500 to 1,000 characters. The length changes with the number of hands.
+### 11.1 Capacity requirement
+
+The format must hold a game of **at least 20 hands in which each hand is a showdown**, with the longest bidding and a 2-card exchange. Real games are shorter, but this is the safe limit. The self-test `replay` encodes and decodes this worst case and checks that the code is 3,000 characters or less.
+
+The format itself has no hard limit. Section lengths and counts are `uint` varints. `Replay.run` and `Replay.cursor` have no step limit.
+
+### 11.2 Decisions and bytes for each hand
+
+| Hand | Decisions | Bytes |
+|---|---|---|
+| Joker turned (void) | 3 | 12 |
+| All players pass in both rounds (abandoned) | 9 | 24 |
+| Normal, 1 bid, 1-card exchange | 26 | 59 |
+| Normal, longest bidding (6), 2-card exchange | 31 | 70 |
+| Showdown, longest bidding, 2-card exchange | 43 | 94 |
+
+Bytes: DISCARD = 4, BID or NAME = 2, EXCHANGE = 2 + number of cards, PLAY or SHOWDOWN_DISCARD = 2. A showdown adds 2 SHOWDOWN_DISCARD and 10 PLAY (5 tricks × 2 players) to a normal hand. The last hand can be shorter, because a King can give the tenth point before the last trick.
+
+### 11.3 Code length
+
+The other sections (GAME, SEATS, RESULT, FLAGS, TIME, META) use about 70 bytes. Base64url makes 4 characters from each 3 bytes.
+
+| Game | Decisions | Characters |
+|---|---|---|
+| Short game, about 8 hands | about 220 | about 750 |
+| Long game, 15 hands, 3 showdowns (measured, seed 830) | 476 | 1,568 |
+| 20 hands, typical | about 540–600 | about 1,700–2,000 |
+| 20 hands, all showdowns (worst case, section 11.1) | 860 | 2,647 |
+
+### 11.4 Other limits
+
+- The app keeps the codes of the last 20 finished games in `localStorage` (`kct.replays`). In the worst case, this is about 55 KB.
 - A game resumed from a save made before replay codes existed has no decision list, so it has no code.
