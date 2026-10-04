@@ -26,13 +26,29 @@
 html,body{margin:0;padding:0}
 body{background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
 button{font:inherit;color:inherit}
-.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08)}
-.brand{font-weight:800;letter-spacing:.02em;font-size:18px}
-.mode-chip{margin-right:auto;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
+/* The header stays at the top of the window; the page scrolls under it. On narrow screens
+   the trump and hand chips go to a second row. --header-h (set by the controller) places the toasts below it. */
+.topbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.brand{font-weight:800;letter-spacing:.02em;font-size:18px;white-space:nowrap}
+.game-chips{flex:1 1 auto;min-width:0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px}
+.tools{display:flex;align-items:center;gap:6px;margin-left:auto}
+.icon-btn{display:inline-grid;place-items:center;width:40px;height:40px;padding:0;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;flex:none}
+.icon-btn:hover{background:rgba(255,255,255,.18)}
+.icon-btn:focus-visible,.speed-pick:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.icon-btn svg,.speed-pick svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.speed-pick{display:inline-flex;align-items:center;gap:4px;height:40px;padding:0 4px 0 8px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
+.speed-pick svg{width:20px;height:20px;flex:none}
+.speed-pick select{background:transparent;color:var(--ink);border:0;font:inherit;font-size:14px;padding:4px 2px;cursor:pointer;outline:none}
+.speed-pick option{background:var(--felt-edge);color:var(--ink)}
+@media (max-width:899px){
+  .game-chips{order:10;flex-basis:100%;justify-content:flex-start}
+}
+@media (max-width:599px){ .topbar{padding:8px 12px;gap:8px} }
+@media (max-width:479px){ .brand{display:none} }
+@media (max-width:359px){ .mode-chip .of{display:none} }
+.mode-chip{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
 .mode-chip.waves{background:var(--gold);color:var(--gold-ink)}
 .mode-chip.free{background:var(--accent);color:#07233a}
-.footbar{display:flex;justify-content:center;padding:10px 16px 16px;border-top:1px solid rgba(255,255,255,.08);background:var(--felt-edge)}
-.controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.18)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -123,7 +139,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .summary table.stats td,.summary table.stats th{padding:3px 6px}
 .summary table.stats th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .summary table.stats td:first-child{text-align:left}
-.hand-chip{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.hand-chip{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .status{text-align:center;font-weight:600;min-height:1.4em}
 .lasttrick{display:flex;justify-content:center;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .lasttrick .card{--w:30px}
@@ -190,7 +206,7 @@ button.card{cursor:pointer}
 .gamelog .card-tag .rank{color:#6b6b6b}
 .gamelog .pip-red{color:#d32f2f}
 .gamelog .pip-black{color:#000}
-.toasts{position:fixed;top:64px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
+.toasts{position:fixed;top:calc(var(--header-h,56px) + 8px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
 .toast.info{background:#e3f2fd;color:#0d2a44}
@@ -274,11 +290,27 @@ button.card{cursor:pointer}
 </style>
 </head>
 <body>
-<header class="topbar">
+<header class="topbar" id="topbar">
+  <button class="icon-btn" type="button" data-action="menu" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="brand">King Cut-Throat</div>
   <span class="mode-chip" id="modeChip" title="The current game mode">No game</span>
-  <span class="trump-chip" id="trumpChip">Trump: —</span>
-  <span class="hand-chip" id="handChip"></span>
+  <div class="game-chips">
+    <span class="trump-chip" id="trumpChip">Trump: —</span>
+    <span class="hand-chip" id="handChip"></span>
+  </div>
+  <div class="tools">
+    <label class="speed-pick" title="Game speed">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="M12 15.5l4.5-5"/></svg>
+      <span class="sr">Speed</span>
+      <select id="speedSel">
+        <option value="slow">Slow</option>
+        <option value="normal" selected>Normal</option>
+        <option value="fast">Fast</option>
+        <option value="instant">Instant</option>
+      </select>
+    </label>
+    <button class="icon-btn" type="button" data-action="toggle-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg></button>
+  </div>
 </header>
 
 <div class="layout">
@@ -294,20 +326,6 @@ button.card{cursor:pointer}
   </aside>
 </div>
 
-<footer class="footbar">
-  <div class="controls">
-    <label class="sr" for="speedSel">Speed</label>
-    <select id="speedSel" title="Game speed">
-      <option value="slow">Slow</option>
-      <option value="normal" selected>Normal</option>
-      <option value="fast">Fast</option>
-      <option value="instant">Instant</option>
-    </select>
-    <button class="btn" type="button" data-action="rules">Rules</button>
-    <button class="btn" type="button" data-action="menu">Menu</button>
-    <button class="btn" type="button" data-action="toggle-settings">Settings</button>
-  </div>
-</footer>
 
 <div class="sr" id="liveStatus" aria-live="polite"></div>
 <div class="toasts" id="toasts" aria-live="assertive"></div>
@@ -2357,7 +2375,7 @@ const App = (() => {
     /* swapDone: Free play only. The seat swap was offered (or skipped). It is offered once, before the first discard. */
     swapDone: true,
     usePersonas: true,
-    updateReady: false, menuOpen: false,
+    updateReady: false, menuOpen: false, menuLaunch: false,
     timer: null, timerFn: null, lastEvents: []
   };
   const $ = id => document.getElementById(id);
@@ -2582,7 +2600,7 @@ const App = (() => {
   function syncModeUI() {
     const waves = app.mode === 'waves';
     const chip = $('modeChip');
-    chip.textContent = waves ? 'Wave ' + app.wave.n + ' of ' + WAVES.length : app.mode === 'free' ? 'Free play' : 'No game';
+    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode === 'free' ? 'Free play' : 'No game';
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
     $('setPersonas').disabled = waves;
     $('setPersonaRow').classList.toggle('set-off', waves);
@@ -2668,7 +2686,7 @@ const App = (() => {
       case 'TRICK_STARTED':
         addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'SD Trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
         break;
-      case 'CARD_PLAYED': addLog(R.shortName(e.card) + ' played by ' + n(e.player) + '.', 'play', e.showdown); break;
+      case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
       case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
@@ -2763,12 +2781,14 @@ const App = (() => {
       menuItem('play-wave', 'Play wave', p.cleared.length + ' of ' + p.total + ' cleared' + (slots.get('waves') ? ' · replaces the saved Waves game' : '')) + '</div>';
     html += menuItem('new-free', 'New game', 'Free play: two random opponents' + (slots.get('free') && !(playing && app.mode === 'free') ? ' · replaces the saved Free play game' : ''));
     html += menuItem('tutorial', 'Tutorial', 'Coming soon', { disabled: true });
-    html += menuItem(launch ? 'just-enter' : 'close-menu', launch ? 'Just enter' : 'Close', launch ? 'The table without a game. Rules and Settings work.' : '');
+    html += menuItem('menu-rules', 'Rules', 'How to play King Cut-Throat');
+    html += menuItem(launch ? 'just-enter' : 'close-menu', launch ? 'Just enter' : 'Close', launch ? 'The table without a game. The menu and Settings work.' : '');
     html += '</div></div>';
     const ov = $('overlay');
     ov.innerHTML = html;
     ov.hidden = false;
     app.menuOpen = true;
+    app.menuLaunch = !!launch;
     maybeOfferUpdate();
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
@@ -2846,6 +2866,7 @@ const App = (() => {
     schedule();
   }
 
+  /* The rules open from the menu; Back returns to it (the game stays paused). */
   function showRules() {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Rules"><h2>King Cut-Throat — quick rules</h2><ul>' +
@@ -2861,7 +2882,7 @@ const App = (() => {
       '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3.</li>' +
       '<li>The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</li>' +
       '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1 and they play 5 tricks with the same trump. The player who won the latest main trick between them leads. Winner +1, loser −1 (not below 0).</li>' +
-      '</ul><div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+      '</ul><div class="row"><button class="btn primary" type="button" data-action="menu-back">Back</button></div></div>';
     ov.hidden = false;
   }
 
@@ -2898,10 +2919,11 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
       case 'skip': skip(); break;
-      case 'rules': showRules(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
       case 'close-overlay': $('overlay').hidden = true; break;
       case 'menu': showMenu(false); break;
+      case 'menu-rules': showRules(); break;
+      case 'menu-back': showMenu(app.menuLaunch); break;
       case 'close-menu': closeMenu(); break;
       case 'just-enter': app.menuOpen = false; $('overlay').hidden = true; enterIdle(); break;
       case 'resume-waves': case 'resume-free': app.menuOpen = false; resumeGame(name.slice(7)); break;
@@ -3070,6 +3092,11 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     loadSettings();
+    /* The header can wrap to two rows; the toasts sit just below it. */
+    const setHeaderH = () => document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px');
+    setHeaderH();
+    if (window.ResizeObserver) new ResizeObserver(setHeaderH).observe($('topbar'));
+    else window.addEventListener('resize', setHeaderH);
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     speed.addEventListener('change', () => setSpeed(speed.value));
