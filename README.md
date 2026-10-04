@@ -195,21 +195,23 @@ Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for
 
 The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
 
-The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the wave, the two bots and every player decision (discards, bids, plays). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 750 characters for a full game, for example `KCT1-AQAA…`.
+The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and AI settings as generic variables. The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 500 to 1,000 characters, for example `KCT2-AgEFAZIhAgMC…`.
+
+The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). Codes from the first release (`KCT1-`) still read.
 
 The app keeps the codes of the last 20 finished games in this browser (`kct.replays`). There is no replay UI yet. Use the console:
 
 ```js
 KCT.App.replayCode()                        // the current (or just finished) game as a code
 KCT.App.replays.list()                      // [{ code, mode, wave, west, east, winner, scores, assisted, at }], newest first
-KCT.Replay.decode(code)                     // { v, seed, wave, west, east, decisions }
+KCT.Replay.decode(code)                     // { v, rules, seed, mode, wave, seats, decisions, result, flags, endedAt, meta, unknown }
 KCT.Replay.run(code)                        // { ok, finished, state, steps } or { ok: false, error }
 const c = KCT.Replay.cursor(code)           // step-by-step player
 c.step()                                    // { action, events } for one Engine step, or null at the end
 c.seek(40); c.state                         // go to step 40 (forward or back) and read the state
 ```
 
-`run` and `cursor` take seat names as a second argument (for example `['You', 'Vex', 'Doc']`). Without them, the seats are You, West and East. A game resumed from a save made before this change has no decision list, so it has no code.
+`run` and `cursor` take seat names as a second argument (for example `['You', 'Vex', 'Doc']`). Without them, the seats are You, West and East. A game resumed from a save made before replay codes has no decision list, so it has no code.
 
 ## Console
 
