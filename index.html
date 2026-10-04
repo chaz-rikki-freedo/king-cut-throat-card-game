@@ -27,7 +27,10 @@ html,body{margin:0;padding:0}
 body{background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
 button{font:inherit;color:inherit}
 .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08)}
-.brand{font-weight:800;letter-spacing:.02em;font-size:18px;margin-right:auto}
+.brand{font-weight:800;letter-spacing:.02em;font-size:18px}
+.mode-chip{margin-right:auto;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
+.mode-chip.waves{background:var(--gold);color:var(--gold-ink)}
+.mode-chip.free{background:var(--accent);color:#07233a}
 .footbar{display:flex;justify-content:center;padding:10px 16px 16px;border-top:1px solid rgba(255,255,255,.08);background:var(--felt-edge)}
 .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 12px;cursor:pointer}
@@ -273,6 +276,7 @@ button.card{cursor:pointer}
 <body>
 <header class="topbar">
   <div class="brand">King Cut-Throat</div>
+  <span class="mode-chip" id="modeChip" title="The current game mode">No game</span>
   <span class="trump-chip" id="trumpChip">Trump: —</span>
   <span class="hand-chip" id="handChip"></span>
 </header>
@@ -321,10 +325,11 @@ button.card{cursor:pointer}
   </header>
   <section class="set-section" id="setBots">
     <h3 class="set-head">Bots</h3>
-    <div class="set-fields">
+    <div class="set-fields" id="setPersonaRow">
       <label for="setPersonas">Personalities</label>
       <label title="Each bot plays its own style. Off: every bot plays with the settings below"><input type="checkbox" id="setPersonas" checked> <span class="k-name">Each bot plays its own way</span></label>
     </div>
+    <p class="k-hint" id="setWaveNote" hidden>Waves always use their personalities. These bot settings apply to Free play.</p>
     <div class="set-fields" id="setBotFields">
       <label for="setTier" title="Sets AI thinking and AI knowledge together. Custom: you changed them under Advanced">Skill</label>
       <select id="setTier">
@@ -372,7 +377,7 @@ button.card{cursor:pointer}
   </details>
   <section class="set-section set-actions">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
-    <p class="k-hint">Resets all bot settings. A reload also resets them.</p>
+    <p class="k-hint">Resets all bot settings. Settings are kept after a reload.</p>
   </section>
   <section class="set-section" id="setTools">
     <h3 class="set-head">Tools</h3>
@@ -2569,6 +2574,21 @@ const App = (() => {
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
     }
     Render.render(v, app.ui, ctx);
+    syncModeUI();
+  }
+
+  /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed:
+     a wave always uses its personalities. The switch keeps its value for Free play. */
+  function syncModeUI() {
+    const waves = app.mode === 'waves';
+    const chip = $('modeChip');
+    chip.textContent = waves ? 'Wave ' + app.wave.n + ' of ' + WAVES.length : app.mode === 'free' ? 'Free play' : 'No game';
+    chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
+    $('setPersonas').disabled = waves;
+    $('setPersonaRow').classList.toggle('set-off', waves);
+    $('setWaveNote').hidden = !waves;
+    $('setBotFields').classList.toggle('set-off', waves || app.usePersonas);
+    $('setAdvanced').classList.toggle('set-off', waves || app.usePersonas);
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
@@ -2946,8 +2966,7 @@ const App = (() => {
   function setPersonas(on, quiet) {
     app.usePersonas = on;
     $('setPersonas').checked = on;
-    $('setBotFields').classList.toggle('set-off', on);
-    $('setAdvanced').classList.toggle('set-off', on);
+    syncModeUI();
     if (!quiet) { addLog('Personalities: ' + (on ? 'on' : 'off') + '.', 'h'); saveSettings(); }
   }
   /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
