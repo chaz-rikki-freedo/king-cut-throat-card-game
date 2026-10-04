@@ -1,0 +1,75 @@
+/* King Cut-Throat service worker: offline play and update prompts.
+   The game page is served from the cache, so the app opens offline and never
+   changes in the middle of a session. Each time the page opens, the worker
+   fetches the page from the network in the background. If it differs from the
+   cached page, the new page waits in a separate cache and the app is told
+   ("update-ready"). The app asks you, between games, and then sends
+   "apply-update": the waiting page becomes the cached page and the app reloads.
+   A new version therefore needs no version number here: publishing a changed
+   index.html is enough. Change this file only to change how caching works. */
+'use strict';
+const SHELL = 'kct-shell', PENDING = 'kct-pending';
+const PAGE = new URL('./index.html', self.registration.scope).href;
+const ROOT = new URL('./', self.registration.scope).href;
+const ASSETS = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png']
+  .map(u => new URL(u, self.registration.scope).href);
+
+self.addEventListener('install', ev => {
+  ev.waitUntil(caches.open(SHELL).then(c => c.addAll([PAGE, ...ASSETS].map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', ev => ev.waitUntil(self.clients.claim()));
+
+const isPage = url => { const u = new URL(url); u.search = ''; u.hash = ''; return u.href === PAGE || u.href === ROOT; };
+
+self.addEventListener('fetch', ev => {
+  const req = ev.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  if (req.mode === 'navigate' && isPage(req.url)) {
+    ev.respondWith(cachedPage(req));
+    ev.waitUntil(checkPage());
+    return;
+  }
+  if (ASSETS.some(u => isSame(u, req.url))) ev.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req)));
+});
+const isSame = (a, b) => { const u = new URL(b); u.search = ''; return u.href === a; };
+
+async function cachedPage(req) {
+  const hit = await (await caches.open(SHELL)).match(PAGE);
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) (await caches.open(SHELL)).put(PAGE, res.clone());
+  return res;
+}
+
+/* Fetches the page from the network. A changed page waits in PENDING and the app is told. */
+async function checkPage() {
+  let res;
+  try { res = await fetch(PAGE, { cache: 'no-store' }); } catch (e) { return; }
+  if (!res.ok) return;
+  const shell = await caches.open(SHELL);
+  const current = await shell.match(PAGE);
+  const text = await res.clone().text();
+  if (!current) { await shell.put(PAGE, res); return; }
+  if (text === await current.text()) { await caches.delete(PENDING); return; }
+  const pending = await caches.open(PENDING);
+  const waiting = await pending.match(PAGE);
+  if (!waiting || text !== await waiting.text()) await pending.put(PAGE, res);
+  await tell({ type: 'update-ready' });
+}
+async function tell(msg, client) {
+  const list = client ? [client] : await self.clients.matchAll({ type: 'window' });
+  for (const c of list) c.postMessage(msg);
+}
+
+self.addEventListener('message', ev => {
+  const type = ev.data && ev.data.type;
+  if (type === 'update-status') ev.waitUntil((async () => {
+    if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
+  })());
+  if (type === 'apply-update') ev.waitUntil((async () => {
+    const waiting = await (await caches.open(PENDING)).match(PAGE);
+    if (waiting) await (await caches.open(SHELL)).put(PAGE, waiting);
+    await caches.delete(PENDING);
+    await tell({ type: 'update-applied' }, ev.source);
+  })());
+});

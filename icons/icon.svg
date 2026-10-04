@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Keycap "3", like the 3️⃣ emoji. Source for the PNG icons (see README). -->
+  <defs>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fa9c6"/><stop offset="1" stop-color="#3f5f86"/>
+    </linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7395bd"/><stop offset="1" stop-color="#4f73a0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#rim)"/>
+  <rect x="40" y="34" width="432" height="432" rx="84" fill="url(#face)"/>
+  <text x="256" y="372" text-anchor="middle" font-family="Arial, 'Helvetica Neue', 'DejaVu Sans', sans-serif" font-weight="700" font-size="330" fill="#ffffff">3</text>
+</svg>
