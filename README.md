@@ -123,7 +123,7 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 - The seat order is part of the wave. East gives you the trump gift when East calls, so a bold bot is easier on your right (East) than on your left (West).
 - A wave always uses its personalities, also when **Personalities** is off.
 - A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing.
-- A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game.
+- A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game. The first time you hand your seat to the AI in a wave that can still be cleared, the game asks first.
 - A win with **Replay Seed** counts too.
 - At the end of a wave: after a win, **Next wave**, **Replay Seed** and **Menu**; after a loss, **Try again** (same wave, new deal), **Replay Seed** and **Menu**.
 - Progress is kept in the browser (`localStorage`, key `kct.waves`). Without storage, it lasts until the page reloads.

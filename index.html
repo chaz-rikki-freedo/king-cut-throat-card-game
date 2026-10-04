@@ -2502,6 +2502,9 @@ const App = (() => {
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
   function toggleAutoplay() {
     if (!app.mode) return;
+    /* Waves: the first hand-over in a game that could still clear its wave asks first. */
+    if (!app.ui.autoplay && app.mode === 'waves' && app.wave.open && !app.assisted && !app.state.gameOver &&
+      !window.confirm('If the AI plays your seat, a win in this game will not clear wave ' + app.wave.n + '. This stays true if you take your seat back.\n\nLet the AI play your seat?')) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.assisted = true;
     if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
