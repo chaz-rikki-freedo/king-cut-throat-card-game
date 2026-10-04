@@ -4,7 +4,17 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 ## Menu
 
-Each launch opens on the menu. The header shows the current mode: **Wave N of 18**, **Free play** or **No game**. Click **Menu** in the footer to open it during a game (the game waits).
+Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
+
+## Header
+
+The header stays at the top of the window, and the page scrolls under it. From left to right:
+
+- **☰** opens the menu (games and Rules).
+- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play** or **No game**.
+- The trump suit and the hand and trick number. Below 900 px, these move to a second row.
+- The **speed** menu (Slow, Normal, Fast, Instant).
+- **Settings** (the sliders icon).
 
 | Item | What it does |
 |---|---|
@@ -12,7 +22,8 @@ Each launch opens on the menu. The header shows the current mode: **Wave N of 18
 | **Play wave** | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. |
 | **New game** | Free play: the seed picks two random opponents. |
 | **Tutorial** | Coming soon (disabled). |
-| **Just enter** (launch) / **Close** | Closes the menu. At launch, the table stays empty: Rules, Settings and the profiles work, and **Choose a game** opens the menu. |
+| **Rules** | The quick rules. **Back** returns to the menu. |
+| **Just enter** (launch) / **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
 
 A link with `?seed=` or `?wave=` starts that game at once, without the menu.
 
@@ -33,7 +44,7 @@ If a new version cannot load a saved game, the game is dropped and the menu says
 
 ## Settings panel
 
-Click **Settings** in the footer, or add `?settings=1` to the URL (this also turns on logging). The panel has four parts, from top to bottom.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this also turns on logging). The panel has four parts, from top to bottom.
 
 ### Bots
 
