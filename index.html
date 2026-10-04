@@ -287,6 +287,10 @@ button.card{cursor:pointer}
 .swap-btn{font-size:22px;padding:8px 14px;flex:none}
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:#8fb89a}
+.ask-layer{z-index:75}
+.ask{max-width:400px}
+.ask h2{font-size:20px}
+.ask p{margin:0 0 4px;line-height:1.5}
 .update-note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
 .update-note[hidden]{display:none}
 </style>
@@ -332,6 +336,7 @@ button.card{cursor:pointer}
 <div class="sr" id="liveStatus" aria-live="polite"></div>
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
+<div class="overlay ask-layer" id="askLayer" hidden></div>
 <div class="update-note" id="updateNote" role="status" hidden>
   <span>A new version is ready.</span>
   <button class="btn primary" type="button" data-action="update-reload">Reload</button>
@@ -2529,12 +2534,36 @@ const App = (() => {
     schedule();
   }
 
+  /* A yes/no question in the game's own style (never the browser's dialog). The game waits while it is open.
+     Resolves true for the OK button, false for Cancel, Escape or a click outside it. */
+  let askDone = null;
+  function ask({ title, text, ok, cancel }) {
+    if (askDone) askDone(false);
+    clearTimer();
+    const layer = $('askLayer');
+    layer.innerHTML = '<div class="modal ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">' +
+      '<h2 id="askTitle">' + title + '</h2><div id="askText">' + text + '</div>' +
+      '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + (cancel || 'Cancel') + '</button>' +
+      '<button class="btn primary" type="button" data-action="ask-ok">' + (ok || 'OK') + '</button></div></div>';
+    layer.hidden = false;
+    const okBtn = layer.querySelector('[data-action="ask-ok"]');
+    if (okBtn) okBtn.focus();
+    return new Promise(resolve => {
+      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; resolve(answer); schedule(); };
+    });
+  }
+  function answerAsk(answer) { if (askDone) askDone(answer); }
+
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
-  function toggleAutoplay() {
-    if (!app.mode) return;
+  async function toggleAutoplay() {
+    if (!app.mode || askDone) return;
     /* Waves: the first hand-over in a game that could still clear its wave asks first. */
     if (!app.ui.autoplay && app.mode === 'waves' && app.wave.open && !app.assisted && !app.state.gameOver &&
-      !window.confirm('If the AI plays your seat, a win in this game will not clear wave ' + app.wave.n + '. This stays true if you take your seat back.\n\nLet the AI play your seat?')) return;
+      !await ask({
+        title: 'Let the AI play your seat?',
+        text: '<p>A win in this game will then not clear wave ' + app.wave.n + '.</p><p>This stays true if you take your seat back.</p>',
+        ok: 'Let the AI play', cancel: 'Keep my seat'
+      })) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.assisted = true;
     if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
@@ -2562,8 +2591,8 @@ const App = (() => {
   function schedule() {
     clearTimer();
     const st = app.state;
-    /* The game waits while the menu is open. */
-    if (app.menuOpen) return;
+    /* The game waits while the menu or a question is open. */
+    if (app.menuOpen || askDone) return;
     if (!app.mode) { draw([]); return; }
     if (st.gameOver) { showGameOver(); return; }
     if (needsSwap()) { draw([]); showSwap(); return; }
@@ -2801,11 +2830,18 @@ const App = (() => {
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
-  function confirmReplace(mode) {
+  /* Resolves true when no started game would be lost, or when you agree to lose it. */
+  async function confirmReplace(mode) {
     const playingThis = app.mode === mode && !app.state.gameOver;
     const sl = playingThis ? { state: app.state } : slots.get(mode);
     if (!sl || sl.state.scores.every(x => x === 0) && sl.state.handNumber <= 1) return true;
-    return window.confirm('Abandon the unfinished ' + (mode === 'waves' ? 'Waves' : 'Free play') + ' game and start a new one?');
+    if (app.menuOpen) $('overlay').hidden = true;
+    const name = mode === 'waves' ? 'Waves' : 'Free play';
+    return ask({
+      title: 'Start a new ' + name + ' game?',
+      text: '<p>Your unfinished ' + name + ' game (hand ' + sl.state.handNumber + ', you have ' + sl.state.scores[0] + (sl.state.scores[0] === 1 ? ' point' : ' points') + ') will be lost.</p>',
+      ok: 'Start new game', cancel: 'Keep it'
+    });
   }
   function startMode(mode, seed, wave) {
     app.menuOpen = false;
@@ -2988,8 +3024,14 @@ const App = (() => {
       case 'close-menu': closeMenu(); break;
       case 'just-enter': app.menuOpen = false; $('overlay').hidden = true; enterIdle(); break;
       case 'resume-waves': case 'resume-free': app.menuOpen = false; resumeGame(name.slice(7)); break;
-      case 'play-wave': { const n = Number($('waveSel').value); if (Waves.isUnlocked(n) && confirmReplace('waves')) startMode('waves', undefined, n); break; }
-      case 'new-free': if (confirmReplace('free')) startMode('free'); break;
+      case 'play-wave': {
+        const n = Number($('waveSel').value);
+        if (Waves.isUnlocked(n)) confirmReplace('waves').then(yes => yes ? startMode('waves', undefined, n) : showMenu(app.menuLaunch));
+        break;
+      }
+      case 'new-free': confirmReplace('free').then(yes => yes ? startMode('free') : showMenu(app.menuLaunch)); break;
+      case 'ask-ok': answerAsk(true); break;
+      case 'ask-cancel': answerAsk(false); break;
       case 'new-game-now': startMode('free'); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
@@ -3144,9 +3186,11 @@ const App = (() => {
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
       const a = ev.target.closest('[data-action]');
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
+      if (ev.target.id === 'askLayer') { answerAsk(false); return; }
       if (ev.target.closest('#center') && app.timerFn) skip();
     });
     document.addEventListener('keydown', ev => {
+      if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       if (ev.target && /^(BUTTON|SELECT|INPUT)$/.test(ev.target.tagName)) return;
       if (ev.target && ev.target.classList && ev.target.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
