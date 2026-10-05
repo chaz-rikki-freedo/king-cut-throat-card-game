@@ -75,9 +75,11 @@ function expect(name, ok, detail) {
       q('#waveSel').value = '1'; click('[data-action="play-wave"]'); await sleep(50); speed('fast');
       out.chip = q('#modeChip').textContent; out.swap = !!q('#overlay .swap');
       await drive(() => app.state.phase === P.TRICK_PLAY);
+      allowSeatAI(true);
       click('.seat-toggle'); await sleep(50);
       out.ask = askOpen() && q('#askTitle').textContent;
       click('[data-action="ask-cancel"]'); await sleep(50);
+      allowSeatAI(false);
       out.kept = !app.ui.autoplay && !app.humanSeatWasAutoplayed;
       out.stop = await drive();
       const st = app.state, won = st.winner === 0, rep = A.replays.list()[0], d = KCT.Replay.decode(rep.code);
@@ -157,27 +159,27 @@ function expect(name, ok, detail) {
       return out;`);
     expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
 
-    console.log('Your seat: the AI seat never carries over');
+    console.log('Your seat: the Human/AI tag works only with the switch on, for one game');
     await reload();
     r = await step(`
       KCT.App.newGame(77, 1); await sleep(20);
+      const off = { tag: !!q('.seat-toggle'), label: !!q('#seat0 .tag.you') };
+      allowSeatAI(true); await sleep(20);
       click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20);
-      const handed = app.ui.autoplay;
+      const handed = app.ui.autoplay && app.humanSeatWasAutoplayed;
+      allowSeatAI(false); await sleep(20);
+      const back = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed, tag: !!q('.seat-toggle') };
+      allowSeatAI(true); click('.seat-toggle'); await sleep(20);
       KCT.App.newGame(78, 1); await sleep(20);
       const next = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed };
-      const box = q('#setSeatAI'); box.checked = true; box.dispatchEvent(new Event('change'));
-      KCT.App.newGame(79, 1); await sleep(20);
-      const on = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed, persona: !!app.ui.personas[0] };
-      return { handed, next, on };`);
-    expect('a hand-over lasts one game: the next game starts with you in your seat', r.handed && !r.next.autoplay && !r.next.assisted, r);
-    expect('with Your seat on, the AI plays your seat from the start', r.on.autoplay && r.on.assisted && r.on.persona, r);
+      return { off, handed, back, next };`);
+    expect('switch off: the Human tag is a label only', !r.off.tag && r.off.label, r.off);
+    expect('switch on: the tag hands your seat to the AI', r.handed, r);
+    expect('switch off again: you take your seat back, the game stays assisted', !r.back.autoplay && r.back.assisted && !r.back.tag, r.back);
+    expect('the next game starts with you in your seat', !r.next.autoplay && !r.next.assisted, r.next);
     await reload();
-    r = await step(`
-      const kept = q('#setSeatAI').checked;
-      const box = q('#setSeatAI'); box.checked = false; box.dispatchEvent(new Event('change'));
-      KCT.App.newGame(80, 1); await sleep(20);
-      return { kept, autoplay: app.ui.autoplay };`);
-    expect('the Your seat setting is kept after a reload, and off again gives you the seat', r.kept && !r.autoplay, r);
+    r = await step(`return { on: q('#setSeatAI').checked, saved: /seatAI/.test(localStorage.getItem('kct.settings') || '') };`);
+    expect('a reload turns the switch off, and the settings do not keep it', !r.on && !r.saved, r);
 
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }

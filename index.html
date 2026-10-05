@@ -411,10 +411,10 @@ button.card{cursor:pointer}
   <details class="set-section" id="setSeat">
     <summary><h3 class="set-head">Your seat</h3></summary>
     <div class="set-fields">
-      <label for="setSeatAI">AI plays your seat</label>
-      <label title="Off: each new game starts with you in your seat"><input type="checkbox" id="setSeatAI"> <span class="k-name">From the start of each new game</span></label>
+      <label for="setSeatAI">AI can play your seat</label>
+      <label title="On: a click on the Human tag of your seat hands it to the AI for this game"><input type="checkbox" id="setSeatAI"> <span class="k-name">The Human/AI tag works</span></label>
     </div>
-    <p class="k-hint">Off (default): each new game starts with you in your seat, and the Human/AI tag on your seat hands it to the AI for that game only. On: the AI plays your seat in each new game. Such a game does not clear a wave and adds no results.</p>
+    <p class="k-hint">Off (default): the Human tag on your seat is a label only. On: click it to hand your seat to the AI, for this game only. Each new game starts with you in your seat. A game where the AI played your seat does not clear a wave and adds no results. A reload turns this off.</p>
   </details>
   <section class="set-section set-actions">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
@@ -2703,10 +2703,11 @@ const Render = (() => {
   }
   const backHTML = () => '<div class="card back" aria-hidden="true"></div>';
 
-  /* auto: the AI is playing the human seat. The human seat's tag toggles it. */
-  function badges(v, p, auto) {
+  /* auto: the AI is playing the human seat. canToggle: the human seat's tag toggles it (Settings → Your seat). */
+  function badges(v, p, auto, canToggle) {
     const b = [];
-    if (v.players[p].human) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
+    if (v.players[p].human && canToggle) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
+    else if (v.players[p].human) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + '">' + (auto ? 'AI' : 'Human') + '</span>');
     else b.push('<span class="tag ai">AI</span>');
     if (v.dealer === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
     if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
@@ -3054,7 +3055,7 @@ const Render = (() => {
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const meName = (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
-    me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
+    me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay, ui.allowSeatAI) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
@@ -3081,7 +3082,8 @@ const App = (() => {
     state: null,
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, personas: [null, null, null], endButtons: '' },
+    /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '' },
     /* n: the wave being played, or null. result: the progress after the game ended. */
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
@@ -3089,8 +3091,6 @@ const App = (() => {
     /* Free play only: the swap is offered once, before the first discard. */
     seatSwapPending: false,
     usePersonas: true,
-    /* Settings → Your seat: the AI plays your seat from the start of each new game. Off, each game starts with you in your seat. */
-    seatAI: false,
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
     ai: AI.DEFAULT_CONFIG,
     updateReady: false, menuOpen: false, menuLaunch: false,
@@ -3121,8 +3121,8 @@ const App = (() => {
   /* wave (optional): play that wave's table. Without it, the game is Free play and the seed picks the table. */
   function newGame(seed, wave) {
     clearTimer();
-    /* The AI seat never carries over from the last game: only the Your seat setting turns it on at the start. */
-    app.ui.autoplay = app.seatAI;
+    /* The AI seat never carries over: each new game starts with you in your seat. */
+    app.ui.autoplay = false;
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
     /* Two personalities sit West and East, picked from the seed so a replay meets the same bots.
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
@@ -3136,7 +3136,6 @@ const App = (() => {
     app.ui.endButtons = '';
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
     seatBots(pool[0], pool[1]);
-    if (app.ui.autoplay) app.ui.personas[HUMAN] = seatPersona();
     app.ui.selected.clear();
     clearLog();
     /* The menu (if open) closes: the game would wait while app.menuOpen is true. */
@@ -3318,7 +3317,8 @@ const App = (() => {
       app.state = JSON.parse(JSON.stringify(s.state));
       app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, result: null };
       app.humanSeatWasAutoplayed = !!s.assisted;
-      app.ui.autoplay = !!s.autoplay;
+      /* With the Your seat switch off (always so after a reload), you take your seat back. The game stays assisted. */
+      app.ui.autoplay = !!s.autoplay && app.ui.allowSeatAI;
       app.seatSwapPending = s.swapDone === false;
       app.botSettings = JSON.parse(JSON.stringify(s.ai));
       app.ui.endButtons = '';
@@ -3375,7 +3375,7 @@ const App = (() => {
 
   /* Clicking the human seat's tag switches the AI on or off for that seat. */
   async function toggleAutoplay() {
-    if (!app.mode || askDone) return;
+    if (!app.mode || askDone || !app.ui.allowSeatAI) return;
     /* Waves: the first hand-over in a game that could still clear its wave asks first. */
     if (!app.ui.autoplay && app.mode === 'waves' && app.wave.wasOpenAtStart && !app.humanSeatWasAutoplayed && !app.state.gameOver &&
       !await ask({
@@ -3385,17 +3385,27 @@ const App = (() => {
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.humanSeatWasAutoplayed = true;
-    if (app.ui.autoplay && !app.ui.personas[HUMAN]) app.ui.personas[HUMAN] = seatPersona();
+    if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
+      const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
+      app.ui.personas[HUMAN] = free[Math.floor(Math.random() * free.length)].id;
+    }
     app.ui.selected.clear();
     draw([]);
     schedule();
     saveGame();
   }
 
-  /* A personality for your seat when the AI plays it: one that is not at the table. */
-  function seatPersona() {
-    const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
-    return free[Math.floor(Math.random() * free.length)].id;
+  /* Settings → Your seat. Off while the AI has your seat: you take it back at once (the game stays assisted). */
+  function setAllowSeatAI(on) {
+    app.ui.allowSeatAI = on;
+    $('setSeatAI').checked = on;
+    if (!on && app.ui.autoplay) {
+      app.ui.autoplay = false;
+      app.ui.selected.clear();
+      addLog('You take your seat back.', 'h');
+      saveGame();
+      if (app.state.gameOver) draw([]); else schedule();
+    } else draw([]);
   }
 
   function clearTimer() {
@@ -4097,7 +4107,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatAI: app.seatAI, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
+    settingsStore.save({ personas: app.usePersonas, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -4105,7 +4115,6 @@ const App = (() => {
     if (!x || typeof x !== 'object') return;
     app.ai = AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style });
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
-    if (typeof x.seatAI === 'boolean') app.seatAI = x.seatAI;
     if (x.logging === true) Logger.enabled = true;
   }
 
@@ -4160,12 +4169,8 @@ const App = (() => {
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
     $('setPersonas').addEventListener('change', () => setPersonas($('setPersonas').checked));
     setPersonas(app.usePersonas, true);
-    $('setSeatAI').checked = app.seatAI;
-    $('setSeatAI').addEventListener('change', () => {
-      app.seatAI = $('setSeatAI').checked;
-      addLog('Your seat: the AI ' + (app.seatAI ? 'plays' : 'does not play') + ' your seat from the start of each new game.', 'h');
-      saveSettings();
-    });
+    $('setSeatAI').checked = false;
+    $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
     $('setRealTable').checked = app.ai.style.realTable;
     $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */

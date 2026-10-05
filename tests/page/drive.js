@@ -7,6 +7,8 @@ const q = sel => document.querySelector(sel);
 const click = sel => { const el = q(sel); if (!el) throw new Error('no element ' + sel); el.click(); };
 const overlayOpen = () => !q('#overlay').hidden;
 const askOpen = () => !q('#askLayer').hidden;
+/* Settings → Your seat: the Human/AI tag works only while this is on (a reload turns it off). */
+const allowSeatAI = on => { const b = q('#setSeatAI'); if (b.checked !== on) { b.checked = on; b.dispatchEvent(new Event('change')); } };
 const speed = v => { const s = q('#speedSel'); s.value = v; s.dispatchEvent(new Event('change')); };
 // Event types seen, from the event logger.
 const seen = window.__seen || (window.__seen = {});
