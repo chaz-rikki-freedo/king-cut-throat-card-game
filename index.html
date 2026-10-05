@@ -408,6 +408,14 @@ button.card{cursor:pointer}
       </div>
     </div>
   </details>
+  <details class="set-section" id="setSeat">
+    <summary><h3 class="set-head">Your seat</h3></summary>
+    <div class="set-fields">
+      <label for="setSeatAI">AI plays your seat</label>
+      <label title="Off: each new game starts with you in your seat"><input type="checkbox" id="setSeatAI"> <span class="k-name">From the start of each new game</span></label>
+    </div>
+    <p class="k-hint">Off (default): each new game starts with you in your seat, and the Human/AI tag on your seat hands it to the AI for that game only. On: the AI plays your seat in each new game. Such a game does not clear a wave and adds no results.</p>
+  </details>
   <section class="set-section set-actions">
     <button class="btn" type="button" data-action="settings-reset">Defaults</button>
     <p class="k-hint">Resets all bot settings. Settings are kept after a reload.</p>
@@ -3081,6 +3089,8 @@ const App = (() => {
     /* Free play only: the swap is offered once, before the first discard. */
     seatSwapPending: false,
     usePersonas: true,
+    /* Settings → Your seat: the AI plays your seat from the start of each new game. Off, each game starts with you in your seat. */
+    seatAI: false,
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
     ai: AI.DEFAULT_CONFIG,
     updateReady: false, menuOpen: false, menuLaunch: false,
@@ -3111,6 +3121,8 @@ const App = (() => {
   /* wave (optional): play that wave's table. Without it, the game is Free play and the seed picks the table. */
   function newGame(seed, wave) {
     clearTimer();
+    /* The AI seat never carries over from the last game: only the Your seat setting turns it on at the start. */
+    app.ui.autoplay = app.seatAI;
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
     /* Two personalities sit West and East, picked from the seed so a replay meets the same bots.
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
@@ -3124,6 +3136,7 @@ const App = (() => {
     app.ui.endButtons = '';
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
     seatBots(pool[0], pool[1]);
+    if (app.ui.autoplay) app.ui.personas[HUMAN] = seatPersona();
     app.ui.selected.clear();
     clearLog();
     /* The menu (if open) closes: the game would wait while app.menuOpen is true. */
@@ -3141,6 +3154,7 @@ const App = (() => {
     clearTimer();
     app.mode = null;
     app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.ui.autoplay = false;
     app.seatSwapPending = false;
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
@@ -3371,14 +3385,17 @@ const App = (() => {
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.humanSeatWasAutoplayed = true;
-    if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
-      const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
-      app.ui.personas[HUMAN] = free[Math.floor(Math.random() * free.length)].id;
-    }
+    if (app.ui.autoplay && !app.ui.personas[HUMAN]) app.ui.personas[HUMAN] = seatPersona();
     app.ui.selected.clear();
     draw([]);
     schedule();
     saveGame();
+  }
+
+  /* A personality for your seat when the AI plays it: one that is not at the table. */
+  function seatPersona() {
+    const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
+    return free[Math.floor(Math.random() * free.length)].id;
   }
 
   function clearTimer() {
@@ -4080,7 +4097,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
+    settingsStore.save({ personas: app.usePersonas, seatAI: app.seatAI, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -4088,6 +4105,7 @@ const App = (() => {
     if (!x || typeof x !== 'object') return;
     app.ai = AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style });
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
+    if (typeof x.seatAI === 'boolean') app.seatAI = x.seatAI;
     if (x.logging === true) Logger.enabled = true;
   }
 
@@ -4142,6 +4160,12 @@ const App = (() => {
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
     $('setPersonas').addEventListener('change', () => setPersonas($('setPersonas').checked));
     setPersonas(app.usePersonas, true);
+    $('setSeatAI').checked = app.seatAI;
+    $('setSeatAI').addEventListener('change', () => {
+      app.seatAI = $('setSeatAI').checked;
+      addLog('Your seat: the AI ' + (app.seatAI ? 'plays' : 'does not play') + ' your seat from the start of each new game.', 'h');
+      saveSettings();
+    });
     $('setRealTable').checked = app.ai.style.realTable;
     $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */

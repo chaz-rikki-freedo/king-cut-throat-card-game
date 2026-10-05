@@ -37,7 +37,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging. Speed is not kept: each load starts at Normal.
+- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Your seat, Logging. Speed is not kept: each load starts at Normal.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
@@ -58,7 +58,7 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this also turns on logging). The panel has four parts, from top to bottom.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this also turns on logging). The panel has five parts, from top to bottom.
 
 ### Bots
 
@@ -110,6 +110,10 @@ Click the heading to open it.
 | **Reads bids** | treat bids as meaningless |
 | **Watches score** | play for points only. On, the bots watch the race to 10 more and more as the leading score passes 5 (6: 25%, 7: 50%, 8: 75%, 9: 100%). |
 | **Tracks upcard** | lose track of the turned card after the bidding |
+
+### Your seat
+
+Click the heading to open it. **AI plays your seat** (off by default): on, the AI plays your seat from the start of each new game. Off, each new game starts with you in your seat (see **AI plays your seat**). The setting is kept after a reload.
 
 ### Tools
 
@@ -196,6 +200,8 @@ KCT.App.slots.get('free')          // the saved Free play game, or null
 ## AI plays your seat
 
 Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets a personality that is not at the table. It keeps that personality for the rest of the game, however often you switch.
+
+The switch is for that game only. The next game starts with you in your seat, also after **Replay Seed** or **Try again**, unless **Settings → Your seat → AI plays your seat** is on.
 
 ## Replay a game
 

@@ -23,7 +23,7 @@ async function worker(browser, url, w, games) {
     const mode = rnd() < 0.5 ? 'waves' : 'free', assist = rnd() < 0.4;
     const start = await step(`
       if (askOpen()) click('[data-action="ask-cancel"]');
-      /* Each game starts with your seat human: "AI plays your seat" would carry over from the last game. */
+      /* Take the seat back in a running game, so the menu shows no AI tag. A new game starts with your seat human. */
       if (app.ui.autoplay) { click('.seat-toggle'); await sleep(20); }
       A.showMenu(false); await sleep(10);
       sessionStorage.setItem('soak.before', JSON.stringify({ stats: JSON.stringify(A.stats.get()), waves: JSON.stringify(KCT.Waves.progress()) }));
