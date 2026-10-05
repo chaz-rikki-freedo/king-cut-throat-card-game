@@ -30,9 +30,13 @@ async function worker(browser, url, w, games) {
       if (askOpen()) click('[data-action="ask-ok"]');
       await sleep(20);
       speed('instant');
-      if (arg.assist) { if (q('#overlay .swap')) click('[data-action="swap-done"]'); click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); }
-      return { mode: app.mode, autoplay: app.ui.autoplay };`, { mode, assist });
+      /* "AI plays your seat" carries over to the next game, so set it as this game needs. */
+      if (q('#overlay .swap')) click('[data-action="swap-done"]');
+      if (app.ui.autoplay !== arg.assist) { click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20); }
+      return { mode: app.mode, autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed };`, { mode, assist });
+    /* A game that started with the AI in your seat stays assisted even if you take the seat back. */
     if (start.mode !== mode || start.autoplay !== assist) out.fails.push({ g, start, mode, assist });
+    const assisted = start.assisted;
     for (let leg = 0; leg < 40; leg++) {
       const n = rnd() < 0.35 ? 30 + Math.floor(rnd() * 300) : 0;
       const res = await step(`const v0 = app.state.version; return await drive(arg.n ? () => app.state.version >= v0 + arg.n : null, 600000);`, { n });
@@ -54,9 +58,9 @@ async function worker(browser, url, w, games) {
         statsChanged: JSON.stringify(A.stats.get()) !== before.stats, wavesChanged: JSON.stringify(KCT.Waves.progress()) !== before.waves };
       const close = q('[data-action="close-overlay"]'); if (close) close.click();
       return res;`);
-    out.games++; out[mode]++; if (assist) out.assisted++; if (end.winner === 0) out.youWon++;
-    const counted = assist ? !end.statsChanged && !end.wavesChanged : end.statsChanged && (mode === 'free' || end.wavesChanged);
-    if (!end.over || !end.replay || !end.slotCleared || end.assisted !== assist || !counted || end.skip.shownElsewhere || end.skip.missingInBotSd) out.fails.push({ g, mode, assist, end });
+    out.games++; out[mode]++; if (assisted) out.assisted++; if (end.winner === 0) out.youWon++;
+    const counted = assisted ? !end.statsChanged && !end.wavesChanged : end.statsChanged && (mode === 'free' || end.wavesChanged);
+    if (!end.over || !end.replay || !end.slotCleared || end.assisted !== assisted || !counted || end.skip.shownElsewhere || end.skip.missingInBotSd) out.fails.push({ g, mode, assist, end });
   }
 }
 
@@ -69,8 +73,8 @@ async function worker(browser, url, w, games) {
     for (const o of all) for (const [k, v] of Object.entries(o)) sum[k] = Array.isArray(v) ? (sum[k] || []).concat(v) : (sum[k] || 0) + v;
     sum.seconds = Math.round((Date.now() - t0) / 1000);
     const bad = sum.fails.length || sum.pageErrors.length;
-    console.log((bad ? 'FAIL ' : 'OK   ') + JSON.stringify(Object.assign({}, sum, { fails: sum.fails.length, pageErrors: sum.pageErrors.length })));
     for (const f of sum.fails.concat(sum.pageErrors)) console.log('  ✖ ' + JSON.stringify(f).slice(0, 600));
+    console.log((bad ? 'FAIL ' : 'OK   ') + JSON.stringify(Object.assign({}, sum, { fails: sum.fails.length, pageErrors: sum.pageErrors.length })));
     process.exitCode = bad ? 1 : 0;
   } finally { await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

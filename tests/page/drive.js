@@ -15,7 +15,8 @@ if (!window.__hooked) { window.__hooked = true; KCT.Logger.enabled = true; KCT.L
 const skip = window.__skip || (window.__skip = { botSdWaits: 0, shownInBotSd: 0, missingInBotSd: 0, shownElsewhere: 0, elsewhere: [] });
 function checkSkip() {
   const st = app.state, sd = st.showdown;
-  const botSd = !!(sd && sd.active && !sd.participants.includes(0));
+  /* A phase with a Continue button (Next hand, ...) shows that button instead, also while the AI plays your seat. */
+  const botSd = !!(sd && sd.active && !sd.participants.includes(0)) && !KCT.Render.CONTINUE_LABEL[st.phase];
   const shown = !!q('[data-action="skip"]');
   if (botSd && app.timerFn) { skip.botSdWaits++; if (shown) skip.shownInBotSd++; else skip.missingInBotSd++; }
   if (shown && !botSd) { skip.shownElsewhere++; if (skip.elsewhere.length < 5) skip.elsewhere.push(st.phase); }
