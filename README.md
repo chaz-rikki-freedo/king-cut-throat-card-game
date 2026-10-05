@@ -37,7 +37,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Your seat, Logging. Speed is not kept: each load starts at Normal.
+- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
@@ -113,7 +113,7 @@ Click the heading to open it.
 
 ### Your seat
 
-Click the heading to open it. **AI plays your seat** (off by default): on, the AI plays your seat from the start of each new game. Off, each new game starts with you in your seat (see **AI plays your seat**). The setting is kept after a reload.
+Click the heading to open it. **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code.
 
 ### Tools
 
@@ -199,9 +199,9 @@ KCT.App.slots.get('free')          // the saved Free play game, or null
 
 ## AI plays your seat
 
-Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets a personality that is not at the table. It keeps that personality for the rest of the game, however often you switch.
+Turn on **Settings → Your seat → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets a personality that is not at the table. It keeps that personality for the rest of the game, however often you switch.
 
-The switch is for that game only. The next game starts with you in your seat, also after **Replay Seed** or **Try again**, unless **Settings → Your seat → AI plays your seat** is on.
+The hand-over is for that game only. The next game starts with you in your seat, also after **Replay Seed** or **Try again**. A saved game resumed with the Your seat switch off (always so after a reload) gives you your seat back; the game stays assisted.
 
 ## Replay a game
 

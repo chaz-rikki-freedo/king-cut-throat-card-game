@@ -25,6 +25,7 @@ async function worker(browser, url, w, games) {
       if (askOpen()) click('[data-action="ask-cancel"]');
       /* Take the seat back in a running game, so the menu shows no AI tag. A new game starts with your seat human. */
       if (app.ui.autoplay) { click('.seat-toggle'); await sleep(20); }
+      allowSeatAI(arg.assist);
       A.showMenu(false); await sleep(10);
       sessionStorage.setItem('soak.before', JSON.stringify({ stats: JSON.stringify(A.stats.get()), waves: JSON.stringify(KCT.Waves.progress()) }));
       if (arg.mode === 'waves') { q('#waveSel').value = String(KCT.Waves.progress().unlocked); click('[data-action="play-wave"]'); }
@@ -48,9 +49,10 @@ async function worker(browser, url, w, games) {
       await page.reload(); out.reloads++;
       const rs = await step(`
         const raw = JSON.parse(localStorage.getItem('kct.slots'))[arg.mode];
+        allowSeatAI(arg.assist);  /* a reload turns the Your seat switch off; on, the resumed game keeps the AI in your seat */
         const ok = A.resumeGame(arg.mode); await sleep(20); speed('instant');
         const strip = x => JSON.stringify(Object.assign({}, x, { players: 0 }));
-        return { ok, same: ok && strip(app.state) === strip(raw.state), log: document.querySelectorAll('#gameLog li').length === raw.log.length + 1, autoplay: app.ui.autoplay };`, { mode });
+        return { ok, same: ok && strip(app.state) === strip(raw.state), log: document.querySelectorAll('#gameLog li').length === raw.log.length + 1, autoplay: app.ui.autoplay };`, { mode, assist });
       if (rs.ok && rs.same && rs.log && rs.autoplay === assist) out.resumes++; else out.fails.push({ g, resume: rs });
     }
     const end = await step(`
