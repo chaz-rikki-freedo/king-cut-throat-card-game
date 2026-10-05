@@ -3959,13 +3959,12 @@ const App = (() => {
         if (!d.hidden) { const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight; }
         break;
       }
-      case 'clear-log': setSpeed('normal'); Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
+      case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); setPersonas(true); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         if (testsRunning) break;
         testsRunning = true;
-        setSpeed('normal');
         const box = $('setTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
