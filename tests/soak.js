@@ -14,6 +14,11 @@ async function worker(browser, url, w, games) {
   let seed = (w + 1) * 9973;
   const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
   for (let g = 0; g < games; g++) {
+    try { await oneGame(g); } catch (e) { out.fails.push({ g, error: String(e).slice(0, 300) }); }
+  }
+  out.pageErrors = errors;
+  return out;
+  async function oneGame(g) {
     const mode = rnd() < 0.5 ? 'waves' : 'free', assist = rnd() < 0.4;
     const start = await step(`
       if (askOpen()) click('[data-action="ask-cancel"]');
@@ -47,14 +52,12 @@ async function worker(browser, url, w, games) {
       const res = { over: st.gameOver, winner: st.winner, replay: r.ok && r.state.winner === st.winner && JSON.stringify(r.state.scores) === JSON.stringify(st.scores),
         slotCleared: !A.slots.get(app.mode), assisted: rep.assisted, skip: JSON.parse(JSON.stringify(skip)),
         statsChanged: JSON.stringify(A.stats.get()) !== before.stats, wavesChanged: JSON.stringify(KCT.Waves.progress()) !== before.waves };
-      click('[data-action="close-overlay"]');
+      const close = q('[data-action="close-overlay"]'); if (close) close.click();
       return res;`);
     out.games++; out[mode]++; if (assist) out.assisted++; if (end.winner === 0) out.youWon++;
     const counted = assist ? !end.statsChanged && !end.wavesChanged : end.statsChanged && (mode === 'free' || end.wavesChanged);
     if (!end.over || !end.replay || !end.slotCleared || end.assisted !== assist || !counted || end.skip.shownElsewhere || end.skip.missingInBotSd) out.fails.push({ g, mode, assist, end });
   }
-  out.pageErrors = errors;
-  return out;
 }
 
 (async () => {

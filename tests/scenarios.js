@@ -144,6 +144,19 @@ function expect(name, ok, detail) {
     r = await step(`return !!q('#overlay .wave-note');`);
     expect('the message does not show again', !r);
 
+    console.log('Console: a new game while the launch menu is open');
+    await reload();
+    r = await step(`
+      const menu = app.menuOpen;
+      KCT.App.newGame(4242, 1); speed('fast');
+      app.ui.autoplay = true;
+      const v = app.state.version, t0 = Date.now();
+      while (Date.now() - t0 < 15000 && app.state.version < v + 10) await sleep(20);
+      const out = { menu, moved: app.state.version - v, menuNow: app.menuOpen };
+      app.ui.autoplay = false;
+      return out;`);
+    expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
+
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }
   console.log(failed ? 'FAIL: ' + failed + ' check(s) failed' : 'OK: all checks passed');

@@ -3057,6 +3057,8 @@ const App = (() => {
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
     clearLog();
+    /* The menu (if open) closes: the game would wait while app.menuOpen is true. */
+    app.menuOpen = false;
     $('overlay').hidden = true;
     hideUpdateNote();
     const setSeed = $('setSeed');
@@ -3220,6 +3222,7 @@ const App = (() => {
       redrawLog();
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
       $('setSeed').textContent = String(app.state.seed);
+      app.menuOpen = false;
       $('overlay').hidden = true;
       hideUpdateNote();
       draw([]);
