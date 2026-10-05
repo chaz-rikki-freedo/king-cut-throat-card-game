@@ -1,7 +1,9 @@
-# Runs the type check and the browser tests (tests/README.md) on each push and pull request.
+# Runs the type check and the browser tests (tests/README.md) on each pull request and each push to main.
+# A push to a pull request branch runs only the pull_request event, so the tests run one time.
 name: Tests
 on:
   push:
+    branches: [main]
   pull_request:
 jobs:
   test:
