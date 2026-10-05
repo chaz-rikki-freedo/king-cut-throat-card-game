@@ -1,10 +1,16 @@
-# Runs the type check and the browser tests (tests/README.md) on each pull request and each push to main.
-# A push to a pull request branch runs only the pull_request event, so the tests run one time.
+# Runs the type check and the browser tests (tests/README.md) only for a major release.
+# A major release is a pushed tag 1.0.0, 2.0.0, 10.0.0 and so on, with or without a "v" prefix.
+# Minor and patch tags (for example 0.5.1 or 1.2.0), pull requests and pushes to main do not run the tests.
+# To run the tests at a different time, use "Run workflow" on the Actions tab.
 name: Tests
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags:
+      - '[1-9].0.0'
+      - '[1-9][0-9]+.0.0'
+      - 'v[1-9].0.0'
+      - 'v[1-9][0-9]+.0.0'
+  workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
