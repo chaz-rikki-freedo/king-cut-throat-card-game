@@ -1688,9 +1688,23 @@ const MODES = Object.freeze(['waves', 'free']);
 /* While StorageGate.locked is true, the app writes nothing to localStorage. A backup import
    locks it, so a timer or a save cannot overwrite the imported data before the page reloads. */
 const StorageGate = { locked: false };
+/* Saves that the browser refuses (full or blocked storage). failedKey is the first such key, also
+   before the App starts (wave progress is read and migrated at load). The App sets onFail and
+   tells the player once. A write skipped while StorageGate is locked is not a failure. */
+const SaveWatch = { /** @type {string | null} */ failedKey: null, /** @type {((key: string) => void) | null} */ onFail: null };
 /** @param {string} key @returns {{ get(): string | null, set(text: string): void }} */
 function localStore(key) {
-  return { get: () => localStorage.getItem(key), set: text => { if (!StorageGate.locked) localStorage.setItem(key, text); } };
+  return {
+    get: () => localStorage.getItem(key),
+    set: text => {
+      if (StorageGate.locked) return;
+      try { localStorage.setItem(key, text); } catch (e) {
+        if (!SaveWatch.failedKey) SaveWatch.failedKey = key;
+        if (SaveWatch.onFail) SaveWatch.onFail(key);
+        throw e;
+      }
+    }
+  };
 }
 /* JSON in a store. A missing, broken or blocked store reads as null and ignores writes. */
 function jsonStore(store) {
@@ -3255,19 +3269,23 @@ const App = (() => {
   }
 
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
-     The first save that the browser refuses (full or blocked storage) is reported once per page load.
-     A save refused during a backup import (StorageGate) is not a failure: the page reloads. */
-  let saveFailReported = false;
+     A save that the browser refuses is reported through SaveWatch (see reportSaveFail). */
   function saveGame() {
     if (!app.mode || !app.state || app.state.gameOver) return;
-    const ok = slots.put(app.mode, {
+    slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
       assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX)
     });
-    if (ok || saveFailReported) return;
+  }
+  /* The first save that the browser refuses (full or blocked storage), for any key: the game,
+     wave progress, results, replay codes or settings. Reported once per page load. */
+  let saveFailReported = false;
+  /** @param {string} key */
+  function reportSaveFail(key) {
+    if (saveFailReported) return;
     saveFailReported = true;
-    Logger.log('SAVE_FAILED', { mode: app.mode });
-    toast('This browser did not save your game. If you close the page, the game is lost.', 'neg');
+    Logger.log('SAVE_FAILED', { key });
+    toast('This browser is not saving your games, progress or settings. If you close the page, they are lost.', 'neg');
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
   /* After a restore, this key (outside 'kct.', so not in backups) tells other open tabs of
@@ -4166,6 +4184,9 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     loadSettings();
+    /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
+    SaveWatch.onFail = reportSaveFail;
+    if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
     /* The header can wrap to two rows; the toasts sit just below it. */
     const setHeaderH = () => document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px');
     setHeaderH();

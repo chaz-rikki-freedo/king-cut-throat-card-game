@@ -35,12 +35,14 @@ In Free play only, after the deal and before anyone discards in hand 1, a dialog
 
 The app keeps these in the browser (`localStorage`), so a closed tab loses nothing:
 
-- **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept. If the browser refuses a save (storage full or blocked), a note says so once per page load, and the game lasts until the page closes.
+- **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
 - **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging, and your seat's AI personality. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
+
+If the browser refuses to save any of these (storage full or blocked), a note says so once per page load. The data then lasts until the page closes.
 
 **Backup.** One backup holds all of this, also a game in progress: as a `.json` file or as a text code (`KCTS1-…`) to copy to another device. An import replaces all the data on the device, with no undo. There is no UI yet; see **Console** and [docs/backup.md](docs/backup.md).
 
