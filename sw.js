@@ -19,7 +19,14 @@ const ASSETS = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-
 self.addEventListener('install', ev => {
   ev.waitUntil(caches.open(SHELL).then(c => c.addAll([PAGE, ...ASSETS].map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
-self.addEventListener('activate', ev => ev.waitUntil(self.clients.claim()));
+/* Removes files that this version no longer caches, such as an icon taken off the ASSETS list.
+   Only this app's own cache is cleaned: other project pages on the same github.io origin share the cache storage. */
+self.addEventListener('activate', ev => ev.waitUntil((async () => {
+  const keep = new Set([PAGE, ...ASSETS]);
+  const shell = await caches.open(SHELL);
+  for (const req of await shell.keys()) if (!keep.has(req.url)) await shell.delete(req);
+  await self.clients.claim();
+})()));
 
 const isPage = url => { const u = new URL(url); u.search = ''; u.hash = ''; return u.href === PAGE || u.href === ROOT; };
 
