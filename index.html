@@ -2853,9 +2853,18 @@ const App = (() => {
   function replayCode(endedAt) {
     const rec = app.mode && app.state && Replay.fromState(app.state, {
       mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.assisted, endedAt,
-      meta: { 'ai.tier': AI.skillTier(), 'ai.courage': AI.style.courage, 'ai.realTable': !!AI.style.realTable }
+      meta: aiMeta()
     });
     return rec ? Replay.encode(rec) : null;
+  }
+  /* The full AI settings as replay META keys (spec 4.4). The replay does not need them. */
+  function aiMeta() {
+    const m = {
+      'ai.tier': AI.skillTier(), 'ai.courage': AI.style.courage, 'ai.realTable': !!AI.style.realTable,
+      'ai.hunches': AI.thinking.worlds, 'ai.brainFarts': Math.round((1 - AI.thinking.playoutSkill) * 100)
+    };
+    for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!AI.knowledge[k];
+    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));  /* key order as decoded */
   }
 
   /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
@@ -3684,7 +3693,7 @@ const App = (() => {
     else { enterIdle(); showMenu(true); }
   }
 
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta };
 })();
 
 /* ---------------------------------------------------------------------
@@ -4149,6 +4158,16 @@ const SelfTest = (() => {
       const wc = Replay.encode(worst);
       check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
       eq('20 showdown hands decode the same', Replay.decode(wc), worst);
+      /* The full AI settings go in META, and still fit with the worst case. */
+      const keep = { thinking: Object.assign({}, AI.thinking), knowledge: Object.assign({}, AI.knowledge) };
+      AI.setThinking({ worlds: 37, playoutSkill: 0.55 }); AI.setKnowledge({ bids: true, voids: false });
+      const am = App.aiMeta();
+      AI.setThinking(keep.thinking); AI.setKnowledge(keep.knowledge);
+      eq('AI META holds the full settings', [am['ai.tier'], am['ai.hunches'], am['ai.brainFarts'], am['ai.know.bids'], am['ai.know.voids'], Object.keys(am).filter(k => k.startsWith('ai.know.')).length], ['custom', 37, 45, true, false, Object.keys(AI.KNOWLEDGE_DEFAULTS).length]);
+      const worstAll = Object.assign({}, worst, { meta: am });
+      const wa = Replay.encode(worstAll);
+      check('20 showdown hands with full AI META fit in 3000 chars', wa.length <= 3000, wa.length + ' chars');
+      eq('full AI META decodes the same', Replay.decode(wa).meta, am);
     });
 
     safeRun('planner', () => {
