@@ -259,3 +259,7 @@ The service worker does not run from `file://`. The game still works there, with
 ## Publishing
 
 GitHub Pages serves the `gh-pages` branch. Copy all of these from `main` to it: `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll`.
+
+## Tests
+
+The `tests/` folder has browser tests: the self-tests, two full games through the controls, stress tests for the Engine, replays, saves, backups and the AI, and a long soak. They are not part of the published app. See [tests/README.md](tests/README.md).
