@@ -181,6 +181,35 @@ function expect(name, ok, detail) {
     r = await step(`return { on: q('#setSeatAI').checked, saved: /seatAI/.test(localStorage.getItem('kct.settings') || '') };`);
     expect('a reload turns the switch off, and the settings do not keep it', !r.on && !r.saved, r);
 
+    console.log('Your seat: the AI personality comes from the setting or the seed, so a replayed seed gives the same game');
+    r = await step(`
+      allowSeatAI(true); speed('fast');
+      const pick = id => { const s = q('#setSeatPersona'); s.value = id; s.dispatchEvent(new Event('change')); };
+      // A free-play game handed to the AI at once, played for up to 120 moves or to its end.
+      async function run(seed) {
+        KCT.App.newGame(seed);
+        click('.seat-toggle');
+        const v = app.state.version, t0 = Date.now();
+        while (Date.now() - t0 < 60000 && !app.state.gameOver && app.state.version < v + 120) await sleep(20);
+        const st = app.state;
+        return { seat: app.ui.personas[0], table: app.ui.personas.slice(1), auto: app.ui.autoplay,
+          game: JSON.stringify([st.version, st.handNumber, st.scores, st.hands, st.gameOver, st.winner]) };
+      }
+      pick('');
+      const a = await run(31337), b = await run(31337);
+      const atTable = a.table[0], free = [...q('#setSeatPersona').options].map(o => o.value).filter(Boolean).find(id => !a.table.includes(id) && id !== a.seat);
+      pick(atTable); const c = await run(31337);
+      pick(free); const d = await run(31337);
+      return { a, b, c, d, free, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
+    expect('From the seed: the AI has your seat, as a personality not at the table', r.a.auto && r.a.seat && !r.a.table.includes(r.a.seat), r.a);
+    expect('From the seed: a replayed seed gives the same personality and the same game', r.a.seat === r.b.seat && r.a.game === r.b.game, { a: r.a, b: r.b });
+    expect('a chosen personality that sits West or East: the seed picks, as with From the seed', r.c.seat === r.a.seat && r.c.game === r.a.game, r.c);
+    expect('a chosen personality that is free: your seat gets it', r.d.seat === r.free, { d: r.d, free: r.free });
+    expect('the settings keep the chosen personality', r.saved === r.free, r.saved);
+    await reload();
+    r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
+    expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
+
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }
   console.log(failed ? 'FAIL: ' + failed + ' check(s) failed' : 'OK: all checks passed');
