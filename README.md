@@ -40,6 +40,10 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 - **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging. Speed is not kept: each load starts at Normal.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
+- **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
+
+**Backup.** One backup holds all of this, also a game in progress: as a `.json` file or as a text code (`KCTS1-…`) to copy to another device. An import replaces all the data on the device, with no undo. There is no UI yet; see **Console** and [docs/backup.md](docs/backup.md).
+
 If a new version cannot load a saved game, the game is dropped and the menu says so once. Wave progress and results are kept. Change `SAVE_FORMAT` in `index.html` when the Engine state changes shape.
 
 ## Results pop-up
@@ -226,6 +230,10 @@ KCT.AI.setThinking({ worlds: 10, playoutSkill: 0.5 })
 KCT.AI.setKnowledge({ bids: false })
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
+KCT.App.backup.download()                   // save all app data (also a game in progress) as a .json file
+await KCT.App.backup.toCode()               // the same as a text code (KCTS1-…)
+await KCT.App.backup.inspect(codeOrFile)    // what a backup holds; changes nothing
+await KCT.App.backup.restore(codeOrFile)    // REPLACES all app data on this device, then reloads (no undo)
 ```
 
 `KCT.App.app.state` holds every hand, so use it for testing only.
