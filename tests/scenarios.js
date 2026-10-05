@@ -177,6 +177,18 @@ function expect(name, ok, detail) {
     expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
     await step(`click('[data-action="toggle-settings"]');`);
 
+    console.log('AI errors: a bot that fails falls back to a legal move, and the game goes on');
+    r = await step(`
+      KCT.App.newGame(5151); speed('fast'); app.ui.autoplay = true;
+      /* Broken bot settings: the planner and the fallback move both throw (personalities off, Free play). */
+      const keep = app.ai; app.usePersonas = false; app.ai = {};
+      const v = app.state.version, t0 = Date.now();
+      while (Date.now() - t0 < 40000 && !app.state.gameOver && app.state.handNumber < 2) await sleep(20);
+      const out = { moved: app.state.version - v, hand: app.state.handNumber, audit: KCT.Engine.audit(app.state) };
+      app.ai = keep; app.usePersonas = true; app.ui.autoplay = false;
+      return out;`);
+    expect('the game plays on past AI errors, with legal moves', r.hand >= 2 && r.audit.length === 0, r);
+
     console.log('Your seat: the Human/AI tag works only with the switch on, for one game');
     await reload();
     r = await step(`

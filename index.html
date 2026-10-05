@@ -3512,14 +3512,18 @@ const App = (() => {
         const cfg = persona ? AI.personaConfig(persona) : app.ai;
         if (p !== HUMAN) trackBotSettings(!!persona);
         const view = buildView(app.state, p);
-        let action;
-        try { action = AI.decide(view, cfg); } catch (e) {
-          /* A planner error must not stop the game. The same view gives the same error again, so play a simple legal move. */
-          console.error(e);
-          Logger.log('AI_ERROR', { seat: p, phase: view.phase, error: String(e instanceof Error ? e.message : e) });
-          action = AI.fallbackAction(view, cfg);
+        /* An AI error must not stop the game. The same view gives the same error again, so each
+           failure (a throw or an action that the Engine refuses) falls through to a simpler move:
+           the planner, then the fallback move, then a plain legal move from the rules alone. */
+        const tries = [() => AI.decide(view, cfg), () => AI.fallbackAction(view, cfg), () => plainAction(app.state, p)];
+        for (let i = 0; i < tries.length; i++) {
+          let action = null, error = null;
+          try { action = tries[i](); error = Engine.validate(app.state, action); } catch (e) { console.error(e); error = String(e instanceof Error ? e.message : e); }
+          if (!error) { act(action); return; }
+          Logger.log('AI_ERROR', { seat: p, phase: view.phase, step: i, error });
         }
-        act(action);
+        /* Only a broken game state gets here: no legal move exists. */
+        toast('The game cannot continue: no legal move for ' + app.state.players[p].name + '.', 'neg');
       });
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
@@ -3530,6 +3534,19 @@ const App = (() => {
       later(ms, () => act(sys));
     }
     draw(ev);
+  }
+
+  /* A legal action for seat p from the rules and that seat's own hand only: the last guard when the AI fails. */
+  function plainAction(st, p) {
+    const h = st.hands[p];
+    switch (st.phase) {
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: h.slice(0, Engine.C.INITIAL_DISCARD) };
+      case P.BID1: return { type: 'BID', player: p, accept: false };
+      case P.BID2: return { type: 'NAME', player: p, suit: null };
+      case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: h.slice(0, st.exchangeCount) };
+      case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: h[0] };
+      default: return { type: 'PLAY', player: p, card: R.legalCards(h, st.trick ? st.trick.leadSuit : null, st.trump)[0] };
+    }
   }
 
   function selectionKey(v) { return v.phase + ':' + v.handNumber + ':' + (v.showdown ? 'sd' : '') + ':' + v.receiver; }
