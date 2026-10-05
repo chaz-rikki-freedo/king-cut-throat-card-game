@@ -46,6 +46,8 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 If a new version cannot load a saved game, the game is dropped and the menu says so once. Wave progress and results are kept. Change `SAVE_FORMAT` in `index.html` when the Engine state changes shape.
 
+The app does not trust saved data, because a backup can come from another person. At each load, it rebuilds a saved game from its seed and its moves. If the result is not the same as the saved game, the app drops the game. A game saved before the app kept the moves cannot be rebuilt, so the app drops it too. The Latest Scroll is saved as text, not as HTML. Results keep only counts that make sense.
+
 ## Results pop-up
 
 Click the mode in the header.

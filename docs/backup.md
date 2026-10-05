@@ -15,7 +15,7 @@ A backup holds **every `localStorage` key that starts with `kct.`**, as the exac
 | Key | Contents |
 |---|---|
 | `kct.waves` | Wave progress: unlocked wave, cleared waves, tries. |
-| `kct.slots` | One unfinished game for each mode (Waves, Free play): the Engine state, seats, wave, the AI-seat flag and the saved log. |
+| `kct.slots` | One unfinished game for each mode (Waves, Free play): the Engine state, seats, wave, the AI-seat flag and the saved log (text lines: `[text, classes]`). At load, the app rebuilds the Engine state from its seed and decisions and drops a game that does not match. |
 | `kct.stats` | Results: per mode, per table, per opponent. |
 | `kct.replays` | The replay codes of the last 20 finished games. |
 | `kct.settings` | Settings: personalities, skill, bid courage, real table, AI thinking and knowledge, logging. (The app does not keep speed.) |

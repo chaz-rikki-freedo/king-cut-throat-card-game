@@ -1169,6 +1169,28 @@ const Engine = (() => {
 })();
 
 /* ---------------------------------------------------------------------
+   4a. TEXT HELPERS — base64url (replay and backup codes) and HTML escape.
+   --------------------------------------------------------------------- */
+const Base64url = Object.freeze({
+  /** @param {ArrayLike<number>} bytes @returns {string} base64url, without padding */
+  encode(bytes) {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, Array.prototype.slice.call(bytes, i, i + 0x8000));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  },
+  /** Throws on text that is not base64url. @param {string} text @returns {Uint8Array} */
+  decode(text) {
+    if (!/^[A-Za-z0-9_-]*$/.test(text)) throw new Error('not base64url');
+    const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+});
+/** @param {unknown} t @returns {string} the text, safe inside HTML and inside a quoted attribute */
+const escHTML = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------------------------------------------------------------------
    4b. REPLAY — rebuilds a game from its seed and its decision list.
    The seed (32 bits) sets the deals only. A replay record adds the table
    and every player decision. A replay code is that record as one short
@@ -1230,14 +1252,8 @@ const Replay = (() => {
     };
     return r;
   }
-  const toB64 = bytes => { let bin = ''; for (const x of bytes) bin += String.fromCharCode(x); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   function fromB64(s) {
-    if (!/^[A-Za-z0-9_-]*$/.test(s)) throw new Error('replay code is not base64url');
-    let bin;
-    try { bin = atob(s.replace(/-/g, '+').replace(/_/g, '/')); } catch (e) { throw new Error('replay code is not base64url'); }
-    const out = new Uint8Array(bin.length);
-    for (let k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
-    return out;
+    try { return Base64url.decode(s); } catch (e) { throw new Error('replay code is not base64url'); }
   }
 
   /* An empty record: every field that a code can carry. */
@@ -1339,7 +1355,9 @@ const Replay = (() => {
   function encode(rec) {
     const sections = [];
     const put = (tag, w) => sections.push([tag, w.bytes || w]);
-    const modeNo = rec.mode ? MODES.indexOf(rec.mode) + 1 : 0;
+    /* A mode that this app does not know reads as 'modeN' (see decode): write it back as N. */
+    const future = /^mode(\d+)$/.exec(rec.mode || '');
+    const modeNo = !rec.mode ? 0 : MODES.includes(rec.mode) ? MODES.indexOf(rec.mode) + 1 : future ? Number(future[1]) : -1;
     if (modeNo < 0) throw new Error('unknown mode ' + rec.mode);
     put(TAG.GAME, writer().uint(rec.rules || 1).uint(rec.seed >>> 0).uint(modeNo).uint(rec.wave || 0));
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
@@ -1360,7 +1378,7 @@ const Replay = (() => {
     sections.sort((a, b) => a[0] - b[0]);
     const out = writer().uint(VERSION);
     for (const [tag, bytes] of sections) out.uint(tag).blob(bytes);
-    return PREFIX + toB64(out.bytes);
+    return PREFIX + Base64url.encode(out.bytes);
   }
 
   /* Version 1 codes ('KCT1-'): seed, wave, west, east and decisions, with no sections. */
@@ -1659,8 +1677,54 @@ function jsonStore(store) {
   };
 }
 
-/* Save slots: one unfinished game per mode. A slot from another SAVE_FORMAT, or with an
-   Engine state that fails the card audit, is dropped; dropped() names those modes once. */
+/* A saved game keeps the last LOG_SAVE_MAX lines of its Latest Scroll. */
+const LOG_SAVE_MAX = 1500;
+/* A saved slot as the app can trust it, or null. Saved data can come from a backup that
+   someone else made, and the app puts parts of it into the page, so nothing is taken as it is:
+   - The Engine state is rebuilt from its seed and decisions (Replay), and the saved state must
+     be equal to it (player names aside). The rebuilt state is kept. A state without a decision
+     list (saved before decisions were kept) cannot be checked, so it is dropped.
+   - Seats must be known personalities. The wave must be a real wave (Waves mode) or none.
+   - The log is kept as text lines: [text, classes]. An older save kept it as HTML; its text
+     is read with DOMParser, which runs no scripts, and the HTML itself is not kept. */
+function cleanSlot(mode, s) {
+  if (!s || typeof s !== 'object' || s.format !== SAVE_FORMAT) return null;
+  const saved = s.state;
+  if (!saved || typeof saved !== 'object' || saved.gameOver || !Number.isInteger(saved.version) || saved.version < 0) return null;
+  const rec = Replay.fromState(saved);
+  if (!rec) return null;
+  const cur = Replay.cursor(rec);
+  if (cur.seek(saved.version) !== saved.version) return null;
+  const state = cur.state;
+  const facts = x => JSON.stringify(Object.assign({}, x, { players: null }));
+  if (state.gameOver || facts(state) !== facts(saved)) return null;
+  const seat = id => (typeof id === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, id) ? id : null);
+  const personas = Array.isArray(s.personas) ? [0, 1, 2].map(k => seat(s.personas[k])) : [null, null, null];
+  const w = s.wave && typeof s.wave === 'object' ? s.wave : {};
+  const waveN = mode === 'waves' ? w.n : null;
+  if (mode === 'waves' && !(Number.isInteger(waveN) && WAVES[waveN - 1])) return null;
+  return {
+    format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas,
+    wave: { n: waveN, open: w.open === true }, assisted: s.assisted === true, autoplay: s.autoplay === true,
+    swapDone: s.swapDone !== false, log: cleanLog(s.log)
+  };
+}
+/** @param {unknown} log @returns {[string, string][]} at most LOG_SAVE_MAX [text, classes] lines */
+function cleanLog(log) {
+  const classes = c => String(c || '').split(/\s+/).filter(x => /^[a-z][a-z-]*$/.test(x)).join(' ');
+  /** @type {[string, string][]} */
+  let out = [];
+  if (Array.isArray(log)) {
+    out = log.filter(x => Array.isArray(x) && typeof x[0] === 'string').map(x => [x[0], classes(x[1])]);
+  } else if (typeof log === 'string' && log && typeof DOMParser === 'function') {
+    const doc = new DOMParser().parseFromString('<ol>' + log + '</ol>', 'text/html');
+    out = Array.from(doc.querySelectorAll('li')).map(li => [li.textContent || '', classes(li.className)]);
+  }
+  return out.slice(-LOG_SAVE_MAX);
+}
+
+/* Save slots: one unfinished game per mode. A slot that cleanSlot refuses (another SAVE_FORMAT,
+   or an Engine state that the replay does not rebuild) is dropped; dropped() names those modes once. */
 function createSlots(store) {
   const js = jsonStore(store);
   const raw = js.load();
@@ -1668,11 +1732,10 @@ function createSlots(store) {
   const lost = [];
   if (raw && typeof raw === 'object') {
     for (const m of MODES) {
-      const s = raw[m];
-      if (!s) continue;
-      let ok = false;
-      try { ok = s.format === SAVE_FORMAT && !!s.state && !s.state.gameOver && Engine.audit(s.state).length === 0; } catch (e) { ok = false; }
-      if (ok) slots[m] = s; else lost.push(m);
+      if (!raw[m]) continue;
+      let s = null;
+      try { s = cleanSlot(m, raw[m]); } catch (e) { s = null; }
+      if (s) slots[m] = s; else lost.push(m);
     }
   }
   let last = raw && MODES.includes(raw.last) && slots[raw.last] ? raw.last : null;
@@ -1705,9 +1768,24 @@ function createReplays(store) {
 function createStats(store) {
   const js = jsonStore(store);
   const blank = () => ({ modes: {}, tables: {}, opponents: {}, modeOpponents: {} });
-  let s = js.load();
-  if (!s || typeof s.modes !== 'object' || typeof s.tables !== 'object' || typeof s.opponents !== 'object') s = blank();
-  if (!s.modeOpponents || typeof s.modeOpponents !== 'object') s.modeOpponents = {};
+  /* Only { played, won } counts that make sense are kept: the results pop-up shows them. */
+  const cleanGroup = g => {
+    const out = {};
+    if (g && typeof g === 'object') {
+      for (const [k, r] of Object.entries(g)) {
+        if (k !== '__proto__' && r && Number.isInteger(r.played) && Number.isInteger(r.won) && r.won >= 0 && r.won <= r.played) out[k] = { played: r.played, won: r.won };
+      }
+    }
+    return out;
+  };
+  const saved = js.load();
+  let s = blank();
+  if (saved && typeof saved.modes === 'object' && typeof saved.tables === 'object' && typeof saved.opponents === 'object') {
+    s = { modes: cleanGroup(saved.modes), tables: cleanGroup(saved.tables), opponents: cleanGroup(saved.opponents), modeOpponents: {} };
+    if (saved.modeOpponents && typeof saved.modeOpponents === 'object') {
+      for (const [m, g] of Object.entries(saved.modeOpponents)) if (m !== '__proto__') s.modeOpponents[m] = cleanGroup(g);
+    }
+  }
   const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
   return Object.freeze({
     record({ mode, west, east, won }) {
@@ -1825,14 +1903,6 @@ const Backup = (() => {
   const toJSON = env => JSON.stringify(check(env));
   /** @param {string} t @returns {Uint8Array} */
   const utf8 = t => new TextEncoder().encode(t);
-  /** @param {Uint8Array} bytes @returns {string} */
-  const b64 = bytes => {
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
-    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  };
-  /** @param {string} t @returns {Uint8Array} */
-  const unb64 = t => { const bin = atob(t.replace(/-/g, '+').replace(/_/g, '/')); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
   /** @param {Uint8Array} bytes @param {CompressionStream | DecompressionStream} stream @returns {Promise<Uint8Array>} */
   async function pipe(bytes, stream) {
     const copy = new Uint8Array(bytes.length); copy.set(bytes);
@@ -1848,7 +1918,7 @@ const Backup = (() => {
     const body = zip ? await pipe(json, new CompressionStream('gzip')) : json;
     const out = new Uint8Array(body.length + 1);
     out[0] = zip ? GZIP : PLAIN; out.set(body, 1);
-    return CODE + b64(out);
+    return CODE + Base64url.encode(out);
   }
   /** Reads a JSON file text or a text code. Returns a checked envelope.
       @param {unknown} text @returns {Promise<BackupEnvelope>} */
@@ -1859,7 +1929,7 @@ const Backup = (() => {
     if (!m) throw new Error('not a backup file or code');
     if (Number(m[1]) > VERSION) throw new Error('backup code version ' + m[1] + ' is newer than this app');
     let bytes;
-    try { bytes = unb64(m[2]); } catch (e) { throw new Error('the code is damaged'); }
+    try { bytes = Base64url.decode(m[2]); } catch (e) { throw new Error('the code is damaged'); }
     if (!bytes.length) throw new Error('the code is empty');
     let body = bytes.subarray(1);
     if (bytes[0] === GZIP) {
@@ -1898,19 +1968,13 @@ const AI = (() => {
   /* Worlds per decision, and candidates kept after heuristic pruning. */
   const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
   const CANDIDATES = { discard: 6, exchange: 6 };
-  /* Thinking settings (settings panel).
+  /* Thinking settings.
      worlds: guessed deals per card decision; the other world counts scale with it (minimum 1).
        Fewer worlds give noisier guesses; more worlds than the default add no measured strength.
      playoutSkill: chance (0..1) that each card in a play-out follows the play-out policy;
        otherwise the card is a random legal card. Lower values make the AI judge moves less well. */
   const THINKING_DEFAULTS = Object.freeze({ worlds: 10, playoutSkill: 0.7 });
   const THINKING_FULL = Object.freeze({ worlds: SAMPLES.play, playoutSkill: 1 });
-  const thinking = Object.assign({}, THINKING_DEFAULTS);
-  function setThinking(t) {
-    if (typeof t.worlds === 'number' && isFinite(t.worlds)) thinking.worlds = Math.min(200, Math.max(1, Math.round(t.worlds)));
-    if (typeof t.playoutSkill === 'number' && isFinite(t.playoutSkill)) thinking.playoutSkill = Math.min(1, Math.max(0, t.playoutSkill));
-    return Object.assign({}, thinking);
-  }
   const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
   /* Knowledge switches. Off means the AI acts as if it did not have that knowledge.
      The defaults give a friendlier table: only score watching is on. */
@@ -1923,35 +1987,14 @@ const AI = (() => {
     showdownPlans: false  /* also test the duck and balance plans (off: greedy only) */
   });
   const KNOWLEDGE_ALL_ON = Object.freeze({ bids: true, turnedCard: true, ownDiscards: true, voids: true, scoreAware: true, showdownPlans: true });
-  const knowledge = Object.assign({}, KNOWLEDGE_DEFAULTS);
-  function setKnowledge(k) {
-    for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof k[key] === 'boolean') knowledge[key] = k[key];
-    return Object.assign({}, knowledge);
-  }
-  /* Skill tiers (settings panel): named sets of thinking and knowledge settings. */
+  /* Skill tiers: named sets of thinking and knowledge settings. */
   const SKILL_TIERS = Object.freeze({
     novice: Object.freeze({ thinking: { worlds: 3, playoutSkill: 0.4 }, knowledge: { bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false } }),
     casual: Object.freeze({ thinking: THINKING_DEFAULTS, knowledge: KNOWLEDGE_DEFAULTS }),
     club: Object.freeze({ thinking: { worlds: 20, playoutSkill: 0.9 }, knowledge: { bids: false, turnedCard: false, ownDiscards: true, voids: true, scoreAware: true, showdownPlans: true } }),
     shark: Object.freeze({ thinking: THINKING_FULL, knowledge: KNOWLEDGE_ALL_ON })
   });
-  function setSkillTier(name) {
-    const tier = SKILL_TIERS[name];
-    if (!tier) return currentSkillTier();
-    setThinking(tier.thinking);
-    setKnowledge(tier.knowledge);
-    return name;
-  }
-  /* 'custom' when the settings match no tier. */
-  function currentSkillTier() {
-    const same = (a, b) => Object.keys(b).every(k => a[k] === b[k]);
-    for (const name of Object.keys(SKILL_TIERS)) {
-      const tier = SKILL_TIERS[name];
-      if (same(thinking, tier.thinking) && same(knowledge, tier.knowledge)) return name;
-    }
-    return 'custom';
-  }
-  /* Bid courage (settings panel): how readily the bots call trump.
+  /* Bid courage: how readily the bots call trump.
      offset: extra hand value that rule-based bids need (play-outs, bid reading, real table).
      bias: win chance added to a call when the bot plans its bid. */
   const COURAGE = Object.freeze({
@@ -1960,20 +2003,63 @@ const AI = (() => {
     normal: Object.freeze({ offset: 0, bias: 0 }),
     bold: Object.freeze({ offset: -0.4, bias: 0.05 })
   });
-  /* Table style (settings panel). Real table: the bots play like a typical human table.
+  /* Table style. Real table: the bots play like a typical human table.
      They pass more in both bidding rounds and pitch their lowest cards in the first discard. */
   const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal' });
-  const style = Object.assign({}, STYLE_DEFAULTS);
-  function setStyle(t) {
-    if (typeof t.realTable === 'boolean') style.realTable = t.realTable;
-    if (Object.prototype.hasOwnProperty.call(COURAGE, t.courage)) style.courage = t.courage;
-    return Object.assign({}, style);
+
+  /* ---- Settings ----
+     The AI keeps no settings of its own. Each call gets one frozen settings object (a "config"):
+     { thinking, knowledge, style, persona }. persona is true for a personality: its own courage
+     sets how loose it bids, so REAL_TABLE_BID_BUMP does not stack on top of it. */
+  /**
+   * @typedef {{ worlds: number, playoutSkill: number }} Thinking
+   * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
+   * @typedef {{ realTable: boolean, courage: string }} Style
+   * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
+   * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
+   */
+  const freezeConfig = (thinking, knowledge, style, persona) =>
+    Object.freeze({ thinking: Object.freeze(thinking), knowledge: Object.freeze(knowledge), style: Object.freeze(style), persona });
+  /** @type {AIConfig} */
+  const DEFAULT_CONFIG = freezeConfig(Object.assign({}, THINKING_DEFAULTS), Object.assign({}, KNOWLEDGE_DEFAULTS), Object.assign({}, STYLE_DEFAULTS), false);
+  const part = x => (x && typeof x === 'object' ? x : {});
+  /** A new config: base with the valid values of patch. Bad values are ignored, numbers are clamped.
+      @param {AIConfig} [base] @param {AIConfigPatch} [patch] @returns {AIConfig} */
+  function config(base, patch) {
+    const b = base || DEFAULT_CONFIG, p = part(patch);
+    const pt = part(p.thinking), pk = part(p.knowledge), ps = part(p.style);
+    const thinking = Object.assign({}, b.thinking), knowledge = Object.assign({}, b.knowledge), style = Object.assign({}, b.style);
+    if (typeof pt.worlds === 'number' && isFinite(pt.worlds)) thinking.worlds = Math.min(200, Math.max(1, Math.round(pt.worlds)));
+    if (typeof pt.playoutSkill === 'number' && isFinite(pt.playoutSkill)) thinking.playoutSkill = Math.min(1, Math.max(0, pt.playoutSkill));
+    for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof pk[key] === 'boolean') knowledge[key] = pk[key];
+    if (typeof ps.realTable === 'boolean') style.realTable = ps.realTable;
+    if (Object.prototype.hasOwnProperty.call(COURAGE, ps.courage)) style.courage = ps.courage;
+    return freezeConfig(thinking, knowledge, style, typeof p.persona === 'boolean' ? p.persona : b.persona);
+  }
+  /** base with a skill tier's thinking and knowledge. An unknown name returns base.
+      @param {AIConfig} base @param {string} name @returns {AIConfig} */
+  function withSkillTier(base, name) {
+    const tier = SKILL_TIERS[name];
+    return tier ? config(base, { thinking: tier.thinking, knowledge: tier.knowledge }) : base;
+  }
+  /** The tier that cfg matches, or 'custom'. @param {AIConfig} cfg @returns {string} */
+  function skillTierOf(cfg) {
+    const same = (a, b) => Object.keys(b).every(k => a[k] === b[k]);
+    for (const name of Object.keys(SKILL_TIERS)) {
+      const tier = SKILL_TIERS[name];
+      if (same(cfg.thinking, tier.thinking) && same(cfg.knowledge, tier.knowledge)) return name;
+    }
+    return 'custom';
+  }
+  /** A personality's config: its tier, its courage and its Real table switch.
+      @param {{ tier: string, courage: string, realTable: boolean }} persona @returns {AIConfig} */
+  function personaConfig(persona) {
+    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), { style: { courage: persona.courage, realTable: persona.realTable }, persona: true });
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
   const REAL_TABLE_BID_BUMP = 0.5;
-  /* A personality's own courage sets how loose it bids, so REAL_TABLE_BID_BUMP does not stack on top of it. */
-  let personaActive = false;
-  const bidLimit = key => BID_THRESHOLDS[key] + (style.realTable && !personaActive ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
+  /** @param {AIConfig} cfg @param {string} key */
+  const bidLimit = (cfg, key) => BID_THRESHOLDS[key] + (cfg.style.realTable && !cfg.persona ? REAL_TABLE_BID_BUMP : 0) + COURAGE[cfg.style.courage].offset;
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -2044,12 +2130,12 @@ const AI = (() => {
      With score watching on, the race view counts more as the leading score passes 5:
      6 -> 25%, 7 -> 50%, 8 -> 75%, 9 -> 100%. With it off, only the points view counts. */
   const NEUTRAL_BASE = 2;
-  function scoreWatch(base) {
-    if (!knowledge.scoreAware) return 0;
+  function scoreWatch(base, cfg) {
+    if (!(cfg || DEFAULT_CONFIG).knowledge.scoreAware) return 0;
     return Math.min(1, Math.max(0, (Math.max(base[0], base[1], base[2]) - 5) / 4));
   }
-  function outcome(s, me, base) {
-    const w = scoreWatch(base);
+  function outcome(s, me, base, cfg) {
+    const w = scoreWatch(base, cfg);
     const neutral = s.scores.map((x, i) => Math.min(WIN - 1, Math.max(0, NEUTRAL_BASE + x - base[i])));
     const pointsView = winChance(neutral, me);
     if (w === 0) return pointsView;
@@ -2144,19 +2230,29 @@ const AI = (() => {
   }
 
   /* ---- Play-out policy: fast, uses the full deal of one sampled world ---- */
-  function fastPlay(s, p) {
-    const trump = s.trump, lead = s.trick.leadSuit, plays = s.trick.plays;
-    const legal = R.legalCards(s.hands[p], lead, trump);
-    if (legal.length === 1) return legal[0];
+  /* Seat p's view of the trick in one play-out world: its legal cards, the best play so far
+     (null on a lead), the seats still to play, and a sort by card strength, weakest first. */
+  function trickSpot(s, p) {
+    const trump = s.trump, plays = s.trick.plays;
     const acted = new Set(plays.map(x => x.player));
-    const rem = s.activePlayers.filter(q => q !== p && !acted.has(q));
-    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
-    const byStrength = (a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump);
-    const sure = legal.filter(c => {
-      const ls = lead || R.getEffectiveSuit(c, trump);
-      if (best && R.compareCards(c, best.card, ls, trump) <= 0) return false;
-      return rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
-    }).sort(byStrength);
+    return {
+      legal: R.legalCards(s.hands[p], s.trick.leadSuit, trump),
+      best: plays.length ? R.getTrickWinner(plays, trump) : null,
+      rem: s.activePlayers.filter(q => q !== p && !acted.has(q)),
+      byStrength: (a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump)
+    };
+  }
+  /* True when card c beats the trick so far and no seat still to play can beat it (the world's hands are known). */
+  function winsForSure(s, c, spot) {
+    const trump = s.trump, ls = s.trick.leadSuit || R.getEffectiveSuit(c, trump);
+    if (spot.best && R.compareCards(c, spot.best.card, ls, trump) <= 0) return false;
+    return spot.rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
+  }
+  function fastPlay(s, p) {
+    const trump = s.trump, plays = s.trick.plays;
+    const spot = trickSpot(s, p), { legal, byStrength } = spot;
+    if (legal.length === 1) return legal[0];
+    const sure = legal.filter(c => winsForSure(s, c, spot)).sort(byStrength);
     if (sure.length) return sure.find(R.isKing) || sure[0];
     if (!plays.length) {
       const counts = {};
@@ -2171,18 +2267,10 @@ const AI = (() => {
   /* Duck plan for the planning seat: avoid tricks, but take a trick that a King surely wins.
      A seat with a poor hand can then aim for 1 trick and a 3-3-1 Showdown between the others. */
   function duckPlay(s, p) {
-    const trump = s.trump, lead = s.trick.leadSuit, plays = s.trick.plays;
-    const legal = R.legalCards(s.hands[p], lead, trump);
+    const trump = s.trump, lead = s.trick.leadSuit;
+    const spot = trickSpot(s, p), { legal, best, byStrength } = spot;
     if (legal.length === 1) return legal[0];
-    const byStrength = (a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump);
-    const acted = new Set(plays.map(x => x.player));
-    const rem = s.activePlayers.filter(q => q !== p && !acted.has(q));
-    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
-    const kingSure = legal.filter(c => R.isKing(c)).find(c => {
-      const ls = lead || R.getEffectiveSuit(c, trump);
-      if (best && R.compareCards(c, best.card, ls, trump) <= 0) return false;
-      return rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
-    });
+    const kingSure = legal.find(c => R.isKing(c) && winsForSure(s, c, spot));
     if (kingSure) return kingSure;
     if (!best) return legal.slice().sort((a, b) => (R.isTrump(a, trump) - R.isTrump(b, trump)) || byStrength(a, b))[0];
     const losers = legal.filter(c => R.compareCards(c, best.card, lead, trump) <= 0).sort(byStrength);
@@ -2222,20 +2310,22 @@ const AI = (() => {
     if (s.plan === 'duck') return duckPlay(s, p);
     return s.showdown && s.showdown.active ? fastPlay(s, p) : balancePlay(s, p);
   }
-  function fastAction(s, p) {
+  /** The fast rule-based action (play-outs and a real-table bot). @param {AIConfig} [cfg] */
+  function fastAction(s, p, cfg) {
+    const c = cfg || DEFAULT_CONFIG;
     switch (s.phase) {
-      case P.DISCARD: return { type: 'DISCARD', player: p, cards: style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
-      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= bidLimit('ROUND1') };
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: c.style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
+      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= bidLimit(c, 'ROUND1') };
       case P.BID2: {
         const b = bestSuit(s.hands[p], R.card(s.flippedId).suit);
-        return { type: 'NAME', player: p, suit: b.value >= bidLimit(p === s.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
+        return { type: 'NAME', player: p, suit: b.value >= bidLimit(c, p === s.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
       }
       case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
       case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: dropLowest(s.hands[p], 1, s.trump)[0] };
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         /* Play-out skill: only inside the AI's play-outs (they carry playRng), never in a real game. */
-        if (s.playRng && thinking.playoutSkill < 1 && RNG.next(s.playRng) >= thinking.playoutSkill) {
+        if (s.playRng && c.thinking.playoutSkill < 1 && RNG.next(s.playRng) >= c.thinking.playoutSkill) {
           const legal = R.legalCards(s.hands[p], s.trick.leadSuit, s.trump);
           return { type: 'PLAY', player: p, card: legal[RNG.int(s.playRng, legal.length)] };
         }
@@ -2244,11 +2334,11 @@ const AI = (() => {
       default: throw new Error('No play-out action for phase ' + s.phase);
     }
   }
-  function playOut(s) {
+  function playOut(s, cfg) {
     for (let guard = 0; guard < 400; guard++) {
       if (s.gameOver || TERMINAL.has(s.phase)) return;
       const actors = Engine.actors(s);
-      const a = actors.length ? fastAction(s, actors[0]) : Engine.systemAction(s);
+      const a = actors.length ? fastAction(s, actors[0], cfg) : Engine.systemAction(s);
       const r = Engine.dispatch(s, a);
       if (!r.ok) throw new Error('Play-out action rejected: ' + r.error);
     }
@@ -2263,7 +2353,9 @@ const AI = (() => {
     return { s: h };
   }
   /* Fixed cards and open slots for one view. */
-  function layout(view) {
+  /** @param {AIConfig} [cfg] */
+  function layout(view, cfg) {
+    const knowledge = (cfg || DEFAULT_CONFIG).knowledge;
     const me = view.seat;
     const sd = !!(view.showdown && view.showdown.active);
     const myOut = knowledge.ownDiscards ? view.myOut : [];
@@ -2300,7 +2392,7 @@ const AI = (() => {
     const unknown = R.ALL_IDS.filter(id => !known.has(id));
     return { fixed, cap, unknown };
   }
-  function dealWorld(view, lay, rng) {
+  function dealWorld(view, lay, rng, knowledge) {
     const slots = [];
     for (let p = 0; p < 3; p++) if (lay.cap.hands[p] > 0) slots.push({ kind: 'hand', seat: p, left: lay.cap.hands[p], cards: [] });
     for (const kind of ['kitty', 'outside', 'sdDiscards']) if (lay.cap[kind] > 0) slots.push({ kind, left: lay.cap[kind], cards: [] });
@@ -2324,8 +2416,8 @@ const AI = (() => {
     return w;
   }
   /* How well a world agrees with the bids that the other players made (main hand only). */
-  function bidWeight(view, w) {
-    if (view.showdown || !knowledge.bids) return 1;
+  function bidWeight(view, w, cfg) {
+    if (view.showdown || !cfg.knowledge.bids) return 1;
     let weight = 1;
     const T = BID_THRESHOLDS.BID_TEMP;
     for (const b of view.bidLog) {
@@ -2339,12 +2431,12 @@ const AI = (() => {
       }
       let f;
       if (b.round === 1) {
-        const pa = sigmoid((round1Value(hand, view.flipped) - bidLimit('ROUND1')) / T);
+        const pa = sigmoid((round1Value(hand, view.flipped) - bidLimit(cfg, 'ROUND1')) / T);
         f = b.action === 'accept' ? pa : 1 - pa;
       } else {
         const blocked = R.card(view.flipped).suit;
         const best = bestSuit(hand, blocked);
-        const pc = sigmoid((best.value - bidLimit(o === view.dealer ? 'ROUND2_LAST' : 'ROUND2')) / T);
+        const pc = sigmoid((best.value - bidLimit(cfg, o === view.dealer ? 'ROUND2_LAST' : 'ROUND2')) / T);
         if (b.action === 'pass') f = 1 - pc;
         else {
           const suits = R.SUITS.filter(x => x !== blocked);
@@ -2356,15 +2448,17 @@ const AI = (() => {
     }
     return weight;
   }
-  function sampleWorlds(view, n, rng) {
-    const lay = layout(view);
+  /** @param {AIConfig} [cfg] */
+  function sampleWorlds(view, n, rng, cfg) {
+    const c = cfg || DEFAULT_CONFIG;
+    const lay = layout(view, c);
     const free = lay.cap.hands.reduce((x, y) => x + y, 0) + lay.cap.kitty + lay.cap.outside + lay.cap.sdDiscards;
     if (free !== lay.unknown.length) throw new Error('World layout mismatch: ' + free + ' slots, ' + lay.unknown.length + ' cards');
     const raw = [];
     for (let i = 0; i < n * SAMPLES.oversample && raw.length < n * SAMPLES.oversample; i++) {
       let w = null;
-      for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng);
-      if (w) raw.push({ w, weight: bidWeight(view, w) });
+      for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng, c.knowledge);
+      if (w) raw.push({ w, weight: bidWeight(view, w, c) });
     }
     if (!raw.length) throw new Error('No world agrees with the view');
     /* Systematic resampling to n equal-weight worlds. */
@@ -2411,24 +2505,24 @@ const AI = (() => {
      with fewer tricks (balance: the mediator plan for a 3-3-1 Showdown). Its value is the better plan's average over all worlds.
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
-  const activePlans = () => (knowledge.showdownPlans ? PLANS : ['greedy']);
+  const activePlans = cfg => (cfg.knowledge.showdownPlans ? PLANS : ['greedy']);
   /* bonus (optional): candidate => win chance (0..1) added to its value, such as the bid courage bias for a call. */
-  function plan(view, candidates, toAction, n, bonus) {
+  function plan(view, cfg, candidates, toAction, n, bonus) {
     if (candidates.length === 1) return candidates[0];
     const rng = rngFor(view);
-    const worlds = sampleWorlds(view, Math.max(1, Math.round(n * thinking.worlds / SAMPLES.play)), rng);
+    const worlds = sampleWorlds(view, Math.max(1, Math.round(n * cfg.thinking.worlds / SAMPLES.play)), rng, cfg);
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
     for (const cand of candidates) {
-      for (const style of activePlans()) {
+      for (const planName of activePlans(cfg)) {
         let total = 0;
         for (let i = 0; i < worlds.length; i++) {
           const s = worldState(view, worlds[i], seeds[i]);
-          s.planSeat = view.seat; s.plan = style;
+          s.planSeat = view.seat; s.plan = planName;
           const r = Engine.dispatch(s, toAction(cand));
           if (!r.ok) throw new Error('Candidate rejected: ' + r.error);
-          playOut(s);
-          total += outcome(s, view.seat, view.scores);
+          playOut(s, cfg);
+          total += outcome(s, view.seat, view.scores, cfg);
         }
         const v = total / worlds.length + (bonus ? bonus(cand) : 0);
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
@@ -2437,65 +2531,61 @@ const AI = (() => {
     return best;
   }
 
-  function decideInner(view) {
-    const me = view.seat, trump = view.trump;
+  function decideInner(view, cfg) {
+    const me = view.seat, trump = view.trump, style = cfg.style;
     switch (view.phase) {
       case P.DISCARD: {
-        if (style.realTable) return fastAction({ phase: P.DISCARD, hands: { [me]: view.hand } }, me);
+        if (style.realTable) return fastAction({ phase: P.DISCARD, hands: { [me]: view.hand } }, me, cfg);
         const cands = rankedDiscards(view.hand, 3, flexibleValue, null).slice(0, CANDIDATES.discard);
-        return { type: 'DISCARD', player: me, cards: plan(view, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
+        return { type: 'DISCARD', player: me, cards: plan(view, cfg, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
       }
       case P.BID1: {
-        const h = round1Value(view.hand, view.flipped) >= bidLimit('ROUND1');
+        const h = round1Value(view.hand, view.flipped) >= bidLimit(cfg, 'ROUND1');
         if (style.realTable) return { type: 'BID', player: me, accept: h };
         const bias = COURAGE[style.courage].bias;
-        const accept = plan(view, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid, a => (a ? bias : 0));
+        const accept = plan(view, cfg, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid, a => (a ? bias : 0));
         return { type: 'BID', player: me, accept };
       }
       case P.BID2: {
         const blocked = R.card(view.flipped).suit;
         if (style.realTable) {
           const b = bestSuit(view.hand, blocked);
-          return { type: 'NAME', player: me, suit: b.value >= bidLimit(me === view.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
+          return { type: 'NAME', player: me, suit: b.value >= bidLimit(cfg, me === view.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
         }
         const suits = R.SUITS.filter(s => s !== blocked).sort((a, b) => handValue(view.hand, b) - handValue(view.hand, a));
         const bias = COURAGE[style.courage].bias;
-        const suit = plan(view, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid, x => (x ? bias : 0));
+        const suit = plan(view, cfg, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid, x => (x ? bias : 0));
         return { type: 'NAME', player: me, suit };
       }
       case P.EXCHANGE: {
         const cands = rankedDiscards(view.hand, view.exchangeCount, h => handValue(h, trump), trump).slice(0, CANDIDATES.exchange);
-        return { type: 'EXCHANGE', player: me, cards: plan(view, cands, c => ({ type: 'EXCHANGE', player: me, cards: c }), SAMPLES.exchange) };
+        return { type: 'EXCHANGE', player: me, cards: plan(view, cfg, cands, c => ({ type: 'EXCHANGE', player: me, cards: c }), SAMPLES.exchange) };
       }
       case P.SHOWDOWN_DISCARD: {
         const cands = view.hand.slice().sort((a, b) => cardKeep(a, trump) - cardKeep(b, trump));
-        return { type: 'SHOWDOWN_DISCARD', player: me, card: plan(view, cands, c => ({ type: 'SHOWDOWN_DISCARD', player: me, card: c }), SAMPLES.showdownDiscard) };
+        return { type: 'SHOWDOWN_DISCARD', player: me, card: plan(view, cfg, cands, c => ({ type: 'SHOWDOWN_DISCARD', player: me, card: c }), SAMPLES.showdownDiscard) };
       }
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         const cands = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
-        return { type: 'PLAY', player: me, card: plan(view, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play) };
+        return { type: 'PLAY', player: me, card: plan(view, cfg, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play) };
       }
       default:
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  /* Decide as a personality: its tier and style apply to this one decision, then the settings come back. */
-  function decideAs(view, persona) {
-    if (!persona) return decide(view);
-    const saved = { t: Object.assign({}, thinking), k: Object.assign({}, knowledge), s: Object.assign({}, style) };
-    setSkillTier(persona.tier);
-    setStyle({ courage: persona.courage, realTable: persona.realTable });
-    personaActive = true;
-    try { return decide(view); } finally { personaActive = false; setThinking(saved.t); setKnowledge(saved.k); setStyle(saved.s); }
-  }
-  /* Play-outs run the real Engine; keep them out of the event log. */
-  function decide(view) {
+  /* Play-outs run the real Engine; keep them out of the event log.
+     The decision depends only on the view and cfg. @param {AIConfig} [cfg] */
+  function decide(view, cfg) {
     const was = Logger.enabled;
     Logger.enabled = false;
-    try { return decideInner(view); } finally { Logger.enabled = was; }
+    try { return decideInner(view, cfg || DEFAULT_CONFIG); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, decideAs, fastAction, winChance, handValue, sampleWorlds, layout, BID_THRESHOLDS, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, style, STYLE_DEFAULTS, setStyle, COURAGE, SKILL_TIERS, setSkillTier, currentSkillTier, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
+  return Object.freeze({
+    decide, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
+    config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
+    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
+  });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2579,17 +2669,18 @@ const Render = (() => {
     return '<div class="tricks">Tricks this hand: <b>' + v.tricksWon[p] + '</b></div>';
   }
 
+  /* A personality's figure: a small button that opens its profile, or a large picture. */
+  const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + x.id + '" aria-label="About ' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
+  const faceHTML = x => '<div class="p-face" role="img" aria-label="' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>';
   /* A bot's figure (opens its profile) and its name in its own color. */
   function nameHTML(v, p, ui) {
     const id = ui.personas[p], x = id && PERSONA_BY_ID[id];
     if (!x) return '<span class="seat-name">' + v.players[p].name + '</span>';
-    return '<button type="button" class="seat-face" data-action="persona" data-id="' + x.id + '" aria-label="About ' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>' +
-      '<span class="seat-name" style="color:' + x.color + '">' + v.players[p].name + '</span>';
+    return faceButtonHTML(x) + '<span class="seat-name" style="color:' + x.color + '">' + v.players[p].name + '</span>';
   }
   function personaHTML(x) {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
-    return '<div class="modal persona" role="dialog" aria-label="' + x.name + '">' +
-      '<div class="p-face" role="img" aria-label="' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>' +
+    return '<div class="modal persona" role="dialog" aria-label="' + x.name + '">' + faceHTML(x) +
       '<h2 style="color:' + x.color + '">' + x.name + '</h2><p class="p-quote">“' + x.quote + '”</p><p class="p-hint">' + x.hint + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' +
@@ -2813,7 +2904,9 @@ const Render = (() => {
       default: break;
     }
     if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>';
-    if (ctx.waiting) return '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
+    /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. */
+    const botShowdown = v.showdown && v.showdown.active && !v.showdown.participants.includes(you);
+    if (ctx.waiting && botShowdown) return '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
     return '<div class="hint">' + statusText(v) + '</div>';
   }
 
@@ -2881,16 +2974,14 @@ const Render = (() => {
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
-    const meName = mine
-      ? '<button type="button" class="seat-face" data-action="persona" data-id="' + mine.id + '" aria-label="About ' + mine.name + '" style="background-image:url(' + PERSONA_ART[mine.id] + ')"></button><span class="seat-name">' + v.players[v.seat].name + '</span>'
-      : '<span class="seat-name">' + v.players[v.seat].name + '</span>';
+    const meName = (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + v.players[v.seat].name + '</span>';
     me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay) + (mine ? '<span class="playing-as">playing as <b style="color:' + mine.color + '">' + mine.name + '</b></span>' : '') +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, personaHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
+  return Object.freeze({ render, personaHTML, faceHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2919,6 +3010,8 @@ const App = (() => {
     /* Free play only: the swap is offered once, before the first discard. */
     seatSwapPending: false,
     usePersonas: true,
+    /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
+    ai: AI.DEFAULT_CONFIG,
     updateReady: false, menuOpen: false, menuLaunch: false,
     timer: null, timerFn: null, lastEvents: []
   };
@@ -2957,7 +3050,7 @@ const App = (() => {
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
-    $('gameLog').innerHTML = '';
+    clearLog();
     $('overlay').hidden = true;
     hideUpdateNote();
     const setSeed = $('setSeed');
@@ -2975,7 +3068,7 @@ const App = (() => {
     app.ui.endButtons = '';
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
     seatBots(null, null);
-    $('gameLog').innerHTML = '';
+    clearLog();
     const setSeed = $('setSeed');
     if (setSeed) setSeed.textContent = '—';
     draw([]);
@@ -3005,12 +3098,14 @@ const App = (() => {
     return rec ? Replay.encode(rec) : null;
   }
   /* The full AI settings as replay META keys (docs/replay-code.md, 4.4). The replay does not need them. */
-  function aiMeta() {
+  /** @param {AIConfig} [cfg] the settings to describe (default: the Settings panel's) */
+  function aiMeta(cfg) {
+    const ai = cfg || app.ai;
     const m = {
-      'ai.tier': AI.currentSkillTier(), 'ai.courage': AI.style.courage, 'ai.realTable': !!AI.style.realTable,
-      'ai.hunches': AI.thinking.worlds, 'ai.brainFarts': Math.round((1 - AI.thinking.playoutSkill) * 100)
+      'ai.tier': AI.skillTierOf(ai), 'ai.courage': ai.style.courage, 'ai.realTable': !!ai.style.realTable,
+      'ai.hunches': ai.thinking.worlds, 'ai.brainFarts': Math.round((1 - ai.thinking.playoutSkill) * 100)
     };
-    for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!AI.knowledge[k];
+    for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!ai.knowledge[k];
     return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));  /* sorted as encodeMeta writes them, so a decoded code equals this object key for key */
   }
 
@@ -3042,11 +3137,9 @@ const App = (() => {
   /* Saves the running game to its mode's slot after every action. Finished games are not kept. */
   function saveGame() {
     if (!app.mode || !app.state || app.state.gameOver) return;
-    /* The saved Latest Scroll keeps its last LOG_SAVE_MAX lines. */
-    const lines = Array.from($('gameLog').children).slice(-LOG_SAVE_MAX);
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, log: lines.map(li => li.outerHTML).join('')
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, log: logLines.slice(-LOG_SAVE_MAX)
     });
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
@@ -3117,7 +3210,8 @@ const App = (() => {
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
       app.ui.personas[HUMAN] = s.personas[HUMAN] || null;
-      $('gameLog').innerHTML = s.log || '';
+      clearLog();
+      for (const [text, cls] of s.log) appendLog(text, cls);
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
       $('setSeed').textContent = String(app.state.seed);
       $('overlay').hidden = true;
@@ -3210,8 +3304,10 @@ const App = (() => {
     if (ai.length) {
       const p = ai[0];
       /* A wave always uses its personalities: they set its difficulty. */
-      const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
-      later(d.ai, () => act(AI.decideAs(buildView(app.state, p), persona)));
+      later(d.ai, () => {
+        const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
+        act(AI.decide(buildView(app.state, p), persona ? AI.personaConfig(persona) : app.ai));
+      });
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
       if (!sys) return;
@@ -3270,7 +3366,6 @@ const App = (() => {
     [/\b(?:Showdown|SHOWDOWN!?|mediator)/, 'hl-sd']
   ];
   const LOG_RE = new RegExp(LOG_HIGHLIGHTS.map(([re]) => '(' + re.source + ')').join('|'), 'g');
-  const escHTML = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function logHTML(text, cls) {
     let html = escHTML(text);
     /* Blue and pink lines: color only the lead label (or a leading −1), not the whole line. */
@@ -3287,19 +3382,28 @@ const App = (() => {
   }
 
   /* The log is cleared at each new game. This cap only guards against a very long game. */
-  const LOG_MAX = 5000, LOG_SAVE_MAX = 1500;
+  const LOG_MAX = 5000;
+  /* The Latest Scroll as data, one [text, classes] pair per line. A save keeps this, never the HTML. */
+  let logLines = [];
+  function clearLog() { logLines = []; $('gameLog').innerHTML = ''; }
 
   /* A Showdown message is indented two steps. */
   function addLog(text, cls, isShowdown) {
-    const li = document.createElement('li');
-    li.innerHTML = logHTML(Render.youText(text), cls || '');
     const classes = (cls || '').split(' ').filter(Boolean);
     if (isShowdown) classes.push('sd');
-    if (classes.length) li.className = classes.join(' ');
+    appendLog(text, classes.join(' '));
+    $('gameLog').scrollTop = $('gameLog').scrollHeight;
+  }
+  /* One line: logHTML escapes the text before it adds its own markup. */
+  function appendLog(text, cls) {
+    logLines.push([text, cls]);
+    const li = document.createElement('li');
+    li.innerHTML = logHTML(Render.youText(text), cls);
+    if (cls) li.className = cls;
     const ol = $('gameLog');
     ol.appendChild(li);
     while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
-    ol.scrollTop = ol.scrollHeight;
+    if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
   }
   function toast(text, cls) {
     const t = document.createElement('div');
@@ -3310,9 +3414,15 @@ const App = (() => {
     while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(() => t.remove(), 2700);
   }
+  /* Each score reason: log, the words after a score change in the log and toasts; end, how a game ended ("by ..."). */
   const REASON = {
-    KING: 'King won a trick', SHOWDOWN_KING: 'King won a Showdown trick', CLEAR_WINNER: 'most tricks',
-    NAMER_SWEEP: 'namer sweep', NON_NAMER_SWEEP: 'non-namer sweep', SHOWDOWN_WIN: 'won the Showdown', SHOWDOWN_LOSS: 'lost the Showdown'
+    KING: { log: 'King won a trick', end: 'a King won a trick' },
+    SHOWDOWN_KING: { log: 'King won a Showdown trick', end: 'a King won a Showdown trick' },
+    CLEAR_WINNER: { log: 'most tricks', end: 'taking the most tricks' },
+    NAMER_SWEEP: { log: 'namer sweep', end: 'a namer sweep' },
+    NON_NAMER_SWEEP: { log: 'non-namer sweep', end: 'a non-namer sweep' },
+    SHOWDOWN_WIN: { log: 'won the Showdown', end: 'winning the Showdown' },
+    SHOWDOWN_LOSS: { log: 'lost the Showdown', end: 'losing the Showdown' }
   };
   function narrate(e) {
     const st = app.state;
@@ -3338,8 +3448,8 @@ const App = (() => {
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
-          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason] + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's ind' : 'k ind', e.reason === 'SHOWDOWN_WIN' || e.reason === 'SHOWDOWN_LOSS');
-          toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason], e.requested < 0 ? 'neg' : '');
+          addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason].log + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's ind' : 'k ind', e.reason === 'SHOWDOWN_WIN' || e.reason === 'SHOWDOWN_LOSS');
+          toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason].log, e.requested < 0 ? 'neg' : '');
         }
         break;
       case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
@@ -3374,10 +3484,7 @@ const App = (() => {
     const st = app.state;
     const v = buildView(st, HUMAN);
     const n = p => v.players[p].name;
-    const how = {
-      KING: 'a King won a trick', SHOWDOWN_KING: 'a King won a Showdown trick', CLEAR_WINNER: 'taking the most tricks',
-      NAMER_SWEEP: 'a namer sweep', NON_NAMER_SWEEP: 'a non-namer sweep', SHOWDOWN_WIN: 'winning the Showdown'
-    }[v.endEvent.reason] || v.endEvent.reason;
+    const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
@@ -3491,7 +3598,7 @@ const App = (() => {
   /* Lists what the browser needs for an install, as this browser sees it. */
   async function checkInstall() {
     const rows = [];
-    const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + esc(text) + '</li>');
+    const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
     const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     if (standalone || install.installed) row('ok', 'Running as an installed app.');
     else row('wait', 'Running in a browser tab.');
@@ -3563,8 +3670,7 @@ const App = (() => {
   }
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
-    return '<div class="swap-seat"><span class="swap-side">' + side + '</span>' +
-      '<div class="p-face" role="img" aria-label="' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>' +
+    return '<div class="swap-seat"><span class="swap-side">' + side + '</span>' + Render.faceHTML(x) +
       '<b style="color:' + x.color + '">' + x.name + '</b><small>' + x.hint + '</small></div>';
   }
   function showSwap() {
@@ -3724,8 +3830,7 @@ const App = (() => {
         const box = $('setTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
-        /* The tests reset the AI to its defaults, so the saved settings go back in after them. */
-        setTimeout(() => { showTests(SelfTest.run()); loadSettings(); syncThinking(); syncKnowledge(); $('setCourage').value = AI.style.courage; $('setRealTable').checked = AI.style.realTable; }, 30);
+        setTimeout(() => showTests(SelfTest.run()), 30);
         break;
       }
       default: break;
@@ -3734,11 +3839,12 @@ const App = (() => {
 
   /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
   function syncKnowledge() {
-    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
+    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
     syncTier();
   }
   function setKnowledge(k) {
-    const now = AI.setKnowledge(k);
+    app.ai = AI.config(app.ai, { knowledge: k });
+    const now = app.ai.knowledge;
     syncKnowledge();
     Logger.log('AI_KNOWLEDGE', now);
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
@@ -3749,7 +3855,8 @@ const App = (() => {
 
   /* Table style switch: change the AI, keep the checkbox in step, and log the change. */
   function setStyle(t) {
-    const now = AI.setStyle(t);
+    app.ai = AI.config(app.ai, { style: t });
+    const now = app.ai.style;
     $('setRealTable').checked = now.realTable;
     $('setCourage').value = now.courage;
     Logger.log('AI_STYLE', now);
@@ -3765,13 +3872,13 @@ const App = (() => {
   }
   /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
   function setSkillTier(name) {
-    AI.setSkillTier(name);
+    app.ai = AI.withSkillTier(app.ai, name);
     syncThinking(); syncKnowledge();
-    Logger.log('AI_SKILL', { tier: AI.currentSkillTier() });
+    Logger.log('AI_SKILL', { tier: AI.skillTierOf(app.ai) });
     addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
     saveSettings();
   }
-  function syncTier() { $('setTier').value = AI.currentSkillTier(); }
+  function syncTier() { $('setTier').value = AI.skillTierOf(app.ai); }
 
   /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
   function copySeed() {
@@ -3794,7 +3901,6 @@ const App = (() => {
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
     waves: 'Waves', memory: 'Saved games and results'
   };
-  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function showTests(res) {
     const areas = new Map();
     for (const r of res.results) {
@@ -3805,9 +3911,9 @@ const App = (() => {
     const total = res.results.length;
     const sum = res.failed ? '⚠️ ' + res.failed + ' of ' + total + ' checks failed' : '✅ All ' + total + ' checks passed';
     let html = '<div class="t-sum ' + (res.failed ? 'bad' : 'ok') + '">' + sum + ' <span class="k-hint">(' + (res.ms / 1000).toFixed(1) + ' s)</span></div><ul>';
-    for (const [sec, a] of areas) html += '<li class="' + (a.ok === a.all ? '' : 'bad') + '">' + (a.ok === a.all ? '✔ ' : '✖ ') + esc(TEST_AREAS[sec] || sec) + ' <span class="k-hint">' + a.ok + '/' + a.all + '</span></li>';
+    for (const [sec, a] of areas) html += '<li class="' + (a.ok === a.all ? '' : 'bad') + '">' + (a.ok === a.all ? '✔ ' : '✖ ') + escHTML(TEST_AREAS[sec] || sec) + ' <span class="k-hint">' + a.ok + '/' + a.all + '</span></li>';
     html += '</ul>';
-    for (const r of res.results.filter(x => !x.ok)) html += '<div class="t-fail">✖ ' + esc(TEST_AREAS[r.section] || r.section) + ': ' + esc(r.name) + (r.detail ? '<small>' + esc(r.detail) + '</small>' : '') + '</div>';
+    for (const r of res.results.filter(x => !x.ok)) html += '<div class="t-fail">✖ ' + escHTML(TEST_AREAS[r.section] || r.section) + ': ' + escHTML(r.name) + (r.detail ? '<small>' + escHTML(r.detail) + '</small>' : '') + '</div>';
     const st = res.stats;
     const n = x => Number(x).toLocaleString('en-US');
     if (st) html += '<div class="t-stats">Simulated ' + n(st.games) + ' games: ' + n(st.hands) + ' hands, ' + n(st.showdowns) + ' Showdowns, ' + n(st.kingPts) + ' King points. Every one of ' + n(st.illegalRejected) + ' illegal plays was refused.</div>';
@@ -3816,14 +3922,15 @@ const App = (() => {
 
   /* AI thinking settings: change the AI, keep the controls in step, and log the change. */
   function syncThinking() {
-    $('setWorlds').value = AI.thinking.worlds;
-    const farts = Math.round((1 - AI.thinking.playoutSkill) * 100);
+    $('setWorlds').value = app.ai.thinking.worlds;
+    const farts = Math.round((1 - app.ai.thinking.playoutSkill) * 100);
     $('setSkill').value = farts;
     $('setSkillOut').textContent = farts + '%';
     syncTier();
   }
   function setThinking(t) {
-    const now = AI.setThinking(t);
+    app.ai = AI.config(app.ai, { thinking: t });
+    const now = app.ai.thinking;
     syncThinking();
     const farts = Math.round((1 - now.playoutSkill) * 100);
     Logger.log('AI_THINKING', now);
@@ -3833,15 +3940,13 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, thinking: AI.thinking, knowledge: AI.knowledge, style: AI.style, logging: Logger.enabled });
+    settingsStore.save({ personas: app.usePersonas, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
   }
-  /* Puts the saved settings into the AI (quietly: no log lines). The AI checks every value. */
+  /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
     const x = settingsStore.load();
     if (!x || typeof x !== 'object') return;
-    if (x.thinking && typeof x.thinking === 'object') AI.setThinking(x.thinking);
-    if (x.knowledge && typeof x.knowledge === 'object') AI.setKnowledge(x.knowledge);
-    if (x.style && typeof x.style === 'object') AI.setStyle(x.style);
+    app.ai = AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style });
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
     if (x.logging === true) Logger.enabled = true;
   }
@@ -3886,16 +3991,16 @@ const App = (() => {
     $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
     $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
     for (const box of document.querySelectorAll('[data-knowledge]')) {
-      box.checked = AI.knowledge[box.getAttribute('data-knowledge')];
+      box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
       box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
     }
     syncThinking(); syncKnowledge();
     $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
-    $('setCourage').value = AI.style.courage;
+    $('setCourage').value = app.ai.style.courage;
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
     $('setPersonas').addEventListener('change', () => setPersonas($('setPersonas').checked));
     setPersonas(app.usePersonas, true);
-    $('setRealTable').checked = AI.style.realTable;
+    $('setRealTable').checked = app.ai.style.realTable;
     $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     Logger.listeners.push(line => { const pre = $('setLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
@@ -4052,13 +4157,13 @@ const SelfTest = (() => {
       eq('redeal collects all cards', Engine.audit(s), []);
     });
 
-    /* --- Trick scoring --- */
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
     safeRun('ai knowledge', () => {
       /* These checks test each kind of knowledge with all the others on. */
-      AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
-      AI.setThinking(AI.THINKING_FULL);
-      const worldsOf = (st, seat, n) => AI.sampleWorlds(buildView(st, seat), n || 30, { s: 99 });
+      const full = AI.config(AI.DEFAULT_CONFIG, { knowledge: AI.KNOWLEDGE_ALL_ON, thinking: AI.THINKING_FULL });
+      /* full, with some knowledge switched off. */
+      const without = k => AI.config(full, { knowledge: k });
+      const worldsOf = (st, seat, n, cfg) => AI.sampleWorlds(buildView(st, seat), n || 30, { s: 99 }, cfg || full);
       const s = revealState(5, 0, '9H');
       D(s, { type: 'FLIP' });
       D(s, { type: 'BID', player: 1, accept: true });
@@ -4070,9 +4175,9 @@ const SelfTest = (() => {
       check('worlds keep own discards in the outside pile', ws.every(w => s.memory[0].out.every(id => w.outside.includes(id))));
       check('worlds keep the seat\'s own hand', ws.every(w => JSON.stringify(w.hands[0]) === JSON.stringify(s.hands[0])));
       const v = Object.assign(buildView(s, 0), { voids: [[], [], ['H']] });
-      check('a void in its suit moves the turned card to the outside pile', AI.sampleWorlds(v, 20, { s: 5 }).every(w => w.outside.includes('9H') && !w.hands[2].includes('9H')));
+      check('a void in its suit moves the turned card to the outside pile', AI.sampleWorlds(v, 20, { s: 5 }, full).every(w => w.outside.includes('9H') && !w.hands[2].includes('9H')));
       const v2 = Object.assign(buildView(s, 0), { voids: [[], ['S'], []] });
-      check('worlds respect known voids', AI.sampleWorlds(v2, 30, { s: 6 }).every(w => !w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
+      check('worlds respect known voids', AI.sampleWorlds(v2, 30, { s: 6 }, full).every(w => !w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
       const n = revealState(6, 0, '9H');
       D(n, { type: 'FLIP' });
       for (const q of [1, 2, 0]) D(n, { type: 'BID', player: q, accept: false });
@@ -4085,12 +4190,12 @@ const SelfTest = (() => {
       /* The decision depends only on the view: moving hidden cards does not change it. */
       const g = revealState(8, 0, '9H');
       D(g, { type: 'FLIP' });
-      const d1 = AI.decide(buildView(g, 1));
+      const d1 = AI.decide(buildView(g, 1), full);
       const swap = g.hands[2][0]; g.hands[2][0] = g.hands[0][0]; g.hands[0][0] = swap;
       const k = g.kitty[1]; g.kitty[1] = g.outside[0]; g.outside[0] = k;
-      const d2 = AI.decide(buildView(g, 1));
+      const d2 = AI.decide(buildView(g, 1), full);
       eq('AI decision ignores hidden cards', d2, d1);
-      eq('AI decision is deterministic', AI.decide(buildView(g, 1)), d1);
+      eq('AI decision is deterministic', AI.decide(buildView(g, 1), full), d1);
 
       const w0 = AI.winChance([0, 0, 0], 0);
       check('win chance at 0-0-0 is about 1/3', Math.abs(w0 - 1 / 3) < 0.01, String(w0));
@@ -4100,83 +4205,73 @@ const SelfTest = (() => {
       check('win chance is symmetric between seats', Math.abs(AI.winChance([2, 6, 4], 0) - AI.winChance([2, 4, 6], 0)) < 1e-9);
 
       /* Knowledge switches: each one changes the worlds as expected, and decisions stay legal. */
-      try {
+      {
         eq('knowledge defaults: only score watching is on', AI.KNOWLEDGE_DEFAULTS, { bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: true, showdownPlans: false });
         eq('thinking defaults: 10 hunches, 30% brain farts', AI.THINKING_DEFAULTS, { worlds: 10, playoutSkill: 0.7 });
-        eq('score watching ramps from 6 to 9 points', [[5, 3, 2], [6, 0, 0], [0, 7, 1], [2, 4, 8], [0, 0, 9]].map(AI.scoreWatch), [0, 0.25, 0.5, 0.75, 1]);
-        AI.setKnowledge({ scoreAware: false });
-        eq('score watching off: no race weight', AI.scoreWatch([0, 0, 9]), 0);
-        AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
-        AI.setKnowledge({ turnedCard: false });
-        check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40).some(w => !w.hands[2].includes('9H')));
-        AI.setKnowledge({ turnedCard: true, ownDiscards: false });
-        ws = worldsOf(s, 0, 40);
+        eq('score watching ramps from 6 to 9 points', [[5, 3, 2], [6, 0, 0], [0, 7, 1], [2, 4, 8], [0, 0, 9]].map(x => AI.scoreWatch(x)), [0, 0.25, 0.5, 0.75, 1]);
+        eq('score watching off: no race weight', AI.scoreWatch([0, 0, 9], without({ scoreAware: false })), 0);
+        check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40, without({ turnedCard: false })).some(w => !w.hands[2].includes('9H')));
+        ws = worldsOf(s, 0, 40, without({ ownDiscards: false }));
         check('own-discards switch off: some worlds move own discards out of the outside pile', ws.some(w => !s.memory[0].out.every(id => w.outside.includes(id))));
         check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
-        AI.setKnowledge({ ownDiscards: true, voids: false });
-        check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
-        AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
+        check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }, without({ voids: false })).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
         for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) {
-          AI.setKnowledge({ [key]: false });
+          const cfg = without({ [key]: false });
           const st = revealState(9, 0, '9H');
           D(st, { type: 'FLIP' });
-          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null;
           D(st, { type: 'BID', player: 1, accept: true });
           D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
-          const ok2 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          const ok2 = Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null;
           check('switch ' + key + ' off: AI decisions stay legal', ok1 && ok2);
-          AI.setKnowledge(AI.KNOWLEDGE_ALL_ON);
         }
         for (const t of [{ worlds: 1, playoutSkill: 0 }, { worlds: 80, playoutSkill: 0.5 }]) {
-          AI.setThinking(t);
+          const cfg = AI.config(full, { thinking: t });
           const st = revealState(10, 0, '9H');
           D(st, { type: 'FLIP' });
           D(st, { type: 'BID', player: 1, accept: true });
           D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
-          check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1))) === null);
+          check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null);
         }
-        eq('thinking settings clamp to their ranges', AI.setThinking({ worlds: 999, playoutSkill: -1 }), { worlds: 200, playoutSkill: 0 });
+        eq('thinking settings clamp to their ranges', AI.config(full, { thinking: { worlds: 999, playoutSkill: -1 } }).thinking, { worlds: 200, playoutSkill: 0 });
         eq('bot style defaults: normal courage, real table off', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal' });
-        AI.setStyle({ realTable: true });
         {
+          const cfg = AI.config(full, { style: { realTable: true } });
           const st = revealState(11, 0, '9H');
           const hand = ['KS', 'QS', 'JH', '9H', 'AC', 'QC', '10C', '7C', 'JD', '8D'];
           const dv = Object.assign(buildView(st, 1), { phase: P.DISCARD, hand });
-          eq('real table: first discard pitches the lowest cards, Jacks stay', AI.decide(dv).cards.slice().sort(), ['7C', '8D', '9H']);
+          eq('real table: first discard pitches the lowest cards, Jacks stay', AI.decide(dv, cfg).cards.slice().sort(), ['7C', '8D', '9H']);
           D(st, { type: 'FLIP' });
-          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1))) === null;
+          const ok1 = Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null;
           D(st, { type: 'BID', player: 1, accept: true });
           D(st, { type: 'EXCHANGE', player: 2, cards: [st.hands[2][0]] });
-          check('real table: AI decisions stay legal', ok1 && Engine.validate(st, AI.decide(buildView(st, 1))) === null);
+          check('real table: AI decisions stay legal', ok1 && Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null);
         }
-        AI.setStyle(AI.STYLE_DEFAULTS);
-        for (const name of Object.keys(AI.SKILL_TIERS)) { AI.setSkillTier(name); eq('skill tier ' + name + ' round-trips', AI.currentSkillTier(), name); }
-        AI.setSkillTier('casual');
-        eq('casual tier is the default settings', [AI.thinking, AI.knowledge], [AI.THINKING_DEFAULTS, AI.KNOWLEDGE_DEFAULTS]);
-        AI.setThinking({ worlds: 7 });
-        eq('settings that match no tier read as custom', AI.currentSkillTier(), 'custom');
-        eq('unknown bid courage is ignored', AI.setStyle({ courage: 'reckless' }).courage, 'normal');
+        for (const name of Object.keys(AI.SKILL_TIERS)) eq('skill tier ' + name + ' round-trips', AI.skillTierOf(AI.withSkillTier(full, name)), name);
+        const casual = AI.withSkillTier(full, 'casual');
+        eq('casual tier is the default settings', [casual.thinking, casual.knowledge], [AI.THINKING_DEFAULTS, AI.KNOWLEDGE_DEFAULTS]);
+        eq('settings that match no tier read as custom', AI.skillTierOf(AI.config(casual, { thinking: { worlds: 7 } })), 'custom');
+        eq('unknown bid courage is ignored', AI.config(casual, { style: { courage: 'reckless' } }).style.courage, 'normal');
+        eq('a config cannot be changed', Object.isFrozen(casual) && Object.isFrozen(casual.thinking) && Object.isFrozen(casual.knowledge) && Object.isFrozen(casual.style), true);
         {
           const calls = courage => {
-            AI.setStyle({ courage });
+            const cfg = AI.config(casual, { style: { courage } });
             let n = 0;
             for (let seed = 1; seed <= 40; seed++) {
               const st = revealState(seed, seed % 3, '9H');
               D(st, { type: 'FLIP' });
-              if (AI.fastAction(st, st.bidTurn).accept) n++;
+              if (AI.fastAction(st, st.bidTurn, cfg).accept) n++;
             }
             return n;
           };
           const timid = calls('timid'), normal = calls('normal'), bold = calls('bold');
           check('bid courage: bold calls more than normal, normal more than timid (' + [timid, normal, bold].join('/') + ')', timid < normal && normal < bold);
         }
-        AI.setStyle({ realTable: true, courage: 'bold' });
         {
           const st = revealState(12, 0, '9H');
           D(st, { type: 'FLIP' });
-          check('bold real-table bid is legal', Engine.validate(st, AI.decide(buildView(st, st.bidTurn))) === null);
+          check('bold real-table bid is legal', Engine.validate(st, AI.decide(buildView(st, st.bidTurn), AI.config(casual, { style: { realTable: true, courage: 'bold' } }))) === null);
         }
-        AI.setStyle(AI.STYLE_DEFAULTS); AI.setSkillTier('casual');
         eq('ten personalities', PERSONAS.length, 10);
         check('personality ids, names and colors are unique', ['id', 'name', 'color'].every(k => new Set(PERSONAS.map(x => x[k])).size === PERSONAS.length));
         check('personality names have 3 letters', PERSONAS.every(x => /^[A-Z][a-z]{2}$/.test(x.name)));
@@ -4184,17 +4279,13 @@ const SelfTest = (() => {
         check('each personality has a different style', new Set(PERSONAS.map(x => [x.tier, x.courage, x.realTable].join('/'))).size === PERSONAS.length);
         check('every personality has art', PERSONAS.every(x => /^data:image\/webp;base64,/.test(PERSONA_ART[x.id] || '')));
         {
-          const before = JSON.stringify([AI.thinking, AI.knowledge, AI.style]);
           const st = revealState(13, 0, '9H');
           D(st, { type: 'FLIP' });
-          const ok = PERSONAS.every(x => Engine.validate(st, AI.decideAs(buildView(st, st.bidTurn), x)) === null);
+          const ok = PERSONAS.every(x => Engine.validate(st, AI.decide(buildView(st, st.bidTurn), AI.personaConfig(x))) === null);
           check('every personality makes legal decisions', ok);
-          eq('deciding as a personality leaves the settings as they were', JSON.stringify([AI.thinking, AI.knowledge, AI.style]), before);
+          const vex = AI.personaConfig(PERSONA_BY_ID.vex);
+          eq('a personality config holds its tier and style', [AI.skillTierOf(vex), vex.style.courage, vex.style.realTable, vex.persona], ['shark', 'bold', false, true]);
         }
-      } finally {
-        AI.setKnowledge(AI.KNOWLEDGE_DEFAULTS);
-        AI.setThinking(AI.THINKING_DEFAULTS);
-        AI.setStyle(AI.STYLE_DEFAULTS);
       }
     });
 
@@ -4270,9 +4361,26 @@ const SelfTest = (() => {
       eq('a game saved in another format is dropped and named once', [sl2.get('waves'), sl2.dropped(), sl2.dropped()], [null, ['waves'], []]);
       const bad = JSON.parse(JSON.stringify(s)); bad.hands[0].push('AS', 'AS');
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: bad, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
-      eq('a game that fails the card audit is dropped', createSlots(store).get('free'), null);
+      eq('a game that the replay does not rebuild is dropped', createSlots(store).get('free'), null);
       store.poke('{not json');
       eq('a broken save reads as empty', createSlots(store).get('free'), null);
+      /* Saved data can come from someone else's backup: nothing in it reaches the page as HTML. */
+      const evil = '<img src=x onerror="window.kctSelfTestHit=1">';
+      const tricked = JSON.parse(JSON.stringify(s)); tricked.scores[1] = evil;
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: tricked, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
+      eq('a state changed outside the Engine is dropped', createSlots(store).get('free'), null);
+      const noDecisions = JSON.parse(JSON.stringify(s)); delete noDecisions.decisions;
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: noDecisions, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
+      eq('a state without its decisions is dropped', createSlots(store).get('free'), null);
+      const named = JSON.parse(JSON.stringify(s)); named.players[0].name = evil;
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: named, personas: [null, evil, 'doc'], wave: { n: evil, open: 1 }, log: [[evil, 'h ' + evil], [5, 'x']] } }));
+      const clean = createSlots(store).get('free');
+      eq('a slot keeps the rebuilt state, known seats and a text log', [clean.state.players[0].name, clean.personas, clean.wave, clean.log], ['You', [null, null, 'doc'], { n: null, open: false }, [[evil, 'h']]]);
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null }, log: '<li class="h gap">Hand 1: <b>Vex</b> deals.</li><li>' + evil + 'x</li>' } }));
+      eq('an older HTML log is read as text', createSlots(store).get('free').log, [['Hand 1: Vex deals.', 'h gap'], ['x', '']]);
+      store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, 'kit', 'tex'], wave: { n: 99, open: true } } }));
+      eq('a Waves game without a real wave is dropped', createSlots(store).get('waves'), null);
+      check('no saved HTML ran', !(/** @type {any} */ (window)).kctSelfTestHit);
       const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
       blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } });
       check('blocked storage keeps the game for this page load', !!blocked.get('free'));
@@ -4285,6 +4393,9 @@ const SelfTest = (() => {
       eq('results per opponent', r.opponents.vex, { played: 2, won: 1 });
       eq('results per opponent in each mode', [r.modeOpponents.free.vex, r.modeOpponents.waves.vex], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
       const oldStats = mem(); oldStats.set(JSON.stringify({ modes: { free: { played: 3, won: 1 } }, tables: {}, opponents: {} }));
+      const oddStats = mem();
+      oddStats.set('{"modes":{"free":{"played":"<b>9</b>","won":1}},"tables":{},"opponents":{"__proto__":{"played":1,"won":0}},"modeOpponents":{"free":{"vex":{"played":2,"won":3},"doc":{"played":2,"won":1}}}}');
+      eq('results keep only counts that make sense', createStats(oddStats).get(), { modes: {}, tables: {}, opponents: {}, modeOpponents: { free: { doc: { played: 2, won: 1 } } } });
       eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
@@ -4352,7 +4463,7 @@ const SelfTest = (() => {
         else if (d.type === 'NAME') v1.push(d.suit ? R.SUITS.indexOf(d.suit) + 1 : 0);
         else v1.push(R.ALL_IDS.indexOf(d.card));
       }
-      const v1code = 'KCT1-' + btoa(String.fromCharCode(...v1)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const v1code = 'KCT1-' + Base64url.encode(v1);
       const r1 = Replay.decode(v1code);
       eq('a version 1 code still reads', [r1.v, r1.seed, r1.mode, r1.wave, r1.seats, Replay.run(r1).ok], [1, 4242, 'waves', 3, [null, 'vex', 'doc'], true]);
       const old = JSON.parse(JSON.stringify(s)); delete old.decisions;
@@ -4376,10 +4487,7 @@ const SelfTest = (() => {
       check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
       eq('20 showdown hands decode the same', Replay.decode(wc), worst);
       /* The full AI settings go in META, and still fit with the worst case. */
-      const keep = { thinking: Object.assign({}, AI.thinking), knowledge: Object.assign({}, AI.knowledge) };
-      AI.setThinking({ worlds: 37, playoutSkill: 0.55 }); AI.setKnowledge({ bids: true, voids: false });
-      const am = App.aiMeta();
-      AI.setThinking(keep.thinking); AI.setKnowledge(keep.knowledge);
+      const am = App.aiMeta(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 37, playoutSkill: 0.55 }, knowledge: { bids: true, voids: false } }));
       eq('AI META holds the full settings', [am['ai.tier'], am['ai.hunches'], am['ai.brainFarts'], am['ai.know.bids'], am['ai.know.voids'], Object.keys(am).filter(k => k.startsWith('ai.know.')).length], ['custom', 37, 45, true, false, Object.keys(AI.KNOWLEDGE_DEFAULTS).length]);
       const worstAll = Object.assign({}, worst, { meta: am });
       const wa = Replay.encode(worstAll);
