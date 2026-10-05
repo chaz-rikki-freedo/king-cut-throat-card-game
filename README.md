@@ -111,7 +111,7 @@ Click the heading to open it.
 |---|---|
 | **Logging** | Starts the timestamped event log (public information only). |
 | **Seed / Copy** | Shows the current game's seed and copies it. |
-| **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
+| **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 
@@ -241,6 +241,8 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
 
 **Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. Change `sw.js` only to change how caching works.
+
+**Persistent storage.** At start-up (on HTTPS), the app asks the browser to keep its storage (`navigator.storage.persist()`), so that progress, results, saved games and replay codes are not cleared when the disk is low. It asks only while the storage is not persistent yet. Chrome and Safari decide without a prompt, and they usually agree for an installed app. Firefox asks you one time. **Settings → Install** shows the result. A Safari tab that is not installed can lose its storage after 7 days without a visit, so install the app on iPhone and iPad.
 
 The service worker does not run from `file://`. The game still works there, without install or offline play.
 
