@@ -4213,7 +4213,8 @@ const App = (() => {
       if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
-      if (t && /^(BUTTON|SELECT|INPUT)$/.test(t.tagName)) return;
+      /* A focused control takes its own keys (a <summary> opens its section). The Settings panel never moves the game. */
+      if (t && (/^(BUTTON|SELECT|INPUT|TEXTAREA|SUMMARY|A)$/.test(t.tagName) || t.closest('#settingsPanel'))) return;
       if (t && t.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
       if (!$('overlay').hidden) return; /* a dialog is open: its buttons take the keys */
       ev.preventDefault();

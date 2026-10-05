@@ -159,6 +159,24 @@ function expect(name, ok, detail) {
       return out;`);
     expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
 
+    console.log('Settings: Enter and Space open the sections, and do not move the game');
+    await step(`KCT.App.newGame(4343); speed('slow');
+      while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-done"]');
+      click('[data-action="toggle-settings"]'); await sleep(20);`);
+    const keys = [];
+    for (const [id, key] of [['setAdvanced', 'Enter'], ['setSeat', ' ']]) {
+      await page.focus('#' + id + ' > summary');
+      /* A spy in place of the game timer: a skip calls it, and no real move can happen meanwhile. */
+      await step(`clearTimeout(app.timer); app.timer = 1; window.__skipped = false; app.timerFn = () => { window.__skipped = true; };`);
+      await page.keyboard.press(key === ' ' ? 'Space' : key);
+      await page.waitForTimeout(50);
+      keys.push(await step(`return { open: q('#${id}').open, moved: window.__skipped };`));
+    }
+    expect('Enter and Space on a Settings heading open its section', keys.every(k => k.open), keys);
+    expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
+    await step(`click('[data-action="toggle-settings"]');`);
+
     console.log('Your seat: the Human/AI tag works only with the switch on, for one game');
     await reload();
     r = await step(`
