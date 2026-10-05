@@ -3,6 +3,7 @@
    (Free play or the highest open wave), and sometimes the AI plays your seat. Reloads at random points, then resume.
    Checks: the resume is exact, every game ends, the replay code rebuilds the end, results and waves
    change only for games you played, the Skip rule, no page errors.
+   Each game starts with your seat human; an assisted game then hands it to the AI.
    Usage: node soak.js [workers=4] [games=5]. Exit code 1 on a failure. */
 'use strict';
 const { serve, launch, openPage, run } = require('./lib/browser');
@@ -22,6 +23,8 @@ async function worker(browser, url, w, games) {
     const mode = rnd() < 0.5 ? 'waves' : 'free', assist = rnd() < 0.4;
     const start = await step(`
       if (askOpen()) click('[data-action="ask-cancel"]');
+      /* Each game starts with your seat human: "AI plays your seat" would carry over from the last game. */
+      if (app.ui.autoplay) { click('.seat-toggle'); await sleep(20); }
       A.showMenu(false); await sleep(10);
       sessionStorage.setItem('soak.before', JSON.stringify({ stats: JSON.stringify(A.stats.get()), waves: JSON.stringify(KCT.Waves.progress()) }));
       if (arg.mode === 'waves') { q('#waveSel').value = String(KCT.Waves.progress().unlocked); click('[data-action="play-wave"]'); }
@@ -30,9 +33,9 @@ async function worker(browser, url, w, games) {
       if (askOpen()) click('[data-action="ask-ok"]');
       await sleep(20);
       speed('instant');
-      /* "AI plays your seat" carries over to the next game, so set it as this game needs. */
+      /* An assisted game hands your seat to the AI after the start. */
       if (q('#overlay .swap')) click('[data-action="swap-done"]');
-      if (app.ui.autoplay !== arg.assist) { click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20); }
+      if (arg.assist) { click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20); }
       return { mode: app.mode, autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed };`, { mode, assist });
     /* A game that started with the AI in your seat stays assisted even if you take the seat back. */
     if (start.mode !== mode || start.autoplay !== assist) out.fails.push({ g, start, mode, assist });
