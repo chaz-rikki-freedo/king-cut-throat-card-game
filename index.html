@@ -418,6 +418,7 @@ button.card{cursor:pointer}
       <label><input type="checkbox" id="setEnable"> Logging</label>
       <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
     </div>
+    <p class="k-hint" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser and are separate from the progress on the hosted game. The browser can clear them without a warning.</p>
     <div class="set-group">
       <h4 class="set-sub">Install</h4>
       <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
@@ -3632,6 +3633,21 @@ const App = (() => {
   async function checkInstall() {
     const rows = [];
     const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
+    /* A local copy (file://) cannot install or play offline, so the checks below do not apply. */
+    const local = location.protocol === 'file:';
+    const note = $('setLocalNote');
+    if (note) note.hidden = !local;
+    const show = () => {
+      const box = $('setInstall');
+      if (box) box.innerHTML = rows.join('');
+      const btn = $('setInstallBtn');
+      if (btn) btn.hidden = local || !install.prompt;
+      return rows;
+    };
+    if (local) {
+      row('wait', 'Install and offline play need the hosted game (HTTPS). A local copy cannot install.');
+      return show();
+    }
     const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || /** @type {any} */ (navigator).standalone === true;
     if (standalone || install.installed) row('ok', 'Running as an installed app.');
     else row('wait', 'Running in a browser tab.');
@@ -3662,11 +3678,7 @@ const App = (() => {
     else if (install.offered) row('wait', 'The browser offered an install earlier in this visit.');
     else row('wait', 'The browser has not offered an install in this visit. Chrome offers it only when it thinks the page can be installed.');
     row('wait', 'Browser: ' + navigator.userAgent);
-    const box = $('setInstall');
-    if (box) box.innerHTML = rows.join('');
-    const btn = $('setInstallBtn');
-    if (btn) btn.hidden = !install.prompt;
-    return rows;
+    return show();
   }
 
   function initUpdates() {

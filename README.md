@@ -254,7 +254,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 
 **Persistent storage.** At start-up (on HTTPS), the app asks the browser to keep its storage (`navigator.storage.persist()`), so that progress, results, saved games and replay codes are not cleared when the disk is low. It asks only while the storage is not persistent yet. Chrome and Safari decide without a prompt, and they usually agree for an installed app. Firefox asks you one time. **Settings → Install** shows the result. A Safari tab that is not installed can lose its storage after 7 days without a visit, so install the app on iPhone and iPad.
 
-The service worker does not run from `file://`. The game still works there, without install or offline play.
+The service worker does not run from `file://`. The game still works there, without install or offline play. In a local copy, Settings says that its progress is separate from the hosted game, and the install check shows one line instead of the checks that do not apply.
 
 ## Publishing
 
