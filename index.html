@@ -612,6 +612,8 @@ const RNG = (() => {
 /* ---------------------------------------------------------------------
    3. LOGGER — one timestamped logger. Off by default. Public info only.
    --------------------------------------------------------------------- */
+/* The Logger keeps the last LOGGER_MAX lines. */
+const LOGGER_MAX = 1500;
 const Logger = (() => {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const L = {
@@ -632,7 +634,7 @@ const Logger = (() => {
       }
       const line = '[+' + ms + 'ms] ' + type + (parts.length ? ' ' + parts.join(' ') : '');
       this.lines.push(line);
-      if (this.lines.length > 1500) this.lines.splice(0, this.lines.length - 1500);
+      if (this.lines.length > LOGGER_MAX) this.lines.splice(0, this.lines.length - LOGGER_MAX);
       if (typeof console !== 'undefined') console.debug(line);
       for (const fn of this.listeners) fn(line);
     },
@@ -1248,7 +1250,7 @@ const Replay = (() => {
         do {
           x = r.byte();
           n += (x & 127) * scale; scale *= 128;
-          if (scale > 2 ** 56) throw new Error('number too long in replay code');
+          if (n > Number.MAX_SAFE_INTEGER || scale > 2 ** 56) throw new Error('number too long in replay code');
         } while (x & 128);
         return n;
       },
@@ -1626,7 +1628,8 @@ function createWaveProgress(store, rand) {
   try {
     const saved = JSON.parse(store.get());
     if (valid(saved)) {
-      p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].sort((a, b) => a - b), tries: {} };
+      /* A wave above the highest open wave cannot be cleared: such an entry is dropped. */
+      p = { unlocked: saved.unlocked, cleared: [...new Set(saved.cleared)].filter(n => n <= saved.unlocked).sort((a, b) => a - b), tries: {} };
       if (saved.tries && typeof saved.tries === 'object') {
         for (const [k, v] of Object.entries(saved.tries)) if (get(Number(k)) && Number.isInteger(v) && v > 0) p.tries[k] = v;
       } else {
@@ -1694,6 +1697,9 @@ const LOG_SAVE_MAX = 1500;
      be equal to it (player names aside). The rebuilt state is kept. A state without a decision
      list (saved before decisions were kept) cannot be checked, so it is dropped.
    - Seats must be known personalities. The wave must be a real wave (Waves mode) or none.
+     A Waves game must seat that wave's West and East, and it counts for the wave only if the
+     wave is open now (an open wave never locks again, so a save cannot open a locked wave).
+   - The bot settings are read through AI.config, which keeps only valid values.
    - The log is kept as text lines: [text, classes]. An older save kept it as HTML; its text
      is read with DOMParser, which runs no scripts, and the HTML itself is not kept. */
 function cleanSlot(mode, s) {
@@ -1715,10 +1721,14 @@ function cleanSlot(mode, s) {
   const w = s.wave && typeof s.wave === 'object' ? s.wave : {};
   const waveN = mode === 'waves' ? w.n : null;
   if (mode === 'waves' && !(Number.isInteger(waveN) && WAVES[waveN - 1])) return null;
+  if (mode === 'waves' && (personas[1] !== WAVES[waveN - 1].west || personas[2] !== WAVES[waveN - 1].east)) return null;
+  const b = s.ai && typeof s.ai === 'object' ? s.ai : {};
+  const panel = b.panel && typeof b.panel === 'object' ? AI.config(AI.DEFAULT_CONFIG, b.panel) : null;
   return {
     format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas,
-    wave: { n: waveN, open: w.open === true }, assisted: s.assisted === true, autoplay: s.autoplay === true,
-    swapDone: s.swapDone !== false, log: cleanLog(s.log)
+    wave: { n: waveN, open: w.open === true && Waves.isUnlocked(waveN) }, assisted: s.assisted === true, autoplay: s.autoplay === true,
+    swapDone: s.swapDone !== false, log: cleanLog(s.log),
+    ai: { personas: b.personas === true, panel: panel && { thinking: panel.thinking, knowledge: panel.knowledge, style: panel.style }, changed: b.changed === true }
   };
 }
 /** @param {unknown} log @returns {[string, string][]} at most LOG_SAVE_MAX [text, classes] lines */
@@ -1762,12 +1772,25 @@ function createSlots(store) {
   });
 }
 
-/* Replay codes of the last REPLAYS_MAX finished games, newest first. */
+/* Replay codes of the last REPLAYS_MAX finished games, newest first. Saved entries can come
+   from a backup, so each one is rebuilt from fields of the right type, and an entry without a
+   replay code is dropped. The code itself is checked when it is decoded. */
 const REPLAYS_MAX = 20;
+/** @param {any} e @returns {object | null} */
+function cleanReplayEntry(e) {
+  if (!e || typeof e !== 'object' || typeof e.code !== 'string' || !/^KCT\d+-[A-Za-z0-9_-]*$/.test(e.code)) return null;
+  const seat = id => (typeof id === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, id) ? id : null);
+  const scores = Array.isArray(e.scores) && e.scores.length === 3 && e.scores.every(x => Number.isInteger(x) && x >= 0) ? e.scores.slice() : null;
+  return {
+    code: e.code, mode: MODES.includes(e.mode) ? e.mode : null, wave: Number.isInteger(e.wave) && WAVES[e.wave - 1] ? e.wave : null,
+    west: seat(e.west), east: seat(e.east), winner: [0, 1, 2].includes(e.winner) ? e.winner : null, scores,
+    assisted: e.assisted === true, at: Number.isFinite(e.at) ? e.at : null
+  };
+}
 function createReplays(store) {
   const js = jsonStore(store);
-  let list = js.load();
-  if (!Array.isArray(list)) list = [];
+  const saved = js.load();
+  let list = Array.isArray(saved) ? saved.map(cleanReplayEntry).filter(Boolean).slice(0, REPLAYS_MAX) : [];
   return Object.freeze({
     add(entry) { list.unshift(entry); list.length = Math.min(list.length, REPLAYS_MAX); js.save(list); return entry; },
     list: () => JSON.parse(JSON.stringify(list)),
@@ -1839,6 +1862,8 @@ function createStats(store) {
 const Backup = (() => {
   const FORMAT = 'kct-backup', VERSION = 1, PREFIX = 'kct.', CODE = 'KCTS' + VERSION + '-';
   const GZIP = 1, PLAIN = 0, MAX_TIME = 8.64e15;  /* the largest valid Date value, in ms */
+  /* A code may unpack to at most this many bytes. Browser storage holds much less, so a real backup is far smaller. */
+  const MAX_UNPACKED = 32 * 1024 * 1024;
   /** @param {WebStore} storage @returns {string[]} the app's keys, sorted */
   function keysOf(storage) {
     /** @type {string[]} */
@@ -1915,10 +1940,25 @@ const Backup = (() => {
   const toJSON = env => JSON.stringify(check(env));
   /** @param {string} t @returns {Uint8Array} */
   const utf8 = t => new TextEncoder().encode(t);
-  /** @param {Uint8Array} bytes @param {CompressionStream | DecompressionStream} stream @returns {Promise<Uint8Array>} */
-  async function pipe(bytes, stream) {
+  /** Throws 'too large' when the output passes max bytes.
+      @param {Uint8Array} bytes @param {CompressionStream | DecompressionStream} stream @param {number} [max] @returns {Promise<Uint8Array>} */
+  async function pipe(bytes, stream, max) {
     const copy = new Uint8Array(bytes.length); copy.set(bytes);
-    return new Uint8Array(await new Response(new Blob([copy]).stream().pipeThrough(stream)).arrayBuffer());
+    const reader = new Blob([copy]).stream().pipeThrough(stream).getReader();
+    /** @type {Uint8Array[]} */
+    const parts = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (max && size > max) { await reader.cancel(); throw new Error('too large'); }
+      parts.push(value);
+    }
+    const out = new Uint8Array(size);
+    let at = 0;
+    for (const x of parts) { out.set(x, at); at += x.length; }
+    return out;
   }
   /** @returns {boolean} */
   const canGzip = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
@@ -1946,7 +1986,9 @@ const Backup = (() => {
     let body = bytes.subarray(1);
     if (bytes[0] === GZIP) {
       if (!canGzip()) throw new Error('this browser cannot read a compressed code: use the file');
-      try { body = await pipe(body, new DecompressionStream('gzip')); } catch (e) { throw new Error('the code is damaged'); }
+      try { body = await pipe(body, new DecompressionStream('gzip'), MAX_UNPACKED); } catch (e) {
+        throw new Error(e instanceof Error && e.message === 'too large' ? 'the code unpacks to more than ' + (MAX_UNPACKED >> 20) + ' MB' : 'the code is damaged');
+      }
     } else if (bytes[0] !== PLAIN) throw new Error('unknown code mode ' + bytes[0]);
     let env;
     try { env = JSON.parse(new TextDecoder().decode(body)); } catch (e) { throw new Error('the code is damaged'); }
@@ -2597,8 +2639,19 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view, cfg || DEFAULT_CONFIG); } finally { Logger.enabled = was; }
   }
+  /* A simple legal action from the view alone, for when decide fails. The other hands are empty
+     in this stand-in state, so it uses no hidden card. @param {AIConfig} [cfg] */
+  function fallbackAction(view, cfg) {
+    const hands = [[], [], []];
+    hands[view.seat] = view.hand.slice();
+    const s = {
+      phase: view.phase, hands, flippedId: view.flipped, dealer: view.dealer, exchangeCount: view.exchangeCount, trump: view.trump,
+      trick: view.trick, activePlayers: view.activePlayers.slice(), tricksWon: view.tricksWon.slice(), showdown: view.showdown
+    };
+    return fastAction(s, view.seat, cfg);
+  }
   return Object.freeze({
-    decide, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
+    decide, fallbackAction, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
     THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
   });
@@ -3031,7 +3084,9 @@ const App = (() => {
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
     ai: AI.DEFAULT_CONFIG,
     updateReady: false, menuOpen: false, menuLaunch: false,
-    timer: null, timerFn: null, lastEvents: []
+    timer: null, timerFn: null,
+    /* The AI settings that the bots used in this game (see trackBotSettings). */
+    botSettings: blankBotSettings()
   };
   /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
@@ -3065,6 +3120,7 @@ const App = (() => {
     app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
     app.seatSwapPending = !w && !app.ui.autoplay;
+    app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
     seatBots(pool[0], pool[1]);
@@ -3086,6 +3142,7 @@ const App = (() => {
     app.mode = null;
     app.wave = { n: null, wasOpenAtStart: false, result: null };
     app.seatSwapPending = false;
+    app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
     seatBots(null, null);
@@ -3099,11 +3156,11 @@ const App = (() => {
   function act(action) {
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
-    app.lastEvents = res.events;
     if (app.state.gameOver && res.events.some(e => e.type === 'GAME_ENDED')) finishGame();
     for (const e of res.events) narrate(e);
     draw(res.events);
-    schedule();
+    /* schedule draws again (for the Skip button): it gets the events too, so the card and score animations stay. */
+    schedule(res.events);
     saveGame();
     return res;
   }
@@ -3114,9 +3171,31 @@ const App = (() => {
   function replayCode(endedAt) {
     const rec = app.mode && app.state && Replay.fromState(app.state, {
       mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.humanSeatWasAutoplayed, endedAt,
-      meta: aiMeta()
+      meta: botMeta()
     });
     return rec ? Replay.encode(rec) : null;
+  }
+  /* The AI settings that the bots used in this game, for the replay code META.
+     personas: a bot played as its personality (its settings follow from SEATS).
+     panel: the last Settings-panel config that a bot played with, or null.
+     changed: the bots played with more than one panel config in this game. */
+  function blankBotSettings() { return { personas: false, panel: null, changed: false }; }
+  /** Notes the settings of one bot decision. @param {boolean} persona the bot played as its personality */
+  function trackBotSettings(persona) {
+    const b = app.botSettings;
+    if (persona) { b.personas = true; return; }
+    const cfg = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style };
+    if (b.panel && JSON.stringify(b.panel) !== JSON.stringify(cfg)) b.changed = true;
+    b.panel = cfg;
+  }
+  /* META for the code (docs/replay-code.md, 4.4): the panel settings that the bots used, ai.personas and ai.changed. */
+  function botMeta() {
+    const b = app.botSettings;
+    /** @type {Record<string, boolean | number | string>} */
+    const m = b.panel ? aiMeta(AI.config(AI.DEFAULT_CONFIG, b.panel)) : {};
+    if (b.personas) m['ai.personas'] = true;
+    if (b.changed) m['ai.changed'] = true;
+    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));
   }
   /* The full AI settings as replay META keys (docs/replay-code.md, 4.4). The replay does not need them. */
   /** @param {AIConfig} [cfg] the settings to describe (default: the Settings panel's) */
@@ -3160,7 +3239,7 @@ const App = (() => {
     if (!app.mode || !app.state || app.state.gameOver) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, log: logLines.slice(-LOG_SAVE_MAX)
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX)
     });
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
@@ -3227,6 +3306,7 @@ const App = (() => {
       app.humanSeatWasAutoplayed = !!s.assisted;
       app.ui.autoplay = !!s.autoplay;
       app.seatSwapPending = s.swapDone === false;
+      app.botSettings = JSON.parse(JSON.stringify(s.ai));
       app.ui.endButtons = '';
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
@@ -3313,14 +3393,15 @@ const App = (() => {
   }
   function skip() { if (app.timerFn) { const f = app.timerFn; clearTimeout(app.timer); f(); } }
 
-  function schedule() {
+  /** @param {object[]} [events] the events of the action just played, for the animations */
+  function schedule(events) {
     clearTimer();
-    const st = app.state;
+    const st = app.state, ev = events || [];
     /* The game waits while the menu or a question is open. */
     if (app.menuOpen || askDone) return;
-    if (!app.mode) { draw([]); return; }
+    if (!app.mode) { draw(ev); return; }
     if (st.gameOver) { showGameOver(); return; }
-    if (needsSwap()) { draw([]); showSwap(); return; }
+    if (needsSwap()) { draw(ev); showSwap(); return; }
     const d = DELAYS[app.ui.speed];
     const actors = Engine.actors(st);
     const ai = actors.filter(p => !st.players[p].human || (app.ui.autoplay && p === HUMAN));
@@ -3329,7 +3410,17 @@ const App = (() => {
       /* A wave always uses its personalities: they set its difficulty. */
       later(d.ai, () => {
         const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
-        act(AI.decide(buildView(app.state, p), persona ? AI.personaConfig(persona) : app.ai));
+        const cfg = persona ? AI.personaConfig(persona) : app.ai;
+        if (p !== HUMAN) trackBotSettings(!!persona);
+        const view = buildView(app.state, p);
+        let action;
+        try { action = AI.decide(view, cfg); } catch (e) {
+          /* A planner error must not stop the game. The same view gives the same error again, so play a simple legal move. */
+          console.error(e);
+          Logger.log('AI_ERROR', { seat: p, phase: view.phase, error: String(e instanceof Error ? e.message : e) });
+          action = AI.fallbackAction(view, cfg);
+        }
+        act(action);
       });
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
@@ -3339,7 +3430,7 @@ const App = (() => {
       const ms = (st.phase === P.TRICK_DONE || st.phase === P.SHOWDOWN_TRICK_DONE || manual) ? d.trick : d.sys;
       later(ms, () => act(sys));
     }
-    draw([]);
+    draw(ev);
   }
 
   function selectionKey(v) { return v.phase + ':' + v.handNumber + ':' + (v.showdown ? 'sd' : '') + ':' + v.receiver; }
@@ -3865,18 +3956,21 @@ const App = (() => {
         const d = $('settingsPanel'); d.hidden = !d.hidden;
         /* Lines logged while the panel was closed are shown when it opens. */
         if (!d.hidden) checkInstall();
-        if (!d.hidden) { const pre = $('setLog'); pre.textContent = Logger.lines.length ? Logger.lines.join('\n') + '\n' : ''; pre.scrollTop = pre.scrollHeight; }
+        if (!d.hidden) { const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight; }
         break;
       }
       case 'clear-log': setSpeed('normal'); Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); setPersonas(true); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
+        if (testsRunning) break;
+        testsRunning = true;
         setSpeed('normal');
         const box = $('setTests');
         box.hidden = false;
         box.innerHTML = '<div class="t-sum">Running self-tests…</div>';
-        setTimeout(() => showTests(SelfTest.run()), 30);
+        const sum = box.firstElementChild;
+        SelfTest.runAsync({}, sec => { if (sum) sum.textContent = 'Running self-tests: ' + (TEST_AREAS[sec] || sec) + '…'; }).then(res => { testsRunning = false; showTests(res); });
         break;
       }
       default: break;
@@ -3945,8 +4039,9 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats'
   };
+  let testsRunning = false;
   function showTests(res) {
     const areas = new Map();
     for (const r of res.results) {
@@ -4050,7 +4145,14 @@ const App = (() => {
     setPersonas(app.usePersonas, true);
     $('setRealTable').checked = app.ai.style.realTable;
     $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
-    Logger.listeners.push(line => { const pre = $('setLog'); if (!pre.parentElement.hidden) { pre.textContent += line + '\n'; pre.scrollTop = pre.scrollHeight; } });
+    /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */
+    Logger.listeners.push(line => {
+      const pre = $('setLog');
+      if (pre.parentElement.hidden) return;
+      pre.append(line + '\n');
+      while (pre.childNodes.length > LOGGER_MAX) pre.removeChild(pre.firstChild);
+      pre.scrollTop = pre.scrollHeight;
+    });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; $('settingsPanel').hidden = false; }
     initUpdates();
@@ -4071,18 +4173,42 @@ const App = (() => {
    --------------------------------------------------------------------- */
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
+  /* All checks, at once (run) or one section per browser task (runAsync), so the page can draw between sections. */
   function run(opts) {
-    const o = opts || {};
+    const t = sections(opts || {});
+    for (const q of t.queue) t.runOne(q);
+    return t.finish();
+  }
+  /** @param {object} [opts] @param {(section: string) => void} [onSection] called before each section */
+  async function runAsync(opts, onSection) {
+    const t = sections(opts || {});
+    for (const q of t.queue) {
+      if (onSection) onSection(q[0]);
+      await new Promise(r => setTimeout(r, 0));
+      t.runOne(q);
+    }
+    return t.finish();
+  }
+  /* The sections as a queue, the runner of one section and the summary. */
+  function sections(o) {
     /** @type {{ section: string, name: string, ok: boolean, detail: string }[] & { stats?: object }} */
     const results = [];
     const t0 = Date.now();
-    const wasLogging = Logger.enabled;
-    Logger.enabled = false;
     let section = '';
     const check = (name, ok, detail) => results.push({ section, name, ok: !!ok, detail: ok ? '' : (detail || '') });
     const eq = (name, a, b) => check(name, JSON.stringify(a) === JSON.stringify(b), 'got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b));
     const D = (s, a) => Engine.dispatch(s, a);
-    const safeRun = (name, fn) => { section = name; try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } };
+    /** @type {[string, () => void][]} */
+    const queue = [];
+    const safeRun = (name, fn) => { queue.push([name, fn]); };
+    /* The game can run between sections: logging is off only while a section runs. */
+    /** @param {[string, () => void]} q */
+    const runOne = ([name, fn]) => {
+      section = name;
+      const wasLogging = Logger.enabled;
+      Logger.enabled = false;
+      try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } finally { Logger.enabled = wasLogging; }
+    };
 
     /* --- Card mechanics --- */
     safeRun('cards', () => {
@@ -4433,6 +4559,14 @@ const SelfTest = (() => {
       eq('an older HTML log is read as text', createSlots(store).get('free').log, [['Hand 1: Vex deals.', 'h gap'], ['x', '']]);
       store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, 'kit', 'tex'], wave: { n: 99, open: true } } }));
       eq('a Waves game without a real wave is dropped', createSlots(store).get('waves'), null);
+      store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: 1, open: true } } }));
+      eq('a Waves game with other seats than its wave is dropped', createSlots(store).get('waves'), null);
+      store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: 18, open: true } } }));
+      eq('a save cannot open a locked wave', createSlots(store).get('waves').wave.open, Waves.isUnlocked(18));
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null },
+        ai: { personas: 1, panel: { thinking: { worlds: 9999 }, knowledge: { bids: 'yes' }, style: { courage: evil } }, changed: true } } }));
+      eq('saved bot settings are cleaned', createSlots(store).get('free').ai,
+        { personas: false, panel: { thinking: Object.assign({}, AI.THINKING_DEFAULTS, { worlds: 200 }), knowledge: AI.KNOWLEDGE_DEFAULTS, style: AI.STYLE_DEFAULTS }, changed: true });
       check('no saved HTML ran', !(/** @type {any} */ (window)).kctSelfTestHit);
       const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
       blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } });
@@ -4533,6 +4667,12 @@ const SelfTest = (() => {
       const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
       for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k });
       eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+      const junk = JSON.stringify([null, 5, { code: 7 }, { code: '<b>x</b>' }, { code: 'KCT2-AA', west: '<i>', wave: 99, winner: 1, scores: [1, 2], extra: 1 }]);
+      eq('saved replay entries are cleaned', createReplays({ get: () => junk, set: () => {} }).list(),
+        [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, at: null }]);
+      let longErr = '';
+      try { Replay.decode('KCT2-' + Base64url.encode([2, 1, 8, 255, 255, 255, 255, 255, 255, 255, 127])); } catch (e) { longErr = e instanceof Error ? e.message : String(e); }
+      check('a number past 2^53 in a code is refused', /too long/.test(longErr), longErr);
       /* Capacity (docs/replay-code.md, 11.1): 20 hands, each a showdown with the longest bidding and a 2-card exchange. */
       const big = [], ids = R.ALL_IDS;
       for (let h = 0; h < 20; h++) {
@@ -4608,6 +4748,15 @@ const SelfTest = (() => {
     });
 
     safeRun('planner', () => {
+      /* The fallback move (used when the planner fails) is legal in every phase. */
+      const fb = Engine.createGame(31337);
+      let fbBad = 0;
+      for (let k = 0; k < 2000 && !fb.gameOver; k++) {
+        const ac = Engine.actors(fb);
+        const a = ac.length ? AI.fallbackAction(buildView(fb, ac[0])) : Engine.systemAction(fb);
+        if (!D(fb, a).ok) { fbBad++; break; }
+      }
+      check('the fallback move is always legal, to the end of a game', fbBad === 0 && fb.gameOver);
       const s = Engine.createGame(4242);
       D(s, { type: 'START_GAME' });
       let bad = null, decisions = 0;
@@ -4848,9 +4997,11 @@ const SelfTest = (() => {
       results.stats = stats;
     });
 
-    Logger.enabled = wasLogging;
-    const passed = results.filter(r => r.ok).length;
-    return { passed, failed: results.length - passed, results, stats: results.stats, ms: Date.now() - t0 };
+    const finish = () => {
+      const passed = results.filter(r => r.ok).length;
+      return { passed, failed: results.length - passed, results, stats: results.stats, ms: Date.now() - t0 };
+    };
+    return { queue, runOne, finish };
 
     function playState(hands, trump, leader, scores) {
       const s = Engine.createGame(7);
@@ -4879,7 +5030,7 @@ const SelfTest = (() => {
       return s;
     }
   }
-  return Object.freeze({ run });
+  return Object.freeze({ run, runAsync });
 })();
 
 /* Personality figures: transparent WebP, 160 × 160. */

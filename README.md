@@ -118,7 +118,7 @@ Click the heading to open it.
 | **Logging** | Starts the timestamped event log (public information only). |
 | **Seed / Copy** | Shows the current game's seed and copies it. |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
-| **Run self-tests** | At the bottom. Runs the built-in tests and shows a summary by area, with any failures listed. |
+| **Run self-tests** | At the bottom. Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 
 ## Opponents
@@ -201,7 +201,7 @@ Click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for
 
 The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
 
-The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the full AI settings (tier, courage, real table, hunches, brain farts and each knowledge switch) as generic variables. The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT2-AgEFAZIhAgMC…`.
+The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT2-AgEFAZIhAgMC…`.
 
 The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). The format holds at least 20 hands with a showdown in each hand (about 2,850 characters). Codes from the first release (`KCT1-`) still read.
 
@@ -250,7 +250,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 | `sw.js` | Service worker: offline play and the update prompt. |
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
 
-**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. Change `sw.js` only to change how caching works.
+**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. Change `sw.js` only to change how caching works. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
 
 **Persistent storage.** At start-up (on HTTPS), the app asks the browser to keep its storage (`navigator.storage.persist()`), so that progress, results, saved games and replay codes are not cleared when the disk is low. It asks only while the storage is not persistent yet. Chrome and Safari decide without a prompt, and they usually agree for an installed app. Firefox asks you one time. **Settings → Install** shows the result. A Safari tab that is not installed can lose its storage after 7 days without a visit, so install the app on iPhone and iPad.
 

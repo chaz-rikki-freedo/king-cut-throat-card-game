@@ -118,8 +118,10 @@ Keys that the app writes now:
 | `ai.know.voids` | BOOL | Knowledge switch: spots voids. |
 | `ai.know.scoreAware` | BOOL | Knowledge switch: watches the score. |
 | `ai.know.showdownPlans` | BOOL | Knowledge switch: plans showdowns. |
+| `ai.personas` | BOOL | At least one bot move used the bot's personality. Its settings follow from its id in SEATS. |
+| `ai.changed` | BOOL | The bots used more than one set of Settings-panel values in this game. |
 
-Together, these keys hold the full AI settings, so you can see the settings also when `ai.tier` is `custom`. The app writes the settings that are on at the end of the game. If you change the settings during a game, the code shows only the last settings.
+The `ai.tier` to `ai.know.*` keys hold the Settings-panel values that a bot used, so you can see the settings also when `ai.tier` is `custom`. They are written only when a bot played with the panel values (Personalities off, in Free play). If the values changed during the game, the code holds the last values that a bot used, and `ai.changed` is true. A game in which every bot played as its personality has only `ai.personas`. The app writes a key only when it is true or has a value.
 
 These keys are for information only. The AI moves are already in DECISIONS, so a replay does not need them.
 
