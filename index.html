@@ -657,7 +657,9 @@ const Engine = (() => {
     WIN_SCORE: 10, PLAYERS: 3, MAIN_TRICKS: 7, SHOWDOWN_TRICKS: 5,
     INITIAL_DISCARD: 3, SHOWDOWN_DEAL: 6, SHOWDOWN_DISCARD: 1, OUTSIDE_SIZE: 12
   });
+  /** @type {readonly string[]} */
   const ADVANCE_PHASES = Object.freeze([P.TRICK_DONE, P.SHOWDOWN_TRICK_DONE, P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID]);
+  /** @type {readonly string[]} */
   const PLAY_PHASES = Object.freeze([P.TRICK_PLAY, P.SHOWDOWN_PLAY]);
 
   function createGame(seed, names) {
@@ -676,7 +678,7 @@ const Engine = (() => {
       scores: [0, 0, 0],
       dealer: null,
       handNumber: 0,
-      phase: P.SETUP,
+      phase: /** @type {string} */ (P.SETUP),
       gameOver: false,
       winner: null,
       endEvent: null
@@ -790,6 +792,7 @@ const Engine = (() => {
 
   /* Raise RULES_VERSION when a change makes the same seed and decisions give a different game
      (a rule, the deal or the RNG). Replay codes carry it, and a replay refuses another version. */
+  /** @type {number} */
   const RULES_VERSION = 1;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
@@ -1209,7 +1212,9 @@ const Replay = (() => {
      An even tag is optional: a reader that does not know it skips it (and keeps it on re-encode). */
   const TAG = Object.freeze({ GAME: 1, DECISIONS: 3, SEATS: 2, RESULT: 4, FLAGS: 6, TIME: 8, META: 10 });
   const KNOWN_TAGS = new Set(Object.values(TAG));
-  const MODES = Object.freeze(['free', 'waves']);
+  /* Mode numbers in a code: 1 = free, 2 = waves (docs/replay-code.md). The order is part of the format:
+     add a new mode at the end and never change the order. This is not the global MODES list. */
+  const REPLAY_MODES = Object.freeze(['free', 'waves']);
   const FLAG = Object.freeze({ assisted: 1 });
   const META_TYPE = Object.freeze({ INT: 0, TEXT: 1, BYTES: 2, BOOL: 3 });
 
@@ -1357,7 +1362,7 @@ const Replay = (() => {
     const put = (tag, w) => sections.push([tag, w.bytes || w]);
     /* A mode that this app does not know reads as 'modeN' (see decode): write it back as N. */
     const future = /^mode(\d+)$/.exec(rec.mode || '');
-    const modeNo = !rec.mode ? 0 : MODES.includes(rec.mode) ? MODES.indexOf(rec.mode) + 1 : future ? Number(future[1]) : -1;
+    const modeNo = !rec.mode ? 0 : REPLAY_MODES.includes(rec.mode) ? REPLAY_MODES.indexOf(rec.mode) + 1 : future ? Number(future[1]) : -1;
     if (modeNo < 0) throw new Error('unknown mode ' + rec.mode);
     put(TAG.GAME, writer().uint(rec.rules || 1).uint(rec.seed >>> 0).uint(modeNo).uint(rec.wave || 0));
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
@@ -1418,7 +1423,7 @@ const Replay = (() => {
       switch (tag) {
         case TAG.GAME: {
           rec.rules = s.uint(); rec.seed = s.uint() >>> 0;
-          const mode = s.uint(); rec.mode = mode ? (MODES[mode - 1] || 'mode' + mode) : null;
+          const mode = s.uint(); rec.mode = mode ? (REPLAY_MODES[mode - 1] || 'mode' + mode) : null;
           rec.wave = s.uint() || null; sawGame = true; break;
         }
         case TAG.SEATS: rec.seats = [s.text() || null, s.text() || null, s.text() || null]; break;
@@ -1572,7 +1577,7 @@ const PERSONAS = Object.freeze([
   { id: 'tex', name: 'Tex', color: '#d9a874', tier: 'novice', courage: 'bold', realTable: false, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.' },
   { id: 'kit', name: 'Kit', color: '#d8e45a', tier: 'novice', courage: 'cautious', realTable: true, quote: 'Is it my turn?', hint: 'Still learning the table.' },
   { id: 'zen', name: 'Zen', color: '#cfd8dc', tier: 'casual', courage: 'normal', realTable: true, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.' }
-].map(Object.freeze));
+].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
 const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, timid: 1, cautious: 2, normal: 3, bold: 4 });
@@ -1966,6 +1971,13 @@ const Backup = (() => {
    Score pressure, Showdown steering and the value of the outside pile all
    come from this one objective. There are no separate rules for them.
    --------------------------------------------------------------------- */
+/**
+ * @typedef {{ worlds: number, playoutSkill: number }} Thinking
+ * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
+ * @typedef {{ realTable: boolean, courage: string }} Style
+ * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
+ * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
+ */
 const AI = (() => {
   const R = Rules, P = Engine.P, WIN = Engine.C.WIN_SCORE;
   const TRUMP_VAL = { 18: 1.0, 17: 0.93, 16: 0.86, 14: 0.76, 13: 0.66, 12: 0.54, 10: 0.45, 9: 0.40, 8: 0.36, 7: 0.32 };
@@ -2017,13 +2029,7 @@ const AI = (() => {
      The AI keeps no settings of its own. Each call gets one frozen settings object (a "config"):
      { thinking, knowledge, style, persona }. persona is true for a personality: its own courage
      sets how loose it bids, so REAL_TABLE_BID_BUMP does not stack on top of it. */
-  /**
-   * @typedef {{ worlds: number, playoutSkill: number }} Thinking
-   * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
-   * @typedef {{ realTable: boolean, courage: string }} Style
-   * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
-   * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
-   */
+  /** @param {Thinking} thinking @param {Knowledge} knowledge @param {Style} style @param {boolean} persona @returns {AIConfig} */
   const freezeConfig = (thinking, knowledge, style, persona) =>
     Object.freeze({ thinking: Object.freeze(thinking), knowledge: Object.freeze(knowledge), style: Object.freeze(style), persona });
   /** @type {AIConfig} */
@@ -2034,7 +2040,9 @@ const AI = (() => {
   function config(base, patch) {
     const b = base || DEFAULT_CONFIG, p = part(patch);
     const pt = part(p.thinking), pk = part(p.knowledge), ps = part(p.style);
-    const thinking = Object.assign({}, b.thinking), knowledge = Object.assign({}, b.knowledge), style = Object.assign({}, b.style);
+    /** @type {Thinking} */ const thinking = Object.assign({}, b.thinking);
+    /** @type {Knowledge} */ const knowledge = Object.assign({}, b.knowledge);
+    /** @type {Style} */ const style = Object.assign({}, b.style);
     if (typeof pt.worlds === 'number' && isFinite(pt.worlds)) thinking.worlds = Math.min(200, Math.max(1, Math.round(pt.worlds)));
     if (typeof pt.playoutSkill === 'number' && isFinite(pt.playoutSkill)) thinking.playoutSkill = Math.min(1, Math.max(0, pt.playoutSkill));
     for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof pk[key] === 'boolean') knowledge[key] = pk[key];
@@ -2070,6 +2078,7 @@ const AI = (() => {
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
      Each triple applies to the seats in every order with equal chance. */
+  /** @type {[number[], number][]} */
   const HAND_DELTAS = [
     [[2, 0, 0], 5115], [[1, 0, 0], 4054], [[1, 1, 0], 3815], [[2, 1, 0], 1442], [[3, 0, 0], 1018],
     [[2, 0, -1], 243], [[1, 1, 1], 239], [[1, 0, -1], 124], [[4, 0, 0], 113], [[2, 2, 0], 73],
@@ -2107,7 +2116,7 @@ const AI = (() => {
           const x = Math.max(0, a + D0[j]), y = Math.max(0, b + D1[j]), z = Math.max(0, c + D2[j]), pr = PR[j];
           const top = Math.max(x, y, z);
           if (top >= WIN) {
-            const k = (x === top) + (y === top) + (z === top);
+            const k = Number(x === top) + Number(y === top) + Number(z === top);
             if (x === top) w0 += pr / k;
             if (y === top) w1 += pr / k;
             if (z === top) w2 += pr / k;
@@ -2278,7 +2287,7 @@ const AI = (() => {
     if (legal.length === 1) return legal[0];
     const kingSure = legal.find(c => R.isKing(c) && winsForSure(s, c, spot));
     if (kingSure) return kingSure;
-    if (!best) return legal.slice().sort((a, b) => (R.isTrump(a, trump) - R.isTrump(b, trump)) || byStrength(a, b))[0];
+    if (!best) return legal.slice().sort((a, b) => (Number(R.isTrump(a, trump)) - Number(R.isTrump(b, trump))) || byStrength(a, b))[0];
     const losers = legal.filter(c => R.compareCards(c, best.card, lead, trump) <= 0).sort(byStrength);
     return losers.length ? losers[losers.length - 1] : legal.slice().sort(byStrength)[0];
   }
@@ -2602,6 +2611,8 @@ const Render = (() => {
   const $ = id => document.getElementById(id);
   const symHTML = s => '<span class="sym' + (R.COLOR[s] === 'red' ? ' red' : '') + '">' + R.SYMBOL[s] + '</span>';
   const suitLabel = s => symHTML(s) + ' ' + R.SUIT_NAME[s];
+  /* Text from data (names, personality texts) goes into HTML only through escHTML. */
+  const nameOf = (v, p) => escHTML(v.players[p].name);
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
   const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive' };
   /* "You" takes the plural verb, also for each verb after "and" in the same sentence. */
@@ -2624,9 +2635,9 @@ const Render = (() => {
       : '<span class="c-tl">' + c.rank + '<br>' + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + '<br>' + sym + '</span>';
     const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + (o.isNew ? '<span class="c-new">NEW</span>' : '');
     if (o.button) {
-      return '<button type="button" class="' + cls.join(' ') + '" data-card="' + id + '"' + (o.disabled ? ' disabled' : '') + ' aria-label="' + name + '" title="' + name + '">' + inner + extra + '</button>';
+      return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
     }
-    return '<div class="' + cls.join(' ') + '" data-card="' + id + '" role="img" aria-label="' + name + '" title="' + name + '">' + inner + extra + '</div>';
+    return '<div class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '" role="img" aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</div>';
   }
   const backHTML = () => '<div class="card back" aria-hidden="true"></div>';
 
@@ -2676,18 +2687,18 @@ const Render = (() => {
   }
 
   /* A personality's figure: a small button that opens its profile, or a large picture. */
-  const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + x.id + '" aria-label="About ' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
-  const faceHTML = x => '<div class="p-face" role="img" aria-label="' + x.name + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>';
+  const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + escHTML(x.id) + '" aria-label="About ' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
+  const faceHTML = x => '<div class="p-face" role="img" aria-label="' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>';
   /* A bot's figure (opens its profile) and its name in its own color. */
   function nameHTML(v, p, ui) {
     const id = ui.personas[p], x = id && PERSONA_BY_ID[id];
-    if (!x) return '<span class="seat-name">' + v.players[p].name + '</span>';
-    return faceButtonHTML(x) + '<span class="seat-name" style="color:' + x.color + '">' + v.players[p].name + '</span>';
+    if (!x) return '<span class="seat-name">' + nameOf(v, p) + '</span>';
+    return faceButtonHTML(x) + '<span class="seat-name" style="color:' + escHTML(x.color) + '">' + nameOf(v, p) + '</span>';
   }
   function personaHTML(x) {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
-    return '<div class="modal persona" role="dialog" aria-label="' + x.name + '">' + faceHTML(x) +
-      '<h2 style="color:' + x.color + '">' + x.name + '</h2><p class="p-quote">“' + x.quote + '”</p><p class="p-hint">' + x.hint + '</p>' +
+    return '<div class="modal persona" role="dialog" aria-label="' + escHTML(x.name) + '">' + faceHTML(x) +
+      '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2><p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' +
       '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
@@ -2744,12 +2755,12 @@ const Render = (() => {
     let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
-        html += '<div class="slot slot-' + p + '"><div class="who">' + v.players[p].name + ' · mediator</div></div>';
+        html += '<div class="slot slot-' + p + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
         continue;
       }
       const play = plays.find(x => x.player === p);
       const win = winner === p;
-      const who = v.players[p].name + (leader === p ? ' <span class="lead-mark">(lead)</span>' : '') + (win ? ' — wins' : '');
+      const who = nameOf(v, p) + (leader === p ? ' <span class="lead-mark">(lead)</span>' : '') + (win ? ' — wins' : '');
       const cardPart = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
       html += '<div class="slot slot-' + p + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
     }
@@ -2761,7 +2772,7 @@ const Render = (() => {
     if (!Engine.PLAY_PHASES.includes(v.phase)) return '';
     const lt = v.lastTrick;
     const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
-    return '<div class="lasttrick">Last trick (' + v.players[lt.winner].name + ' won' + (lt.king ? ', +1 King' : '') + '):' + cards + '</div>';
+    return '<div class="lasttrick">Last trick (' + nameOf(v, lt.winner) + ' won' + (lt.king ? ', +1 King' : '') + '):' + cards + '</div>';
   }
 
   const OUTCOME_TEXT = {
@@ -2778,7 +2789,7 @@ const Render = (() => {
   const signedPointsHTML = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
 
   function trumpCallAndDealerHTML(v) {
-    const n = p => v.players[p].name;
+    const n = p => nameOf(v, p);
     const call = v.bidLog.filter(b => b.action !== 'pass').pop();
     const parts = [];
     if (v.trump) parts.push('Trump ' + suitLabel(v.trump) + (call ? ' · ' + (call.action === 'accept' ? 'accepted' : 'named') + ' by ' + n(call.player) + ' (round ' + call.round + ')' : ''));
@@ -2788,7 +2799,7 @@ const Render = (() => {
 
   /* Full per-player table for the hand. Rows are sorted by score. */
   function statsTableHTML(v, opts) {
-    const n = p => v.players[p].name;
+    const n = p => nameOf(v, p);
     const st = v.handStats, hs = v.handSummary;
     const sd = opts.showdown ? hs.showdown : null;
     const role = p => {
@@ -2812,7 +2823,7 @@ const Render = (() => {
   }
 
   function summaryHTML(v) {
-    const n = p => v.players[p].name;
+    const n = p => nameOf(v, p);
     const hs = v.handSummary;
     /* Hand or Showdown points can end the game: show that result, not an empty center. */
     if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }));
@@ -2849,7 +2860,7 @@ const Render = (() => {
 
   const statusText = v => youText(statusRaw(v));
   function statusRaw(v) {
-    const n = p => v.players[p].name;
+    const n = p => nameOf(v, p);
     const you = v.seat;
     switch (v.phase) {
       case P.SETUP: return 'No game is running.';
@@ -2869,7 +2880,7 @@ const Render = (() => {
 
   function actionBarHTML(v, ui, ctx) {
     const you = v.seat;
-    const n = p => v.players[p].name;
+    const n = p => nameOf(v, p);
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
     /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
@@ -2964,8 +2975,8 @@ const Render = (() => {
     }
     let center = '';
     if (v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP)) {
-      const parts = v.showdown.participants.map(p => v.players[p].name).join(' vs ');
-      center += '<div class="banner">SHOWDOWN<small>' + parts + ' · mediator: ' + v.players[v.showdown.mediator].name + '</small></div>';
+      const parts = v.showdown.participants.map(p => nameOf(v, p)).join(' vs ');
+      center += '<div class="banner">SHOWDOWN<small>' + parts + ' · mediator: ' + nameOf(v, v.showdown.mediator) + '</small></div>';
     }
     center += pilesHTML(v);
     const summary = summaryText(v);
@@ -2980,14 +2991,14 @@ const Render = (() => {
     const me = $('seat0');
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
-    const meName = (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + v.players[v.seat].name + '</span>';
-    me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay) + (mine ? '<span class="playing-as">playing as <b style="color:' + mine.color + '">' + mine.name + '</b></span>' : '') +
+    const meName = (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
+    me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, personaHTML, faceHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
+  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -3021,6 +3032,7 @@ const App = (() => {
     updateReady: false, menuOpen: false, menuLaunch: false,
     timer: null, timerFn: null, lastEvents: []
   };
+  /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
   const slots = createSlots(localStore('kct.slots'));
@@ -3246,18 +3258,19 @@ const App = (() => {
   }
 
   /* A yes/no question in the game's own style (never the browser's dialog). The game waits while it is open.
-     Resolves true for the OK button, false for Cancel, Escape or a click outside it. */
+     Resolves true for the OK button, false for Cancel, Escape or a click outside it.
+     text is HTML: escape any data in it with escHTML. title, ok and cancel are plain text. */
   let askDone = null;
   function ask({ title, text, ok, cancel }) {
     if (askDone) askDone(false);
     clearTimer();
     const layer = $('askLayer');
     layer.innerHTML = '<div class="modal ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">' +
-      '<h2 id="askTitle">' + title + '</h2><div id="askText">' + text + '</div>' +
-      '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + (cancel || 'Cancel') + '</button>' +
-      '<button class="btn primary" type="button" data-action="ask-ok">' + (ok || 'OK') + '</button></div></div>';
+      '<h2 id="askTitle">' + escHTML(title) + '</h2><div id="askText">' + text + '</div>' +
+      '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + escHTML(cancel || 'Cancel') + '</button>' +
+      '<button class="btn primary" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
     layer.hidden = false;
-    const okBtn = layer.querySelector('[data-action="ask-ok"]');
+    const okBtn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="ask-ok"]'));
     if (okBtn) okBtn.focus();
     return new Promise(resolve => {
       askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; resolve(answer); schedule(); };
@@ -3362,6 +3375,7 @@ const App = (() => {
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
   /* Latest Scroll highlights: each phrase gets its own color (see .hl-* styles). */
+  /** @type {[RegExp, string][]} */
   const LOG_HIGHLIGHTS = [
     [/\bwins? (?:Showdown )?trick\b/, 'hl-trick'],
     [/\bis blocked\b/, 'hl-blocked'],
@@ -3487,7 +3501,7 @@ const App = (() => {
   /* This hand's stats in the game-over box. Mid-hand (no hand result yet) shows tricks and Kings so far. */
   function gameOverHandHTML(v) {
     if (!v.handStats) return '';
-    const n = p => v.players[p].name;
+    const n = p => Render.nameOf(v, p);
     const hs = v.handSummary;
     if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>Hand ' + v.handNumber + ' stats</h3>' + Render.trumpCallAndDealerHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
     const st = v.handStats;
@@ -3502,12 +3516,12 @@ const App = (() => {
   function showGameOver() {
     const st = app.state;
     const v = buildView(st, HUMAN);
-    const n = p => v.players[p].name;
+    const n = p => Render.nameOf(v, p);
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
-      '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + how + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
+      '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
       '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
@@ -3528,7 +3542,7 @@ const App = (() => {
     const sl = slots.get(m);
     if (!sl) return '';
     const st = sl.state;
-    const name = id => (PERSONA_BY_ID[id] || {}).name || '?';
+    const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
     const who = name(sl.personas[1]) + ' / ' + name(sl.personas[2]);
     const score = 'You ' + st.scores[0] + ' · ' + name(sl.personas[1]) + ' ' + st.scores[1] + ' · ' + name(sl.personas[2]) + ' ' + st.scores[2];
     return (m === 'waves' ? 'Wave ' + sl.wave.n + ' · ' : '') + who + ' · hand ' + st.handNumber + ' · ' + score;
@@ -3543,7 +3557,7 @@ const App = (() => {
     const playing = app.mode && !app.state.gameOver;
     const lost = slots.dropped();
     const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
-      '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + PERSONA_BY_ID[w.west].name + ' / ' + PERSONA_BY_ID[w.east].name + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
+      '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + (lost[0] === 'waves' ? 'Waves' : 'Free play') + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
@@ -3618,11 +3632,11 @@ const App = (() => {
   async function checkInstall() {
     const rows = [];
     const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
-    const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || /** @type {any} */ (navigator).standalone === true;
     if (standalone || install.installed) row('ok', 'Running as an installed app.');
     else row('wait', 'Running in a browser tab.');
     row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
-    const link = document.querySelector('link[rel="manifest"]');
+    const link = /** @type {HTMLLinkElement} */ (document.querySelector('link[rel="manifest"]'));
     try {
       const res = await fetch(link.href, { cache: 'no-store' });
       const m = await res.json();
@@ -3690,7 +3704,7 @@ const App = (() => {
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
     return '<div class="swap-seat"><span class="swap-side">' + side + '</span>' + Render.faceHTML(x) +
-      '<b style="color:' + x.color + '">' + x.name + '</b><small>' + x.hint + '</small></div>';
+      '<b style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</b><small>' + escHTML(x.hint) + '</small></div>';
   }
   function showSwap() {
     const [, west, east] = app.ui.personas;
@@ -3739,7 +3753,7 @@ const App = (() => {
 
   /* The mode chip opens your results for the mode: tries per wave, or Free play wins per opponent. */
   function resultsHTML() {
-    const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + x.color + '">' + x.name + '</span>'; };
+    const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</span>'; };
     const close = '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
     if (app.mode === 'waves') {
       const pr = Waves.progress();
@@ -3859,7 +3873,7 @@ const App = (() => {
 
   /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
   function syncKnowledge() {
-    for (const box of document.querySelectorAll('[data-knowledge]')) box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
+    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
     syncTier();
   }
   function setKnowledge(k) {
@@ -3973,9 +3987,10 @@ const App = (() => {
 
   function init() {
     document.addEventListener('click', ev => {
-      const cardEl = ev.target.closest('button[data-card]');
+      if (!(ev.target instanceof Element)) return;
+      const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
-      const a = ev.target.closest('[data-action]');
+      const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
       if (ev.target.id === 'askLayer') { answerAsk(false); return; }
       if (ev.target.closest('#center') && app.timerFn) skip();
@@ -3983,8 +3998,9 @@ const App = (() => {
     document.addEventListener('keydown', ev => {
       if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
-      if (ev.target && /^(BUTTON|SELECT|INPUT)$/.test(ev.target.tagName)) return;
-      if (ev.target && ev.target.classList && ev.target.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
+      const t = ev.target instanceof Element ? ev.target : null;
+      if (t && /^(BUTTON|SELECT|INPUT)$/.test(t.tagName)) return;
+      if (t && t.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
       if (!$('overlay').hidden) return; /* a dialog is open: its buttons take the keys */
       ev.preventDefault();
       if (app.timerFn) skip();
@@ -4010,7 +4026,7 @@ const App = (() => {
     $('setWorlds').addEventListener('change', () => setThinking({ worlds: Number($('setWorlds').value) }));
     $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
     $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
-    for (const box of document.querySelectorAll('[data-knowledge]')) {
+    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) {
       box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
       box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
     }
@@ -4045,6 +4061,7 @@ const SelfTest = (() => {
   const R = Rules, P = Engine.P;
   function run(opts) {
     const o = opts || {};
+    /** @type {{ section: string, name: string, ok: boolean, detail: string }[] & { stats?: object }} */
     const results = [];
     const t0 = Date.now();
     const wasLogging = Logger.enabled;
@@ -4582,7 +4599,7 @@ const SelfTest = (() => {
       const s = Engine.createGame(4242);
       D(s, { type: 'START_GAME' });
       let bad = null, decisions = 0;
-      for (let step = 0; step < 300 && !bad && !s.gameOver && ![P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID].includes(s.phase); step++) {
+      for (let step = 0; step < 300 && !bad && !s.gameOver && !/** @type {string[]} */ ([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID]).includes(s.phase); step++) {
         const actors = Engine.actors(s);
         const a = actors.length ? AI.decide(buildView(s, actors[0])) : Engine.systemAction(s);
         if (actors.length) decisions++;
