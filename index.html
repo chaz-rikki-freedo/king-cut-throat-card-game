@@ -1648,6 +1648,7 @@ const MODES = Object.freeze(['waves', 'free']);
 /* While StorageGate.locked is true, the app writes nothing to localStorage. A backup import
    locks it, so a timer or a save cannot overwrite the imported data before the page reloads. */
 const StorageGate = { locked: false };
+/** @param {string} key @returns {{ get(): string | null, set(text: string): void }} */
 function localStore(key) {
   return { get: () => localStorage.getItem(key), set: text => { if (!StorageGate.locked) localStorage.setItem(key, text); } };
 }
@@ -1738,30 +1739,44 @@ function createStats(store) {
    TODO(UI): before an import, warn the player that all progress, results, saved
    games and settings on this device are replaced, and that there is no undo.
    --------------------------------------------------------------------- */
+/**
+ * @typedef {{ readonly length: number, key(i: number): string | null, getItem(k: string): string | null,
+ *   setItem(k: string, v: string): void, removeItem(k: string): void }} WebStore  the Web Storage interface
+ * @typedef {{ format: string, v: number, createdAt: number | null, meta: Record<string, unknown>,
+ *   data: Record<string, string> }} BackupEnvelope
+ * @typedef {{ createdAt: number | null, v: number, keys: string[], bytes: number, wavesUnlocked: number | null,
+ *   gamesPlayed: number, savedGames: string[], replays: number }} BackupSummary
+ */
 const Backup = (() => {
   const FORMAT = 'kct-backup', VERSION = 1, PREFIX = 'kct.', CODE = 'KCTS' + VERSION + '-';
-  const GZIP = 1, PLAIN = 0;
-  /* storage: the Web Storage interface (length, key, getItem, setItem, removeItem). */
+  const GZIP = 1, PLAIN = 0, MAX_TIME = 8.64e15;  /* the largest valid Date value, in ms */
+  /** @param {WebStore} storage @returns {string[]} the app's keys, sorted */
   function keysOf(storage) {
+    /** @type {string[]} */
     const out = [];
     for (let i = 0; i < storage.length; i++) { const k = storage.key(i); if (k && k.startsWith(PREFIX)) out.push(k); }
     return out.sort();
   }
+  /** @param {WebStore} storage @returns {Record<string, string>} */
   function snapshot(storage) {
+    /** @type {Record<string, string>} */
     const data = {};
-    for (const k of keysOf(storage)) data[k] = storage.getItem(k);
+    for (const k of keysOf(storage)) { const v = storage.getItem(k); if (v !== null) data[k] = v; }
     return data;
   }
-  /* The envelope. meta is free-form information (app build, rules version); import ignores it. */
+  /** The envelope. meta is free-form information (app build, rules version); import ignores it.
+      @param {WebStore} storage @param {Record<string, unknown>} [meta] @returns {BackupEnvelope} */
   function create(storage, meta) {
     return { format: FORMAT, v: VERSION, createdAt: Date.now(), meta: Object.assign({}, meta || {}), data: snapshot(storage) };
   }
-  /* Checks an envelope. Returns it (data keys sorted) or throws with a clear reason. */
+  /** Checks an envelope. Returns a clean copy (data keys sorted) or throws with a clear reason.
+      @param {any} env @returns {BackupEnvelope} */
   function check(env) {
     if (!env || typeof env !== 'object' || env.format !== FORMAT) throw new Error('not a King Cut-Throat backup');
     if (!Number.isInteger(env.v) || env.v < 1) throw new Error('bad backup version');
     if (env.v > VERSION) throw new Error('backup version ' + env.v + ' is newer than this app (' + VERSION + ')');
     if (!env.data || typeof env.data !== 'object' || Array.isArray(env.data)) throw new Error('backup has no data');
+    /** @type {Record<string, string>} */
     const data = {};
     for (const k of Object.keys(env.data).sort()) {
       if (!k.startsWith(PREFIX)) throw new Error('backup key outside the app: ' + k);
@@ -1770,10 +1785,13 @@ const Backup = (() => {
       try { JSON.parse(v); } catch (e) { throw new Error('backup value is not JSON: ' + k); }
       data[k] = v;
     }
-    return { format: FORMAT, v: env.v, createdAt: Number(env.createdAt) || null, meta: env.meta && typeof env.meta === 'object' ? env.meta : {}, data };
+    const t = Number(env.createdAt);
+    const meta = env.meta && typeof env.meta === 'object' && !Array.isArray(env.meta) ? env.meta : {};
+    return { format: FORMAT, v: env.v, createdAt: Number.isFinite(t) && t > 0 && t <= MAX_TIME ? t : null, meta, data };
   }
-  /* Replaces all 'kct.' keys with the backup. All or nothing: if a write fails (quota),
-     the old values are written back and the error is thrown. Returns the keys written. */
+  /** Replaces all 'kct.' keys with the backup. All or nothing: if a write fails (quota),
+      the old values are written back and the error is thrown. Returns the keys written.
+      @param {WebStore} storage @param {unknown} env @returns {string[]} */
   function apply(storage, env) {
     const e = check(env);
     const before = snapshot(storage);
@@ -1783,30 +1801,48 @@ const Backup = (() => {
     } catch (err) {
       for (const k of keysOf(storage)) if (!(k in before)) storage.removeItem(k);
       for (const k of Object.keys(before)) { try { storage.setItem(k, before[k]); } catch (x) { /* nothing more to do */ } }
-      throw new Error('import failed, old data kept: ' + (err && err.message || err));
+      throw new Error('import failed, old data kept: ' + (err instanceof Error ? err.message : String(err)));
     }
     return Object.keys(e.data);
   }
-  /* A short summary for a confirm dialog (later) and for the console. */
+  /** A short summary for a confirm dialog (later) and for the console.
+      @param {unknown} env @returns {BackupSummary} */
   function describe(env) {
     const e = check(env);
+    /** @param {string} k @returns {any} */
     const json = k => { try { return e.data[k] ? JSON.parse(e.data[k]) : null; } catch (x) { return null; } };
     const waves = json('kct.waves'), slots = json('kct.slots'), stats = json('kct.stats'), replays = json('kct.replays');
-    const played = stats && stats.modes ? Object.values(stats.modes).reduce((a, m) => a + (m.played || 0), 0) : 0;
+    /** @type {any[]} */
+    const modes = stats && stats.modes && typeof stats.modes === 'object' ? Object.values(stats.modes) : [];
+    const played = modes.reduce((a, m) => a + (m && Number.isFinite(m.played) ? m.played : 0), 0);
     return {
       createdAt: e.createdAt, v: e.v, keys: Object.keys(e.data), bytes: Object.values(e.data).reduce((a, t) => a + t.length, 0),
-      wavesUnlocked: waves && waves.unlocked || null, gamesPlayed: played,
-      savedGames: slots ? MODES.filter(m => slots[m]) : [], replays: Array.isArray(replays) ? replays.length : 0
+      wavesUnlocked: waves && Number.isInteger(waves.unlocked) ? waves.unlocked : null, gamesPlayed: played,
+      savedGames: slots && typeof slots === 'object' ? MODES.filter(m => slots[m]) : [], replays: Array.isArray(replays) ? replays.length : 0
     };
   }
   /* ---- text forms ---- */
+  /** @param {unknown} env @returns {string} */
   const toJSON = env => JSON.stringify(check(env));
+  /** @param {string} t @returns {Uint8Array} */
   const utf8 = t => new TextEncoder().encode(t);
-  const b64 = bytes => { let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  /** @param {Uint8Array} bytes @returns {string} */
+  const b64 = bytes => {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  /** @param {string} t @returns {Uint8Array} */
   const unb64 = t => { const bin = atob(t.replace(/-/g, '+').replace(/_/g, '/')); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
-  async function pipe(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  /** @param {Uint8Array} bytes @param {CompressionStream | DecompressionStream} stream @returns {Promise<Uint8Array>} */
+  async function pipe(bytes, stream) {
+    const copy = new Uint8Array(bytes.length); copy.set(bytes);
+    return new Uint8Array(await new Response(new Blob([copy]).stream().pipeThrough(stream)).arrayBuffer());
+  }
+  /** @returns {boolean} */
   const canGzip = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
-  /* The text code. gzip when the browser has CompressionStream; plain JSON otherwise. */
+  /** The text code. gzip when the browser has CompressionStream; plain JSON otherwise.
+      @param {unknown} env @param {{ plain?: boolean }} [opts] @returns {Promise<string>} */
   async function toCode(env, opts) {
     const json = utf8(toJSON(env));
     const zip = canGzip() && !(opts && opts.plain);
@@ -1815,7 +1851,8 @@ const Backup = (() => {
     out[0] = zip ? GZIP : PLAIN; out.set(body, 1);
     return CODE + b64(out);
   }
-  /* Reads a JSON file text or a text code. Returns a checked envelope. */
+  /** Reads a JSON file text or a text code. Returns a checked envelope.
+      @param {unknown} text @returns {Promise<BackupEnvelope>} */
   async function parse(text) {
     const t = String(text || '').trim();
     if (t.startsWith('{')) { let env; try { env = JSON.parse(t); } catch (e) { throw new Error('the file is not valid JSON'); } return check(env); }
@@ -1834,6 +1871,7 @@ const Backup = (() => {
     try { env = JSON.parse(new TextDecoder().decode(body)); } catch (e) { throw new Error('the code is damaged'); }
     return check(env);
   }
+  /** @param {unknown} env @returns {string} */
   const fileName = env => 'king-cut-throat-backup-' + new Date(check(env).createdAt || Date.now()).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
   return Object.freeze({ FORMAT, VERSION, PREFIX, keysOf, snapshot, create, check, apply, describe, toJSON, toCode, parse, fileName, canGzip });
 })();
@@ -3015,17 +3053,23 @@ const App = (() => {
     });
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
+  /* After a restore, this key (outside 'kct.', so not in backups) tells other open tabs of
+     the app to stop writing and reload, so that their old state cannot overwrite the import. */
+  const RESTORE_SIGNAL = 'kct-restored';
   const backup = Object.freeze({
-    /* The full client state now. The running game is saved first, so mid-game progress is in it. */
+    /** The full client state now. The running game is saved first, so mid-game progress is in it.
+        @returns {BackupEnvelope} */
     create() {
       saveGame();
       return Backup.create(localStorage, { rules: Engine.RULES_VERSION, saveFormat: SAVE_FORMAT, replay: 'KCT2' });
     },
-    toJSON() { return Backup.toJSON(this.create()); },
-    toCode(opts) { return Backup.toCode(this.create(), opts); },
-    /* Saves the backup as a .json file (the browser's download). */
+    /** @returns {string} */
+    toJSON() { return Backup.toJSON(backup.create()); },
+    /** @param {{ plain?: boolean }} [opts] @returns {Promise<string>} */
+    toCode(opts) { return Backup.toCode(backup.create(), opts); },
+    /** Saves the backup as a .json file (the browser's download). @returns {string} the file name */
     download() {
-      const env = this.create();
+      const env = backup.create();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([Backup.toJSON(env)], { type: 'application/json' }));
       a.download = Backup.fileName(env);
@@ -3033,21 +3077,32 @@ const App = (() => {
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
       return a.download;
     },
-    /* Reads a file text, a File/Blob or a text code, and describes it. Changes nothing. */
+    /** Reads a file text, a File/Blob or a text code, and describes it. Changes nothing.
+        @param {string | Blob} input @returns {Promise<BackupSummary>} */
     async inspect(input) { return Backup.describe(await Backup.parse(await textOf(input))); },
-    /* REPLACES all app data with the backup, then reloads the page. No undo.
-       TODO(UI): warn the player before this call (see Backup). */
+    /** REPLACES all app data with the backup, then reloads the page. No undo.
+        TODO(UI): warn the player before this call (see Backup).
+        @param {string | Blob} input @param {{ noReload?: boolean }} [opts] @returns {Promise<BackupSummary>} */
     async restore(input, opts) {
       const env = await Backup.parse(await textOf(input));
       clearTimer();
       StorageGate.locked = true;
       try { Backup.apply(localStorage, env); } catch (e) { StorageGate.locked = false; throw e; }
+      try { localStorage.setItem(RESTORE_SIGNAL, String(Date.now())); } catch (e) { /* other tabs are not told */ }
       Logger.log('BACKUP_RESTORED', Backup.describe(env));
       if (!(opts && opts.noReload)) location.reload();
       return Backup.describe(env);
     }
   });
-  const textOf = async x => (x && typeof x.text === 'function' ? x.text() : String(x || ''));
+  /** @param {string | Blob} x @returns {Promise<string>} */
+  const textOf = async x => (x instanceof Blob ? x.text() : String(x || ''));
+  /* Another tab restored a backup: stop at once and load the new data. */
+  window.addEventListener('storage', ev => {
+    if (ev.key !== RESTORE_SIGNAL || !ev.newValue) return;
+    clearTimer();
+    StorageGate.locked = true;
+    location.reload();
+  });
 
   /* Continues a saved game. If it cannot be drawn, the slot is dropped and the table is empty. */
   function resumeGame(mode) {
@@ -4337,10 +4392,13 @@ const SelfTest = (() => {
 
     safeRun('backup', () => {
       /* A Web Storage stand-in. failOn: a key whose write throws (as a full disk does). */
+      /** @param {Record<string, string>} init @param {string} [failOn] */
       const fakeStore = (init, failOn) => {
         const m = new Map(Object.entries(init || {}));
-        return { get length() { return m.size; }, key: i => Array.from(m.keys())[i] ?? null, getItem: k => (m.has(k) ? m.get(k) : null),
-          setItem(k, v) { if (k === failOn) throw new Error('quota'); m.set(k, String(v)); }, removeItem: k => { m.delete(k); }, dump: () => Object.fromEntries([...m].sort()) };
+        return { get length() { return m.size; }, key: (/** @type {number} */ i) => Array.from(m.keys())[i] ?? null,
+          getItem: (/** @type {string} */ k) => m.get(k) ?? null,
+          setItem(/** @type {string} */ k, /** @type {string} */ v) { if (k === failOn) throw new Error('quota'); m.set(k, String(v)); },
+          removeItem: (/** @type {string} */ k) => { m.delete(k); }, dump: () => Object.fromEntries([...m].sort()) };
       };
       /* A mid-game save slot: a real Engine state after some moves. */
       const g = Engine.createGame(4242);
@@ -4362,7 +4420,7 @@ const SelfTest = (() => {
       /* All or nothing. */
       const full = fakeStore({ 'kct.waves': '{"unlocked":2}', 'kct.zz': '{}' }, 'kct.stats');
       let err = '';
-      try { Backup.apply(full, env); } catch (e) { err = e.message; }
+      try { Backup.apply(full, env); } catch (e) { err = e instanceof Error ? e.message : String(e); }
       eq('a failed write keeps the old data', [/old data kept/.test(err), full.dump()], [true, { 'kct.waves': '{"unlocked":2}', 'kct.zz': '{}' }]);
       /* Bad input changes nothing. */
       const bad = [null, {}, { format: 'kct-backup', v: 99, data: {} }, { format: 'kct-backup', v: 1, data: { 'x.y': '{}' } },
@@ -4370,6 +4428,8 @@ const SelfTest = (() => {
       let refused = 0;
       const keep = fakeStore({ 'kct.waves': '{"unlocked":5}' });
       for (const b of bad) { try { Backup.apply(keep, b); } catch (e) { refused++; } }
+      const odd = Backup.check(Object.assign({}, env, { createdAt: 1e20, meta: [1] }));
+      eq('an invalid time or meta is dropped, and the file name still works', [odd.createdAt, odd.meta, /^king-cut-throat-backup-\d{4}-/.test(Backup.fileName(odd))], [null, {}, true]);
       eq('bad backups are refused and change nothing', [refused, keep.dump()], [bad.length, { 'kct.waves': '{"unlocked":5}' }]);
       /* A locked gate stops app writes (an import locks it until the reload). */
       const gk = 'kct.selftest.gate', gs = localStore(gk);
@@ -4673,7 +4733,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-window.KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, Backup, buildView, AI, Render, App, SelfTest, WAVES, Waves });
+/** @type {any} */ (window).KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, Backup, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

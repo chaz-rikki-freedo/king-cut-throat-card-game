@@ -47,6 +47,8 @@ Rules for a valid envelope (`Backup.check`):
 3. Each key in `data` starts with `kct.`.
 4. Each value is text that is valid JSON.
 
+`check` returns a clean copy: `createdAt` becomes `null` when it is not a valid date in ms, and `meta` becomes `{}` when it is not an object.
+
 ## 4. Two forms
 
 | Form | How | Size (mid-game, 66 decisions) | Use |
@@ -74,7 +76,8 @@ An import **replaces** all app data:
 2. Stop the game timer and lock the storage gate (`StorageGate.locked`). While the gate is locked, the app writes nothing, so that a timer or a save cannot overwrite the imported data.
 3. Remove each `kct.` key that the backup does not have. Write each key of the backup.
 4. If a write fails (for example, the storage is full), write the old values back and stop with the error "import failed, old data kept". The import is all or nothing.
-5. Reload the page. The app starts with the imported data.
+5. Write the key `kct-restored` (the time). This key does not start with `kct.`, so it is not in backups. Other open tabs of the app get a `storage` event for it: they stop their timer, lock their storage gate and reload. Without this step, an old tab would write its old game over the imported data at its next move.
+6. Reload the page. The app starts with the imported data.
 
 **There is no undo.** Keys of other apps are not changed.
 
@@ -107,5 +110,7 @@ await KCT.App.backup.restore(x)       // REPLACES all data with the backup, then
 ```js
 { createdAt, v, keys: ['kct.slots', …], bytes, wavesUnlocked, gamesPlayed, savedGames: ['free'], replays }
 ```
+
+**Types.** The module has JSDoc types (`WebStore`, `BackupEnvelope`, `BackupSummary`). It passes `tsc --allowJs --checkJs --strict` with no errors on its lines.
 
 The module `KCT.Backup` works on any Web Storage object (`length`, `key`, `getItem`, `setItem`, `removeItem`): `create(storage, meta)`, `check(env)`, `apply(storage, env)`, `describe(env)`, `toJSON(env)`, `toCode(env)`, `parse(text)`. The self-tests use it with a stand-in storage.
