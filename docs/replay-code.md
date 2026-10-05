@@ -107,9 +107,19 @@ Keys that the app writes now:
 
 | Key | Type | Meaning |
 |---|---|---|
-| `ai.tier` | TEXT | AI skill tier: `novice`, `casual`, `club` or `shark`. |
+| `ai.tier` | TEXT | AI skill tier: `novice`, `casual`, `club` or `shark`. `custom` when the settings match no tier. |
 | `ai.courage` | TEXT | AI courage: `timid`, `cautious`, `normal` or `bold`. |
 | `ai.realTable` | BOOL | Real-table bots were on. |
+| `ai.hunches` | INT | Hunches: guessed deals for each decision (1–200). |
+| `ai.brainFarts` | INT | Brain farts, in percent (0–100). |
+| `ai.know.bids` | BOOL | Knowledge switch: reads bids. |
+| `ai.know.turnedCard` | BOOL | Knowledge switch: tracks the turned card. |
+| `ai.know.ownDiscards` | BOOL | Knowledge switch: remembers its discards. |
+| `ai.know.voids` | BOOL | Knowledge switch: spots voids. |
+| `ai.know.scoreAware` | BOOL | Knowledge switch: watches the score. |
+| `ai.know.showdownPlans` | BOOL | Knowledge switch: plans showdowns. |
+
+Together, these keys hold the full AI settings, so you can see the settings also when `ai.tier` is `custom`. The app writes the settings that are on at the end of the game. If you change the settings during a game, the code shows only the last settings.
 
 These keys are for information only. The AI moves are already in DECISIONS, so a replay does not need them.
 
@@ -226,7 +236,7 @@ The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes
 
 ### 11.1 Capacity requirement
 
-The format must hold a game of **at least 20 hands in which each hand is a showdown**, with the longest bidding and a 2-card exchange. Real games are shorter, but this is the safe limit. The self-test `replay` encodes and decodes this worst case and checks that the code is 3,000 characters or less.
+The format must hold a game of **at least 20 hands in which each hand is a showdown**, with the longest bidding and a 2-card exchange. Real games are shorter, but this is the safe limit. The self-test `replay` encodes and decodes this worst case and checks that the code is 3,000 characters or less, also with the full AI settings in META.
 
 The format itself has no hard limit. Section lengths and counts are `uint` varints. `Replay.run` and `Replay.cursor` have no step limit.
 
@@ -244,16 +254,16 @@ Bytes: DISCARD = 4, BID or NAME = 2, EXCHANGE = 2 + number of cards, PLAY or SHO
 
 ### 11.3 Code length
 
-The other sections (GAME, SEATS, RESULT, FLAGS, TIME, META) use about 70 bytes. Base64url makes 4 characters from each 3 bytes.
+The other sections (GAME, SEATS, RESULT, FLAGS, TIME, META) use about 220 bytes. The full AI settings in META use about 190 of these bytes. Base64url makes 4 characters from each 3 bytes.
 
 | Game | Decisions | Characters |
 |---|---|---|
-| Short game, about 8 hands | about 220 | about 750 |
-| Long game, 15 hands, 3 showdowns (measured, seed 830) | 476 | 1,568 |
-| 20 hands, typical | about 540–600 | about 1,700–2,000 |
-| 20 hands, all showdowns (worst case, section 11.1) | 860 | 2,647 |
+| Short game, about 8 hands | about 220 | about 950 |
+| Long game, 15 hands, 3 showdowns (seed 830) | 476 | about 1,770 |
+| 20 hands, typical | about 540–600 | about 1,900–2,200 |
+| 20 hands, all showdowns (worst case, section 11.1) | 860 | about 2,850 |
 
 ### 11.4 Other limits
 
-- The app keeps the codes of the last 20 finished games in `localStorage` (`kct.replays`). In the worst case, this is about 55 KB.
+- The app keeps the codes of the last 20 finished games in `localStorage` (`kct.replays`). In the worst case, this is about 57 KB.
 - A game resumed from a save made before replay codes existed has no decision list, so it has no code.
