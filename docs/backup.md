@@ -72,12 +72,11 @@ The digit after `KCTS` is the backup format version. A reader refuses a code wit
 
 An import **replaces** all app data:
 
-1. Read and check the backup. If it is not valid, stop. Nothing changes.
+1. Read and check the backup. If it is not valid, stop. Nothing changes. If this tab is not the active tab (another tab is more current, see the README, **One tab**), stop. Nothing changes. Only the active tab writes, so other open tabs cannot write their old game over the imported data.
 2. Stop the game timer and lock the storage gate (`StorageGate.locked`). While the gate is locked, the app writes nothing, so that a timer or a save cannot overwrite the imported data.
 3. Remove each `kct.` key that the backup does not have. Write each key of the backup.
 4. If a write fails (for example, the storage is full), write the old values back and stop with the error "import failed, old data kept". The import is all or nothing.
-5. Write the key `kct-restored` (the time). This key does not start with `kct.`, so it is not in backups. Other open tabs of the app get a `storage` event for it: they stop their timer, lock their storage gate and reload. Without this step, an old tab would write its old game over the imported data at its next move.
-6. Reload the page. The app starts with the imported data.
+5. Reload the page. The app starts with the imported data.
 
 **There is no undo.** Keys of other apps are not changed.
 

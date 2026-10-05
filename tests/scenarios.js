@@ -159,6 +159,36 @@ function expect(name, ok, detail) {
       return out;`);
     expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
 
+    console.log('Settings: Enter and Space open the sections, and do not move the game');
+    await step(`KCT.App.newGame(4343); speed('slow');
+      while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-done"]');
+      click('[data-action="toggle-settings"]'); await sleep(20);`);
+    const keys = [];
+    for (const [id, key] of [['setAdvanced', 'Enter'], ['setSeat', ' ']]) {
+      await page.focus('#' + id + ' > summary');
+      /* A spy in place of the game timer: a skip calls it, and no real move can happen meanwhile. */
+      await step(`clearTimeout(app.timer); app.timer = 1; window.__skipped = false; app.timerFn = () => { window.__skipped = true; };`);
+      await page.keyboard.press(key === ' ' ? 'Space' : key);
+      await page.waitForTimeout(50);
+      keys.push(await step(`return { open: q('#${id}').open, moved: window.__skipped };`));
+    }
+    expect('Enter and Space on a Settings heading open its section', keys.every(k => k.open), keys);
+    expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
+    await step(`click('[data-action="toggle-settings"]');`);
+
+    console.log('AI errors: a bot that fails falls back to a legal move, and the game goes on');
+    r = await step(`
+      KCT.App.newGame(5151); speed('fast'); app.ui.autoplay = true;
+      /* Broken bot settings: the planner and the fallback move both throw (personalities off, Free play). */
+      const keep = app.ai; app.usePersonas = false; app.ai = {};
+      const v = app.state.version, t0 = Date.now();
+      while (Date.now() - t0 < 40000 && !app.state.gameOver && app.state.handNumber < 2) await sleep(20);
+      const out = { moved: app.state.version - v, hand: app.state.handNumber, audit: KCT.Engine.audit(app.state) };
+      app.ai = keep; app.usePersonas = true; app.ui.autoplay = false;
+      return out;`);
+    expect('the game plays on past AI errors, with legal moves', r.hand >= 2 && r.audit.length === 0, r);
+
     console.log('Your seat: the Human/AI tag works only with the switch on, for one game');
     await reload();
     r = await step(`
@@ -209,6 +239,36 @@ function expect(name, ok, detail) {
     await reload();
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
+
+    console.log('One tab: a newer tab stops the older one');
+    r = await step(`
+      KCT.App.newGame(777, 1); speed('fast'); app.ui.autoplay = true;
+      const v = app.state.version; await sleep(1500);
+      return app.state.version - v;`);
+    expect('the game plays before a second tab opens', r > 3, r);
+    const tab2 = await page.context().newPage();
+    tab2.on('pageerror', e => errors.push(String(e)));
+    await tab2.goto(srv.url);
+    await page.waitForSelector('#staleLayer:not([hidden])', { timeout: 10000 }).catch(() => null);
+    r = await step(`
+      const v = app.state.version, before = localStorage.getItem('kct.slots');
+      await sleep(1500);
+      localStore('kct.slots').set('{}');
+      return { stale: KCT.TabLock.stale, title: q('#staleTitle') && q('#staleTitle').textContent,
+        buttons: Array.from(document.querySelectorAll('#staleLayer button')).map(b => b.getAttribute('data-action')),
+        inert: q('#topbar').hasAttribute('inert') && q('.layout').hasAttribute('inert'),
+        stopped: app.state.version === v, wrote: localStorage.getItem('kct.slots') !== before };`);
+    expect('the older tab shows "Another tab is more current"', r.stale && r.title === 'Another tab is more current', r);
+    expect('the pop-up has Update and Quit only', JSON.stringify(r.buttons.sort()) === '["stale-quit","stale-update"]', r.buttons);
+    expect('the older tab stops its game and writes nothing', r.inert && r.stopped && !r.wrote, r);
+    r = await run(tab2, `return { stale: KCT.TabLock.stale, shown: !document.getElementById('staleLayer').hidden };`);
+    expect('the newer tab plays on', !r.stale && !r.shown, r);
+    await Promise.all([page.waitForNavigation(), page.click('[data-action="stale-update"]')]);
+    await tab2.waitForSelector('#staleLayer:not([hidden])', { timeout: 10000 }).catch(() => null);
+    r = await run(tab2, `return KCT.TabLock.stale;`);
+    const r2 = await step(`return { stale: KCT.TabLock.stale, shown: !q('#staleLayer').hidden };`);
+    expect('Update makes the older tab active, and the other tab stops', r && !r2.stale && !r2.shown, { tab2: r, tab1: r2 });
+    await tab2.close();
 
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }
