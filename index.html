@@ -496,7 +496,7 @@ const Rules = (() => {
     if (isLeftBower(id, trump)) return 16;
     return RANK_VALUE[c.rank];
   }
-  /* Absolute ordering strength (independent of the led suit). */
+  /* Independent of the led suit (see trickPower). */
   function getCardStrength(id, trump) {
     if (isTrump(id, trump)) return 100 + trumpRank(id, trump);
     const c = card(id);
@@ -549,7 +549,6 @@ const Rules = (() => {
     if (isLeftBower(id, trump)) return base + ' (Left Bower, counts as ' + SUIT_NAME[trump] + ')';
     return base;
   }
-  /* Full derived card data, for rendering and inspection. */
   function describeCard(id, trump) {
     const c = card(id);
     return Object.freeze({
@@ -1609,7 +1608,7 @@ function createWaveProgress(store, rand) {
         migrated = true;
       }
     }
-  } catch (e) { /* keep blank */ }
+  } catch (e) { /* bad or missing save: start from blank() */ }
   function get(n) { return WAVES[n - 1] || null; }
   const save = () => { try { store.set(JSON.stringify(p)); } catch (e) { /* progress lasts this page load only */ } };
   if (migrated) save();
@@ -1800,12 +1799,12 @@ const Backup = (() => {
       for (const k of Object.keys(e.data)) storage.setItem(k, e.data[k]);
     } catch (err) {
       for (const k of keysOf(storage)) if (!(k in before)) storage.removeItem(k);
-      for (const k of Object.keys(before)) { try { storage.setItem(k, before[k]); } catch (x) { /* nothing more to do */ } }
+      for (const k of Object.keys(before)) { try { storage.setItem(k, before[k]); } catch (x) { /* the error thrown below reports the failed import */ } }
       throw new Error('import failed, old data kept: ' + (err instanceof Error ? err.message : String(err)));
     }
     return Object.keys(e.data);
   }
-  /** A short summary for a confirm dialog (later) and for the console.
+  /** A short summary for the console. TODO(UI): also for the import confirm dialog.
       @param {unknown} env @returns {BackupSummary} */
   function describe(env) {
     const e = check(env);
@@ -1894,8 +1893,8 @@ const Backup = (() => {
 const AI = (() => {
   const R = Rules, P = Engine.P, WIN = Engine.C.WIN_SCORE;
   const TRUMP_VAL = { 18: 1.0, 17: 0.93, 16: 0.86, 14: 0.76, 13: 0.66, 12: 0.54, 10: 0.45, 9: 0.40, 8: 0.36, 7: 0.32 };
-  /* Heuristic bid thresholds: used for other players inside play-outs and to read their bids. */
-  const TH = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, BID_TEMP: 0.35 };
+  /* Used for other players inside play-outs and to read their bids. */
+  const BID_THRESHOLDS = { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, BID_TEMP: 0.35 };
   /* Worlds per decision, and candidates kept after heuristic pruning. */
   const SAMPLES = { play: 40, bid: 40, discard: 20, exchange: 24, showdownDiscard: 32, oversample: 3 };
   const CANDIDATES = { discard: 6, exchange: 6 };
@@ -1938,13 +1937,13 @@ const AI = (() => {
   });
   function setSkillTier(name) {
     const tier = SKILL_TIERS[name];
-    if (!tier) return skillTier();
+    if (!tier) return currentSkillTier();
     setThinking(tier.thinking);
     setKnowledge(tier.knowledge);
     return name;
   }
-  /* The tier that matches the current settings, or 'custom'. */
-  function skillTier() {
+  /* 'custom' when the settings match no tier. */
+  function currentSkillTier() {
     const same = (a, b) => Object.keys(b).every(k => a[k] === b[k]);
     for (const name of Object.keys(SKILL_TIERS)) {
       const tier = SKILL_TIERS[name];
@@ -1972,9 +1971,9 @@ const AI = (() => {
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
   const REAL_TABLE_BID_BUMP = 0.5;
-  /* A personality's own courage sets how loose it bids, so the Real table step does not stack on top of it. */
+  /* A personality's own courage sets how loose it bids, so REAL_TABLE_BID_BUMP does not stack on top of it. */
   let personaActive = false;
-  const bidLimit = key => TH[key] + (style.realTable && !personaActive ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
+  const bidLimit = key => BID_THRESHOLDS[key] + (style.realTable && !personaActive ? REAL_TABLE_BID_BUMP : 0) + COURAGE[style.courage].offset;
 
   /* ---- Win-chance table ----
      Score change in one hand as unordered triples, with counts from 16,555 simulated hands.
@@ -2131,7 +2130,7 @@ const AI = (() => {
     const len = id => hand.filter(x => R.card(x).suit === R.card(id).suit).length;
     return hand.slice().sort((a, b) => (keep(a) - keep(b)) || (len(a) - len(b))).slice(0, k);
   }
-  /* Ranked candidate discards of size k, best first. */
+  /* Candidate discards of size k, best first: highest value of the cards kept; on a tie, discard the weaker cards. */
   function rankedDiscards(hand, k, evalRest, trump) {
     return combos(hand, k).map(combo => {
       const rest = hand.filter(id => !combo.includes(id));
@@ -2189,21 +2188,21 @@ const AI = (() => {
     const losers = legal.filter(c => R.compareCards(c, best.card, lead, trump) <= 0).sort(byStrength);
     return losers.length ? losers[losers.length - 1] : legal.slice().sort(byStrength)[0];
   }
-  /* Winner of the current trick if p plays c and the later players play greedy. */
-  function trickWinnerAfter(s, p, c) {
-    const plays = s.trick.plays.concat([{ player: p, card: c }]);
-    const lead = s.trick.leadSuit || R.getEffectiveSuit(c, s.trump);
+  /* The later players play greedy. */
+  function trickWinnerAfter(state, player, cardId) {
+    const plays = state.trick.plays.concat([{ player, card: cardId }]);
+    const lead = state.trick.leadSuit || R.getEffectiveSuit(cardId, state.trump);
     const acted = new Set(plays.map(x => x.player));
-    for (const r of s.activePlayers) {
+    for (const r of state.activePlayers) {
       if (acted.has(r)) continue;
       const t = { leadSuit: lead, plays: plays.slice() };
-      const saved = s.trick;
-      s.trick = t;
-      const x = fastPlay(s, r);
-      s.trick = saved;
+      const saved = state.trick;
+      state.trick = t;
+      const x = fastPlay(state, r);
+      state.trick = saved;
       plays.push({ player: r, card: x });
     }
-    return R.getTrickWinner(plays, s.trump).player;
+    return R.getTrickWinner(plays, state.trump).player;
   }
   /* Balance plan (main hand only): take one trick, then give each trick to the opponent with
      fewer tricks, to make a 3-3-1 split with this seat as mediator. */
@@ -2328,7 +2327,7 @@ const AI = (() => {
   function bidWeight(view, w) {
     if (view.showdown || !knowledge.bids) return 1;
     let weight = 1;
-    const T = TH.BID_TEMP;
+    const T = BID_THRESHOLDS.BID_TEMP;
     for (const b of view.bidLog) {
       const o = b.player;
       if (o === view.seat) continue;
@@ -2413,7 +2412,7 @@ const AI = (() => {
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
   const activePlans = () => (knowledge.showdownPlans ? PLANS : ['greedy']);
-  /* bonus (optional): a fixed amount added to a candidate's value, such as bid courage. */
+  /* bonus (optional): candidate => win chance (0..1) added to its value, such as the bid courage bias for a call. */
   function plan(view, candidates, toAction, n, bonus) {
     if (candidates.length === 1) return candidates[0];
     const rng = rngFor(view);
@@ -2496,7 +2495,7 @@ const AI = (() => {
     Logger.enabled = false;
     try { return decideInner(view); } finally { Logger.enabled = was; }
   }
-  return Object.freeze({ decide, decideAs, fastAction, winChance, handValue, sampleWorlds, layout, TH, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, style, STYLE_DEFAULTS, setStyle, COURAGE, SKILL_TIERS, setSkillTier, skillTier, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
+  return Object.freeze({ decide, decideAs, fastAction, winChance, handValue, sampleWorlds, layout, BID_THRESHOLDS, SAMPLES, knowledge, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, setKnowledge, style, STYLE_DEFAULTS, setStyle, COURAGE, SKILL_TIERS, setSkillTier, currentSkillTier, thinking, THINKING_DEFAULTS, THINKING_FULL, setThinking, scoreWatch });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2509,7 +2508,7 @@ const Render = (() => {
   const suitLabel = s => symHTML(s) + ' ' + R.SUIT_NAME[s];
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
   const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive' };
-  /* "You" takes the plural verb, also for each verb after "and" in the same sentence (#4). */
+  /* "You" takes the plural verb, also for each verb after "and" in the same sentence. */
   const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
 
@@ -2678,11 +2677,10 @@ const Render = (() => {
   const boardScore = sc => Math.min(sc, WIN);
   const scoreText = sc => sc > WIN ? '⭐' : String(sc);
 
-  /* Signed points: +2 green, −1 red, 0 as a dash. */
-  const signed = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
+  /* +2 green, −1 red, 0 as a dash. */
+  const signedPointsHTML = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
 
-  /* Who named trump, in which round, and who dealt. */
-  function handMetaHTML(v) {
+  function trumpCallAndDealerHTML(v) {
     const n = p => v.players[p].name;
     const call = v.bidLog.filter(b => b.action !== 'pass').pop();
     const parts = [];
@@ -2709,8 +2707,8 @@ const Render = (() => {
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const c = [n(p) + role(p), hs.tricks[p]];
       if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
-      if (!opts.preShowdown) c.push(signed(sd ? st.pts[p].showdown : st.pts[p].hand));
-      c.push(signed(st.pts[p].king), scoreText(v.scores[p]));
+      if (!opts.preShowdown) c.push(signedPointsHTML(sd ? st.pts[p].showdown : st.pts[p].hand));
+      c.push(signedPointsHTML(st.pts[p].king), scoreText(v.scores[p]));
       return '<tr><td>' + c.join('</td><td>') + '</td></tr>';
     }).join('');
     return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
@@ -2719,7 +2717,7 @@ const Render = (() => {
   function summaryHTML(v) {
     const n = p => v.players[p].name;
     const hs = v.handSummary;
-    /* Hand or Showdown points can end the game: show that result, not an empty center (#5). */
+    /* Hand or Showdown points can end the game: show that result, not an empty center. */
     if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }));
     switch (v.phase) {
       case P.ABANDONED:
@@ -2727,17 +2725,17 @@ const Render = (() => {
       case P.JOKER_VOID:
         return '<div class="summary"><h3>The Joker was turned up</h3><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
       case P.HAND_SCORE:
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + handMetaHTML(v) +
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, {}) + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + handMetaHTML(v) +
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
           '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1, then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + handMetaHTML(v) +
+        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { showdown: true }) + '<div class="discard-note">SD = Showdown. Score cannot fall below 0.</div></div>';
       }
       default: return '';
@@ -2876,7 +2874,7 @@ const Render = (() => {
     else if (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick)) center += trickHTML(v, ctx);
     center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
     $('center').innerHTML = center;
-    /* Screen readers hear only the status line, from one stable live region (#7). */
+    /* Screen readers hear only the status line, from one stable live region. */
     const said = $('center').querySelector('.status').textContent, live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
 
@@ -2892,7 +2890,7 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, personaHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, handMetaHTML, scoreText });
+  return Object.freeze({ render, personaHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2914,13 +2912,12 @@ const App = (() => {
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
     ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, personas: [null, null, null], endButtons: '' },
-    /* wave: the wave being played, or null. open: it was open at the start.
-       result: the progress after the game ended. */
-    wave: { n: null, open: false, result: null },
-    /* assisted: the AI played your seat at some time in this game. Such a game clears no wave and adds no results. */
-    assisted: false,
-    /* swapDone: Free play only. The seat swap was offered (or skipped). It is offered once, before the first discard. */
-    swapDone: true,
+    /* n: the wave being played, or null. result: the progress after the game ended. */
+    wave: { n: null, wasOpenAtStart: false, result: null },
+    /* When true, the game clears no wave and adds no results. */
+    humanSeatWasAutoplayed: false,
+    /* Free play only: the swap is offered once, before the first discard. */
+    seatSwapPending: false,
     usePersonas: true,
     updateReady: false, menuOpen: false, menuLaunch: false,
     timer: null, timerFn: null, lastEvents: []
@@ -2953,9 +2950,9 @@ const App = (() => {
     const w = Waves.get(wave);
     const pool = w ? [w.west, w.east] : RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
     app.mode = w ? 'waves' : 'free';
-    app.wave = { n: w ? w.n : null, open: !!w && Waves.isUnlocked(w.n), result: null };
-    app.assisted = app.ui.autoplay;
-    app.swapDone = !!w || app.ui.autoplay;
+    app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
+    app.humanSeatWasAutoplayed = app.ui.autoplay;
+    app.seatSwapPending = !w && !app.ui.autoplay;
     app.ui.endButtons = '';
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
     seatBots(pool[0], pool[1]);
@@ -2973,8 +2970,8 @@ const App = (() => {
   function enterIdle() {
     clearTimer();
     app.mode = null;
-    app.wave = { n: null, open: false, result: null };
-    app.swapDone = true;
+    app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.seatSwapPending = false;
     app.ui.endButtons = '';
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
     seatBots(null, null);
@@ -3002,33 +2999,33 @@ const App = (() => {
      Free-form facts go in meta (see docs/replay-code.md): here, the AI settings of the game. */
   function replayCode(endedAt) {
     const rec = app.mode && app.state && Replay.fromState(app.state, {
-      mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.assisted, endedAt,
+      mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.humanSeatWasAutoplayed, endedAt,
       meta: aiMeta()
     });
     return rec ? Replay.encode(rec) : null;
   }
-  /* The full AI settings as replay META keys (spec 4.4). The replay does not need them. */
+  /* The full AI settings as replay META keys (docs/replay-code.md, 4.4). The replay does not need them. */
   function aiMeta() {
     const m = {
-      'ai.tier': AI.skillTier(), 'ai.courage': AI.style.courage, 'ai.realTable': !!AI.style.realTable,
+      'ai.tier': AI.currentSkillTier(), 'ai.courage': AI.style.courage, 'ai.realTable': !!AI.style.realTable,
       'ai.hunches': AI.thinking.worlds, 'ai.brainFarts': Math.round((1 - AI.thinking.playoutSkill) * 100)
     };
     for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!AI.knowledge[k];
-    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));  /* key order as decoded */
+    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));  /* sorted as encodeMeta writes them, so a decoded code equals this object key for key */
   }
 
   /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
   function finishGame() {
     const won = app.state.winner === HUMAN;
     if (app.wave.n) {
-      const counts = app.wave.open && !app.assisted;
+      const counts = app.wave.wasOpenAtStart && !app.humanSeatWasAutoplayed;
       app.wave.result = counts ? Waves.record(app.wave.n, won) : Waves.progress();
       Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
     }
-    if (!app.assisted) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
+    if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
     const at = Date.now();
     const code = replayCode(at);
-    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.assisted, at });
+    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
@@ -3048,8 +3045,8 @@ const App = (() => {
     /* The saved Latest Scroll keeps its last LOG_SAVE_MAX lines. */
     const lines = Array.from($('gameLog').children).slice(-LOG_SAVE_MAX);
     slots.put(app.mode, {
-      state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.open },
-      assisted: app.assisted, autoplay: app.ui.autoplay, swapDone: app.swapDone, log: lines.map(li => li.outerHTML).join('')
+      state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, log: lines.map(li => li.outerHTML).join('')
     });
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
@@ -3112,10 +3109,10 @@ const App = (() => {
     try {
       app.mode = mode;
       app.state = JSON.parse(JSON.stringify(s.state));
-      app.wave = { n: s.wave.n, open: !!s.wave.open, result: null };
-      app.assisted = !!s.assisted;
+      app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, result: null };
+      app.humanSeatWasAutoplayed = !!s.assisted;
       app.ui.autoplay = !!s.autoplay;
-      app.swapDone = s.swapDone !== false;
+      app.seatSwapPending = s.swapDone === false;
       app.ui.endButtons = '';
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
@@ -3169,14 +3166,14 @@ const App = (() => {
   async function toggleAutoplay() {
     if (!app.mode || askDone) return;
     /* Waves: the first hand-over in a game that could still clear its wave asks first. */
-    if (!app.ui.autoplay && app.mode === 'waves' && app.wave.open && !app.assisted && !app.state.gameOver &&
+    if (!app.ui.autoplay && app.mode === 'waves' && app.wave.wasOpenAtStart && !app.humanSeatWasAutoplayed && !app.state.gameOver &&
       !await ask({
         title: 'Let the AI play your seat?',
         text: '<p>A win in this game will then not clear wave ' + app.wave.n + '.</p><p>This stays true if you take your seat back.</p>',
         ok: 'Let the AI play', cancel: 'Keep my seat'
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
-    if (app.ui.autoplay) app.assisted = true;
+    if (app.ui.autoplay) app.humanSeatWasAutoplayed = true;
     if (app.ui.autoplay && !app.ui.personas[HUMAN]) {
       const free = PERSONAS.filter(x => !app.ui.personas.includes(x.id));
       app.ui.personas[HUMAN] = free[Math.floor(Math.random() * free.length)].id;
@@ -3292,12 +3289,12 @@ const App = (() => {
   /* The log is cleared at each new game. This cap only guards against a very long game. */
   const LOG_MAX = 5000, LOG_SAVE_MAX = 1500;
 
-  /* sd: a Showdown message, indented two steps. */
-  function addLog(text, cls, sd) {
+  /* A Showdown message is indented two steps. */
+  function addLog(text, cls, isShowdown) {
     const li = document.createElement('li');
     li.innerHTML = logHTML(Render.youText(text), cls || '');
     const classes = (cls || '').split(' ').filter(Boolean);
-    if (sd) classes.push('sd');
+    if (isShowdown) classes.push('sd');
     if (classes.length) li.className = classes.join(' ');
     const ol = $('gameLog');
     ol.appendChild(li);
@@ -3363,14 +3360,14 @@ const App = (() => {
     if (!v.handStats) return '';
     const n = p => v.players[p].name;
     const hs = v.handSummary;
-    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>Hand ' + v.handNumber + ' stats</h3>' + Render.handMetaHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
+    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>Hand ' + v.handNumber + ' stats</h3>' + Render.trumpCallAndDealerHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
     const st = v.handStats;
     const sd = v.showdown && v.showdown.active;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const k = st.pts[p].king;
       return '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
     }).join('');
-    return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.handMetaHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
+    return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
 
   function showGameOver() {
@@ -3393,8 +3390,8 @@ const App = (() => {
   function waveEndHTML() {
     if (!app.wave.n || !app.wave.result) return '';
     const n = app.wave.n, won = app.state.winner === HUMAN;
-    if (won && app.assisted) return '<p class="wave-note">Wave ' + n + ': the AI played your seat, so this win does not clear the wave.</p>';
-    if (won && !app.wave.open) return '<p class="wave-note">Wave ' + n + ' was locked, so this win does not clear it.</p>';
+    if (won && app.humanSeatWasAutoplayed) return '<p class="wave-note">Wave ' + n + ': the AI played your seat, so this win does not clear the wave.</p>';
+    if (won && !app.wave.wasOpenAtStart) return '<p class="wave-note">Wave ' + n + ' was locked, so this win does not clear it.</p>';
     if (won && app.wave.result.complete) return '<p class="wave-note">Wave ' + n + ' cleared. You have cleared every wave!</p>';
     if (won) return '<p class="wave-note">Wave ' + n + ' cleared.' + (n < WAVES.length ? ' Wave ' + (n + 1) + ' is open.' : '') + '</p>';
     return '<p class="wave-note">Wave ' + n + ' is not cleared yet.</p>';
@@ -3562,7 +3559,7 @@ const App = (() => {
   /* ---- Free play seat swap: offered once, before the first discard of the game. ---- */
   function needsSwap() {
     const st = app.state;
-    return app.mode === 'free' && !app.swapDone && !app.ui.autoplay && st.handNumber === 1 && st.phase === P.DISCARD && st.pendingDiscard.every(Boolean);
+    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.handNumber === 1 && st.phase === P.DISCARD && st.pendingDiscard.every(Boolean);
   }
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
@@ -3586,7 +3583,7 @@ const App = (() => {
     showSwap();
   }
   function swapDone() {
-    app.swapDone = true;
+    app.seatSwapPending = false;
     $('overlay').hidden = true;
     const [, west, east] = app.ui.personas;
     addLog('Seats: ' + PERSONA_BY_ID[west].name + ' (West, your left) and ' + PERSONA_BY_ID[east].name + ' (East, your right).', '');
@@ -3770,11 +3767,11 @@ const App = (() => {
   function setSkillTier(name) {
     AI.setSkillTier(name);
     syncThinking(); syncKnowledge();
-    Logger.log('AI_SKILL', { tier: AI.skillTier() });
+    Logger.log('AI_SKILL', { tier: AI.currentSkillTier() });
     addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
     saveSettings();
   }
-  function syncTier() { $('setTier').value = AI.skillTier(); }
+  function syncTier() { $('setTier').value = AI.currentSkillTier(); }
 
   /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
   function copySeed() {
@@ -4153,11 +4150,11 @@ const SelfTest = (() => {
           check('real table: AI decisions stay legal', ok1 && Engine.validate(st, AI.decide(buildView(st, 1))) === null);
         }
         AI.setStyle(AI.STYLE_DEFAULTS);
-        for (const name of Object.keys(AI.SKILL_TIERS)) { AI.setSkillTier(name); eq('skill tier ' + name + ' round-trips', AI.skillTier(), name); }
+        for (const name of Object.keys(AI.SKILL_TIERS)) { AI.setSkillTier(name); eq('skill tier ' + name + ' round-trips', AI.currentSkillTier(), name); }
         AI.setSkillTier('casual');
         eq('casual tier is the default settings', [AI.thinking, AI.knowledge], [AI.THINKING_DEFAULTS, AI.KNOWLEDGE_DEFAULTS]);
         AI.setThinking({ worlds: 7 });
-        eq('settings that match no tier read as custom', AI.skillTier(), 'custom');
+        eq('settings that match no tier read as custom', AI.currentSkillTier(), 'custom');
         eq('unknown bid courage is ignored', AI.setStyle({ courage: 'reckless' }).courage, 'normal');
         {
           const calls = courage => {
@@ -4363,7 +4360,7 @@ const SelfTest = (() => {
       const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
       for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k });
       eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
-      /* Capacity (spec 11.1): 20 hands, each a showdown with the longest bidding and a 2-card exchange. */
+      /* Capacity (docs/replay-code.md, 11.1): 20 hands, each a showdown with the longest bidding and a 2-card exchange. */
       const big = [], ids = R.ALL_IDS;
       for (let h = 0; h < 20; h++) {
         for (const p of [0, 1, 2]) big.push({ type: 'DISCARD', player: p, cards: ids.slice(p * 3, p * 3 + 3) });
@@ -4685,7 +4682,6 @@ const SelfTest = (() => {
     const passed = results.filter(r => r.ok).length;
     return { passed, failed: results.length - passed, results, stats: results.stats, ms: Date.now() - t0 };
 
-    /* helpers (hoisted) */
     function playState(hands, trump, leader, scores) {
       const s = Engine.createGame(7);
       Engine.dispatch(s, { type: 'START_GAME' });
