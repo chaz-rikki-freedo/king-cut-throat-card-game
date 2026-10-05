@@ -6,7 +6,9 @@
    ("update-ready"). The app asks you, between games, and then sends
    "apply-update": the waiting page becomes the cached page and the app reloads.
    A new version therefore needs no version number here: publishing a changed
-   index.html is enough. Change this file only to change how caching works. */
+   index.html is enough. Change this file only to change how caching works.
+   The manifest and icons are served from the cache too, and each request also
+   fetches them in the background, so a changed icon arrives on the next load. */
 'use strict';
 const SHELL = 'kct-shell', PENDING = 'kct-pending';
 const PAGE = new URL('./index.html', self.registration.scope).href;
@@ -29,9 +31,23 @@ self.addEventListener('fetch', ev => {
     ev.waitUntil(checkPage());
     return;
   }
-  if (ASSETS.some(u => isSame(u, req.url))) ev.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req)));
+  const asset = ASSETS.find(u => isSame(u, req.url));
+  if (asset) {
+    const fresh = refreshAsset(asset);
+    ev.respondWith(caches.match(asset).then(hit => hit || fresh.then(res => res || fetch(req))));
+    ev.waitUntil(fresh);
+  }
 });
 const isSame = (a, b) => { const u = new URL(b); u.search = ''; return u.href === a; };
+
+/* Fetches an asset and keeps it in the cache. Resolves to the response, or null when offline. */
+async function refreshAsset(url) {
+  try {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (res.ok) await (await caches.open(SHELL)).put(url, res.clone());
+    return res;
+  } catch (e) { return null; }
+}
 
 async function cachedPage(req) {
   const hit = await (await caches.open(SHELL)).match(PAGE);
