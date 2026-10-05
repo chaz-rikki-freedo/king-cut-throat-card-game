@@ -3315,6 +3315,10 @@ const App = (() => {
       row(reg && reg.active ? 'ok' : 'bad', reg && reg.active ? 'Service worker is active.' : 'Service worker is not active yet.');
       row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
     }
+    const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
+    if (kept === true) row('ok', 'Storage is persistent: the browser keeps your progress and saves.');
+    else if (kept === false) row('wait', 'Storage is not persistent: the browser can clear your progress when the disk is low. Installing the app usually fixes this.');
+    else row('wait', 'This browser does not say if its storage is persistent.');
     if (install.prompt) row('ok', 'The browser offers an install: press Install app.');
     else if (install.offered) row('wait', 'The browser offered an install earlier in this visit.');
     else row('wait', 'The browser has not offered an install in this visit. Chrome offers it only when it thinks the page can be installed.');
@@ -3336,7 +3340,21 @@ const App = (() => {
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
       if (reg.active) reg.active.postMessage({ type: 'update-status' });
     }).catch(() => { /* no offline play, the game still works */ });
-    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    requestPersist();
+  }
+  /* Asks the browser to keep this site's storage (progress, results, saves, replay codes)
+     when the disk is low, or after days without a visit (Safari tabs). The request is sent
+     only while the storage is not yet persistent. Chrome and Safari decide without a prompt;
+     Firefox asks the player one time. */
+  async function requestPersist() {
+    const st = navigator.storage;
+    if (!st || !st.persist || !st.persisted) return null;
+    try {
+      if (await st.persisted()) return true;
+      const granted = await st.persist();
+      Logger.log('STORAGE_PERSIST', { granted });
+      return granted;
+    } catch (e) { return null; }
   }
 
   /* ---- Free play seat swap: offered once, before the first discard of the game. ---- */
