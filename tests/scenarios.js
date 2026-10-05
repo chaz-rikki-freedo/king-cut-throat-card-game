@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* UI scenarios, played through the real controls: two full games (Free play and Waves), reload and resume,
-   the questions the app asks, the Skip button, the seat-swap log colors and an old save.
+   the questions the app asks, the Skip button, the seat-swap log colors, an old save and the Your seat setting.
    Your seat is played by the fast AI, by clicks. Exit code 1 on a failed check. */
 'use strict';
 const { serve, launch, openPage, run } = require('./lib/browser');
@@ -156,6 +156,28 @@ function expect(name, ok, detail) {
       app.ui.autoplay = false;
       return out;`);
     expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
+
+    console.log('Your seat: the AI seat never carries over');
+    await reload();
+    r = await step(`
+      KCT.App.newGame(77, 1); await sleep(20);
+      click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20);
+      const handed = app.ui.autoplay;
+      KCT.App.newGame(78, 1); await sleep(20);
+      const next = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed };
+      const box = q('#setSeatAI'); box.checked = true; box.dispatchEvent(new Event('change'));
+      KCT.App.newGame(79, 1); await sleep(20);
+      const on = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed, persona: !!app.ui.personas[0] };
+      return { handed, next, on };`);
+    expect('a hand-over lasts one game: the next game starts with you in your seat', r.handed && !r.next.autoplay && !r.next.assisted, r);
+    expect('with Your seat on, the AI plays your seat from the start', r.on.autoplay && r.on.assisted && r.on.persona, r);
+    await reload();
+    r = await step(`
+      const kept = q('#setSeatAI').checked;
+      const box = q('#setSeatAI'); box.checked = false; box.dispatchEvent(new Event('change'));
+      KCT.App.newGame(80, 1); await sleep(20);
+      return { kept, autoplay: app.ui.autoplay };`);
+    expect('the Your seat setting is kept after a reload, and off again gives you the seat', r.kept && !r.autoplay, r);
 
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }

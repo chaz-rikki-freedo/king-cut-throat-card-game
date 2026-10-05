@@ -64,7 +64,7 @@ Text code mode byte:
 | 0 | The envelope JSON, not compressed. For a browser without `CompressionStream`. |
 | 2–255 | Reserved. Refused. |
 
-The digit after `KCTS` is the backup format version. A reader refuses a code with a newer version. A browser without `DecompressionStream` cannot read a mode 1 code; it must use the file.
+The digit after `KCTS` is the backup format version. A reader refuses a code with a newer version. A browser without `DecompressionStream` cannot read a mode 1 code; it must use the file. A mode 1 code that unpacks to more than 32 MB is refused, so a damaged or hostile code cannot fill the memory. A real backup is far smaller.
 
 `Backup.parse(text)` reads both forms: text that starts with `{` is a file, all other text is a code. Spaces and line breaks in a code are ignored.
 
