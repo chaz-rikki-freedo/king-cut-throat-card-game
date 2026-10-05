@@ -44,6 +44,8 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 **Backup.** One backup holds all of this, also a game in progress: as a `.json` file or as a text code (`KCTS1-…`) to copy to another device. An import replaces all the data on the device, with no undo. There is no UI yet; see **Console** and [docs/backup.md](docs/backup.md).
 
+**One tab.** Only one tab of the game can play and save. Each new tab (or reload) becomes the active tab. An older tab of the game then stops, writes nothing more, and shows **Another tab is more current**, with two buttons only: **Update** loads the newest data in that tab (the other tab then stops), and **Quit** closes it. If the browser does not let the page close the tab, the tab stays stopped and says that you can close it. The tab checks before each save, when another tab opens, and when the tab shows again. The mark of the active tab (`kct-tab`) is not in a backup.
+
 If a new version cannot load a saved game, the game is dropped and the menu says so once. Wave progress and results are kept. Change `SAVE_FORMAT` in `index.html` when the Engine state changes shape.
 
 The app does not trust saved data, because a backup can come from another person. At each load, it rebuilds a saved game from its seed and its moves. If the result is not the same as the saved game, the app drops the game. A game saved before the app kept the moves cannot be rebuilt, so the app drops it too. The Latest Scroll is saved as text, not as HTML. Results keep only counts that make sense.

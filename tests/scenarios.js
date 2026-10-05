@@ -210,6 +210,36 @@ function expect(name, ok, detail) {
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
 
+    console.log('One tab: a newer tab stops the older one');
+    r = await step(`
+      KCT.App.newGame(777, 1); speed('fast'); app.ui.autoplay = true;
+      const v = app.state.version; await sleep(1500);
+      return app.state.version - v;`);
+    expect('the game plays before a second tab opens', r > 3, r);
+    const tab2 = await page.context().newPage();
+    tab2.on('pageerror', e => errors.push(String(e)));
+    await tab2.goto(srv.url);
+    await page.waitForSelector('#staleLayer:not([hidden])', { timeout: 10000 }).catch(() => null);
+    r = await step(`
+      const v = app.state.version, before = localStorage.getItem('kct.slots');
+      await sleep(1500);
+      localStore('kct.slots').set('{}');
+      return { stale: KCT.TabLock.stale, title: q('#staleTitle') && q('#staleTitle').textContent,
+        buttons: Array.from(document.querySelectorAll('#staleLayer button')).map(b => b.getAttribute('data-action')),
+        inert: q('#topbar').hasAttribute('inert') && q('.layout').hasAttribute('inert'),
+        stopped: app.state.version === v, wrote: localStorage.getItem('kct.slots') !== before };`);
+    expect('the older tab shows "Another tab is more current"', r.stale && r.title === 'Another tab is more current', r);
+    expect('the pop-up has Update and Quit only', JSON.stringify(r.buttons.sort()) === '["stale-quit","stale-update"]', r.buttons);
+    expect('the older tab stops its game and writes nothing', r.inert && r.stopped && !r.wrote, r);
+    r = await run(tab2, `return { stale: KCT.TabLock.stale, shown: !document.getElementById('staleLayer').hidden };`);
+    expect('the newer tab plays on', !r.stale && !r.shown, r);
+    await Promise.all([page.waitForNavigation(), page.click('[data-action="stale-update"]')]);
+    await tab2.waitForSelector('#staleLayer:not([hidden])', { timeout: 10000 }).catch(() => null);
+    r = await run(tab2, `return KCT.TabLock.stale;`);
+    const r2 = await step(`return { stale: KCT.TabLock.stale, shown: !q('#staleLayer').hidden };`);
+    expect('Update makes the older tab active, and the other tab stops', r && !r2.stale && !r2.shown, { tab2: r, tab1: r2 });
+    await tab2.close();
+
     expect('no page errors', errors.length === 0, errors);
   } finally { await browser.close(); srv.close(); }
   console.log(failed ? 'FAIL: ' + failed + ' check(s) failed' : 'OK: all checks passed');

@@ -296,6 +296,9 @@ button.card{cursor:pointer}
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:#8fb89a}
 .ask-layer{z-index:75}
+.stale-layer{z-index:90}
+.stale{max-width:420px}
+.stale p{margin:0 0 4px;line-height:1.5}
 .ask{max-width:400px}
 .ask h2{font-size:20px}
 .ask p{margin:0 0 4px;line-height:1.5}
@@ -345,6 +348,7 @@ button.card{cursor:pointer}
 <div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
 <div class="overlay ask-layer" id="askLayer" hidden></div>
+<div class="overlay stale-layer" id="staleLayer" hidden></div>
 <div class="update-note" id="updateNote" role="status" hidden>
   <span>A new version is ready.</span>
   <button class="btn primary" type="button" data-action="update-reload">Reload</button>
@@ -1675,7 +1679,6 @@ function createWaveProgress(store, rand) {
     unlockAll() { p.unlocked = WAVES.length; save(); return snapshot(); }
   });
 }
-const Waves = createWaveProgress(localStore('kct.waves'));
 
 /* ---------------------------------------------------------------------
    5d. MEMORY — what the app keeps between visits, in this browser only:
@@ -1688,9 +1691,43 @@ const MODES = Object.freeze(['waves', 'free']);
 /* While StorageGate.locked is true, the app writes nothing to localStorage. A backup import
    locks it, so a timer or a save cannot overwrite the imported data before the page reloads. */
 const StorageGate = { locked: false };
+/* One tab at a time, so the saved data has one writer. Each page load takes the active-tab mark
+   (key 'kct-tab': it does not start with 'kct.', so it is not in backups). A tab that finds the
+   mark of another tab is out of date: it writes nothing more, and the App stops it and asks you
+   to update (reload with the newest data) or quit. The tab checks the mark before each write,
+   when another tab changes the mark, and when the tab shows again. */
+const TAB_KEY = 'kct-tab';
+const TabLock = (() => {
+  const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  /** @returns {string | null} the id of the active tab, or null with no mark (or no storage) */
+  const owner = () => {
+    try { const x = JSON.parse(localStorage.getItem(TAB_KEY) || 'null'); return x && typeof x.id === 'string' ? x.id : null; } catch (e) { return null; }
+  };
+  const L = {
+    id, stale: false,
+    /** @type {(() => void)[]} called once, when this tab becomes out of date */
+    listeners: [],
+    /* Makes this tab the active tab. Without storage, this tab is the only one. */
+    claim() { try { localStorage.setItem(TAB_KEY, JSON.stringify({ id, at: Date.now() })); } catch (e) { /* no storage */ } },
+    /** True while this tab is the active tab. The mark of another tab makes this tab out of date. @returns {boolean} */
+    check() {
+      if (L.stale) return false;
+      const o = owner();
+      if (o === null || o === id) return true;
+      L.stale = true;
+      for (const fn of L.listeners) { try { fn(); } catch (e) { console.error(e); } }
+      return false;
+    }
+  };
+  window.addEventListener('storage', ev => { if (ev.key === TAB_KEY) L.check(); });
+  window.addEventListener('pageshow', () => L.check());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') L.check(); });
+  return L;
+})();
+TabLock.claim();
 /** @param {string} key @returns {{ get(): string | null, set(text: string): void }} */
 function localStore(key) {
-  return { get: () => localStorage.getItem(key), set: text => { if (!StorageGate.locked) localStorage.setItem(key, text); } };
+  return { get: () => localStorage.getItem(key), set: text => { if (!StorageGate.locked && TabLock.check()) localStorage.setItem(key, text); } };
 }
 /* JSON in a store. A missing, broken or blocked store reads as null and ignores writes. */
 function jsonStore(store) {
@@ -1699,6 +1736,8 @@ function jsonStore(store) {
     save(x) { try { store.set(JSON.stringify(x)); return true; } catch (e) { return false; } }
   };
 }
+/* Created after the store helpers: a save at load (old progress gets its tries) needs them. */
+const Waves = createWaveProgress(localStore('kct.waves'));
 
 /* A saved game keeps the last LOG_SAVE_MAX lines of its Latest Scroll. */
 const LOG_SAVE_MAX = 1500;
@@ -3172,6 +3211,7 @@ const App = (() => {
   }
 
   function act(action) {
+    if (TabLock.stale) return { ok: false, error: 'another tab is more current', events: [] };
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
     if (app.state.gameOver && res.events.some(e => e.type === 'GAME_ENDED')) finishGame();
@@ -3261,9 +3301,6 @@ const App = (() => {
     });
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
-  /* After a restore, this key (outside 'kct.', so not in backups) tells other open tabs of
-     the app to stop writing and reload, so that their old state cannot overwrite the import. */
-  const RESTORE_SIGNAL = 'kct-restored';
   const backup = Object.freeze({
     /** The full client state now. The running game is saved first, so mid-game progress is in it.
         @returns {BackupEnvelope} */
@@ -3293,10 +3330,11 @@ const App = (() => {
         @param {string | Blob} input @param {{ noReload?: boolean }} [opts] @returns {Promise<BackupSummary>} */
     async restore(input, opts) {
       const env = await Backup.parse(await textOf(input));
+      /* Only the active tab writes (see TabLock). The other tabs are stopped, so they cannot write over the import. */
+      if (!TabLock.check()) throw new Error('another tab is more current: update this tab first');
       clearTimer();
       StorageGate.locked = true;
       try { Backup.apply(localStorage, env); } catch (e) { StorageGate.locked = false; throw e; }
-      try { localStorage.setItem(RESTORE_SIGNAL, String(Date.now())); } catch (e) { /* other tabs are not told */ }
       Logger.log('BACKUP_RESTORED', Backup.describe(env));
       if (!(opts && opts.noReload)) location.reload();
       return Backup.describe(env);
@@ -3304,13 +3342,31 @@ const App = (() => {
   });
   /** @param {string | Blob} x @returns {Promise<string>} */
   const textOf = async x => (x instanceof Blob ? x.text() : String(x || ''));
-  /* Another tab restored a backup: stop at once and load the new data. */
-  window.addEventListener('storage', ev => {
-    if (ev.key !== RESTORE_SIGNAL || !ev.newValue) return;
+  /* ---- One tab (see TabLock). Another tab is more current: this tab stops and asks. ---- */
+  /* The pop-up has two buttons only: Update reloads this tab with the newest data (then the other
+     tab stops), and Quit closes this tab. Escape and clicks outside the pop-up do nothing. */
+  function showStale() {
     clearTimer();
-    StorageGate.locked = true;
-    location.reload();
-  });
+    if (askDone) answerAsk(false);
+    hideUpdateNote();
+    const layer = $('staleLayer');
+    for (const el of Array.from(document.body.children)) if (el !== layer && el.tagName !== 'SCRIPT') el.setAttribute('inert', '');
+    layer.innerHTML = '<div class="modal stale" role="alertdialog" aria-modal="true" aria-labelledby="staleTitle" aria-describedby="staleText">' +
+      '<h2 id="staleTitle">Another tab is more current</h2><div id="staleText"><p>King Cut-Throat is open in another tab, and that tab has the newest data. Only one tab can play. This tab has stopped.</p>' +
+      '<p>Update loads the newest data in this tab, and the other tab stops. Quit closes this tab.</p></div>' +
+      '<div class="row"><button class="btn" type="button" data-action="stale-quit">Quit</button>' +
+      '<button class="btn primary" type="button" data-action="stale-update">Update</button></div></div>';
+    layer.hidden = false;
+    const btn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="stale-update"]'));
+    if (btn) btn.focus();
+  }
+  function quitStale() {
+    window.close();
+    /* A browser closes only a tab that a script opened. Otherwise the tab stays open and stopped. */
+    $('staleLayer').innerHTML = '<div class="modal stale" role="alertdialog" aria-modal="true" aria-labelledby="staleTitle">' +
+      '<h2 id="staleTitle">This tab has stopped</h2><p>You can close this tab. Play in the other tab.</p></div>';
+  }
+  TabLock.listeners.push(showStale);
 
   /* Continues a saved game. If it cannot be drawn, the slot is dropped and the table is empty. */
   function resumeGame(mode) {
@@ -3440,8 +3496,8 @@ const App = (() => {
   function schedule(events) {
     clearTimer();
     const st = app.state, ev = events || [];
-    /* The game waits while the menu or a question is open. */
-    if (app.menuOpen || askDone) return;
+    /* The game waits while the menu or a question is open. It stops when another tab is more current. */
+    if (app.menuOpen || askDone || TabLock.stale) return;
     if (!app.mode) { draw(ev); return; }
     if (st.gameOver) { showGameOver(); return; }
     if (needsSwap()) { draw(ev); showSwap(); return; }
@@ -4138,6 +4194,13 @@ const App = (() => {
   function init() {
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
+      if (TabLock.stale) {
+        const s = ev.target.closest('#staleLayer [data-action]');
+        const name = s && s.getAttribute('data-action');
+        if (name === 'stale-update') location.reload();
+        else if (name === 'stale-quit') quitStale();
+        return;
+      }
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
@@ -4146,6 +4209,7 @@ const App = (() => {
       if (ev.target.closest('#center') && app.timerFn) skip();
     });
     document.addEventListener('keydown', ev => {
+      if (TabLock.stale) return; /* the pop-up buttons take Enter and Space; nothing else works */
       if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
@@ -4211,6 +4275,8 @@ const App = (() => {
     const wave = waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined;
     if (seed !== undefined || Waves.get(wave)) newGame(seed, wave);
     else { enterIdle(); showMenu(true); }
+    /* Another tab can take the mark while this one loads. */
+    if (TabLock.stale) showStale(); else TabLock.check();
   }
 
   return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup };
@@ -5098,7 +5164,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, Backup, buildView, AI, Render, App, SelfTest, WAVES, Waves });
+/** @type {any} */ (window).KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
