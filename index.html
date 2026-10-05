@@ -1455,16 +1455,19 @@ const Replay = (() => {
      seek(n) rebuilds from the seed, so it also goes back. names (optional) are the seat names. */
   function cursor(recOrCode, names) {
     const rec = toRecord(recOrCode);
+    if (!rec || typeof rec !== 'object' || !Array.isArray(rec.decisions)) throw new Error('replay record has no decision list');
     if ((rec.rules || 1) !== Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
     function reset() { state = Engine.createGame(rec.seed, names); next = 0; steps = 0; }
-    function skipMarks() { while (next < rec.decisions.length && rec.decisions[next].type === 'MARK') next++; }
+    const isMark = d => !!d && d.type === 'MARK';
+    function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
       if (state.gameOver) return null;
       const sys = Engine.systemAction(state);
       if (!sys) skipMarks();
       if (!sys && next >= rec.decisions.length) return null;
       const action = sys || rec.decisions[next];
+      if (!action || typeof action !== 'object') throw new Error('replay step ' + steps + ' has no decision');
       if (action.type === 'EXT') throw new Error('replay step ' + steps + ' needs decision kind ' + action.kind + ', which this app does not know');
       const res = Engine.dispatch(state, action);
       if (!res.ok) throw new Error('replay step ' + steps + ' (' + action.type + ') rejected: ' + res.error);
@@ -1495,7 +1498,7 @@ const Replay = (() => {
       return { ok: false, error: String(e.message || e), state: cur ? cur.state : null, steps: cur ? cur.steps : 0 };
     }
     const st = cur.state, rec = cur.record;
-    const left = rec.decisions.slice(cur.decisionsUsed).filter(d => d.type !== 'MARK').length;
+    const left = rec.decisions.slice(cur.decisionsUsed).filter(d => !d || d.type !== 'MARK').length;
     if (left) return { ok: false, error: left + ' decision(s) after the game ended', state: st, steps: cur.steps };
     const r = rec.result;
     if (r && r.finished && (!st.gameOver || st.winner !== r.winner || JSON.stringify(st.scores) !== JSON.stringify(r.scores))) {
@@ -1691,11 +1694,14 @@ function cleanSlot(mode, s) {
   if (!s || typeof s !== 'object' || s.format !== SAVE_FORMAT) return null;
   const saved = s.state;
   if (!saved || typeof saved !== 'object' || saved.gameOver || !Number.isInteger(saved.version) || saved.version < 0) return null;
-  const rec = Replay.fromState(saved);
-  if (!rec) return null;
-  const cur = Replay.cursor(rec);
-  if (cur.seek(saved.version) !== saved.version) return null;
-  const state = cur.state;
+  let state;
+  try {
+    const rec = Replay.fromState(saved);
+    if (!rec) return null;
+    const cur = Replay.cursor(rec);
+    if (cur.seek(saved.version) !== saved.version) return null;
+    state = cur.state;
+  } catch (e) { return null; /* a decision that the Engine refuses */ }
   const facts = x => JSON.stringify(Object.assign({}, x, { players: null }));
   if (state.gameOver || facts(state) !== facts(saved)) return null;
   const seat = id => (typeof id === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, id) ? id : null);
@@ -3210,8 +3216,8 @@ const App = (() => {
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
       app.ui.personas[HUMAN] = s.personas[HUMAN] || null;
-      clearLog();
-      for (const [text, cls] of s.log) appendLog(text, cls);
+      logLines = s.log.map(([text, cls]) => [text, cls]);
+      redrawLog();
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
       $('setSeed').textContent = String(app.state.seed);
       $('overlay').hidden = true;
@@ -3395,15 +3401,25 @@ const App = (() => {
     $('gameLog').scrollTop = $('gameLog').scrollHeight;
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
-  function appendLog(text, cls) {
-    logLines.push([text, cls]);
+  function logItem(text, cls) {
     const li = document.createElement('li');
     li.innerHTML = logHTML(Render.youText(text), cls);
     if (cls) li.className = cls;
+    return li;
+  }
+  function appendLog(text, cls) {
+    logLines.push([text, cls]);
     const ol = $('gameLog');
-    ol.appendChild(li);
+    ol.appendChild(logItem(text, cls));
     while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
     if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
+  }
+  /* Draws the whole log again from its text. A name's color belongs to its seat, so after
+     a seat swap the earlier lines must be drawn again with the new seats. */
+  function redrawLog() {
+    const ol = $('gameLog'), keep = ol.scrollTop;
+    ol.replaceChildren(...logLines.map(([text, cls]) => logItem(text, cls)));
+    ol.scrollTop = keep;
   }
   function toast(text, cls) {
     const t = document.createElement('div');
@@ -3685,6 +3701,7 @@ const App = (() => {
   function swapPreview() {
     const [, west, east] = app.ui.personas;
     seatBots(east, west);
+    redrawLog();
     draw([]);
     showSwap();
   }
@@ -4372,6 +4389,10 @@ const SelfTest = (() => {
       const noDecisions = JSON.parse(JSON.stringify(s)); delete noDecisions.decisions;
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: noDecisions, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
       eq('a state without its decisions is dropped', createSlots(store).get('free'), null);
+      const badDecision = JSON.parse(JSON.stringify(s)); badDecision.decisions[3] = null;
+      let threw = false, refused = null;
+      try { refused = cleanSlot('free', { format: SAVE_FORMAT, state: badDecision, personas: [null, 'vex', 'doc'], wave: { n: null } }); } catch (e) { threw = true; }
+      eq('a broken decision list is refused, not thrown', [threw, refused], [false, null]);
       const named = JSON.parse(JSON.stringify(s)); named.players[0].name = evil;
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: named, personas: [null, evil, 'doc'], wave: { n: evil, open: 1 }, log: [[evil, 'h ' + evil], [5, 'x']] } }));
       const clean = createSlots(store).get('free');
@@ -4446,6 +4467,15 @@ const SelfTest = (() => {
       marked.decisions.splice(5, 0, { type: 'MARK', player: null, kind: 9, data: [7] });
       marked.decisions.push({ type: 'MARK', player: 0, kind: 1, data: [] });
       const rm = Replay.run(Replay.encode(marked));
+      const holes = JSON.parse(JSON.stringify(rec)); holes.decisions[2] = null;
+      const rh = Replay.run(holes);
+      eq('a missing decision stops the replay with a clear error', [rh.ok, /has no decision/.test(rh.error || '')], [false, true]);
+      const tail = JSON.parse(JSON.stringify(rec)); tail.decisions.push(null);
+      let tailThrew = false, rt = null;
+      try { rt = Replay.run(tail); } catch (e) { tailThrew = true; }
+      eq('a missing decision after the end is reported, not thrown', [tailThrew, rt && rt.ok], [false, false]);
+      const shapes = [null, {}, Object.assign({}, rec, { decisions: 'x' }), Object.assign({}, rec, { decisions: null })].map(x => { try { return Replay.run(x).ok; } catch (e) { return 'threw'; } });
+      eq('a record without a decision list is refused, not thrown', shapes, [false, false, false, false]);
       check('MARK entries are kept and skipped', rm.ok && JSON.stringify(rm.state.scores) === JSON.stringify(s.scores) && Replay.decode(Replay.encode(marked)).decisions[5].kind === 9, rm.error);
       const ext = JSON.parse(JSON.stringify(rec)); ext.decisions.splice(5, 0, { type: 'EXT', player: 1, kind: 2, data: [] });
       check('an EXT decision stops the replay', /kind 2/.test(Replay.run(Replay.encode(ext)).error || ''));
