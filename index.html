@@ -1757,7 +1757,9 @@ function cleanLog(log) {
 }
 
 /* Save slots: one unfinished game per mode. A slot that cleanSlot refuses (another SAVE_FORMAT,
-   or an Engine state that the replay does not rebuild) is dropped; dropped() names those modes once. */
+   or an Engine state that the replay does not rebuild) is dropped; dropped() names those modes once.
+   put and clear return false when the browser did not store the change (full or blocked storage):
+   the slot then lasts for this page load only. */
 function createSlots(store) {
   const js = jsonStore(store);
   const raw = js.load();
@@ -1777,8 +1779,8 @@ function createSlots(store) {
   return Object.freeze({
     get: m => slots[m] || null,
     last: () => last,
-    put(m, data) { slots[m] = Object.assign({ format: SAVE_FORMAT, mode: m, savedAt: Date.now() }, data); last = m; write(); },
-    clear(m) { slots[m] = null; if (last === m) last = null; write(); },
+    put(m, data) { slots[m] = Object.assign({ format: SAVE_FORMAT, mode: m, savedAt: Date.now() }, data); last = m; return write(); },
+    clear(m) { slots[m] = null; if (last === m) last = null; return write(); },
     dropped: () => lost.splice(0)
   });
 }
@@ -3252,13 +3254,20 @@ const App = (() => {
     return b('retry-wave', 'Try again', true) + b('replay-seed', 'Replay Seed') + menu;
   }
 
-  /* Saves the running game to its mode's slot after every action. Finished games are not kept. */
+  /* Saves the running game to its mode's slot after every action. Finished games are not kept.
+     The first save that the browser refuses (full or blocked storage) is reported once per page load.
+     A save refused during a backup import (StorageGate) is not a failure: the page reloads. */
+  let saveFailReported = false;
   function saveGame() {
     if (!app.mode || !app.state || app.state.gameOver) return;
-    slots.put(app.mode, {
+    const ok = slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
       assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX)
     });
+    if (ok || saveFailReported) return;
+    saveFailReported = true;
+    Logger.log('SAVE_FAILED', { mode: app.mode });
+    toast('This browser did not save your game. If you close the page, the game is lost.', 'neg');
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
   /* After a restore, this key (outside 'kct.', so not in backups) tells other open tabs of
@@ -4617,7 +4626,7 @@ const SelfTest = (() => {
         { personas: false, panel: { thinking: Object.assign({}, AI.THINKING_DEFAULTS, { worlds: 200 }), knowledge: AI.KNOWLEDGE_DEFAULTS, style: AI.STYLE_DEFAULTS }, changed: true });
       check('no saved HTML ran', !(/** @type {any} */ (window)).kctSelfTestHit);
       const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
-      blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } });
+      check('a save to blocked storage reports the failure', blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } }) === false);
       check('blocked storage keeps the game for this page load', !!blocked.get('free'));
 
       const st = createStats(mem());
