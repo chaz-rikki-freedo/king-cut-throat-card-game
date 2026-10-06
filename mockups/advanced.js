@@ -294,3 +294,10 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   if (!pa.children.length) pa.remove();
   const bar = $('.me .actionbar'); if (bar) bar.style.display = 'none'; }
 if (window.__leftHand) document.documentElement.classList.add('lefthand');
+// Calls (Accepts ♥, Names ♥) are toasts, not seat bubbles: the game already toasts them. Pass bubbles stay.
+for (const b of $$('.seat .bubble.call, .me .bubble.call')) {
+  const seat = b.closest('.seat, .me'), who = (($('.seat-name', seat) || {}).textContent || '').trim();
+  const t = b.textContent.trim().replace(/^Accepts\s+/, 'accepts ').replace(/^Names\s+/, 'names ');
+  $('#toasts').insertAdjacentHTML('beforeend', '<div class="toast info" style="animation:none">' + (who === 'You' ? 'You ' + t.replace(/^accepts/, 'accept').replace(/^names/, 'name') : who + ' ' + t) + ' trump</div>');
+  b.remove();
+}
