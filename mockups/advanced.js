@@ -80,6 +80,19 @@ const css = `
 .trick .slot-0 .card{box-shadow:0 18px 22px rgba(0,0,0,.5)}
 .c-tag.king{background:#f2c14e;color:#1b1b1b}
 .gamelog li.gap:first-child{margin-top:0}
+.won .wt span .tn{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:900;opacity:.6;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.seat-west .won .wt span .tn,.me .won .wt span .tn{place-items:center start;padding-left:3px}.seat-east .won .wt span .tn{place-items:center end;padding-right:3px}
+/* Seats: a fixed ratio, so West and East always match. */
+.seat-west,.seat-east{aspect-ratio:4/5;align-self:start}
+@media (max-width:720px){.seat-west,.seat-east{aspect-ratio:3/4}}
+/* Scores move into the play area: West upper left, East upper right, you directly under your dashed space. */
+.center{position:relative}
+.center > .pscore,.trick > .pscore{position:absolute;top:6px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
+.center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
+.center:not(:has(.trick)):has(.pscore){padding:56px 0}
+.trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.1)}
+.trick .slot-0 .pscore{color:var(--ink);font-size:46px;font-weight:800;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
+.center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
 /* Kitty: before the first trick, the kitty lies in the middle of the table as one squared stack; at turn-up its top card is face up. */
 .kitty-spot{display:grid;place-items:center;min-height:calc(var(--cw)*3.3)}
 .kitty-spot .stack{position:relative;width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3*1.4)}
@@ -103,6 +116,13 @@ const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.op
 // Seats: tags in a fixed order (Human/AI, Dealer, Namer, Kitty, Turn, Led, Mediator or Showdown [duelist]), packed as they come up;
 // won-trick stacks replace the text.
 const SLOTS = [['ai you', 'id'], ['dealer', 'dealer'], ['caller', 'namer'], ['receiver', 'kitty'], ['turn', 'turn'], ['led', 'led'], ['mediator duelist', 'sd']];
+// Which trick numbers each seat won this hand, read from the log (oldest first at this point).
+const WON = { 0: [], 1: [], 2: [] }, NAME = { You: 0, Kit: 1, Tex: 2 }, curHand = KCT.App.app.state.handNumber;
+{ let h = 0;
+  for (const li of $$('#gameLog li')) {
+    const t = li.textContent, hm = t.match(/^Hand (\d+)\b/); if (hm) h = +hm[1];
+    const w = t.match(/^(You|Kit|Tex) wins? trick (\d+)/); if (w && h === curHand) WON[NAME[w[1]]].push(+w[2]);
+  } }
 for (const s of $$('#seat1,#seat2,#seat0')) {
   const head = $('.seat-head,.me-head', s), id = +s.id.slice(4);
   if (window.__turn === id) head.insertAdjacentHTML('beforeend', '<span class="tag turn" style="background:#2e7d32;color:#fff">Turn</span>');
@@ -117,13 +137,15 @@ for (const s of $$('#seat1,#seat2,#seat0')) {
   const score = $('.score', head);
   if (s.id === 'seat0') head.insertBefore(box, score); else head.after(box);
   const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
-  // Won tricks: one row (a single button); each trick is a rough stack of three backs.
-  const jit = (i, k) => ((i * 7 + k * 13 + i * k * 5) % 9) - 4;
-  // Side by side, all vertical, a little haphazard; each stack overlaps the one before it by 20% of its width.
-  const east = s.id === 'seat2', side = east ? 'margin-right' : 'margin-left';
-  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt v" style="' + (i ? side + ':' + (-28 * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + jit(i, 2) * 0.75 + 'px) rotate(' + jit(i, 3) * 1.5 + 'deg)">' +
-    [0, 1, 2].map(k => '<span style="transform:translate(' + jit(i + k, 4) * 0.6 + 'px,' + jit(i + k, 5) * 0.6 + 'px) rotate(' + jit(i + k, 6) * 1.2 + 'deg)"></span>').join('') + '</div>').join('');
-  tr.outerHTML = n ? '<button type="button" class="won" aria-label="' + n + (n === 1 ? ' trick' : ' tricks') + ' won" title="' + n + (n === 1 ? ' trick' : ' tricks') + ' won">' + tricks + '</button>' : '<div class="won none" aria-hidden="true"></div>';
+  // Won tricks: one row (a single button). Each trick is a rough stack of three backs at truly random angles,
+  // all vertical; each overlaps the one before it by 20% of its width. The top back carries the trick number
+  // in the winner's name color, half transparent.
+  const rnd = (a) => (Math.random() * 2 - 1) * a;
+  const east = s.id === 'seat2', side = east ? 'margin-right' : 'margin-left', nums = WON[id];
+  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt v" style="' + (i ? side + ':' + (-28 * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + rnd(3).toFixed(1) + 'px) rotate(' + rnd(9).toFixed(1) + 'deg)">' +
+    [0, 1, 2].map(k => '<span style="transform:translate(' + rnd(2.5).toFixed(1) + 'px,' + rnd(2.5).toFixed(1) + 'px) rotate(' + rnd(7).toFixed(1) + 'deg)">' +
+      (k === 2 && nums[i] ? '<b class="tn" style="color:var(--name' + id + ')">' + nums[i] + '</b>' : '') + '</span>').join('') + '</div>').join('');
+  tr.outerHTML = n ? '<button type="button" class="won" aria-label="' + n + (n === 1 ? ' trick' : ' tricks') + ' won" title="' + n + (n === 1 ? ' trick' : ' tricks') + ' won' + (nums.length ? ': trick ' + nums.join(', ') : '') + '">' + tricks + '</button>' : '<div class="won none" aria-hidden="true"></div>';
 }
 // KING tag on full-size Kings only (not the small last-trick cards).
 for (const c of $$('.card[data-card^="K"]')) if (!c.closest('.lasttrick') && !$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');
@@ -146,7 +168,6 @@ const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab"
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
   cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + (sym[st.trump] || '–') + '</span>') +
   cell('', 'Hand ' + st.handNumber, trickVal) +
-  cell('lt', 'Last trick', ltCards ? ltCards + (window.__lastWinner || '') : '–') +
   cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
   cell('muted', 'Outside', outN ? outN[1] + ' cards' : '–') +
   cell('muted', 'Turned up', turnedTxt ? turnedTxt[1] : '–') +
@@ -170,3 +191,14 @@ if (kitty && !$('.center .trick')) {
 const lpH = $('.logpanel h2'), collapsed = !!window.__collapsed;
 lpH.insertAdjacentHTML('beforeend', '<button type="button" class="lp-toggle" aria-expanded="' + !collapsed + '" aria-label="' + (collapsed ? 'Open' : 'Collapse') + ' the Latest Scroll" title="' + (collapsed ? 'Open' : 'Collapse') + ' the Latest Scroll">' + (collapsed ? '‹' : '›') + '</button>');
 if (collapsed) $('.layout').classList.add('log-collapsed');
+
+// Scores into the play area.
+{ const center = $('#center'), cls = { seat1: 'w', seat2: 'e', seat0: 'pme' };
+  for (const id of ['seat1', 'seat2', 'seat0']) {
+    const sc = $('#' + id + ' .score'); if (!sc) continue;
+    const row = sc.closest('.score-row'); sc.classList.add('pscore', cls[id]);
+    const slot0 = $('.trick .slot-0');
+    const trick = $('.trick');
+    if (id === 'seat0' && slot0) slot0.appendChild(sc); else if (id !== 'seat0' && trick) trick.appendChild(sc); else center.appendChild(sc);
+    if (row && !row.children.length) row.remove();
+  } }
