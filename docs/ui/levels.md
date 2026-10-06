@@ -59,10 +59,14 @@ These parts protect the player or the data. Every level shows them, in full word
 - The live status for screen readers. In Advanced, it still reads the full status line.
 - The game-over dialog and the wave note: whether the game cleared the wave.
 
+## Decisions
+
+- The level is chosen in a new **Interface** section of the settings panel, and nowhere else. The launch menu does not ask.
+- The level is saved in `kct.settings` with the other settings, so a backup holds it.
+- A new player starts at **Full instructions**, the level closest to the game before UI levels.
+- The menu and the settings panel are the same at every level.
+
 ## Open decisions
 
-- Where the level is chosen: a new **Interface** section in the settings panel, the menu, or both.
-- Whether the level is saved in `kct.settings` with the other settings. If it is, a backup holds it.
-- The default level for a new player, and whether the launch menu asks for one.
 - Whether Waves sets a level (for example, Guided in the first waves).
 - Whether the Tutorial item uses the Guided level.
