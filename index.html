@@ -2038,17 +2038,17 @@ const Backup = (() => {
 const UI_PROFILE_ADVANCED = Object.freeze({
   // 1. Top bar
   'menu': { kind: 'C', show: 'As now: the menu icon and its "Menu" tooltip.', click: 'Opens the menu dialog. The game waits.' },
-  '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits.', issue: 53 },
+  '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits. Note: the app has no version number yet; define one before building the dialog.', issue: 53 },
   '#modeChip': { kind: 'C, L', show: 'As now: "Wave n of 18" (gold) or "Free play" (blue). Hidden when no game runs.', click: 'Opens the results dialog.' },
   '#trumpChip': { kind: 'S', show: 'Hidden. Trump shows once, as the oversized trump pip (see .trump-big).', click: null, issue: 53 },
   '#handChip': { kind: 'S', show: 'Without the trick count, which moves to the Latest Scroll heading.', click: null, issue: 53 },
-  '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
+  '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed, and its label names it (for example, "Speed: Fast") as the tooltip and the screen-reader name.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
   'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' },
   // 2.1 Bot seat. East mirrors West at every level: right-aligned, parts in reverse order.
   '.seat-face': { kind: 'C', show: 'As now: the portrait.', click: 'Opens the profile dialog.' },
   '.seat-name': { kind: 'L', show: 'The name in its color, larger than now. Aligned to the seat\'s outer edge.', click: null, issue: 53 },
   '.tag': { kind: 'L', show: 'Word tags in one fixed order: Human/AI, Dealer, Turn, Namer, Kitty, Led, then Mediator or Showdown. New: Turn and Led. Mirrored with the seat.', click: null, issue: 53 },
-  '.score': { kind: 'S', show: 'A 4 and a 6 score card, one face down over the other, so exactly the score\'s pips show. Mirrored with the seat.', click: null, issue: 53 },
+  '.score': { kind: 'S', show: 'The score as a larger number, without "/10". Mirrored with the seat.', click: null, issue: 53 },
   '.tricks': { kind: 'S', show: 'A face-down stack of won tricks, one small back per trick. A Showdown adds a second stack.', click: 'When the "Look back at won tricks" setting is on (default off): a popup shows the cards of each trick in the stack. When it is off, the stack is not a control.', issue: 53 },
   '.backs': { kind: 'S', show: 'As now: one small back for each card in the hand.', click: null },
   '.discard-note': { kind: 'S', show: 'No text. The discarded backs slide from the hand to the outside pile.', click: null, issue: 53 },
@@ -2056,7 +2056,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.seat.turn': { kind: 'S', show: 'As now: the seat glows during its turn.', click: null },
   '.seat.out': { kind: 'S', show: 'As now: the mediator\'s seat is dimmed during a Showdown.', click: null },
   // 2.2 Center
-  '.banner': { kind: 'S', show: 'A versus intro at Showdown setup: the two Showdown players\' large portraits slide in from their sides; the mediator is smaller.', click: 'Skips the intro.', issue: 53 },
+  '.banner': { kind: 'S', show: 'As now. No versus intro.', click: null },
   '.pile.kitty': { kind: 'L, S', show: 'No caption. One squared face-down stack; at turn-up only the top card is face up on it. Round 2 as now.', click: null, issue: 53 },
   '.pile.outside': { kind: 'C, L', show: 'No caption. A slightly messy face-down pile.', click: 'Opens a list of the cards that you put in the outside pile (View.myOut). Not mentioned in any instruction.', issue: 53 },
   '.trump-big': { kind: 'S', show: 'An oversized trump pip, no words, in the piles row where the trump marker is now, beside the kitty. The one place trump shows.', click: null, issue: 53 },
@@ -2075,7 +2075,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.prompt': { kind: 'I', show: 'Hidden. The buttons and the hand show what you can do.', click: null, issue: 53 },
   '.actionbar .hint': { kind: 'I, D', show: 'Hidden.', click: null, issue: 53 },
   '.actionbar .btn': { kind: 'C', show: 'Compact: "♠" to accept, suit symbols in round 2, "Pass" as a word, "✓ 3" to discard, icons for Continue and Skip.', click: 'As now.', issue: 53 },
-  '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; unplayable cards dimmed; picked cards lift.', click: 'As now: play a card, or pick one to discard.' },
+  '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; picked cards lift. Visual cues replace the hidden prompt: unplayable cards are always dimmed, and only legal picks look active.', click: 'As now: play a card, or pick one to discard.' },
   '.hand .hint': { kind: 'S', show: 'Hidden. An empty hand, the sit-out dim and the Mediator tag show it.', click: null, issue: 53 },
   // 3. Dialog layer and 4. Confirm layer: deferred. Recorded with the default rule; revisit before building.
   '.modal.menu': { kind: 'C, L, D, S', show: 'As now, at every UI level: the menu is the same at all levels.', click: 'As now.' },
@@ -2088,7 +2088,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   // 5. Settings panel
   '#settingsPanel': { kind: 'C, L, D, S, R', show: 'As now, at every UI level, hints and tooltips included. New: an Interface section to choose the UI level.', click: 'As now.', issue: 53 },
   // 6. Log panel, 7. Notices, 8. Card
-  '.logpanel': { kind: 'L, R', show: 'Open: as now. Collapsed: a loupe that magnifies only the latest line, with simulated light and shadow.', click: 'Collapses the log to the loupe, and opens it again.', issue: 53 },
+  '.logpanel': { kind: 'L, R', show: 'Open: as now. Collapsed: a plain loupe that shows only the latest line, in short form. No light or shadow effects.', click: 'Collapses the log to the loupe, and opens it again.', issue: 53 },
   '.toast': { kind: 'S', show: 'As now: every toast.', click: null },
   '#updateNote': { kind: 'S, C', show: 'As now: every level keeps the update note.', click: 'As now: Reload or Later.' },
   '.c-tag': { kind: 'L', show: 'As now (BEST, RIGHT, LEFT ♠), plus a new KING tag on every King.', click: null, issue: 53 },
