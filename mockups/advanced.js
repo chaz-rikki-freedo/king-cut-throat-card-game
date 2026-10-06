@@ -37,10 +37,11 @@ const css = `
 .seat-east{align-items:flex-end}
 .seat-east .score-row{justify-content:flex-end}
 .seat .seat-head{order:0}.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}
-.won{display:flex;align-items:center;min-height:24px;padding-right:9px}
-.won .mini-back{width:22px;height:15px;margin-right:-9px;background:repeating-linear-gradient(-45deg,#7a1f2b 0 3px,#93303d 3px 6px);transform:rotate(-3deg)}
-.won .mini-back:nth-child(2n){transform:rotate(2deg)}
-.seat-east .won{justify-content:flex-end}
+.won{all:unset;position:relative;display:block;width:64px;height:64px;cursor:pointer;border-radius:8px}
+.won:hover{background:rgba(255,255,255,.06)}.won:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.seat-east .won{align-self:flex-end}
+.won .wt{position:absolute;left:50%;top:50%;width:28px;height:46px;margin:-23px 0 0 -14px}
+.won .wt span{position:absolute;inset:0;border-radius:3px;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 3px,#93303d 3px 6px);box-shadow:0 1px 2px rgba(0,0,0,.45)}
 /* Trick cards in 3D: the table tilts away from you, each bot card turns to face your slot, lifted and larger. */
 .trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
 .trick .slot{transform-style:preserve-3d}
@@ -71,7 +72,11 @@ for (const s of $$('#seat1,#seat2,#seat0')) {
   const tags = $$('.tag', head).sort((a, b) => order.findIndex(c => a.classList.contains(c)) - order.findIndex(c => b.classList.contains(c)));
   const score = $('.score', head); tags.forEach(t => head.insertBefore(t, score && score.parentNode === head ? score : null));
   const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
-  tr.outerHTML = '<div class="won" aria-label="' + n + ' tricks won">' + '<span class="mini-back"></span>'.repeat(n) + '</div>';
+  // Won tricks: one pile; each trick is a rough stack of three backs, crosswise to the trick below.
+  const jit = (i, k) => ((i * 7 + k * 13) % 5) - 2;
+  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt" style="transform:translate(' + jit(i, 1) + 'px,' + (-i * 2 + jit(i, 2) / 2) + 'px) rotate(' + ((i % 2 ? 90 : 0) + jit(i, 3) * 2) + 'deg)">' +
+    [0, 1, 2].map(k => '<span style="transform:translate(' + jit(i + k, 4) / 2 + 'px,' + jit(i + k, 5) / 2 + 'px) rotate(' + jit(i + k, 6) + 'deg)"></span>').join('') + '</div>').join('');
+  tr.outerHTML = n ? '<button type="button" class="won" aria-label="' + n + (n === 1 ? ' trick' : ' tricks') + ' won" title="' + n + (n === 1 ? ' trick' : ' tricks') + ' won">' + tricks + '</button>' : '<div class="won" aria-hidden="true"></div>';
 }
 // KING tag on full-size Kings only (not the small last-trick cards).
 for (const c of $$('.card[data-card^="K"]')) if (!c.closest('.lasttrick') && !$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');

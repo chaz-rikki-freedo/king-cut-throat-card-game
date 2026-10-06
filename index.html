@@ -2049,7 +2049,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.seat-name': { kind: 'L', show: 'The name in its color, larger than now. Aligned to the seat\'s outer edge.', click: null, issue: 53 },
   '.tag': { kind: 'L', show: 'Word tags in one fixed order: Human/AI, Dealer, Turn, Namer, Kitty, Led, then Mediator or Showdown. New: Turn and Led. Mirrored with the seat.', click: null, issue: 53 },
   '.score': { kind: 'S', show: 'The score as a larger number, without "/10". Mirrored with the seat.', click: null, issue: 53 },
-  '.tricks': { kind: 'S', show: 'A face-down stack of won tricks, one small back per trick. A Showdown adds a second stack.', click: 'When the "Look back at won tricks" setting is on (default off): a popup shows the cards of each trick in the stack. When it is off, the stack is not a control.', issue: 53 },
+  '.tricks': { kind: 'S', show: 'One face-down pile of won tricks, below the score, big enough to click (64 px). Each trick is a rough stack of three backs, laid crosswise to the trick below it (vertical, horizontal, vertical, ...), so the layers can be counted. A Showdown adds a second pile.', click: 'When the "Look back at won tricks" setting is on (default off): a popup shows the cards of each trick in the stack. When it is off, the stack is not a control.', issue: 53 },
   '.backs': { kind: 'S', show: 'One small back for each card in the hand, above the score. Seat order: head, hand backs, score, won-trick stack.', click: null, issue: 53 },
   '.discard-note': { kind: 'S', show: 'No text. The discarded backs slide from the hand to the outside pile.', click: null, issue: 53 },
   '.bubble': { kind: 'S', show: 'As now: "Pass", "Accepts ♠", "Names ♥ Hearts".', click: null },
