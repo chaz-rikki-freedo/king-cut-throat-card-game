@@ -45,7 +45,12 @@ const css = `
 .trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
 .trick .slot{transform-style:preserve-3d}
 .trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
-.trick .slot-1 .card,.trick .slot-2 .card{--w:calc(var(--cw)*2)}
+.trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
+.trick .slot{position:relative}
+.trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.55)}
+.trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.55)}
+.trick .slot .empty{background:rgba(11,26,18,.55)}
+.trick .slot-1 .empty,.trick .slot-2 .empty{visibility:hidden}
 .trick{min-height:calc(var(--cw)*3.3)!important}
 .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
 .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:10px 18px 22px rgba(0,0,0,.5)}
@@ -86,8 +91,13 @@ const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab"
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
   cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + (sym[st.trump] || '–') + '</span>') +
   cell('', 'Hand ' + st.handNumber, 'Trick ' + st.trickNumber + '/7') +
-  cell('lt', 'Last trick', ltCards + (window.__lastWinner || '')) +
+  cell('lt', 'Last trick', ltCards ? ltCards + (window.__lastWinner || '') : '–') +
   cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
   cell('muted', 'Outside', (outN ? outN[1] : '–') + ' cards') +
   cell('muted', 'Turned up', turnedTxt ? turnedTxt[1] : '–') +
   '</section>');
+
+// Trick stacking: each card sits above the cards played before it; your empty slot, still to play, is on top.
+const plays = (st.trick && st.trick.plays) || [];
+plays.forEach((pl, i) => { const sl = $('.trick .slot-' + pl.player); if (sl) sl.style.zIndex = String(i + 1); });
+for (const sl of $$('.trick .slot')) if (!sl.style.zIndex) sl.style.zIndex = String(plays.length + 1);
