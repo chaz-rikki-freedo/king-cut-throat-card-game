@@ -36,7 +36,20 @@ const css = `
 .seat-east .seat-head{flex-direction:row-reverse}
 .seat-east{align-items:flex-end}
 .seat-east .score-row{justify-content:flex-end}
-.seat .seat-head{order:0}.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}
+.seat .seat-head{order:0}.seat .tagbox{order:1}.seat .backs{order:2}.seat .score-row{order:3}.seat .won{order:4}
+.seat .backs{min-height:24px}
+/* Tags in fixed slots: every seat reserves the same cells, so names, backs and scores line up. */
+.tagbox{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:20px;gap:4px;width:100%}
+.seat-east .tagbox{direction:rtl}
+.tagbox .tag{margin:0;justify-self:stretch;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
+.tagbox .cell{border-radius:6px;outline:1px dashed rgba(255,255,255,.07);outline-offset:-1px}
+.tagbox .sd{grid-column:span 3}
+.me .tagbox{grid-template-columns:repeat(7,minmax(0,64px));width:auto}
+.me .tagbox .sd{grid-column:span 1}
+@media (max-width:720px){
+  .me .tagbox{grid-template-columns:repeat(4,minmax(0,1fr));flex:1 1 220px}.me .tagbox .sd{grid-column:span 1}
+  .tagbox .tag{font-size:9px;letter-spacing:.02em}
+}
 .won{all:unset;display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;min-height:48px;padding:4px;cursor:pointer;border-radius:8px;max-width:100%}
 .won:hover{background:rgba(255,255,255,.06)}.won:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .seat-east .won{align-self:flex-end;flex-direction:row-reverse}
@@ -63,20 +76,27 @@ const css = `
 document.head.insertAdjacentHTML('beforeend', '<style id="mockAdv">' + css + '</style>');
 // Top bar: speed icon with a label.
 const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.options[cur.selectedIndex].text;
-// Seats: Turn and Led tags in fixed order; won-trick stacks replace the text.
-const order = ['ai', 'you', 'dealer', 'turn', 'caller', 'receiver', 'led', 'mediator', 'showdown'];
+// Seats: tags move into fixed slots (bots: Human/AI, Dealer, Namer / Kitty, Turn, Led / Mediator or Showdown; you: one row);
+// won-trick stacks replace the text.
+const SLOTS = [['ai you', 'id'], ['dealer', 'dealer'], ['caller', 'namer'], ['receiver', 'kitty'], ['turn', 'turn'], ['led', 'led'], ['mediator showdown', 'sd']];
 for (const s of $$('#seat1,#seat2,#seat0')) {
   const head = $('.seat-head,.me-head', s), id = +s.id.slice(4);
   if (window.__turn === id) head.insertAdjacentHTML('beforeend', '<span class="tag turn" style="background:#2e7d32;color:#fff">Turn</span>');
   if (window.__led === id) head.insertAdjacentHTML('beforeend', '<span class="tag led" style="background:#455a8a;color:#fff">Led</span>');
-  const tags = $$('.tag', head).sort((a, b) => order.findIndex(c => a.classList.contains(c)) - order.findIndex(c => b.classList.contains(c)));
-  const score = $('.score', head); tags.forEach(t => head.insertBefore(t, score && score.parentNode === head ? score : null));
+  const tags = $$('.tag', head), box = document.createElement('div');
+  box.className = 'tagbox';
+  for (const [classes, slot] of SLOTS) {
+    const t = tags.find(x => classes.split(' ').some(c => x.classList.contains(c)));
+    if (t) { t.classList.add(slot); box.appendChild(t); } else box.insertAdjacentHTML('beforeend', '<span class="cell ' + slot + '" aria-hidden="true"></span>');
+  }
+  const score = $('.score', head);
+  if (s.id === 'seat0') head.insertBefore(box, score); else head.after(box);
   const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
   // Won tricks: one row (a single button); each trick is a rough stack of three backs.
   const jit = (i, k) => ((i * 7 + k * 13 + i * k * 5) % 9) - 4;
-  // Side by side, vertical then horizontal, a little haphazard; each stack overlaps the one before it by 20% of that stack's width.
+  // Side by side, all vertical, a little haphazard; each stack overlaps the one before it by 20% of its width.
   const east = s.id === 'seat2', side = east ? 'margin-right' : 'margin-left';
-  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt ' + (i % 2 ? 'h' : 'v') + '" style="' + (i ? side + ':' + (-(i % 2 ? 28 : 46) * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + jit(i, 2) * 0.75 + 'px) rotate(' + jit(i, 3) * 1.5 + 'deg)">' +
+  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt v" style="' + (i ? side + ':' + (-28 * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + jit(i, 2) * 0.75 + 'px) rotate(' + jit(i, 3) * 1.5 + 'deg)">' +
     [0, 1, 2].map(k => '<span style="transform:translate(' + jit(i + k, 4) * 0.6 + 'px,' + jit(i + k, 5) * 0.6 + 'px) rotate(' + jit(i + k, 6) * 1.2 + 'deg)"></span>').join('') + '</div>').join('');
   tr.outerHTML = n ? '<button type="button" class="won" aria-label="' + n + (n === 1 ? ' trick' : ' tricks') + ' won" title="' + n + (n === 1 ? ' trick' : ' tricks') + ' won">' + tricks + '</button>' : '<div class="won" aria-hidden="true"></div>';
 }
