@@ -2050,7 +2050,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.tag': { kind: 'L', show: 'Word tags in one fixed order: Human/AI, Dealer, Turn, Namer, Kitty, Led, then Mediator or Showdown. New: Turn and Led. Mirrored with the seat.', click: null, issue: 53 },
   '.score': { kind: 'S', show: 'The score as a larger number, without "/10". Mirrored with the seat.', click: null, issue: 53 },
   '.tricks': { kind: 'S', show: 'A face-down stack of won tricks, one small back per trick. A Showdown adds a second stack.', click: 'When the "Look back at won tricks" setting is on (default off): a popup shows the cards of each trick in the stack. When it is off, the stack is not a control.', issue: 53 },
-  '.backs': { kind: 'S', show: 'As now: one small back for each card in the hand.', click: null },
+  '.backs': { kind: 'S', show: 'One small back for each card in the hand, above the score. Seat order: head, hand backs, score, won-trick stack.', click: null, issue: 53 },
   '.discard-note': { kind: 'S', show: 'No text. The discarded backs slide from the hand to the outside pile.', click: null, issue: 53 },
   '.bubble': { kind: 'S', show: 'As now: "Pass", "Accepts ♠", "Names ♥ Hearts".', click: null },
   '.seat.turn': { kind: 'S', show: 'As now: the seat glows during its turn.', click: null },
@@ -2068,7 +2068,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.trick': { kind: 'S', show: 'As now: one slot per seat. At trick end the cards slide to the winner\'s won-trick stack.', click: 'Skips the trick-end wait, as now.', issue: 53 },
   'table.stats': { kind: 'R', show: 'As now.', click: null },
   '.status': { kind: 'S', show: 'Hidden on screen. #liveStatus still reads the full sentence to screen readers.', click: null, issue: 53 },
-  '.lasttrick': { kind: 'R', show: 'The three small cards, the winning card marked. No caption.', click: null, issue: 53 },
+  '.lasttrick': { kind: 'R', show: 'Hidden in the center: it repeats the log. The collapsed log shows the last trick instead.', click: null, issue: 53 },
   // 2.3 Your seat
   '.seat-toggle': { kind: 'C, L', show: 'As now: Human or AI.', click: 'Lets the AI take over your seat, or hands it back, when the setting allows it.' },
   '.playing-as': { kind: 'S', show: 'As now: the face and "playing as Nora".', click: null },
@@ -2088,7 +2088,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   // 5. Settings panel
   '#settingsPanel': { kind: 'C, L, D, S, R', show: 'As now, at every UI level, hints and tooltips included. New: an Interface section to choose the UI level.', click: 'As now.', issue: 53 },
   // 6. Log panel, 7. Notices, 8. Card
-  '.logpanel': { kind: 'L, R', show: 'Open: as now. Collapsed: a plain loupe that shows only the latest line, in short form. No light or shadow effects.', click: 'Collapses the log to the loupe, and opens it again.', issue: 53 },
+  '.logpanel': { kind: 'L, R', show: 'Newest first: each group keeps its heading on top, its lines newest first. Collapsed: two rows. The last trick, fixed (three small cards, the winning card marked, and who won), and the newest log line in short form. No light or shadow effects.', click: 'Collapses the log, and opens it again.', issue: 53 },
   '.toast': { kind: 'S', show: 'As now: every toast.', click: null },
   '#updateNote': { kind: 'S, C', show: 'As now: every level keeps the update note.', click: 'As now: Reload or Later.' },
   '.c-tag': { kind: 'L', show: 'As now (BEST, RIGHT, LEFT ♠), plus a new KING tag on every King.', click: null, issue: 53 },

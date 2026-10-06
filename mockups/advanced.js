@@ -19,7 +19,15 @@ const css = `
 .messy .card{position:absolute;--w:var(--cw-small);left:0;top:0}
 .trump-big div{display:none}.trump-big .sym{font-size:calc(var(--cw-small)*1.3)!important}
 .turned .card{--w:calc(var(--cw-small)*.7)}
-.lasttrick{font-size:0!important}
+.center .lasttrick{display:none!important}
+.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}.seat .seat-head{order:0}
+.loupe{display:none;flex-direction:column;gap:6px;background:rgba(0,0,0,.28);border-radius:10px;padding:8px 10px;font-size:13px}
+.loupe .lt{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.loupe .lt .card{--w:28px}
+.loupe .lt .who-won{margin-left:auto}
+.loupe .now{background:none;box-shadow:none;border-radius:0;max-height:none;overflow:visible;border-top:1px solid rgba(255,255,255,.1);padding-top:6px;list-style:none;margin:0;padding-left:0}
+.logpanel.collapsed #gameLog{display:none}.logpanel.collapsed .loupe{display:flex}.logpanel.collapsed{min-height:0}
+.gamelog li.gap:first-child{margin-top:0}
 .c-tag.king{background:#f2c14e;color:#1b1b1b}
 .logpanel h2 .tn{float:right;color:var(--muted);font-weight:600;letter-spacing:0}
 `;
@@ -47,3 +55,14 @@ const turned = $$('.pile').find(p => /Turned card/.test(p.textContent));
 if (turned && window.__turnedHTML) turned.innerHTML = '<div class="turned pile-cards">' + window.__turnedHTML + '</div>';
 // KING tag on every King.
 for (const c of $$('.card[data-card^="K"]')) if (!$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');
+
+// Log: newest first. Groups start at li.gap; each keeps its heading on top, its lines newest first.
+const log = $('#gameLog'), groups = [];
+for (const li of [...log.children]) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
+log.replaceChildren(...groups.reverse().flatMap(g => g[0].classList.contains('gap') ? [g[0], ...g.slice(1).reverse()] : g.slice().reverse()));
+// Collapsed view: the last trick (fixed) and the newest log line.
+const lt = $('.center .lasttrick'), cards = lt ? $$('.card', lt).map(c => c.outerHTML).join('') : '';
+const won = window.__lastWinner || '';
+const latest = [...log.children].find(li => !li.classList.contains('gap'));
+$('.logpanel h2').insertAdjacentHTML('afterend', '<div class="loupe"><div class="lt">' + cards + '<span class="who-won">' + won + '</span></div><ol class="gamelog now">' + (latest ? latest.outerHTML.replace(/class="[^"]*"/, '') : '') + '</ol></div>');
+if (window.__collapsed) $('.logpanel').classList.add('collapsed');
