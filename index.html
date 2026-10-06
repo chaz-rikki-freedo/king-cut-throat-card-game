@@ -2041,7 +2041,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits.', issue: 53 },
   '#modeChip': { kind: 'C, L', show: 'As now: "Wave n of 18" (gold) or "Free play" (blue). Hidden when no game runs.', click: 'Opens the results dialog.' },
   '#trumpChip': { kind: 'S', show: 'Hidden. Trump shows once, as the oversized trump pip (see .trump-big).', click: null, issue: 53 },
-  '#handChip': { kind: 'S', show: 'Not decided. The trick count shows once on the screen: here or the trick label in the center.', click: null, open: true, issue: 53 },
+  '#handChip': { kind: 'S', show: 'Without the trick count, which moves to the Latest Scroll heading.', click: null, issue: 53 },
   '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
   'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' },
   // 2.1 Bot seat. East mirrors West at every level: right-aligned, parts in reverse order.
@@ -2061,6 +2061,10 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.pile.outside': { kind: 'C, L', show: 'No caption. A slightly messy face-down pile.', click: 'Opens a list of the cards that you put in the outside pile (View.myOut). Not mentioned in any instruction.', issue: 53 },
   '.trump-big': { kind: 'S', show: 'An oversized trump pip, no words. The one place trump shows; where it sits is not decided.', click: null, open: true, issue: 53 },
   'turned-card-note': { kind: 'R', show: 'A small face-up turned card, no caption.', click: null, issue: 53 },
+  '.trick-label': { kind: 'S', show: 'Hidden. The trick count moves to the right end of the Latest Scroll heading.', click: null, issue: 53 },
+  '.who': { kind: 'L, S', show: 'Hidden. The slot\'s position shows who played.', click: null },
+  '.summary': { kind: 'S, R', show: 'As now.', click: 'Its Continue button moves on, as now.' },
+  '.meta': { kind: 'R', show: 'As now.', click: null },
   '.trick': { kind: 'S', show: 'As now: one slot per seat. At trick end the cards slide to the winner\'s won-trick stack.', click: 'Skips the trick-end wait, as now.', issue: 53 }
 });
 
