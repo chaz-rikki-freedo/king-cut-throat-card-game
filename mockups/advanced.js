@@ -127,6 +127,10 @@ const css = `
 .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:calc(var(--kw)*1.4)}
 .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
 .kpile .card .cat{position:absolute;left:15%;top:10%;width:70%;height:80%;fill:#000;opacity:.5}
+/* Action buttons: bottom of the play area, right-justified (primary action rightmost, Pass to its left).
+   Left-hand mode (a future setting) mirrors it: bottom left, primary action leftmost. */
+.center > .pile-act{position:absolute;bottom:10px;right:12px;z-index:9;flex-direction:row-reverse}
+html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
 .pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
@@ -277,3 +281,7 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
 { const me = $('#seat0'), won = $('.me-head .won, #seat0 .won'), hand = $('#hand');
   if (won) me.appendChild(won);
   if (hand) hand.style.setProperty('--n', String(Math.max(2, hand.children.length))); }
+
+// Action buttons to the corner of the play area.
+{ const pa = $('.kitty-spot .pile-act'); if (pa) $('#center').appendChild(pa); }
+if (window.__leftHand) document.documentElement.classList.add('lefthand');

@@ -52,6 +52,9 @@ const TARGETS = [
     // A second discard view: both bots have discarded, so the outside pile holds 6.
     const d = snaps.find(x => x.name === '1-discard');
     if (d) snaps.push({ ...d, name: '1b-discard-bots-done', vars: { ...d.vars, outside: 6 } });
+    // Left-hand mode (a future setting): the round 1 bid, mirrored action buttons.
+    const b1 = snaps.find(x => x.name === '5-bid1');
+    if (b1) snaps.push({ ...b1, name: '5b-bid1-lefthand', vars: { ...b1.vars, leftHand: true } });
     for (const { name, html, vars } of snaps) {
       for (const [w, h, tag] of [[1280, 860, 'desktop'], [390, 844, 'phone']]) {
         for (const collapsed of tag === 'phone' ? [true] : [false, true]) {
@@ -59,7 +62,7 @@ const TARGETS = [
           await view.setContent(html.replace('<head>', '<head><base href="' + srv.url + '">'));
           await view.evaluate(([src, v, c]) => {
             window.KCT = { App: { app: { state: v.state } } };
-            Object.assign(window, { __turn: v.turn, __led: v.led, __lastWinner: v.lastWinner, __collapsed: c, __outside: v.outside });
+            Object.assign(window, { __turn: v.turn, __led: v.led, __lastWinner: v.lastWinner, __collapsed: c, __outside: v.outside, __leftHand: v.leftHand });
             new Function(src)();
           }, [ADV, vars, collapsed]);
           await view.waitForTimeout(150);
