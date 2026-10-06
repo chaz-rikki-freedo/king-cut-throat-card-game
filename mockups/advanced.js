@@ -104,23 +104,24 @@ const css = `
 .center > .pscore,.trick > .pscore{position:absolute;top:6px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
 /* A summary chart already shows the scores: no play-area scores then. Its names and scores are larger, in name colors. */
-.center:not(:has(.trick)):not(:has(.summary)):has(.pscore){padding:56px 0}
 .center:has(.summary) > .pscore,.center:has(.summary) .trick .pscore{display:none}
 .summary table.stats td:first-child{white-space:nowrap;font-size:18px;font-weight:800;text-align:left}
 .summary table.stats td:first-child small{font-size:12px;font-weight:600;color:var(--muted)}
 .summary table.stats td:last-child{font-size:26px;font-weight:800;line-height:1.1}
 .trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.45)}
-.trick .slot-0 .pscore{color:var(--ink);font-size:46px;font-weight:800;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
+/* Scores never take layout space: they float, so they never shift the centering of anything. */
+.trick .slot-0 .pscore{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);color:var(--ink);font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
 /* Kitty: before the first trick, the kitty lies in the middle of the table as one squared stack; at turn-up its top card is face up. */
 .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*3.3)}
-.kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--cw)*.8)}
-.kpile{position:relative;width:calc(var(--cw)*1.3*1.7);height:calc(var(--cw)*1.3*1.4)}
-.kpile .card{position:absolute;top:0;--w:calc(var(--cw)*1.3);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
+.kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
+.kitty-spot{--kw:var(--cw)}
+.kpile{position:relative;width:calc(var(--kw)*3 + 12px);height:calc(var(--kw)*1.4)}
+.kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
 .kpile .card .cat{position:absolute;left:15%;top:10%;width:70%;height:80%;fill:#000;opacity:.5}
 .pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
-.outpile{position:relative;width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3*1.4)}
-.outpile .card{position:absolute;left:0;top:0;--w:calc(var(--cw)*1.3);box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
+.outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .outpile.empty{border:2px dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
 .outpile .op-face{position:absolute;inset:0;z-index:5;display:grid;place-items:center}
 .outpile .op-n{font-size:calc(var(--cw)*.9);font-weight:900;line-height:1;color:rgba(0,0,0,.45)}
@@ -209,18 +210,18 @@ for (const sl of $$('.trick .slot')) if (!sl.style.zIndex) sl.style.zIndex = Str
 
 log.scrollTop = 0;
 
-// Kitty in the middle of the table before the first trick: spread, so its few cards can be counted. Until the
+// Kitty in the middle of the table before the first trick: spread flat side by side, so its few cards can be counted. Until the
 // turn-up, the top card carries a black cat silhouette at 50% opacity.
 const CAT = '<svg class="cat" viewBox="0 0 64 80" aria-hidden="true"><path d="M20 6l5 9c2-.6 4-.9 6-.9s4 .3 6 .9l5-9 2 13c2 3 3 6 3 9 0 5-2 9-6 12 6 5 10 13 10 22 0 6-1 10-3 13h6c4 0 6-2 6-5s-2-4-4-4c-2 0-3 1-3 3h-3c0-4 3-6 6-6 5 0 7 3 7 7 0 5-4 8-9 8H17c-3 0-5-2-5-4s1-4 3-5c-2-4-3-8-3-13 0-9 4-17 10-22-4-3-6-7-6-12 0-3 1-6 3-9z"/></svg>';
 const kitty = $$('.center .piles .pile').find(p => /Kitty/.test(p.textContent));
 if (kitty && !$('.center .trick')) {
   const cards = $$('.pile-cards .card', kitty).reverse(), top = cards.length - 1;
   $('.center .piles').insertAdjacentHTML('afterend', '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + cards.length + ' cards">' +
-    cards.map((c, i) => c.outerHTML.replace('class="card', 'style="left:' + (i * 34) + '%;transform:rotate(' + ((i - top / 2) * 4) + 'deg)" class="card')
+    cards.map((c, i) => c.outerHTML.replace('class="card', 'style="left:calc(' + i + ' * (var(--kw) + 6px))" class="card')
       .replace(/<\/div>$/, i === top && /\bback\b/.test(c.className) ? CAT + '</div>' : '</div>')).join('') + '</div></div></div>');
 }
 // Discard phase: the outside pile is a neat squared stack beside the kitty, its count on the top card in transparent
-// black. The action button sits below both piles.
+// black. The action buttons sit above both piles.
 const discardBtn = $('[data-action="confirm-discard"]');
 if (discardBtn && $('.kitty-spot')) {
   const n = window.__outside != null ? window.__outside : $$('.seat .discard-note, .me .discard-note').filter(d => /Discarded/.test(d.textContent)).length * 3;
@@ -228,12 +229,12 @@ if (discardBtn && $('.kitty-spot')) {
   const backs = Array.from({ length: layers }, (_, i) => '<div class="card back" style="transform:translate(' + i * 1.5 + 'px,' + (-i * 1.5) + 'px)"></div>').join('');
   $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards">' + backs +
     '<div class="op-face" style="transform:translate(' + Math.max(0, layers - 1) * 1.5 + 'px,' + (-Math.max(0, layers - 1) * 1.5) + 'px)"><b class="op-n">' + n + '</b></div></div>');
-  $('.kitty-spot').insertAdjacentHTML('beforeend', '<div class="pile-act"></div>');
+  $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
   $('.kitty-spot .pile-act').appendChild(discardBtn);
 }
 // Bidding: the same rule, the action buttons go below the kitty.
 if (!discardBtn && $('.kitty-spot') && $('.actionbar .btn')) {
-  $('.kitty-spot').insertAdjacentHTML('beforeend', '<div class="pile-act"></div>');
+  $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
   for (const b of $$('.actionbar .btn')) $('.kitty-spot .pile-act').appendChild(b);
 }
 // Log toggle.
