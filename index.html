@@ -2077,7 +2077,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.actionbar .btn': { kind: 'C', show: 'Compact: "♠" to accept, suit symbols in round 2, "Pass" as a word, "✓ 3" to discard, icons for Continue and Skip.', click: 'As now.', issue: 53 },
   '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; unplayable cards dimmed; picked cards lift.', click: 'As now: play a card, or pick one to discard.' },
   '.hand .hint': { kind: 'S', show: 'Hidden. An empty hand, the sit-out dim and the Mediator tag show it.', click: null, issue: 53 },
-  // 3. Dialog layer and 4. Confirm layer: provisional, the owner expects these to evolve.
+  // 3. Dialog layer and 4. Confirm layer: deferred. Recorded with the default rule; revisit before building.
   '.modal.menu': { kind: 'C, L, D, S', show: 'As now, at every UI level: the menu is the same at all levels.', click: 'As now.' },
   'showRules': { kind: 'D', show: 'As now: the one descriptor that Advanced keeps.', click: 'Back returns to the menu.' },
   '.modal.swap': { kind: 'I, L, D, C', show: 'As now: the explanation, the seat cards with their hints, ⇄ and Play.', click: 'New: a Back control that returns to the menu.', issue: 53 },
