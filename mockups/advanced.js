@@ -89,7 +89,11 @@ const css = `
 .center{position:relative}
 .center > .pscore,.trick > .pscore{position:absolute;top:6px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
-.center:not(:has(.trick)):has(.pscore){padding:56px 0}
+/* A summary chart already shows the scores: no play-area scores then. Its names and scores are larger, in name colors. */
+.center:has(.summary) > .pscore,.center:has(.summary) .trick .pscore{display:none}
+.summary table.stats td:first-child{white-space:nowrap;font-size:18px;font-weight:800;text-align:left}
+.summary table.stats td:first-child small{font-size:12px;font-weight:600;color:var(--muted)}
+.summary table.stats td:last-child{font-size:26px;font-weight:800;line-height:1.1}
 .trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.1)}
 .trick .slot-0 .pscore{color:var(--ink);font-size:46px;font-weight:800;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
 .center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
@@ -202,3 +206,12 @@ if (collapsed) $('.layout').classList.add('log-collapsed');
     if (id === 'seat0' && slot0) slot0.appendChild(sc); else if (id !== 'seat0' && trick) trick.appendChild(sc); else center.appendChild(sc);
     if (row && !row.children.length) row.remove();
   } }
+
+// Summary chart: color each name and score in the player's name color; the role note goes small.
+for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
+  const c = tr.cells; if (!c || !c.length || tr.querySelector('th')) continue;
+  const m = c[0].textContent.match(/^(You|Kit|Tex)(.*)$/); if (!m) continue;
+  const id = NAME[m[1]], col = 'var(--name' + id + ')';
+  c[0].innerHTML = '<span style="color:' + col + '">' + m[1] + '</span>' + (m[2].trim() ? ' <small>' + m[2].trim() + '</small>' : '');
+  c[c.length - 1].style.color = col;
+}
