@@ -109,7 +109,15 @@ const css = `
 .trick .slot-0 .pscore{color:var(--ink);font-size:46px;font-weight:800;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
 .center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
 /* Kitty: before the first trick, the kitty lies in the middle of the table as one squared stack; at turn-up its top card is face up. */
-.kitty-spot{display:grid;place-items:center;min-height:calc(var(--cw)*3.3)}
+.kitty-spot{display:flex;align-items:center;justify-content:center;gap:calc(var(--cw)*.8);min-height:calc(var(--cw)*3.3)}
+.outpile{position:relative;width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3*1.4)}
+.outpile .card{position:absolute;left:0;top:0;--w:calc(var(--cw)*1.3);box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.outpile.empty{border:2px dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
+.outpile .op-face{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.outpile .op-n{font-size:calc(var(--cw)*.9);font-weight:900;line-height:1;color:rgba(0,0,0,.45)}
+.outpile.empty .op-n{color:rgba(255,255,255,.22)}
+.outpile .op-face .btn{font-size:13px;padding:5px 10px;white-space:nowrap}
+@media (max-width:720px){.outpile .op-face .btn{font-size:11px;padding:3px 6px}}
 .kitty-spot .stack{position:relative;width:calc(var(--cw)*1.3);height:calc(var(--cw)*1.3*1.4)}
 .kitty-spot .stack .card{position:absolute;left:0;top:0;--w:calc(var(--cw)*1.3);box-shadow:0 2px 4px rgba(0,0,0,.4)}
 /* Log: a toggle collapses it to a side tab (wide screens) or a one-line bar (narrow screens). */
@@ -202,6 +210,17 @@ if (kitty && !$('.center .trick')) {
   $('.center .piles').insertAdjacentHTML('afterend', '<div class="kitty-spot" aria-label="Kitty"><div class="stack">' +
     cards.map((c, i) => c.outerHTML.replace('class="card', 'style="transform:translate(' + (i * 2) + 'px,' + (-i * 2) + 'px)" class="card')).join('') + '</div></div>');
 }
+// Discard phase: the outside pile grows beside the kitty. Its count sits on the top card in transparent black,
+// and the Discard button sits under the number, so you discard onto the pile.
+const discardBtn = $('[data-action="confirm-discard"]');
+if (discardBtn && $('.kitty-spot')) {
+  const n = window.__outside != null ? window.__outside : $$('.seat .discard-note, .me .discard-note').filter(d => /Discarded/.test(d.textContent)).length * 3;
+  const rnd = a => (Math.random() * 2 - 1) * a;
+  const backs = Array.from({ length: Math.min(n, 5) }, () => '<div class="card back" style="transform:translate(' + rnd(4).toFixed(1) + 'px,' + rnd(4).toFixed(1) + 'px) rotate(' + rnd(10).toFixed(1) + 'deg)"></div>').join('');
+  $('.kitty-spot').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards">' + backs +
+    '<div class="op-face"><b class="op-n">' + n + '</b></div></div>');
+  $('.outpile .op-face').appendChild(discardBtn);
+}
 // Log toggle.
 const lpH = $('.logpanel h2'), collapsed = !!window.__collapsed;
 lpH.insertAdjacentHTML('beforeend', '<button type="button" class="lp-toggle" aria-expanded="' + !collapsed + '" aria-label="' + (collapsed ? 'Open' : 'Collapse') + ' the Latest Scroll" title="' + (collapsed ? 'Open' : 'Collapse') + ' the Latest Scroll">' + (collapsed ? '‹' : '›') + '</button>');
@@ -215,6 +234,7 @@ if (collapsed) $('.layout').classList.add('log-collapsed');
     const slot0 = $('.trick .slot-0');
     const trick = $('.trick');
     if (id === 'seat0' && slot0) slot0.appendChild(sc); else if (id !== 'seat0' && trick) trick.appendChild(sc); else center.appendChild(sc);
+    if (parseInt(sc.textContent, 10) === 0) sc.style.visibility = 'hidden';
     if (row && !row.children.length) row.remove();
   } }
 
