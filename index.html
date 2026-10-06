@@ -2075,7 +2075,16 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.prompt': { kind: 'I', show: 'Hidden. The buttons and the hand show what you can do.', click: null, issue: 53 },
   '.actionbar .hint': { kind: 'I, D', show: 'Hidden.', click: null, issue: 53 },
   '.actionbar .btn': { kind: 'C', show: 'Compact: "♠" to accept, suit symbols in round 2, "Pass" as a word, "✓ 3" to discard, icons for Continue and Skip.', click: 'As now.', issue: 53 },
-  '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; unplayable cards dimmed; picked cards lift.', click: 'As now: play a card, or pick one to discard.' }
+  '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; unplayable cards dimmed; picked cards lift.', click: 'As now: play a card, or pick one to discard.' },
+  '.hand .hint': { kind: 'S', show: 'Hidden. An empty hand, the sit-out dim and the Mediator tag show it.', click: null, issue: 53 },
+  // 3. Dialog layer and 4. Confirm layer: provisional, the owner expects these to evolve.
+  '.modal.menu': { kind: 'C, L, D, S', show: 'As now, at every UI level: the menu is the same at all levels.', click: 'As now.' },
+  'showRules': { kind: 'D', show: 'As now: the one descriptor that Advanced keeps.', click: 'Back returns to the menu.' },
+  '.modal.swap': { kind: 'I, L, D, C', show: 'As now: the explanation, the seat cards with their hints, ⇄ and Play.', click: 'New: a Back control that returns to the menu.', issue: 53 },
+  '.modal.persona': { kind: 'L, D', show: 'As now.', click: null },
+  '.modal.results': { kind: 'R, D', show: 'The tables as now. The results note is hidden.', click: null, issue: 53 },
+  'showGameOver': { kind: 'S, R, C', show: 'As now: every level keeps the game-over dialog and the wave note.', click: 'As now.' },
+  '.modal.ask': { kind: 'I, D, C', show: 'As now: every level keeps the confirm dialogs, in full words.', click: 'As now.' }
 });
 
 /* ---------------------------------------------------------------------
