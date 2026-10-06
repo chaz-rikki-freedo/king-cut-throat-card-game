@@ -87,25 +87,17 @@ const css = `
 .seat-west .won .wt span .tn,.me .won .wt span .tn{place-items:center start;padding-left:3px}.seat-east .won .wt span .tn{place-items:center end;padding-right:3px}
 /* Seats: a fixed ratio, so West and East always match. */
 /* West and East take the play area's height (the trick, or the summary chart), so all three line up. */
-/* Fixed sizes, set by the table's width only (never by content):
-   West and East are 22% of the table each; the play row (West, center, East) has one fixed height that fits the
-   tallest summary chart; your seat is exactly as wide as West and East together, with a fixed height. */
-.tablewrap{container-type:inline-size;min-width:0}
-.table{grid-template-columns:22cqw minmax(0,1fr) 22cqw!important}
-.seat-west,.seat-east{align-self:start;height:54cqw;overflow:hidden;box-sizing:border-box}
-.center{height:54cqw;overflow:visible;box-sizing:border-box;justify-content:safe center}
-.center .trick{flex:1;min-height:0!important}
-@media (max-width:720px){
-  .table{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
-  .seat-west,.seat-east{height:46cqw}
-  .center{height:156cqw}
+/* Seats size to the space: West and East stretch to the play row's height; the center takes the rest of the width. */
+.seat-west,.seat-east{align-self:stretch}
+.table{grid-template-columns:minmax(150px,.85fr) minmax(0,2.3fr) minmax(150px,.85fr)!important}
+@media (max-width:720px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}}
+.center{justify-content:safe center}
 }
 /* Your seat: a fixed ratio. Hand cards crowd (overlap) to stay on one row; won tricks go below the hand. */
-.me{justify-self:center;width:calc(44cqw + 10px);height:28cqw;box-sizing:border-box;overflow:hidden;justify-content:flex-start}
-@media (max-width:720px){.me{width:100%;height:70cqw}}
-.me .hand{flex-wrap:nowrap;gap:0;container-type:inline-size;padding-top:10px}
+/* Your seat: full width, height from its content. The hand never overlaps: it wraps to a second row when needed. */
+.me{justify-content:flex-start}
+.me .hand{flex-wrap:wrap;gap:6px;padding-top:10px}
 .me .hand .card{flex:none}
-.me .hand .card + .card{margin-left:min(6px, calc((100cqw - var(--n) * var(--cw)) / (var(--n) - 1)))}
 .me > .won{order:9;align-self:center}
 /* Scores move into the play area: West upper left, East upper right, you directly under your dashed space. */
 .center{position:relative}
@@ -146,8 +138,7 @@ const css = `
 }
 `;
 document.head.insertAdjacentHTML('beforeend', '<style id="mockAdv">' + css + '</style>');
-// A wrapper the table can measure itself against (container units need an ancestor container).
-{ const t = document.getElementById('table'), w = document.createElement('div'); w.className = 'tablewrap'; t.before(w); w.appendChild(t); }
+
 // Top bar: speed icon with a label.
 const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.options[cur.selectedIndex].text;
 // Seats: tags in a fixed order (Human/AI, Dealer, Namer, Kitty, Turn, Led, Mediator or Showdown [duelist]), packed as they come up;
