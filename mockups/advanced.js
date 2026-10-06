@@ -104,7 +104,7 @@ const css = `
 /* Score bands: the play area always reserves the same space for the scores (top band for West and East, a band
    under your slot for yours), whatever their values. A zero score keeps its space, invisible. Centering is
    measured inside the bands, so scores never move anything. */
-.center{position:relative;padding-top:58px!important;padding-bottom:6px}
+.center{position:relative;padding-top:58px!important;padding-bottom:6px;min-height:calc(var(--cw)*4.2 + 128px)}
 .trick{padding-bottom:64px!important}
 .center > .pscore,.trick > .pscore{position:absolute;top:-52px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
@@ -282,6 +282,15 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   if (won) me.appendChild(won);
   if (hand) hand.style.setProperty('--n', String(Math.max(2, hand.children.length))); }
 
-// Action buttons to the corner of the play area.
-{ const pa = $('.kitty-spot .pile-act'); if (pa) $('#center').appendChild(pa); }
+// Seats are seats; action happens in the play area. Every action button, in every phase, moves to the play
+// area's corner, primary action outermost. Your seat keeps no action bar.
+{ const center = $('#center');
+  let pa = $('.kitty-spot .pile-act');
+  if (!pa) { center.insertAdjacentHTML('beforeend', '<div class="pile-act"></div>'); pa = $('.center > .pile-act'); }
+  else center.appendChild(pa);
+  const btns = $$('.actionbar .btn');
+  btns.sort((a, b) => b.classList.contains('primary') - a.classList.contains('primary'));   // primary first = outermost
+  for (const b of btns) pa.appendChild(b);
+  if (!pa.children.length) pa.remove();
+  const bar = $('.me .actionbar'); if (bar) bar.style.display = 'none'; }
 if (window.__leftHand) document.documentElement.classList.add('lefthand');
