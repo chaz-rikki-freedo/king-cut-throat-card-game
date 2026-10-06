@@ -37,8 +37,8 @@ const css = `
 .seat-east{align-items:flex-end}
 .seat-east .score-row{justify-content:flex-end}
 .seat .seat-head{order:0}.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}
-.won{display:flex;align-items:center;min-height:24px;padding-right:14px}
-.won .mini-back{width:22px;height:15px;margin-right:-14px;background:repeating-linear-gradient(-45deg,#7a1f2b 0 3px,#93303d 3px 6px);transform:rotate(-3deg)}
+.won{display:flex;align-items:center;min-height:24px;padding-right:9px}
+.won .mini-back{width:22px;height:15px;margin-right:-9px;background:repeating-linear-gradient(-45deg,#7a1f2b 0 3px,#93303d 3px 6px);transform:rotate(-3deg)}
 .won .mini-back:nth-child(2n){transform:rotate(2deg)}
 .seat-east .won{justify-content:flex-end}
 /* Trick cards in 3D: the table tilts away from you, each bot card turns to face your slot, lifted and larger. */
@@ -79,7 +79,7 @@ for (const c of $$('.card[data-card^="K"]')) if (!c.closest('.lasttrick') && !$(
 // Log: a full scroll, newest first. Groups start at li.gap; each keeps its heading on top, its lines newest first.
 const log = $('#gameLog'), groups = [];
 for (const li of [...log.children]) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
-log.replaceChildren(...groups.reverse().flatMap(g => g[0].classList.contains('gap') ? [g[0], ...g.slice(1).reverse()] : g.slice().reverse()));
+log.scrollTop = 0; log.replaceChildren(...groups.reverse().flatMap(g => g[0].classList.contains('gap') ? [g[0], ...g.slice(1).reverse()] : g.slice().reverse()));
 
 // Shared information strip: everything both sides of the table share.
 const st = KCT.App.app.state, sym = { S: '♠', H: '♥', D: '♦', C: '♣' }, red = st.trump === 'H' || st.trump === 'D';
@@ -101,3 +101,5 @@ $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="
 const plays = (st.trick && st.trick.plays) || [];
 plays.forEach((pl, i) => { const sl = $('.trick .slot-' + pl.player); if (sl) sl.style.zIndex = String(i + 1); });
 for (const sl of $$('.trick .slot')) if (!sl.style.zIndex) sl.style.zIndex = String(plays.length + 1);
+
+log.scrollTop = 0;
