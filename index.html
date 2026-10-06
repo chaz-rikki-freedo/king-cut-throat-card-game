@@ -2027,6 +2027,23 @@ const Backup = (() => {
 })();
 
 /* ---------------------------------------------------------------------
+   5f. UI PROFILES — how each screen part shows at the Advanced UI level
+   (docs/ui/levels.md). Draft data: nothing reads it yet. The keys are
+   the code anchors of docs/ui/vocabulary.md, in screen order. kind is
+   the text kind (C, L, D, I, S, R). show is what the part displays,
+   click is what a click does (null: not a control). issue is the
+   GitHub issue that tracks the work a profile needs; open marks a
+   profile that is not settled.
+   --------------------------------------------------------------------- */
+const UI_PROFILE_ADVANCED = Object.freeze({
+  // 1. Top bar
+  'menu': { kind: 'C', show: 'As now: the menu icon and its "Menu" tooltip.', click: 'Opens the menu dialog. The game waits.' },
+  '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits.', issue: 53 },
+  '#modeChip': { kind: 'C, L', show: 'As now: "Wave n of 18" (gold) or "Free play" (blue). Hidden when no game runs.', click: 'Opens the results dialog.' },
+  '#trumpChip': { kind: 'S', show: 'Not decided. Trump shows once on the screen: here or the trump marker in the center.', click: null, open: true, issue: 53 }
+});
+
+/* ---------------------------------------------------------------------
    6. AI — planning opponents. Input: a View only (no hidden data).
    For each decision the AI:
    1. samples deals of the cards it cannot see ("worlds") that agree with
