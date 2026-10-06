@@ -2041,7 +2041,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits. Note: the app has no version number yet; define one before building the dialog.', issue: 53 },
   '#modeChip': { kind: 'C, L', show: 'As now: "Wave n of 18" (gold) or "Free play" (blue). Hidden when no game runs.', click: 'Opens the results dialog.' },
   '#trumpChip': { kind: 'S', show: 'Hidden. Trump shows once, as the oversized trump pip (see .trump-big).', click: null, issue: 53 },
-  '#handChip': { kind: 'S', show: 'Without the trick count, which moves to the Latest Scroll heading.', click: null, issue: 53 },
+  '#handChip': { kind: 'S', show: 'Hidden. The hand and trick count move to the information strip (.info).', click: null, issue: 53 },
   '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed, and its label names it (for example, "Speed: Fast") as the tooltip and the screen-reader name.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
   'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' },
   // 2.1 Bot seat. East mirrors West at every level: right-aligned, parts in reverse order.
@@ -2055,20 +2055,21 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.bubble': { kind: 'S', show: 'As now: "Pass", "Accepts ♠", "Names ♥ Hearts".', click: null },
   '.seat.turn': { kind: 'S', show: 'As now: the seat glows during its turn.', click: null },
   '.seat.out': { kind: 'S', show: 'As now: the mediator\'s seat is dimmed during a Showdown.', click: null },
-  // 2.2 Center
+  // 2.2 Center. The information strip (.info) is new: one row under the top bar, above the bot seats, on the felt.
+  '.info': { kind: 'S, R', show: 'New: the shared information strip. Cells, each with a small label: Trump (oversized pip), Hand n and Trick n/7, Last trick (three small cards, the winning card marked, and who won), Latest (the newest log line), Outside (card count) and Turned up (the card). On phones: two short rows, then Last trick and Latest each on a full row.', click: null, issue: 53 },
   '.banner': { kind: 'S', show: 'As now. No versus intro.', click: null },
   '.pile.kitty': { kind: 'L, S', show: 'No caption. One squared face-down stack; at turn-up only the top card is face up on it. Round 2 as now.', click: null, issue: 53 },
-  '.pile.outside': { kind: 'C, L', show: 'No caption. A slightly messy face-down pile.', click: 'Opens a list of the cards that you put in the outside pile (View.myOut). Not mentioned in any instruction.', issue: 53 },
-  '.trump-big': { kind: 'S', show: 'An oversized trump pip, no words, in the piles row where the trump marker is now, beside the kitty. The one place trump shows.', click: null, issue: 53 },
-  'turned-card-note': { kind: 'R', show: 'A small face-up turned card, no caption.', click: null, issue: 53 },
+  '.pile.outside': { kind: 'C, L', show: 'Not on the table: a pile there reads as a draw deck. The count shows in the Outside cell of the information strip.', click: 'The Outside cell opens a list of the cards that you put in the outside pile (View.myOut). Not mentioned in any instruction.', issue: 53 },
+  '.trump-big': { kind: 'S', show: 'An oversized trump pip in the Trump cell of the information strip. The one place trump shows.', click: null, issue: 53 },
+  'turned-card-note': { kind: 'R', show: 'Not on the table: a loose face-up card there confuses. The Turned up cell of the information strip names it.', click: null, issue: 53 },
   '.trick-label': { kind: 'S', show: 'Hidden. The trick count moves to the right end of the Latest Scroll heading.', click: null, issue: 53 },
   '.who': { kind: 'L, S', show: 'Hidden. The slot\'s position shows who played.', click: null },
   '.summary': { kind: 'S, R', show: 'As now.', click: 'Its Continue button moves on, as now.' },
   '.meta': { kind: 'R', show: 'As now.', click: null },
-  '.trick': { kind: 'S', show: 'As now: one slot per seat. At trick end the cards slide to the winner\'s won-trick stack.', click: 'Skips the trick-end wait, as now.', issue: 53 },
+  '.trick': { kind: 'S', show: 'As now: one slot per seat, your slot lower than the bot slots, as at a real table. At trick end the cards slide to the winner\'s won-trick stack.', click: 'Skips the trick-end wait, as now.', issue: 53 },
   'table.stats': { kind: 'R', show: 'As now.', click: null },
   '.status': { kind: 'S', show: 'Hidden on screen. #liveStatus still reads the full sentence to screen readers.', click: null, issue: 53 },
-  '.lasttrick': { kind: 'R', show: 'Hidden in the center: it repeats the log. The collapsed log shows the last trick instead.', click: null, issue: 53 },
+  '.lasttrick': { kind: 'R', show: 'Hidden in the center. The Last trick cell of the information strip shows it.', click: null, issue: 53 },
   // 2.3 Your seat
   '.seat-toggle': { kind: 'C, L', show: 'As now: Human or AI.', click: 'Lets the AI take over your seat, or hands it back, when the setting allows it.' },
   '.playing-as': { kind: 'S', show: 'As now: the face and "playing as Nora".', click: null },
@@ -2088,7 +2089,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   // 5. Settings panel
   '#settingsPanel': { kind: 'C, L, D, S, R', show: 'As now, at every UI level, hints and tooltips included. New: an Interface section to choose the UI level.', click: 'As now.', issue: 53 },
   // 6. Log panel, 7. Notices, 8. Card
-  '.logpanel': { kind: 'L, R', show: 'Newest first: each group keeps its heading on top, its lines newest first. Collapsed: two rows. The last trick, fixed (three small cards, the winning card marked, and who won), and the newest log line in short form. No light or shadow effects.', click: 'Collapses the log, and opens it again.', issue: 53 },
+  '.logpanel': { kind: 'L, R', show: 'A full scroll, newest first: each group keeps its heading on top, its lines newest first. No collapsed form: the information strip carries the last trick and the newest line.', click: null, issue: 53 },
   '.toast': { kind: 'S', show: 'As now: every toast.', click: null },
   '#updateNote': { kind: 'S, C', show: 'As now: every level keeps the update note.', click: 'As now: Reload or Later.' },
   '.c-tag': { kind: 'L', show: 'As now (BEST, RIGHT, LEFT ♠), plus a new KING tag on every King.', click: null, issue: 53 },

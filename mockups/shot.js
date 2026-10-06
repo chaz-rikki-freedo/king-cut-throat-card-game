@@ -17,8 +17,6 @@ const fs = require('fs'), ADV = fs.readFileSync(__dirname + '/advanced.js', 'utf
         new Function(src)(); }, ADV);
       await page.waitForTimeout(200);
       await page.screenshot({ path: __dirname + '/advanced-' + tag + '.png', fullPage: tag === 'phone' });
-      await page.evaluate(() => document.querySelector('.logpanel').classList.add('collapsed'));
-      await page.screenshot({ path: __dirname + '/advanced-collapsed-' + tag + '.png', fullPage: tag === 'phone' });
       if (errors.length) console.log(tag, errors);
       await page.context().close();
     }

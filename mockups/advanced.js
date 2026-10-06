@@ -1,42 +1,52 @@
-/* Mockup layer: applies the Advanced profile to the current DOM. Not app code. */
+/* Mockup layer: applies the Advanced profile to the current DOM. Not app code.
+   Inputs set by shot.js: __turn, __led (seat ids), __lastWinner (HTML). */
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const css = `
-#trumpChip,.trick-label,.who,.status,.prompt,.actionbar .hint,.score small{display:none!important}
+#trumpChip,#handChip,.trick-label,.who,.status,.prompt,.actionbar .hint,.score small,.center .piles,.center .lasttrick{display:none!important}
+.actionbar:not(:has(.btn)){display:none}
+.speed-pick select{display:none}.speed-pick{padding:0 10px}
+/* Table: the shared information strip on top, then the seats close around the trick. */
+.table{grid-template-areas:"info info info" "west center east" "me me me"!important}
+@media (max-width:720px){.table{grid-template-areas:"info info" "west east" "center center" "me me"!important}}
+.info{grid-area:info;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;background:rgba(0,0,0,.22);border-radius:12px;padding:6px}
+.info .cell{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.04);min-width:0}
+.info .lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.info .val{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.info .pip{font-size:40px;line-height:1;color:#ff6b6b;text-align:center}
+.info .lt .card{--w:26px}
+.info .lt .card .c-br,.info .lt .card .c-tag{display:none}
+.info .lt .card.win-mini{box-shadow:0 0 0 2px var(--gold)}
+.info .latest{flex:1 1 180px}
+.info .latest .val{font-weight:400;font-size:14px}
+.info ul.gamelog{all:unset;display:block}.info ul.gamelog li{list-style:none;padding:0}
+.hand{min-height:0!important}
+@media (max-width:720px){
+  .info{gap:4px;padding:4px}.info .cell{padding:3px 8px}.info .pip{font-size:28px}
+  .info .lt{order:5;flex:1 1 100%;flex-direction:row;align-items:center;gap:8px}
+  .info .latest{order:6;flex:1 1 100%;flex-direction:row;align-items:center;gap:8px}
+  .info .lt .lab,.info .latest .lab{min-width:64px}
+  .info .muted{flex:1 1 0}
+}
+.info .muted .val{font-weight:600;font-size:13px;color:var(--muted)}
+.center{justify-content:center}
+.trick{grid-template-rows:calc(var(--cw)*.55) auto!important}
+/* Seats */
 .score{font-size:46px!important}
 .seat-name{font-size:21px!important}
 .seat-east .seat-head{flex-direction:row-reverse}
 .seat-east{align-items:flex-end}
 .seat-east .score-row{justify-content:flex-end}
-.speed-pick select{display:none}.speed-pick{padding:0 10px}
-.won{display:flex;align-items:center;gap:0;min-height:24px}
+.seat .seat-head{order:0}.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}
+.won{display:flex;align-items:center;min-height:24px;padding-right:14px}
 .won .mini-back{width:22px;height:15px;margin-right:-14px;background:repeating-linear-gradient(-45deg,#7a1f2b 0 3px,#93303d 3px 6px);transform:rotate(-3deg)}
 .won .mini-back:nth-child(2n){transform:rotate(2deg)}
-.won{padding-right:14px}
 .seat-east .won{justify-content:flex-end}
-.pile > .cap{display:none}
-.actionbar:not(:has(.btn)){display:none}
-.messy{position:relative;width:calc(var(--cw-small)*1.25);height:calc(var(--cw-small)*1.5)}
-.messy .card{position:absolute;--w:var(--cw-small);left:0;top:0}
-.trump-big div{display:none}.trump-big .sym{font-size:calc(var(--cw-small)*1.3)!important}
-.turned .card{--w:calc(var(--cw-small)*.7)}
-.center .lasttrick{display:none!important}
-.seat .backs{order:1}.seat .score-row{order:2}.seat .won{order:3}.seat .seat-head{order:0}
-.loupe{display:none;flex-direction:column;gap:6px;background:rgba(0,0,0,.28);border-radius:10px;padding:8px 10px;font-size:13px}
-.loupe .lt{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
-.loupe .lt .card{--w:28px}
-.loupe .lt .who-won{margin-left:auto}
-.loupe .now{background:none;box-shadow:none;border-radius:0;max-height:none;overflow:visible;border-top:1px solid rgba(255,255,255,.1);padding-top:6px;list-style:none;margin:0;padding-left:0}
-.logpanel.collapsed #gameLog{display:none}.logpanel.collapsed .loupe{display:flex}.logpanel.collapsed{min-height:0}
-.gamelog li.gap:first-child{margin-top:0}
 .c-tag.king{background:#f2c14e;color:#1b1b1b}
-.logpanel h2 .tn{float:right;color:var(--muted);font-weight:600;letter-spacing:0}
+.gamelog li.gap:first-child{margin-top:0}
 `;
 document.head.insertAdjacentHTML('beforeend', '<style id="mockAdv">' + css + '</style>');
-// Top bar: hand number only; speed icon with a label.
-const hc = $('#handChip'); hc.textContent = hc.textContent.replace(/\s*·\s*Trick.*$/, '');
+// Top bar: speed icon with a label.
 const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.options[cur.selectedIndex].text;
-// Trick count moves to the log heading.
-const tn = (window.__trick || ''); $('.logpanel h2').insertAdjacentHTML('beforeend', '<span class="tn">' + tn + '</span>');
 // Seats: Turn and Led tags in fixed order; won-trick stacks replace the text.
 const order = ['ai', 'you', 'dealer', 'turn', 'caller', 'receiver', 'led', 'mediator', 'showdown'];
 for (const s of $$('#seat1,#seat2,#seat0')) {
@@ -48,21 +58,26 @@ for (const s of $$('#seat1,#seat2,#seat0')) {
   const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
   tr.outerHTML = '<div class="won" aria-label="' + n + ' tricks won">' + '<span class="mini-back"></span>'.repeat(n) + '</div>';
 }
-for (const p of $$('.pile')) for (const d of [...p.children]) if (!d.classList.contains('pile-cards')) d.classList.add('cap');
-// Center: no captions; messy outside pile; small turned card.
-const out = $('.pile .pile-cards'); if (out) { out.className = 'messy'; out.innerHTML = [[-6,0,0],[4,5,3],[-1,2,6]].map(([r,x,y]) => '<div class="card back" style="transform:translate(' + x + 'px,' + y + 'px) rotate(' + r + 'deg)"></div>').join(''); }
-const turned = $$('.pile').find(p => /Turned card/.test(p.textContent));
-if (turned && window.__turnedHTML) turned.innerHTML = '<div class="turned pile-cards">' + window.__turnedHTML + '</div>';
-// KING tag on every King.
-for (const c of $$('.card[data-card^="K"]')) if (!$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');
+// KING tag on full-size Kings only (not the small last-trick cards).
+for (const c of $$('.card[data-card^="K"]')) if (!c.closest('.lasttrick') && !$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');
 
-// Log: newest first. Groups start at li.gap; each keeps its heading on top, its lines newest first.
+// Log: a full scroll, newest first. Groups start at li.gap; each keeps its heading on top, its lines newest first.
 const log = $('#gameLog'), groups = [];
 for (const li of [...log.children]) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
 log.replaceChildren(...groups.reverse().flatMap(g => g[0].classList.contains('gap') ? [g[0], ...g.slice(1).reverse()] : g.slice().reverse()));
-// Collapsed view: the last trick (fixed) and the newest log line.
-const lt = $('.center .lasttrick'), cards = lt ? $$('.card', lt).map(c => c.outerHTML).join('') : '';
-const won = window.__lastWinner || '';
+
+// Shared information strip: everything both sides of the table share.
+const st = KCT.App.app.state, sym = { S: '♠', H: '♥', D: '♦', C: '♣' }, red = st.trump === 'H' || st.trump === 'D';
+const lt = $('.center .lasttrick'), ltCards = lt ? $$('.card', lt).map(c => c.outerHTML).join('') : '';
 const latest = [...log.children].find(li => !li.classList.contains('gap'));
-$('.logpanel h2').insertAdjacentHTML('afterend', '<div class="loupe"><div class="lt">' + cards + '<span class="who-won">' + won + '</span></div><ol class="gamelog now">' + (latest ? latest.outerHTML.replace(/class="[^"]*"/, '') : '') + '</ol></div>');
-if (window.__collapsed) $('.logpanel').classList.add('collapsed');
+const outN = (($('.center .pile') || {}).textContent || '').match(/\((\d+)\)/);
+const turnedTxt = (($('.center .piles') || {}).textContent || '').match(/Turned card:\s*(\S+)/);
+const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
+$('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
+  cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + (sym[st.trump] || '–') + '</span>') +
+  cell('', 'Hand ' + st.handNumber, 'Trick ' + st.trickNumber + '/7') +
+  cell('lt', 'Last trick', ltCards + (window.__lastWinner || '')) +
+  cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
+  cell('muted', 'Outside', (outN ? outN[1] : '–') + ' cards') +
+  cell('muted', 'Turned up', turnedTxt ? turnedTxt[1] : '–') +
+  '</section>');
