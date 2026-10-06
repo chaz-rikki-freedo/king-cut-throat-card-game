@@ -2048,7 +2048,11 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.seat-face': { kind: 'C', show: 'As now: the portrait.', click: 'Opens the profile dialog.' },
   '.seat-name': { kind: 'L', show: 'The name in its color, larger than now. Aligned to the seat\'s outer edge.', click: null, issue: 53 },
   '.tag': { kind: 'L', show: 'Word tags in one fixed order: Human/AI, Dealer, Turn, Namer, Kitty, Led, then Mediator or Showdown. New: Turn and Led. Mirrored with the seat.', click: null, issue: 53 },
-  '.score': { kind: 'S', show: 'A 4 and a 6 score card, one face down over the other, so exactly the score\'s pips show. Mirrored with the seat.', click: null, issue: 53 }
+  '.score': { kind: 'S', show: 'A 4 and a 6 score card, one face down over the other, so exactly the score\'s pips show. Mirrored with the seat.', click: null, issue: 53 },
+  '.tricks': { kind: 'S', show: 'A face-down stack of won tricks, one small back per trick. A Showdown adds a second stack.', click: 'Not decided.', open: true, issue: 53 },
+  '.backs': { kind: 'S', show: 'As now: one small back for each card in the hand.', click: null },
+  '.discard-note': { kind: 'S', show: 'No text. The discarded backs slide from the hand to the outside pile.', click: null, issue: 53 },
+  '.bubble': { kind: 'S', show: 'Not decided.', click: null, open: true, issue: 53 }
 });
 
 /* ---------------------------------------------------------------------
