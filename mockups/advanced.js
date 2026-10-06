@@ -301,3 +301,17 @@ for (const b of $$('.seat .bubble.call, .me .bubble.call')) {
   $('#toasts').insertAdjacentHTML('beforeend', '<div class="toast info" style="animation:none">' + (who === 'You' ? 'You ' + t.replace(/^accepts/, 'accept').replace(/^names/, 'name') : who + ' ' + t) + ' trump</div>');
   b.remove();
 }
+// Pass is a toast too. Pass bubbles leave the seats.
+for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
+  const who = (($('.seat-name', b.closest('.seat, .me')) || {}).textContent || '').trim();
+  $('#toasts').insertAdjacentHTML('beforeend', '<div class="toast info" style="animation:none">' + who + (who === 'You' ? ' pass' : ' passes') + '</div>');
+  b.remove();
+}
+// A tag that gets added is announced once by a toast (Dealer, Kitty, Mediator/Showdown; Namer is the trump call above).
+// Turn and Led change every play, so they stay tag-only. The mockup toasts the newest such event in the log.
+{ const first = $('#gameLog li'), t = first ? first.textContent.trim() : '';
+  let m, msg = null;
+  if ((m = t.match(/^Hand \d+: (\w+) deals/))) msg = m[1] + ' deals';
+  else if ((m = t.match(/^(\S+) goes to (\w+)/))) msg = m[1] + ' goes to ' + m[2] + ' · Kitty';
+  else if ((m = t.match(/^SHOWDOWN! (\w+) and (\w+) tied.*?(\w+) (?:are|is) the mediator/))) msg = 'SHOWDOWN! ' + m[1] + ' vs ' + m[2] + ' · ' + (m[3] === 'You' ? 'you mediate' : m[3] + ' mediates');
+  if (msg && !$$('#toasts .toast').some(x => x.textContent === msg)) $('#toasts').insertAdjacentHTML('afterbegin', '<div class="toast info" style="animation:none">' + msg + '</div>'); }
