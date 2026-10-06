@@ -42,13 +42,13 @@ const css = `
 .won .mini-back:nth-child(2n){transform:rotate(2deg)}
 .seat-east .won{justify-content:flex-end}
 /* Trick cards in 3D: the table tilts away from you, each bot card turns to face your slot, lifted and larger. */
-.trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
+.trick{perspective:900px;perspective-origin:50% 40%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
 .trick .slot{transform-style:preserve-3d}
 .trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
-.trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
-.trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:10px 18px 22px rgba(0,0,0,.5)}
-.trick .slot-0 .card,.trick .slot-0 .empty{transform:rotateX(22deg) translateZ(30px)}
-.trick .slot-0 .card{box-shadow:0 18px 22px rgba(0,0,0,.5)}
+.trick .slot-1 .card{transform:rotateX(-24deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-8px 26px 26px rgba(0,0,0,.5)}
+.trick .slot-2 .card{transform:rotateX(-24deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:8px 26px 26px rgba(0,0,0,.5)}
+.trick .slot-0 .card,.trick .slot-0 .empty{transform:rotateX(-24deg) translateZ(30px)}
+.trick .slot-0 .card{box-shadow:0 26px 26px rgba(0,0,0,.5)}
 .c-tag.king{background:#f2c14e;color:#1b1b1b}
 .gamelog li.gap:first-child{margin-top:0}
 `;
