@@ -101,7 +101,12 @@ const css = `
 .me > .won{order:9;align-self:center}
 /* Scores move into the play area: West upper left, East upper right, you directly under your dashed space. */
 .center{position:relative}
-.center > .pscore,.trick > .pscore{position:absolute;top:6px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
+/* Score bands: the play area always reserves the same space for the scores (top band for West and East, a band
+   under your slot for yours), whatever their values. A zero score keeps its space, invisible. Centering is
+   measured inside the bands, so scores never move anything. */
+.center{position:relative;padding-top:58px!important;padding-bottom:6px}
+.trick{padding-bottom:64px!important}
+.center > .pscore,.trick > .pscore{position:absolute;top:-52px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
 /* A summary chart already shows the scores: no play-area scores then. Its names and scores are larger, in name colors. */
 .center:has(.summary) > .pscore,.center:has(.summary) .trick .pscore{display:none}
@@ -111,7 +116,10 @@ const css = `
 .trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.45)}
 /* Scores never take layout space: they float, so they never shift the centering of anything. */
 .trick .slot-0 .pscore{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);color:var(--ink);font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
-.center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
+.center > .pscore.pme{left:50%;bottom:-52px;top:auto;transform:translateX(-50%)}
+.center:not(:has(.trick)){padding-bottom:58px!important}
+.center:not(:has(.trick)) > .pscore.pme{bottom:6px}
+.center:not(:has(.trick)) > .pscore.w,.center:not(:has(.trick)) > .pscore.e{top:6px}
 /* Kitty: before the first trick, the kitty lies in the middle of the table as one squared stack; at turn-up its top card is face up. */
 .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*3.3)}
 .kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
@@ -220,13 +228,14 @@ if (kitty && !$('.center .trick')) {
     cards.map((c, i) => c.outerHTML.replace('class="card', 'style="left:calc(' + i + ' * (var(--kw) + 6px))" class="card')
       .replace(/<\/div>$/, i === top && /\bback\b/.test(c.className) ? CAT + '</div>' : '</div>')).join('') + '</div></div></div>');
 }
-// Discard phase: the outside pile is a neat squared stack beside the kitty, its count on the top card in transparent
+// Discard phase: the outside pile is a neat squared stack in the kitty's spot (the kitty shows from the bids on), its count on the top card in transparent
 // black. The action buttons sit above both piles.
 const discardBtn = $('[data-action="confirm-discard"]');
 if (discardBtn && $('.kitty-spot')) {
   const n = window.__outside != null ? window.__outside : $$('.seat .discard-note, .me .discard-note').filter(d => /Discarded/.test(d.textContent)).length * 3;
   const layers = Math.min(Math.ceil(n / 3), 4);
   const backs = Array.from({ length: layers }, (_, i) => '<div class="card back" style="transform:translate(' + i * 1.5 + 'px,' + (-i * 1.5) + 'px)"></div>').join('');
+  const kp = $('.kitty-spot .kpile'); if (kp) kp.remove();   // one spot, one pile at a time: discards now, kitty at the bids
   $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards">' + backs +
     '<div class="op-face" style="transform:translate(' + Math.max(0, layers - 1) * 1.5 + 'px,' + (-Math.max(0, layers - 1) * 1.5) + 'px)"><b class="op-n">' + n + '</b></div></div>');
   $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
