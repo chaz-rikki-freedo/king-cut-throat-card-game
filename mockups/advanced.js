@@ -39,7 +39,10 @@ const css = `
 .seat-east .score-row{justify-content:flex-end}
 .seat .seat-head{order:0}.seat .tagbox{order:1}.seat .backs{order:2}.seat .score-row{order:3}.seat .won{order:4}
 /* Hand backs ride on the name line, pushed to the inner side (toward the trick). */
-.seat .seat-head{flex-wrap:nowrap;align-self:stretch}
+.seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
+.seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:720px){.seat .seat-head .mini-back{width:12px;height:18px;margin-right:-9px}}
+.info .latest{min-width:0}.info .latest .val{white-space:normal;overflow:hidden;display:block}
 .seat .seat-head .backs{margin-left:auto;flex:none;padding-right:8px}
 .seat .seat-head .mini-back{margin-right:-8px}
 .seat-east .seat-head .backs{padding-right:8px}
@@ -73,7 +76,7 @@ const css = `
 .trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
 .trick .slot .empty{background:none;border-color:#8fa79a}
 .trick .slot-1 .empty,.trick .slot-2 .empty{visibility:hidden}
-.trick{min-height:calc(var(--cw)*3.3)!important}
+.trick{min-height:calc(var(--cw)*4.2)!important}
 .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
 .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:10px 18px 22px rgba(0,0,0,.5)}
 .trick .slot-0 .card,.trick .slot-0 .empty{transform:rotateX(22deg) translateZ(30px)}
@@ -83,18 +86,26 @@ const css = `
 .won .wt span .tn{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:900;opacity:.6;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .seat-west .won .wt span .tn,.me .won .wt span .tn{place-items:center start;padding-left:3px}.seat-east .won .wt span .tn{place-items:center end;padding-right:3px}
 /* Seats: a fixed ratio, so West and East always match. */
-.seat-west,.seat-east{aspect-ratio:4/5;align-self:start}
-@media (max-width:720px){.seat-west,.seat-east{aspect-ratio:3/4}}
+/* West and East take the play area's height (the trick, or the summary chart), so all three line up. */
+.seat-west,.seat-east{align-self:stretch}
+/* Your seat: a fixed ratio. Hand cards crowd (overlap) to stay on one row; won tricks go below the hand. */
+.me{aspect-ratio:9/2;justify-content:flex-start}
+@media (max-width:720px){.me{aspect-ratio:3/2}}
+.me .hand{flex-wrap:nowrap;gap:0;container-type:inline-size;padding-top:10px}
+.me .hand .card{flex:none}
+.me .hand .card + .card{margin-left:min(6px, calc((100cqw - var(--n) * var(--cw)) / (var(--n) - 1)))}
+.me > .won{order:9;align-self:center}
 /* Scores move into the play area: West upper left, East upper right, you directly under your dashed space. */
 .center{position:relative}
 .center > .pscore,.trick > .pscore{position:absolute;top:6px;z-index:8;font-size:46px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .center > .pscore.w,.trick > .pscore.w{left:12px}.center > .pscore.e,.trick > .pscore.e{right:12px}
 /* A summary chart already shows the scores: no play-area scores then. Its names and scores are larger, in name colors. */
+.center:not(:has(.trick)):not(:has(.summary)):has(.pscore){padding:56px 0}
 .center:has(.summary) > .pscore,.center:has(.summary) .trick .pscore{display:none}
 .summary table.stats td:first-child{white-space:nowrap;font-size:18px;font-weight:800;text-align:left}
 .summary table.stats td:first-child small{font-size:12px;font-weight:600;color:var(--muted)}
 .summary table.stats td:last-child{font-size:26px;font-weight:800;line-height:1.1}
-.trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.1)}
+.trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.45)}
 .trick .slot-0 .pscore{color:var(--ink);font-size:46px;font-weight:800;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums}
 .center > .pscore.pme{left:50%;bottom:8px;top:auto;transform:translateX(-50%)}
 /* Kitty: before the first trick, the kitty lies in the middle of the table as one squared stack; at turn-up its top card is face up. */
@@ -215,3 +226,8 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   c[0].innerHTML = '<span style="color:' + col + '">' + m[1] + '</span>' + (m[2].trim() ? ' <small>' + m[2].trim() + '</small>' : '');
   c[c.length - 1].style.color = col;
 }
+
+// Your seat: won tricks below the hand; the hand knows its card count for crowding.
+{ const me = $('#seat0'), won = $('.me-head .won, #seat0 .won'), hand = $('#hand');
+  if (won) me.appendChild(won);
+  if (hand) hand.style.setProperty('--n', String(Math.max(2, hand.children.length))); }
