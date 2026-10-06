@@ -37,14 +37,17 @@ const css = `
 .seat-east{align-items:flex-end}
 .seat-east .score-row{justify-content:flex-end}
 .seat .seat-head{order:0}.seat .tagbox{order:1}.seat .backs{order:2}.seat .score-row{order:3}.seat .won{order:4}
-.seat .backs{min-height:24px}
+/* Hand backs ride on the name line, pushed to the inner side (toward the trick). */
+.seat .seat-head{flex-wrap:nowrap;align-self:stretch}
+.seat .seat-head .backs{margin-left:auto;flex:none}
+.seat-east .seat-head .backs{margin-left:0;margin-right:auto}
 /* Tags: one uniform size, packed from the seat's outer edge in a fixed order as they come up.
    The tag area keeps a fixed height (two rows for bots), so names, backs and scores line up. */
 .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;width:100%;min-height:44px}
 .seat-east .tagbox{direction:rtl}
-.tagbox .tag{margin:0;flex:0 0 58px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
-.me .tagbox{width:auto;min-height:20px;flex:0 1 auto}
-@media (max-width:720px){.tagbox .tag{flex-basis:50px;font-size:9px;letter-spacing:.02em}.me .tagbox{flex:1 1 200px;min-height:20px}}
+.tagbox .tag{margin:0;flex:0 0 calc((100% - 8px) / 3);height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
+.me .tagbox{width:auto;min-height:20px;flex:0 1 auto}.me .tagbox .tag{flex-basis:58px}
+@media (max-width:720px){.tagbox .tag{font-size:9px;letter-spacing:0}.me .tagbox .tag{flex-basis:58px}.me .tagbox{flex:1 1 200px;min-height:20px}}
 .won{all:unset;display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;min-height:48px;padding:4px;cursor:pointer;border-radius:8px;max-width:100%}
 .won.none{display:none}
 .won:hover{background:rgba(255,255,255,.06)}.won:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -85,6 +88,7 @@ for (const s of $$('#seat1,#seat2,#seat0')) {
     const t = tags.find(x => classes.split(' ').some(c => x.classList.contains(c)));
     if (t) box.appendChild(t);
   }
+  const backs = $(':scope > .backs', s); if (backs && s.id !== 'seat0') head.appendChild(backs);
   const score = $('.score', head);
   if (s.id === 'seat0') head.insertBefore(box, score); else head.after(box);
   const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
