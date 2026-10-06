@@ -47,11 +47,12 @@ const css = `
 .seat-east .tagbox{direction:rtl}
 .tagbox .tag{margin:0;flex:0 0 calc((100% - 8px) / 3);height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
 .me .tagbox{width:auto;min-height:20px;flex:0 1 auto}.me .tagbox .tag{flex-basis:58px}
-@media (max-width:720px){.tagbox .tag{font-size:9px;letter-spacing:0}.me .tagbox .tag{flex-basis:58px}.me .tagbox{flex:1 1 200px;min-height:20px}}
+@media (max-width:720px){.tagbox .tag{font-size:9px;letter-spacing:0}.me .tagbox .tag{flex-basis:calc((100% - 12px) / 4)}.me .tagbox{flex:1 1 200px;min-height:20px}}
 .won{all:unset;display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;min-height:48px;padding:4px;cursor:pointer;border-radius:8px;max-width:100%}
 .won.none{display:none}
 .won:hover{background:rgba(255,255,255,.06)}.won:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .seat-east .won{align-self:flex-end;flex-direction:row-reverse}
+.me .won{min-height:0;padding:2px 4px}
 .won .wt{position:relative;flex:none}.won .wt.v{width:28px;height:46px}.won .wt.h{width:46px;height:28px}
 .won .wt span{position:absolute;inset:0;border-radius:3px;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 3px,#93303d 3px 6px);box-shadow:0 1px 2px rgba(0,0,0,.45)}
 /* Trick cards in 3D: the table tilts away from you, each bot card turns to face your slot, lifted and larger. */
