@@ -2040,7 +2040,7 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   'menu': { kind: 'C', show: 'As now: the menu icon and its "Menu" tooltip.', click: 'Opens the menu dialog. The game waits.' },
   '.brand': { kind: 'C, L', show: 'As now: "King Cut-Throat".', click: 'Opens a credits and version dialog. The game waits.', issue: 53 },
   '#modeChip': { kind: 'C, L', show: 'As now: "Wave n of 18" (gold) or "Free play" (blue). Hidden when no game runs.', click: 'Opens the results dialog.' },
-  '#trumpChip': { kind: 'S', show: 'Not decided. Trump shows once on the screen: here or the trump marker in the center.', click: null, open: true, issue: 53 },
+  '#trumpChip': { kind: 'S', show: 'Hidden. Trump shows once, as the oversized trump pip (see .trump-big).', click: null, issue: 53 },
   '#handChip': { kind: 'S', show: 'Not decided. The trick count shows once on the screen: here or the trick label in the center.', click: null, open: true, issue: 53 },
   '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
   'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' },
@@ -2057,7 +2057,11 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.seat.out': { kind: 'S', show: 'As now: the mediator\'s seat is dimmed during a Showdown.', click: null },
   // 2.2 Center
   '.banner': { kind: 'S', show: 'A versus intro at Showdown setup: the two Showdown players\' large portraits slide in from their sides; the mediator is smaller.', click: 'Skips the intro.', issue: 53 },
-  '.pile.kitty': { kind: 'L, S', show: 'No caption. One squared face-down stack; at turn-up only the top card is face up on it. Round 2 as now.', click: null, issue: 53 }
+  '.pile.kitty': { kind: 'L, S', show: 'No caption. One squared face-down stack; at turn-up only the top card is face up on it. Round 2 as now.', click: null, issue: 53 },
+  '.pile.outside': { kind: 'C, L', show: 'No caption. A slightly messy face-down pile.', click: 'Opens a list of the cards that you put in the outside pile (View.myOut). Not mentioned in any instruction.', issue: 53 },
+  '.trump-big': { kind: 'S', show: 'An oversized trump pip, no words. The one place trump shows; where it sits is not decided.', click: null, open: true, issue: 53 },
+  'turned-card-note': { kind: 'R', show: 'A small face-up turned card, no caption.', click: null, issue: 53 },
+  '.trick': { kind: 'S', show: 'As now: one slot per seat. At trick end the cards slide to the winner\'s won-trick stack.', click: 'Skips the trick-end wait, as now.', issue: 53 }
 });
 
 /* ---------------------------------------------------------------------
