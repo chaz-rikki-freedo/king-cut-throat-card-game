@@ -2086,7 +2086,14 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   'showGameOver': { kind: 'S, R, C', show: 'As now: every level keeps the game-over dialog and the wave note.', click: 'As now.' },
   '.modal.ask': { kind: 'I, D, C', show: 'As now: every level keeps the confirm dialogs, in full words.', click: 'As now.' },
   // 5. Settings panel
-  '#settingsPanel': { kind: 'C, L, D, S, R', show: 'As now, at every UI level, hints and tooltips included. New: an Interface section to choose the UI level.', click: 'As now.', issue: 53 }
+  '#settingsPanel': { kind: 'C, L, D, S, R', show: 'As now, at every UI level, hints and tooltips included. New: an Interface section to choose the UI level.', click: 'As now.', issue: 53 },
+  // 6. Log panel, 7. Notices, 8. Card
+  '.logpanel': { kind: 'L, R', show: 'Open: as now. Collapsed: a loupe that magnifies only the latest line, with simulated light and shadow.', click: 'Collapses the log to the loupe, and opens it again.', issue: 53 },
+  '.toast': { kind: 'S', show: 'As now: every toast.', click: null },
+  '#updateNote': { kind: 'S, C', show: 'As now: every level keeps the update note.', click: 'As now: Reload or Later.' },
+  '.c-tag': { kind: 'L', show: 'As now (BEST, RIGHT, LEFT ♠), plus a new KING tag on every King.', click: null, issue: 53 },
+  '.c-new': { kind: 'L', show: 'As now: NEW on the kitty cards you just received.', click: null },
+  '.card': { kind: 'C, L', show: 'As now: corner index, center pip, Joker label, backs and the enter motion.', click: 'As the area that holds it.' }
 });
 
 /* ---------------------------------------------------------------------
