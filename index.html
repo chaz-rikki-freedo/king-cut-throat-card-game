@@ -2070,7 +2070,12 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '.status': { kind: 'S', show: 'Hidden on screen. #liveStatus still reads the full sentence to screen readers.', click: null, issue: 53 },
   '.lasttrick': { kind: 'R', show: 'The three small cards, the winning card marked. No caption.', click: null, issue: 53 },
   // 2.3 Your seat
-  '.seat-toggle': { kind: 'C, L', show: 'As now: Human or AI.', click: 'Lets the AI take over your seat, or hands it back, when the setting allows it.' }
+  '.seat-toggle': { kind: 'C, L', show: 'As now: Human or AI.', click: 'Lets the AI take over your seat, or hands it back, when the setting allows it.' },
+  '.playing-as': { kind: 'S', show: 'As now: the face and "playing as Nora".', click: null },
+  '.prompt': { kind: 'I', show: 'Hidden. The buttons and the hand show what you can do.', click: null, issue: 53 },
+  '.actionbar .hint': { kind: 'I, D', show: 'Hidden.', click: null, issue: 53 },
+  '.actionbar .btn': { kind: 'C', show: 'Compact: "♠" to accept, suit symbols in round 2, "Pass" as a word, "✓ 3" to discard, icons for Continue and Skip.', click: 'As now.', issue: 53 },
+  '#hand': { kind: 'C', show: 'As now: sorted by suit with trump first; unplayable cards dimmed; picked cards lift.', click: 'As now: play a card, or pick one to discard.' }
 });
 
 /* ---------------------------------------------------------------------
