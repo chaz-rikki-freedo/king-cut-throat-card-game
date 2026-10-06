@@ -47,8 +47,8 @@ const css = `
 .trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
 .trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
 .trick .slot{position:relative}
-.trick .slot-1{justify-self:start;margin-left:calc(var(--cw)*.1)}
-.trick .slot-2{justify-self:end;margin-right:calc(var(--cw)*.1)}
+.trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
+.trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
 .trick .slot .empty{background:none;border-color:#8fa79a}
 .trick .slot-1 .empty,.trick .slot-2 .empty{visibility:hidden}
 .trick{min-height:calc(var(--cw)*3.3)!important}
