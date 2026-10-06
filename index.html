@@ -2043,7 +2043,12 @@ const UI_PROFILE_ADVANCED = Object.freeze({
   '#trumpChip': { kind: 'S', show: 'Not decided. Trump shows once on the screen: here or the trump marker in the center.', click: null, open: true, issue: 53 },
   '#handChip': { kind: 'S', show: 'Not decided. The trick count shows once on the screen: here or the trick label in the center.', click: null, open: true, issue: 53 },
   '#speedSel': { kind: 'C', show: 'The gauge icon only. The icon shows the current speed.', click: 'Steps to the next speed: Slow, Normal, Fast, Instant, then Slow.', issue: 53 },
-  'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' }
+  'toggle-settings': { kind: 'C', show: 'As now: the settings icon and its "Settings" tooltip.', click: 'Opens and closes the settings panel.' },
+  // 2.1 Bot seat. East mirrors West at every level: right-aligned, parts in reverse order.
+  '.seat-face': { kind: 'C', show: 'As now: the portrait.', click: 'Opens the profile dialog.' },
+  '.seat-name': { kind: 'L', show: 'The name in its color, larger than now. Aligned to the seat\'s outer edge.', click: null, issue: 53 },
+  '.tag': { kind: 'L', show: 'Word tags in one fixed order: Human/AI, Dealer, Turn, Namer, Kitty, Led, then Mediator or Showdown. New: Turn and Led. Mirrored with the seat.', click: null, issue: 53 },
+  '.score': { kind: 'S', show: 'A 4 and a 6 score card, one face down over the other, so exactly the score\'s pips show. Mirrored with the seat.', click: null, issue: 53 }
 });
 
 /* ---------------------------------------------------------------------
