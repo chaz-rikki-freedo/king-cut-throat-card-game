@@ -164,6 +164,19 @@ html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
   .layout.log-collapsed .logpanel h2 .lp-toggle{writing-mode:horizontal-tb}
 }
 /* ---- v3 ---- */
+/* Card sizes: five named tiers, every card on screen uses one of them.
+   Big: the trick. Normal: your hand. Small: the kitty and the outside pile.
+   Tiny: face-down backs (hand counts on the seats, the Showdown outside pile).
+   Micro: text-sized cards (the log, the information strip), the same width as the name chips. */
+:root{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:14px;--card-micro:40px}
+.trick .slot .card,.trick .slot .empty{--w:var(--card-big)!important}
+.hand .card{--w:var(--card-normal)}
+.kitty-spot{--kw:var(--card-small)!important}
+.mini-back,.seat .seat-head .mini-back{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+.mc{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+.gamelog .p0,.gamelog .p1,.gamelog .p2,.gamelog .card-tag,.micro{display:inline-block;box-sizing:border-box;width:var(--card-micro);text-align:center;padding:0;line-height:1.35;border-radius:4px;white-space:nowrap;vertical-align:baseline}
+.micro{background:#fff;color:#1b1b1b;font-weight:800;font-size:13px}.micro .rank{color:#6b6b6b}.micro .pip-red{color:#d32f2f}.micro .pip-black{color:#000}
+.micro + .micro,.micro + .mc,.mc + .micro{margin-left:4px}
 .pips{display:flex;gap:4px;order:4;min-height:14px;align-items:center}
 .seat-east .pips{align-self:flex-end;flex-direction:row-reverse}
 .pips i{flex:none;width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(255,255,255,.45)}.pips i.on{background:var(--ink);border-color:var(--ink)}
@@ -175,6 +188,9 @@ html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
 /* The Showdown keeps its magenta table, the whole table, every seat alike. */
 .table.showdown .not-sd{background:var(--panel)!important}
 /* Tags: each role keeps its own color (filled); the shape is uniform: one pill, one size, one weight. */
+.tagbox .tag.mediator,.tagbox .tag.duelist{flex-basis:calc((100% - 8px) / 3)!important}
+.me .tagbox .tag.mediator,.me .tagbox .tag.duelist{flex-basis:66px!important;padding:0 2px!important}
+.tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
 .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
 `;
 document.head.insertAdjacentHTML('beforeend', '<style id="mockAdv">' + css + '</style>');
@@ -184,6 +200,7 @@ const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.op
 // Seats: tags in a fixed order (Human/AI, Dealer, Namer, Kitty, Turn, Led, Mediator or Showdown [duelist]), packed as they come up;
 // won-trick stacks replace the text.
 const SLOTS = [['ai you', 'id'], ['dealer', 'dealer'], ['caller', 'namer'], ['receiver', 'kitty'], ['turn', 'turn'], ['led', 'led'], ['mediator duelist', 'sd']];
+for (const t of $$('.tag.duelist')) { t.textContent = 'SD'; t.title = 'Showdown'; }
 // Which trick numbers each seat won this hand, read from the log (oldest first at this point).
 const WON = { 0: [], 1: [], 2: [] }, SDWON = { 0: [], 1: [], 2: [] }, NAME = { You: 0, Kit: 1, Tex: 2 }, curHand = KCT.App.app.state.handNumber;
 { let h = 0;
@@ -247,14 +264,15 @@ const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab"
 // the card you discarded (you know it), face down otherwise.
 const isSD = $('#table').classList.contains('showdown');
 const myOut = st.myOut || [], sdN = st.sdDiscards || 0;
-const mini = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/); return m ? '<span class="mc up' + (/[HD]/.test(m[2]) ? ' red' : '') + '">' + m[1] + sym[m[2]] + '</span>' : '<span class="mc"></span>'; };
+const micro = (rank, suit) => '<span class="micro"><span class="rank">' + rank + '</span><span class="' + (/[♥♦]/.test(suit) ? 'pip-red' : 'pip-black') + '">' + suit + '</span></span>';
+const mini = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/); return m ? micro(m[1], sym[m[2]]) : '<span class="mc"></span>'; };
 const sdOut = sdN ? '<span class="minis">' + Array.from({ length: sdN }, (_, i) => i < myOut.length ? mini(myOut[i]) : '<span class="mc"></span>').join('') + '</span>' : '';
 const outCell = isSD ? (sdN ? cell('muted out', 'Outside', sdOut) : '') : (outN ? cell('muted', 'Outside', outN[1]) : '');
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
   (st.trump ? cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + sym[st.trump] + '</span>') : '') +
   cell(isSD && tl ? 'hand wide' : 'hand', 'Hand ' + st.handNumber, tl ? trickVal : '') +
   cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
-  (turnedTxt && !isSD ? cell('muted', 'Turned up', turnedTxt[1]) : '') +
+  (turnedTxt && !isSD ? cell('muted', 'Turned up', (m => m ? micro(m[1], m[2]) : turnedTxt[1])(turnedTxt[1].match(/^(10|[2-9AKQJ])([♠♥♦♣])$/))) : '') +
   outCell +
   '</section>');
 
@@ -363,3 +381,5 @@ for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
 // Skip is a speed control: a temporary button in the top bar, left of the speed icon.
 { const sk = $('[data-action="skip"]'), sp = $('.speed-pick');
   if (sk && sp) { sk.classList.add('skip-top'); sp.before(sk); const pa = $('.center > .pile-act'); if (pa && !pa.children.length) pa.remove(); } }
+// Names never truncate: the hand backs give way first.
+document.head.insertAdjacentHTML('beforeend', '<style>.seat .seat-head .seat-name{flex:none;overflow:visible}.seat .seat-head .backs{min-width:0;overflow:hidden}@media (max-width:720px){.sscore{font-size:22px!important}}</style>');
