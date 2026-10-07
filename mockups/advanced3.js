@@ -557,9 +557,9 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* No hollow tags: the personality habit tag is filled like every other tag. */
 .persona .habit{background:#4a5a6a;border-color:transparent!important;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
 </style>`);
-// The winning card of a finished trick is marked: lifted toward the viewer with a gold edge.
+// The winning card of a finished trick is marked: lifted toward the viewer with a white edge. It keeps its place in the
+// stack: the third card played stays on top.
 document.head.insertAdjacentHTML('beforeend', `<style>
-.trick .slot.win{z-index:9!important}
 .trick .slot.win .card{box-shadow:0 0 0 3px #0b1a12,0 0 0 6px #fff,0 0 24px rgba(255,255,255,.55),0 18px 22px rgba(0,0,0,.5)!important}
 .trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(60px)}
 .trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(60px)}

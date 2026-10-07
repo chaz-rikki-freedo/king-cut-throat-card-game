@@ -1,6 +1,6 @@
 /* Check: cards layer in play order. For many trick moments across seeds (mid-trick, trick end, Showdown), render the
    v3 layer and sample the pixel where each pair of cards overlaps: the card on top there must be the one played later.
-   At a trick's end the winning card is lifted above all. Your empty slot, still to play, sits above every card.
+   Play order holds at a trick's end too: the third card stays on top, whoever wins. Your empty slot, still to play, sits above every card.
    Run: cd mockups && NODE_PATH=$(npm root -g) PW_CHROMIUM=/opt/pw-browsers/chromium node layering.js */
 const { serve, launch, openPage, run } = require('../tests/lib/browser');
 const fs = require('fs'), ADV = fs.readFileSync(__dirname + '/' + (process.env.LAYER || 'advanced3.js'), 'utf8');
@@ -29,8 +29,8 @@ const fs = require('fs'), ADV = fs.readFileSync(__dirname + '/' + (process.env.L
           window.KCT = { App: { app: { state: st } } }; window.__collapsed = true; new Function(src)();
           const el = p => { const e = document.querySelector('.trick .slot-' + p + ' .card') || document.querySelector('.trick .slot-' + p + ' .empty');
             return e && getComputedStyle(e).visibility !== 'hidden' && e.offsetWidth ? e : null; };
-          // Expected stacking: play order; the winner (trick end) on top; an empty slot (still to play) on top.
-          const order = plays.slice(); if (winner != null) { order.splice(order.indexOf(winner), 1); order.push(winner); }
+          // Expected stacking: play order, also at a trick's end; an empty slot (still to play) on top.
+          const order = plays.slice();
           for (const p of [0, 1, 2]) if (!order.includes(p) && el(p)) order.push(p);
           const bad = []; let n = 0;
           for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) {
