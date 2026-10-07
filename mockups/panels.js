@@ -41,7 +41,7 @@ const TARGETS = [['15-panels', `s.phase === P.TRICK_PLAY && mine && s.trickNumbe
       await view.setContent(html.replace('<head>', '<head><base href="' + srv.url + '">'));
       await view.evaluate(([src, v]) => { window.KCT = { App: { app: { state: Object.assign({}, v.state, { info: v.info }) } } }; Object.assign(window, { __turn: v.turn, __led: v.led, __collapsed: true }); new Function(src)(); }, [ADV, vars]);
       await view.waitForTimeout(150);
-      for (const [k, seat, lab] of [['outside', 0, 'outside'], ['seat', 1, 'seat-kit'], ['tricks', 1, 'tricks-kit']]) {
+      for (const [k, seat, lab] of [['outside', 0, 'outside'], ['tricks', 1, 'tricks-kit']]) {
         await view.evaluate(([k, seat]) => window.__panel(k, seat), [k, seat]); await view.waitForTimeout(80);
         await view.screenshot({ path: path.join(OUT, name + '-' + lab + '-' + tag + '.png'), fullPage: tag === 'phone' }); }
     }

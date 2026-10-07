@@ -490,20 +490,18 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 
   // Information the AI's view holds that the screen does not show at a glance, offered on tap (one panel at a time):
   //  - Outside cell -> your own discards (the AI remembers its discards: View.myOut).
-  //  - A seat       -> that player's bids this hand and the suits they have shown out of (View.bidLog, View.voids).
+  //  - Bids this hand and the suits a player has shown out of (View.bidLog, View.voids): not on the table. A future
+  //    setting, off by default, adds them to that player's profile popup (opened from the seat face).
   //  - Trick circles -> the tricks that player won this hand, card by card (View.playLog, View.trickWinners).
   const NAMES = ['You', 'Kit', 'Tex'];
   const microOf = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/), sy = { S: '♠', H: '♥', D: '♦', C: '♣' }; return m ? micro(m[1], sy[m[2]]) : '<span class="micro" style="background:#000;color:#f2c14e">Jkr</span>'; };
   const outCell = $$('.info .cell').find(c => /Outside/i.test(c.textContent)); if (outCell) outCell.classList.add('tappable');
-  for (const s of $$('#seat1,#seat2,#seat0')) { s.classList.add('tappable'); const p = $('.pips', s); if (p) p.classList.add('tappable'); }
+  for (const s of $$('#seat1,#seat2,#seat0')) { const p = $('.pips', s); if (p) p.classList.add('tappable'); }
   window.__panel = (kind, seat) => {
     const old = $('.panel'); if (old) old.remove(); $$('.open').forEach(e => e.classList.remove('open'));
     let title = '', body = '', anchor;
     if (kind === 'outside') { anchor = outCell; title = 'Your discards';
       body = (I.myOut || []).length ? '<div class="prow">' + I.myOut.map(microOf).join('') + '</div>' : '<p>None yet.</p>'; }
-    if (kind === 'seat') { anchor = $('#seat' + seat + ' .tagbox') || $('#seat' + seat); title = NAMES[seat];
-      const bids = (I.bids || [])[seat] || [], voids = (I.voids || [])[seat] || [];
-      body = '<dl><dt>Bids</dt><dd>' + (bids.length ? bids.join(' · ') : 'none yet') + '</dd><dt>Shown out of</dt><dd>' + (voids.length ? voids.map(v => '<b class="' + (/[♥♦]/.test(v) ? 'pip-red' : '') + '">' + v + '</b>').join(' ') : 'no suit yet') + '</dd></dl>'; }
     if (kind === 'tricks') { anchor = $('#seat' + seat + ' .pips'); title = NAMES[seat] + ' · tricks won';
       const w = ((I.won || [])[seat] || []);
       body = w.length ? w.map(t => '<div class="prow"><span class="tn">' + t.n + '</span>' + t.cards.map(microOf).join('') + '</div>').join('') : '<p>None yet.</p>'; }
@@ -512,7 +510,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
     $('#table').insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = $('.panel'), left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8);
     pn.style.left = left + 'px'; pn.style.top = (r.bottom - tb.top + 6) + 'px';
-    (kind === 'seat' ? $('#seat' + seat) : anchor).classList.add('open');
+    anchor.classList.add('open');
   };
 }
 document.head.insertAdjacentHTML('beforeend', `<style>
