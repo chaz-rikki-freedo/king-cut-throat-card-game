@@ -73,12 +73,21 @@ async function checkPage() {
   const current = await shell.match(PAGE);
   const text = await res.clone().text();
   if (!current) { await shell.put(PAGE, res); return; }
-  if (text === await current.text()) { await caches.delete(PENDING); return; }
+  if (core(text) === core(await current.text())) { await caches.delete(PENDING); return; }
   const pending = await caches.open(PENDING);
   const waiting = await pending.match(PAGE);
-  if (!waiting || text !== await waiting.text()) await pending.put(PAGE, res);
+  if (!waiting || core(text) !== core(await waiting.text())) await pending.put(PAGE, res);
   await tell({ type: 'update-ready' });
 }
+/* The part of the page that counts as a new version. Ad blockers such as AdGuard change the page
+   as it downloads: they remove <link> tags and add tags of their own. Turning one on or off must not
+   look like a new version, so <link> tags, <script> and <style> tags with attributes (the game's own
+   have none) and whitespace are left out. A change to the page's <link> tags alone is therefore not
+   offered as an update; it arrives with the next change to anything else. */
+const core = html => html
+  .replace(/<link\b[^>]*>/gi, '')
+  .replace(/<(script|style)\b[^>]+>[\s\S]*?<\/\1>/gi, '')
+  .replace(/\s+/g, ' ');
 async function tell(msg, client) {
   const list = client ? [client] : await self.clients.matchAll({ type: 'window' });
   for (const c of list) c.postMessage(msg);
