@@ -158,19 +158,24 @@
     }
   }
 
-  // A new hand (or the Showdown deal): your cards come in from the dealer, one after another. Timed from when the hand
+  // A new hand (or the Showdown deal): the cards go out from the dealer (the mediator in a Showdown) one at a time,
+  // round the table from the dealer's left: your cards and the opponents' hand backs alike. Timed from when the hand
   // first showed, so a rebuild mid-deal resumes it.
   function dealHand(s, now) {
-    const ms = speedMs(), cards = $$('#hand .card[data-card]'), sd = s.showdown && s.showdown.active;
-    const key = s.handNumber + (sd ? 'sd' : '');
-    if (!cards.length || !/^(discard|showdownDiscard)$/.test(s.phase)) return;
-    if (handDeal.key !== key) handDeal = { key, t0: now };
-    const from = $('#seat' + (sd ? s.showdown.mediator : s.dealer)), e = now - handDeal.t0, step = ms * 0.12;
-    if (!ms || !from || e > ms + step * cards.length) return;
+    const ms = speedMs(), sd = s.showdown && s.showdown.active, key = s.handNumber + (sd ? 'sd' : '');
+    if (!/^(discard|showdownDiscard)$/.test(s.phase)) return;
+    const dealer = sd ? s.showdown.mediator : s.dealer, from = $('#seat' + dealer);
+    const order = [1, 2, 3].map(k => (dealer + k) % 3).filter(p => !sd || s.showdown.participants.includes(p));
+    const hands = order.map(p => p === 0 ? $$('#hand .card[data-card]') : $$('#seat' + p + ' .mini-back'));
+    if (!hands.some(h => h.length)) return;
+    if (handDeal.key !== key) handDeal = { key, t0: now, end: 0 };
+    const e = now - handDeal.t0, step = ms * 0.06, most = Math.max(...hands.map(h => h.length));
+    handDeal.end = Math.max(handDeal.end, handDeal.t0 + ms + step * order.length * most);
+    if (!ms || !from || e > ms + step * order.length * most) return;
     const [fx, fy] = center(from);
-    cards.forEach((c, i) => { const [cx, cy] = center(c);
+    hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
       c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
-        { duration: ms, delay: i * step, easing: 'ease-out', fill: 'backwards' }).currentTime = e; });
+        { duration: ms, delay: (i * order.length + j) * step, easing: 'ease-out', fill: 'backwards' }).currentTime = e; }));
   }
 
   // Trick cards slide in from the player's seat; at a trick's end the winner lifts once the last card has landed.
@@ -220,7 +225,7 @@
     for (const li of log.children) if (!li.dataset.seq) li.dataset.seq = String(++seq);
     log.replaceChildren(...[...log.children].sort((a, b) => a.dataset.seq - b.dataset.seq));
     for (const li of log.children) li.style.order = '';
-    if (!s || !s.handNumber) return;
+    if (!s || !s.phase || s.phase === 'setup') return;
 
     if (s.handNumber < lastHand) seen.clear();
     lastHand = s.handNumber;
@@ -251,10 +256,12 @@
 
     const ms = speedMs();
     $$('#center .outpile .olayer').forEach((el, i) => {
-      if (layerStart[i] == null) layerStart[i] = now;
+      // A discard waits for the deal to finish: no one discards before they hold all their cards.
+      if (layerStart[i] == null) layerStart[i] = handDeal.key === String(s.handNumber) ? Math.max(now, handDeal.end) : now;
       if (mineLand && mineLand.hand === s.handNumber && mineLand.idx === i) return;
       const e = now - layerStart[i];
       if (!ms || e >= ms) return;
+      if (e < 0) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: -e });
       el.style.setProperty('--ms', ms + 'ms');
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
     });
