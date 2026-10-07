@@ -322,7 +322,7 @@ if ((discardBtn || (window.__pileAll && st.phase === 'discard')) && $('.kitty-sp
   $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards"></div>');
   const pile = $('.kitty-spot .outpile');
   const SEAT = { 1: { from: 'translate(-230%,-10%) rotate(-38deg)', rest: -7, dx: -3 }, 2: { from: 'translate(230%,-10%) rotate(38deg)', rest: 6, dx: 3 }, 0: { from: 'translate(0,190%) rotate(0deg)', rest: 1, dx: 0 } };
-  const ms = { slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450;
+  const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : { slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450;
   window.__addDiscard = (seat, animate = true) => {
     const k = SEAT[seat], i = pile.children.length;
     pile.classList.remove('empty');
@@ -439,7 +439,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 // Kitty animations, in the same language as the discards: cards slide out from under (or back under) a seat.
 // __kittyDeal(dealer): the dealer's 3 kitty cards slide out from under the dealer's seat into the spread, one by one.
 // __kittyTake(receiver): the turned card slides under the receiver's seat; the other 2 square into the outside pile.
-{ const speedMs = () => ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
+{ const speedMs = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
   const offset = (el, seat) => { const a = el.getBoundingClientRect(), b = document.getElementById('seat' + seat).getBoundingClientRect();
     return [(b.left + b.width / 2) - (a.left + a.width / 2), (b.top + b.height / 2) - (a.top + a.height / 2)]; };
   const tilt = { 1: -30, 2: 30, 0: 0 };

@@ -11,7 +11,8 @@
   let prev = null, out = null, handDeal = { key: '', t0: 0 }, kittyHold = 0, mineLand = null;
   let seq = 0, lastHand = 0, logCount = -1, discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '', personaSeat = null;
   const seen = new Set(), layerStart = [], slotStart = {}, winStart = {};
-  const speedMs = () => ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
+  // Reduced motion (the system setting) turns every animation off, like Instant.
+  const speedMs = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
 
   // A redraw that changes nothing is skipped (the ' enter' and ' flash' classes mark only the first draw of a change).
   const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
@@ -134,27 +135,43 @@
       done(g, [fly(g, outsideCell(), ms, wait)]);
       kittyHold = performance.now() + wait + ms * 0.9;
     } else if (pileNow && mine.length) {
-      mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, ms, i * 70)]); });
-      mineLand = { hand: s.handNumber, idx: discarders.indexOf(0), t0: performance.now() };
+      const hold = handDeal.key === String(s.handNumber) ? Math.max(0, handDeal.end - performance.now()) : 0;   // after the deal
+      mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, ms, hold + i * 70)]); });
+      mineLand = { hand: s.handNumber, idx: discarders.indexOf(0), t0: performance.now() + hold };
       holdMyLayer(performance.now());
     }
     // Exchange and Showdown discards: cards that leave a hand outside trick play fly to the Outside cell. Yours are the
-    // cards themselves; a bot's are backs from its seat.
+    // cards themselves; a bot's are backs from its seat. A discard made during the deal waits for the deal to end
+    // (a Showdown player can discard as soon as the cards are dealt); its cards stay in the hand backs until then.
     if (before.phase !== 'discard' && !/Play$|rickDone/.test(before.phase)) {
-      const oc = outsideCell(), ids = new Set(s.hands[0]);
+      const oc = outsideCell(), ids = new Set(s.hands[0]), sd = s.showdown && s.showdown.active;
+      const hold = handDeal.key === s.handNumber + (sd ? 'sd' : '') ? Math.max(0, handDeal.end - performance.now()) : 0;
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - s.hands[p].length; if (k <= 0) continue;
         if (p === 0) {
-          for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, ms)]); }
+          for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, ms, hold)]); }
           continue;
         }
         const r = $('#seat' + p).getBoundingClientRect(), w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+        if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
         for (let i = 0; i < k; i++) {
           const b = document.createElement('div'); b.className = 'card back';
           const g = place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + i * 10, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
-          done(g, [fly(g, oc, ms, i * 80)]);
+          done(g, [fly(g, oc, ms, hold + i * 80)]);
+          if (hold) g.animate([{ opacity: 0 }, { opacity: 0 }], { duration: hold });   // not on screen until it leaves
         }
       }
+    }
+  }
+  // Hand backs kept for a Showdown discard that waits for the deal; redrawn on every rebuild until the wait ends.
+  const heldBacks = {};
+  function holdBacks() {
+    $$('.mini-back.sdheld').forEach(e => e.remove());
+    for (const [p, h] of Object.entries(heldBacks)) {
+      const wait = h.until - performance.now(), row = $('#seat' + p + ' .backrow');
+      if (wait <= 0) { delete heldBacks[p]; continue; }
+      if (row) for (let k = 0; k < h.n; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back sdheld"></span>');
+      setTimeout(holdBacks, wait + 32);
     }
   }
 
@@ -257,7 +274,8 @@
     const ms = speedMs();
     $$('#center .outpile .olayer').forEach((el, i) => {
       // A discard waits for the deal to finish: no one discards before they hold all their cards.
-      if (layerStart[i] == null) layerStart[i] = handDeal.key === String(s.handNumber) ? Math.max(now, handDeal.end) : now;
+      // Discards also follow one another, in the order they were made.
+      if (layerStart[i] == null) layerStart[i] = Math.max(now, handDeal.key === String(s.handNumber) ? handDeal.end : 0, i ? (layerStart[i - 1] ?? 0) + ms * 0.4 : 0);
       if (mineLand && mineLand.hand === s.handNumber && mineLand.idx === i) return;
       const e = now - layerStart[i];
       if (!ms || e >= ms) return;
@@ -266,6 +284,15 @@
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
     });
     holdMyLayer(now);
+    // A bot's 3 discards stay in its hand backs until its layer leaves for the pile (it waits for the deal to end).
+    $$('.mini-back.held').forEach(e => e.remove());
+    if (s.phase === 'discard') discarders.forEach((p, i) => {
+      const wait = (layerStart[i] ?? now) - now, row = p && $('#seat' + p + ' .backrow');
+      if (wait <= 0 || !row || !ms) return;
+      for (let k = 0; k < 3; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back held"></span>');
+      setTimeout(() => $$('#seat' + p + ' .mini-back.held').forEach(e => e.remove()), wait + 32);   // the frame the layer shows
+    });
+    holdBacks();
     transitions(s, out, prev); out = null;
     // The kitty deal: timed from when the kitty first showed this hand, and held while the outside pile clears.
     const kp = $('#center .kpile');
