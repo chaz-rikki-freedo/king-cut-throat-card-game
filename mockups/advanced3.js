@@ -266,7 +266,7 @@ const myOut = st.myOut || [], sdN = st.sdDiscards || 0;
 const micro = (rank, suit) => '<span class="micro"><span class="rank">' + rank + '</span><span class="' + (/[♥♦]/.test(suit) ? 'pip-red' : 'pip-black') + '">' + suit + '</span></span>';
 const mini = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/); return m ? micro(m[1], sym[m[2]]) : '<span class="mc"></span>'; };
 const sdOut = sdN ? '<span class="minis">' + Array.from({ length: sdN }, (_, i) => i < myOut.length ? mini(myOut[i]) : '<span class="mc"></span>').join('') + '</span>' : '';
-const outCell = isSD ? (sdN ? cell('muted out', 'Outside', sdOut) : '') : (outN ? cell('muted', 'Outside', outN[1]) : '');
+const outCell = isSD ? (sdN ? cell('muted out', 'Outside', sdOut) : '') : (outN ? cell('muted', 'Outside', outN[1]) : ($('[data-action="confirm-discard"]') ? cell('muted', 'Outside', String(window.__outside || 0)) : ''));
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
   (st.trump ? cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + sym[st.trump] + '</span>') : '') +
   cell(isSD && tl ? 'hand wide' : 'hand', 'Hand ' + st.handNumber, tl ? trickVal : '') +
@@ -302,7 +302,7 @@ if (discardBtn && $('.kitty-spot')) {
   const backs = Array.from({ length: layers }, (_, i) => '<div class="card back" style="transform:translate(' + i * 1.5 + 'px,' + (-i * 1.5) + 'px)"></div>').join('');
   const kp = $('.kitty-spot .kpile'); if (kp) kp.remove();   // one spot, one pile at a time: discards now, kitty at the bids
   $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards">' + backs +
-    '<div class="op-face" style="transform:translate(' + Math.max(0, layers - 1) * 1.5 + 'px,' + (-Math.max(0, layers - 1) * 1.5) + 'px)"><b class="op-n">' + n + '</b></div></div>');
+    '</div>');   // the count lives in the information strip's Outside cell
   $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
   $('.kitty-spot .pile-act').appendChild(discardBtn);
 }
