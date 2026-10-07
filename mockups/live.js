@@ -47,7 +47,9 @@
 .trick .slot .card{transition:none!important}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:30}
 #fx > *{position:fixed!important;margin:0!important;box-sizing:border-box}
-#fx .olayer,#fx .olayer .card{animation:none!important}`;
+#fx .olayer,#fx .olayer .card{animation:none!important}
+.pips i.on.wait{background:transparent!important;border-color:rgba(255,255,255,.45)!important}
+.pips i{transition:background-color .15s,border-color .15s}`;
   document.head.appendChild(live);
 
   const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
@@ -60,7 +62,9 @@
     return { el, r, vars }; };
   function capture() {
     const tr = $('#center .trick');
-    return { trick: tr && $('.slot.win', tr) ? keep(tr) : null, kpile: keep($('#center .kpile')), outpile: keep($('#center .outpile')),
+    const st = KCT.App.app.state, kt = tr && $('.slot.win', tr) ? keep(tr) : null;
+    if (kt) { kt.hand = st.handNumber; kt.sd = !!(st.showdown && st.showdown.active); }
+    return { trick: kt, kpile: keep($('#center .kpile')), outpile: keep($('#center .outpile')),
       hand: $$('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })) };
   }
   // A kept element goes into the effects layer exactly where it was, with the variables it had.
@@ -93,6 +97,38 @@
   const outsideCell = () => $$('.info .cell').find(c => /Outside/i.test(c.textContent)) || $('.info');
   const seatOf = p => p === 0 ? ($('#hand') || $('#seat0')) : $('#seat' + p);
 
+  // Counts change when the cards arrive: the Outside count and the trick circles wait for their flights to land.
+  // Each pending arrival is keyed, so a rebuild re-registers it without counting it twice.
+  const pending = new Map();   // key -> { kind: 'out' | 'pip', p, n, until }
+  let countTimer = 0;
+  const expect = (key, x) => { if (!pending.has(key)) pending.set(key, x); };
+  function refreshCounts() {
+    const now = performance.now();
+    for (const [k, x] of pending) if (x.until <= now) pending.delete(k);
+    const cell = $$('.info .cell').find(c => /Outside/i.test(c.textContent)), v = cell && $('.val', cell);
+    if (v && /^\d+$/.test(v.dataset.actual ?? v.textContent.trim())) {
+      if (v.dataset.actual == null) v.dataset.actual = v.textContent.trim();
+      let n = +v.dataset.actual; for (const x of pending.values()) if (x.kind === 'out') n -= x.n;
+      v.textContent = String(Math.max(0, n));
+    }
+    for (const p of [0, 1, 2]) {
+      const on = $$('#seat' + p + ' .pips i.on'); on.forEach(e => e.classList.remove('wait'));
+      let hold = 0; for (const x of pending.values()) if (x.kind === 'pip' && x.p === p) hold++;
+      for (let k = 0; k < hold && k < on.length; k++) on[on.length - 1 - k].classList.add('wait');
+    }
+    clearTimeout(countTimer);
+    if (pending.size) countTimer = setTimeout(refreshCounts, Math.max(0, Math.min(...[...pending.values()].map(x => x.until)) - now) + 5);
+  }
+
+  // A finished trick on the table: its winner's new circle stays empty until the sweep lands (a timed fallback in case
+  // no sweep follows, as at the end of a game).
+  const pipKey = (hand, sd, ids) => 'pip' + hand + (sd ? 'sd' : '') + '|' + ids;
+  function holdTrickPip(s) {
+    const tr = $('#center .trick'), w = tr && $('.slot.win', tr); if (!w || !speedMs()) return;
+    const p = +(w.className.match(/slot-(\d)/) || [])[1], ids = $$('.slot .card[data-card]', tr).map(c => c.dataset.card).sort().join();
+    pending.set(pipKey(s.handNumber, s.showdown && s.showdown.active, ids), { kind: 'pip', p, until: performance.now() + 4000 });
+  }
+
   function transitions(s, o, before) {
     const ms = speedMs(); if (!ms || !o || !before) return;
     // A thrown-in hand (no trump named, or a Joker void): every card goes back to the dealer, who deals again.
@@ -117,6 +153,7 @@
       if (!stay) {
         const g = place(o.trick), w = $('.slot.win', g), p = w ? +(w.className.match(/slot-(\d)/) || [])[1] : -1;
         const to = $('#seat' + p + ' .pips') || $('#seat' + p);
+        if (to && p >= 0) pending.set(pipKey(o.trick.hand, o.trick.sd, ids(o.trick.el)), { kind: 'pip', p, until: performance.now() + ms * 1.3 + 150 });
         if (to) done(g, $$('.slot', g).map((sl, i) => { if (!$('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, ms, i * 60); }).filter(Boolean));
         else g.remove();
       }
@@ -126,6 +163,7 @@
     if (o.kpile && !$('#center .kpile') && s.trump && s.receiver != null) {
       const g = place(o.kpile), cards = $$('.card', g), top = cards[cards.length - 1], r1 = s.exchangeCount === 1;
       const recv = seatOf(s.receiver), oc = outsideCell(), tilt = { 0: 0, 1: -30, 2: 30 }[s.receiver];
+      expect('kitty' + s.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + ms * 0.5 + ms * 1.3 + 160 });
       done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, ms, i * 80, tilt) : fly(c, oc, ms, ms * 0.5 + i * 80)));
     }
     // Discards complete: the outside pile slides off to the Outside cell; the kitty takes its spot.
@@ -139,6 +177,7 @@
       const g = place(o.outpile), gap = ms * 0.4, wait = missing.length ? ms + (missing.length - 1) * gap : 0;
       const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
       missing.forEach((p, n) => {
+        expect('pile' + s.handNumber + '|' + p, { kind: 'out', n: 3, until: performance.now() + n * gap + ms });
         if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, ms, n * gap + i * 70)]); }); return; }
         const r = $('#seat' + p).getBoundingClientRect();
         for (let i = 0; i < 3; i++) {
@@ -153,6 +192,7 @@
       const hold = handDeal.key === String(s.handNumber) ? Math.max(0, handDeal.end - performance.now()) : 0;   // after the deal
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, ms, hold + i * 70)]); });
       mineLand = { hand: s.handNumber, idx: discarders.indexOf(0), t0: performance.now() + hold };
+      expect('pile' + s.handNumber + '|0', { kind: 'out', n: 3, until: mineLand.t0 + ms });
       holdMyLayer(performance.now());
     }
     // Exchange and Showdown discards: cards that leave a hand outside trick play fly to the Outside cell. Yours are the
@@ -163,6 +203,7 @@
       const hold = handDeal.key === s.handNumber + (sd ? 'sd' : '') ? Math.max(0, handDeal.end - performance.now()) : 0;
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - s.hands[p].length; if (k <= 0) continue;
+        expect('ex' + s.handNumber + s.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + ms * 1.3 + 80 * k });
         if (p === 0) {
           for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, ms, hold)]); }
           continue;
@@ -292,6 +333,7 @@
       // Discards also follow one another, in the order they were made.
       if (layerStart[i] == null) layerStart[i] = Math.max(now, handDeal.key === String(s.handNumber) ? handDeal.end : 0, i ? (layerStart[i - 1] ?? 0) + ms * 0.4 : 0);
       if (mineLand && mineLand.hand === s.handNumber && mineLand.idx === i) return;
+      expect('pile' + s.handNumber + '|' + discarders[i], { kind: 'out', n: 3, until: layerStart[i] + ms });
       const e = now - layerStart[i];
       if (!ms || e >= ms) return;
       if (e < 0) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: -e });
@@ -309,6 +351,7 @@
     });
     holdBacks();
     transitions(s, out, prev); out = null;
+    holdTrickPip(s);
     // The kitty deal: timed from when the kitty first showed this hand, and held while the outside pile clears.
     const kp = $('#center .kpile');
     if (kp && window.__kittyDeal) {
@@ -327,6 +370,7 @@
     shown.forEach((li, i) => { li.style.order = String(i); });
     log.scrollTop = 0;
     placeToasts();
+    refreshCounts();
   }
 
   // Toasts sit over the play area.
