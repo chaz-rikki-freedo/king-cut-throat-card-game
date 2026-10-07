@@ -145,6 +145,11 @@ const css = `
 .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 .pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
+.outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
+.outpile .olayer .card{animation:ofan var(--ms) ease-out both}
+@keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
+@keyframes ofan{0%{transform:translateX(var(--fx)) rotate(var(--fan))}60%{transform:translateX(calc(var(--fx) * .6)) rotate(calc(var(--fan) * .6))}100%{transform:translate(calc(var(--fx) * .12),0) rotate(calc(var(--fan) * .3))}}
+@media (prefers-reduced-motion:reduce){.outpile .olayer,.outpile .olayer .card{animation:none}}
 .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .outpile.empty{border:2px dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
 .outpile .op-face{position:absolute;inset:0;z-index:5;display:grid;place-items:center}
@@ -298,11 +303,21 @@ if (kitty && !$('.center .trick')) {
 const discardBtn = $('[data-action="confirm-discard"]');
 if (discardBtn && $('.kitty-spot')) {
   const n = window.__outside != null ? window.__outside : $$('.seat .discard-note, .me .discard-note').filter(d => /Discarded/.test(d.textContent)).length * 3;
-  const layers = Math.min(Math.ceil(n / 3), 4);
-  const backs = Array.from({ length: layers }, (_, i) => '<div class="card back" style="transform:translate(' + i * 1.5 + 'px,' + (-i * 1.5) + 'px)"></div>').join('');
+  // One coherent pile, built in layers: each player's 3 discards arrive as a small fan from that player's seat, at the
+  // seat's angle (the same angles as the trick), then square up into a layer that keeps a slight turn toward its seat.
+  // Animation length follows the game speed; Instant skips it.
   const kp = $('.kitty-spot .kpile'); if (kp) kp.remove();   // one spot, one pile at a time: discards now, kitty at the bids
-  $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards">' + backs +
-    '</div>');   // the count lives in the information strip's Outside cell
+  $('.kitty-spot .piles-row').insertAdjacentHTML('beforeend', '<div class="outpile' + (n ? '' : ' empty') + '" aria-label="Outside pile: ' + n + ' cards"></div>');
+  const pile = $('.kitty-spot .outpile');
+  const SEAT = { 1: { from: 'translate(-230%,-10%) rotate(-38deg)', rest: -7, dx: -3 }, 2: { from: 'translate(230%,-10%) rotate(38deg)', rest: 6, dx: 3 }, 0: { from: 'translate(0,190%) rotate(0deg)', rest: 1, dx: 0 } };
+  const ms = { slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450;
+  window.__addDiscard = (seat, animate = true) => {
+    const k = SEAT[seat], i = pile.children.length;
+    pile.classList.remove('empty');
+    pile.insertAdjacentHTML('beforeend', '<div class="olayer" style="--from:' + k.from + ';--rest:' + k.rest + 'deg;--dx:' + k.dx + 'px;--lift:' + (-i * 2) + 'px;--ms:' + (animate ? ms : 0) + 'ms">' +
+      [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>');
+  };
+  for (const seat of (window.__discarders || [1, 2, 0]).slice(0, Math.min(Math.round(n / 3), 3))) window.__addDiscard(seat, false);
   $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
   $('.kitty-spot .pile-act').appendChild(discardBtn);
 }
