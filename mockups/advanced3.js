@@ -290,7 +290,8 @@ $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="
   '</section>');
 
 // Trick stacking: each card sits above the cards played before it; your empty slot, still to play, is on top.
-const plays = (st.trick && st.trick.plays) || [];
+// At a trick's end the engine moves the cards to lastTrick, so the play order comes from there.
+const plays = /trickDone|showdownTrickDone/i.test(st.phase || '') && st.lastTrick ? st.lastTrick.plays : ((st.trick && st.trick.plays) || []);
 plays.forEach((pl, i) => { const sl = $('.trick .slot-' + pl.player); if (sl) sl.style.zIndex = String(i + 1); });
 for (const sl of $$('.trick .slot')) if (!sl.style.zIndex) sl.style.zIndex = String(plays.length + 1);
 

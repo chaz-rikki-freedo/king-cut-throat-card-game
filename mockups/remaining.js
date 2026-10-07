@@ -38,7 +38,7 @@ const TARGETS = [
             return { flippedHTML: s.flippedId ? R.cardHTML(s.flippedId, null) : '', flipped: s.flippedId, flippedBlocked: s.flippedBlocked,
               bids: [0, 1, 2].map(p => v.bidLog.filter(b => b.player === p).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + sym[b.suit] : 'passed') + ' round 2')),
               voids: v.voids.map(x => x.map(c => sym[c] || c)), myOut: v.myOut, won,
-              cardHTML: Object.fromEntries([].concat(v.myOut, pl.map(x => x.card)).map(id => [id, R.cardHTML(id, s.trump)])) }; })(), state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, phase: s.phase, myOut: KCT.buildView(s, 0).myOut, sdDiscards: s.showdown && s.showdown.active ? s.showdown.discards.length : 0 } } };`, null, ['drive.js']);
+              cardHTML: Object.fromEntries([].concat(v.myOut, pl.map(x => x.card)).map(id => [id, R.cardHTML(id, s.trump)])) }; })(), state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, lastTrick: s.lastTrick, phase: s.phase, myOut: KCT.buildView(s, 0).myOut, sdDiscards: s.showdown && s.showdown.active ? s.showdown.discards.length : 0 } } };`, null, ['drive.js']);
         if (!r.name) break;
         got[r.name] = true; snaps.push(r); console.log('seed', seed, r.name);
         if (r.name === '14-game-over') break;
