@@ -1,5 +1,5 @@
 /* Mockup layer, Advanced v3: v1 (advanced.js) with the v2 trick circles, scores back in the seats, and one uniform
-   style (one table color, one tag shape; each role keeps its color). Not app code.
+   style (one tag shape; each role keeps its color; the Showdown table is magenta throughout). Not app code.
    Inputs set by the shot scripts: __turn, __led (seat ids), __lastWinner (HTML), __collapsed (log collapsed). */
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const css = `
@@ -172,7 +172,7 @@ html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
 .summary table.stats td:last-child{color:var(--ink)!important}
 .center{padding-top:10px!important}
 /* One uniform style: one table color, one tag style. */
-.table,.table.showdown{background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)!important}
+/* The Showdown keeps its magenta table, the whole table, every seat alike. */
 .table.showdown .not-sd{background:var(--panel)!important}
 /* Tags: each role keeps its own color (filled); the shape is uniform: one pill, one size, one weight. */
 .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
@@ -195,7 +195,7 @@ const WON = { 0: [], 1: [], 2: [] }, SDWON = { 0: [], 1: [], 2: [] }, NAME = { Y
 for (const s of $$('#seat1,#seat2,#seat0')) {
   const head = $('.seat-head,.me-head', s), id = +s.id.slice(4);
   if (window.__turn === id) head.insertAdjacentHTML('beforeend', '<span class="tag turn" style="background:#2e7d32;color:#fff">Turn</span>');
-  if (window.__led === id) head.insertAdjacentHTML('beforeend', '<span class="tag led" style="background:#455a8a;color:#fff">Led</span>');
+  if (window.__led === id) head.insertAdjacentHTML('beforeend', '<span class="tag led" style="background:#00838f;color:#fff">Led</span>');
   const tags = $$('.tag', head), box = document.createElement('div');
   box.className = 'tagbox';
   for (const [classes, slot] of SLOTS) {
