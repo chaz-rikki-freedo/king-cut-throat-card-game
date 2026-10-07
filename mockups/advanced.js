@@ -57,10 +57,14 @@ const css = `
 .seat{position:relative}
 .seat .bubble{position:absolute;top:8px;z-index:6;margin:0;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.4)}
 .seat-west .bubble{left:calc(100% + 8px)}.seat-east .bubble{right:calc(100% + 8px)}
-.me .tagbox{width:auto;min-height:20px;flex:0 1 auto}.me .tagbox .tag{flex-basis:66px}
+.me .tagbox{width:auto;min-height:20px;flex:0 1 auto}.me .tagbox .tag{flex-basis:66px}.me .tagbox .tag.duelist,.me .tagbox .tag.mediator{flex-basis:auto;padding:0 8px}
 @media (max-width:720px){.tagbox .tag{font-size:9px;letter-spacing:0}.me .tagbox .tag{flex-basis:calc((100% - 12px) / 4)}.me .tagbox .tag.mediator{flex-basis:auto;padding:0 6px}.me .tagbox{flex:1 1 200px;min-height:20px}}
 .won{all:unset;display:flex;flex-wrap:wrap;align-items:center;gap:4px 0;min-height:48px;padding:4px;cursor:pointer;border-radius:8px;max-width:100%}
 .won.none{display:none}
+.wonrows{display:flex;flex-direction:column;gap:2px;order:4}
+.seat-east .wonrows{align-items:flex-end}
+.me > .wonrows{order:9;align-self:center;align-items:center}
+.won.sdrow .wt span{border-color:#ff9ad5}
 .won:hover{background:rgba(255,255,255,.06)}.won:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .seat-east .won{align-self:flex-end;flex-direction:row-reverse}
 .me .won{min-height:0;padding:2px 4px}
@@ -167,11 +171,12 @@ const sp = $('.speed-pick'), cur = $('#speedSel'); sp.title = 'Speed: ' + cur.op
 // won-trick stacks replace the text.
 const SLOTS = [['ai you', 'id'], ['dealer', 'dealer'], ['caller', 'namer'], ['receiver', 'kitty'], ['turn', 'turn'], ['led', 'led'], ['mediator duelist', 'sd']];
 // Which trick numbers each seat won this hand, read from the log (oldest first at this point).
-const WON = { 0: [], 1: [], 2: [] }, NAME = { You: 0, Kit: 1, Tex: 2 }, curHand = KCT.App.app.state.handNumber;
+const WON = { 0: [], 1: [], 2: [] }, SDWON = { 0: [], 1: [], 2: [] }, NAME = { You: 0, Kit: 1, Tex: 2 }, curHand = KCT.App.app.state.handNumber;
 { let h = 0;
   for (const li of $$('#gameLog li')) {
     const t = li.textContent, hm = t.match(/^Hand (\d+)\b/); if (hm) h = +hm[1];
     const w = t.match(/^(You|Kit|Tex) wins? trick (\d+)/); if (w && h === curHand) WON[NAME[w[1]]].push(+w[2]);
+    const sw = t.match(/^(You|Kit|Tex) wins? Showdown trick (\d+)/); if (sw && h === curHand) SDWON[NAME[sw[1]]].push(+sw[2]);
   } }
 for (const s of $$('#seat1,#seat2,#seat0')) {
   const head = $('.seat-head,.me-head', s), id = +s.id.slice(4);
@@ -186,16 +191,20 @@ for (const s of $$('#seat1,#seat2,#seat0')) {
   const backs = $(':scope > .backs', s); if (backs && s.id !== 'seat0') head.appendChild(backs);
   const score = $('.score', head);
   if (s.id === 'seat0') head.insertBefore(box, score); else head.after(box);
-  const tr = $('.tricks', s), n = +($('b', tr) || {}).textContent || 0;
-  // Won tricks: one row (a single button). Each trick is a rough stack of three backs at truly random angles,
-  // all vertical; each overlaps the one before it by 20% of its width. The top back carries the trick number
-  // in the winner's name color, half transparent.
+  const tr = $('.tricks', s);
+  // Won tricks: one row per pile (a single button each). Each trick is a rough stack of three backs at truly random
+  // angles, all vertical; each overlaps the one before it by 20% of its width. The top back carries the trick
+  // number in the winner's name color, half transparent. In a Showdown a tied player has two rows: the Showdown
+  // tricks (first) and the main-hand tricks; the mediator keeps only the main-hand row.
   const rnd = (a) => (Math.random() * 2 - 1) * a;
-  const east = s.id === 'seat2', side = east ? 'margin-right' : 'margin-left', nums = WON[id];
-  const tricks = Array.from({ length: n }, (_, i) => '<div class="wt v" style="' + (i ? side + ':' + (-28 * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + rnd(3).toFixed(1) + 'px) rotate(' + rnd(9).toFixed(1) + 'deg)">' +
-    [0, 1, 2].map(k => '<span style="transform:translate(' + rnd(2.5).toFixed(1) + 'px,' + rnd(2.5).toFixed(1) + 'px) rotate(' + rnd(7).toFixed(1) + 'deg)">' +
-      (k === 2 && nums[i] ? '<b class="tn" style="color:var(--name' + id + ')">' + nums[i] + '</b>' : '') + '</span>').join('') + '</div>').join('');
-  tr.outerHTML = n ? '<button type="button" class="won" aria-label="' + n + (n === 1 ? ' trick' : ' tricks') + ' won" title="' + n + (n === 1 ? ' trick' : ' tricks') + ' won' + (nums.length ? ': trick ' + nums.join(', ') : '') + '">' + tricks + '</button>' : '<div class="won none" aria-hidden="true"></div>';
+  const east = s.id === 'seat2', side = east ? 'margin-right' : 'margin-left';
+  const pile = (nums, label) => !nums.length ? '' : '<button type="button" class="won' + (label ? ' sdrow' : '') + '" aria-label="' + (label || '') + nums.length + (nums.length === 1 ? ' trick' : ' tricks') + ' won: trick ' + nums.join(', ') + '" title="' + (label || '') + 'trick ' + nums.join(', ') + '">' +
+    nums.map((num, i) => '<div class="wt v" style="' + (i ? side + ':' + (-28 * 0.2) + 'px;' : '') + 'z-index:' + (i + 1) + ';transform:translateY(' + rnd(3).toFixed(1) + 'px) rotate(' + rnd(9).toFixed(1) + 'deg)">' +
+      [0, 1, 2].map(k => '<span style="transform:translate(' + rnd(2.5).toFixed(1) + 'px,' + rnd(2.5).toFixed(1) + 'px) rotate(' + rnd(7).toFixed(1) + 'deg)">' +
+        (k === 2 ? '<b class="tn" style="color:var(--name' + id + ')">' + num + '</b>' : '') + '</span>').join('') + '</div>').join('') + '</button>';
+  const inSD = /Showdown tricks/.test(tr.textContent);
+  const html = (inSD ? pile(SDWON[id], 'Showdown ') : '') + pile(WON[id], '');
+  tr.outerHTML = html ? '<div class="wonrows">' + html + '</div>' : '<div class="won none" aria-hidden="true"></div>';
 }
 // KING tag on full-size Kings only (not the small last-trick cards).
 for (const c of $$('.card[data-card^="K"]')) if (!c.closest('.lasttrick') && !$('.c-tag', c)) c.insertAdjacentHTML('beforeend', '<span class="c-tag king">KING</span>');
@@ -297,7 +306,7 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
 }
 
 // Your seat: won tricks below the hand; the hand knows its card count for crowding.
-{ const me = $('#seat0'), won = $('.me-head .won, #seat0 .won'), hand = $('#hand');
+{ const me = $('#seat0'), won = $('#seat0 .wonrows') || $('.me-head .won, #seat0 .won'), hand = $('#hand');
   if (won) me.appendChild(won);
   if (hand) hand.style.setProperty('--n', String(Math.max(2, hand.children.length))); }
 
