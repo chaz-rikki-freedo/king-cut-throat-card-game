@@ -1,6 +1,7 @@
 /* Mockup layer, Advanced v3: v1 (advanced.js) with the v2 trick circles, scores back in the seats, and one uniform
    style (one tag shape; each role keeps its color; the Showdown table is magenta throughout). Not app code.
-   Inputs set by the shot scripts: __turn, __led (seat ids), __lastWinner (HTML), __collapsed (log collapsed). */
+   Inputs set by the shot scripts: __turn, __led (seat ids), __lastWinner (HTML), __collapsed (log collapsed).
+   The live adapter (live.js) also sets __live, __st (state plus info), __animFrom (discard layers already shown) and __toast. */
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const css = `
 #trumpChip,#handChip,.trick-label,.who,.status,.prompt,.actionbar .hint,.score small,.center .piles,.center .lasttrick{display:none!important}
@@ -261,7 +262,7 @@ for (const li of [...log.children]) { if (!groups.length || li.classList.contain
 log.scrollTop = 0; log.replaceChildren(...groups.reverse().flatMap(g => g[0].classList.contains('gap') ? [g[0], ...g.slice(1).reverse()] : g.slice().reverse()));
 
 // Shared information strip: everything both sides of the table share.
-const st = KCT.App.app.state, sym = { S: '♠', H: '♥', D: '♦', C: '♣' }, red = st.trump === 'H' || st.trump === 'D';
+const st = window.__st || KCT.App.app.state, sym = { S: '♠', H: '♥', D: '♦', C: '♣' }, red = st.trump === 'H' || st.trump === 'D';
 const lt = $('.center .lasttrick'), ltCards = lt ? $$('.card', lt).map(c => c.outerHTML).join('') : '';
 const latest = [...log.children].find(li => !li.classList.contains('gap'));
 const pilesTxt = (($('.center .piles') || {}).textContent || '');
@@ -329,7 +330,7 @@ if (discardBtn && $('.kitty-spot')) {
     pile.insertAdjacentHTML('beforeend', '<div class="olayer" style="--from:translate(' + fx.toFixed(0) + 'px,' + fy.toFixed(0) + 'px) rotate(' + (k.rest * 4) + 'deg);--rest:' + k.rest + 'deg;--dx:' + k.dx + 'px;--lift:' + (-i * 2) + 'px;--ms:' + (animate ? ms : 0) + 'ms">' +
       [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>');
   };
-  for (const seat of (window.__discarders || [1, 2, 0]).slice(0, Math.min(Math.round(n / 3), 3))) window.__addDiscard(seat, false);
+  (window.__discarders || [1, 2, 0]).slice(0, Math.min(Math.round(n / 3), 3)).forEach((seat, i) => window.__addDiscard(seat, i >= (window.__animFrom ?? 9)));
   $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
   $('.kitty-spot .pile-act').appendChild(discardBtn);
 }
@@ -378,17 +379,19 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   if (!pa.children.length) pa.remove();
   const bar = $('.me .actionbar'); if (bar) bar.style.display = 'none'; }
 
+const toastMsg = window.__toast || ((m, first) => { if (first && $$('#toasts .toast').some(x => x.textContent === m)) return;
+  $('#toasts').insertAdjacentHTML(first ? 'afterbegin' : 'beforeend', '<div class="toast info" style="animation:none">' + m + '</div>'); });
 // Calls (Accepts ♥, Names ♥) are toasts, not seat bubbles: the game already toasts them. Pass bubbles stay.
 for (const b of $$('.seat .bubble.call, .me .bubble.call')) {
   const seat = b.closest('.seat, .me'), who = (($('.seat-name', seat) || {}).textContent || '').trim();
   const t = b.textContent.trim().replace(/^Accepts\s+/, 'accepts ').replace(/^Names\s+/, 'names ');
-  $('#toasts').insertAdjacentHTML('beforeend', '<div class="toast info" style="animation:none">' + (who === 'You' ? 'You ' + t.replace(/^accepts/, 'accept').replace(/^names/, 'name') : who + ' ' + t) + ' trump</div>');
+  toastMsg((who === 'You' ? 'You ' + t.replace(/^accepts/, 'accept').replace(/^names/, 'name') : who + ' ' + t) + ' trump');
   b.remove();
 }
 // Pass is a toast too. Pass bubbles leave the seats.
 for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
   const who = (($('.seat-name', b.closest('.seat, .me')) || {}).textContent || '').trim();
-  $('#toasts').insertAdjacentHTML('beforeend', '<div class="toast info" style="animation:none">' + who + (who === 'You' ? ' pass' : ' passes') + '</div>');
+  toastMsg(who + (who === 'You' ? ' pass' : ' passes'));
   b.remove();
 }
 // A tag that gets added is announced once by a toast (Dealer, Kitty, Mediator/Showdown; Namer is the trump call above).
@@ -398,7 +401,7 @@ for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
   if ((m = t.match(/^Hand \d+: (\w+) deals/))) msg = m[1] + ' deals';
   else if ((m = t.match(/^(\S+) goes to (\w+)/))) msg = m[1] + ' goes to ' + m[2] + ' · Kitty';
   else if ((m = t.match(/^SHOWDOWN! (\w+) and (\w+) tied.*?(\w+) (?:are|is) the mediator/))) msg = 'SHOWDOWN! ' + m[1] + ' vs ' + m[2] + ' · ' + (m[3] === 'You' ? 'you mediate' : m[3] + ' mediates');
-  if (msg && !$$('#toasts .toast').some(x => x.textContent === msg)) $('#toasts').insertAdjacentHTML('afterbegin', '<div class="toast info" style="animation:none">' + msg + '</div>'); }
+  if (msg) toastMsg(msg, true); }
 
 // Showdown: no banner; the seat that is not in the Showdown keeps the regular table color.
 { const b = $('.center .banner'); if (b) b.remove();
@@ -425,7 +428,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .seat .pips{order:4}
 </style>`);
 // Toasts appear over the play area, not over the information strip or the seats.
-{ const t = $('#toasts'), c = $('#center'); if (t && c) { c.appendChild(t); t.classList.add('in-play'); } }
+{ const t = $('#toasts'), c = $('#center'); if (t && c && !window.__live) { c.appendChild(t); t.classList.add('in-play'); } }
 document.head.insertAdjacentHTML('beforeend', `<style>
 #toasts.in-play{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:min(92%,380px);z-index:20}
 .tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;padding:0 3px!important}
