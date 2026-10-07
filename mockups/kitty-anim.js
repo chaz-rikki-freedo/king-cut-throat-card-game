@@ -25,7 +25,8 @@ const OUT = path.join(__dirname, 'kitty'); fs.mkdirSync(OUT, { recursive: true }
       await v.waitForTimeout(500);
       await v.evaluate(d => window.__kittyDeal(d), r.dealer);
       await v.waitForTimeout(260); await shot('1-dealing');
-      await v.waitForTimeout(900); await shot('2-dealt');
+      await v.waitForTimeout(500); await shot('2-dealt-face-down');
+      await v.waitForTimeout(1100); await shot('2b-turned-up');
       await v.evaluate(x => window.__kittyTake(x), receiver);
       await v.waitForTimeout(280); await shot('3-taking');
       await v.waitForTimeout(1200); await shot('4-taken');

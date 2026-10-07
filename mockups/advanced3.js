@@ -139,6 +139,8 @@ const css = `
 .kitty-spot{--kw:var(--cw)}
 .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:calc(var(--kw)*1.4)}
 .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
+.kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9;z-index:3}
+.kpile .card .kback .cat{z-index:4}
 .kpile .card .cat{position:absolute;left:15%;top:10%;width:70%;height:80%;fill:#000;opacity:.5}
 /* Action buttons: bottom of the play area, right-justified (primary action rightmost, Pass to its left).
    Left-hand mode (a future setting) mirrors it: bottom left, primary action leftmost. */
@@ -437,10 +439,15 @@ document.head.insertAdjacentHTML('beforeend', `<style>
     return [(b.left + b.width / 2) - (a.left + a.width / 2), (b.top + b.height / 2) - (a.top + a.height / 2)]; };
   const tilt = { 1: -30, 2: 30, 0: 0 };
   window.__kittyDeal = dealer => {
-    const ms = speedMs();
-    $$('.kpile .card').forEach((c, i) => { const [x, y] = offset(c, dealer);
+    // All 3 kitty cards come from the dealer face down and land straight; then the dealer turns the top card up in place.
+    const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1], up = !/\bback\b/.test(top.className);
+    if (up) top.insertAdjacentHTML('beforeend', '<div class="kback">' + CAT + '</div>');
+    cards.forEach((c, i) => { const [x, y] = offset(c, dealer);
       c.animate([{ transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt[dealer] + 'deg)' }, { transform: 'none' }],
         { duration: ms, delay: i * ms * 0.45, easing: 'ease-out', fill: 'backwards' }); });
+    if (up) { const t0 = ms + (cards.length - 1) * ms * 0.45 + ms * 0.4;
+      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: ms * 0.8, delay: t0, easing: 'ease-in-out' });
+      setTimeout(() => { const b = $('.kback', top); if (b) b.remove(); }, t0 + ms * 0.4); }
   };
   window.__kittyTake = receiver => {
     const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1];
@@ -453,7 +460,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
       { duration: ms * 1.2, easing: 'ease-in', fill: 'forwards' });
     cards.slice(0, -1).forEach((c, i) => {
       const dx = -parseFloat(getComputedStyle(c).left) + (cards[0].offsetWidth * 0.45) + i * 2;
-      c.animate([{ transform: 'none' }, { transform: 'translate(' + dx + 'px,' + (-i * 2) + 'px) rotate(' + (i ? 3 : -2) + 'deg)' }],
+      c.animate([{ transform: 'none' }, { transform: 'translate(' + dx + 'px,' + (-i * 2) + 'px)' }],
         { duration: ms, delay: ms * 1.2, easing: 'ease-out', fill: 'forwards' }); });
   };
 }
