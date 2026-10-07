@@ -3775,7 +3775,15 @@ const App = (() => {
     else location.reload();
   }
   /* ---- Install: the browser's own install offer, and a check that shows why it may be missing. ---- */
-  const install = { prompt: null, offered: false, installed: false };
+  const install = { prompt: null, offered: false, installed: false, linkRestored: false };
+  /* Some ad blockers (AdGuard, for one) remove the manifest link from the page as it downloads.
+     Without it, Chrome cannot install the app or update its name and icon, so the link is put back. */
+  if (!document.querySelector('link[rel="manifest"]')) {
+    const link = document.createElement('link');
+    link.rel = 'manifest'; link.href = 'manifest.webmanifest';
+    document.head.appendChild(link);
+    install.linkRestored = true;
+  }
   window.addEventListener('beforeinstallprompt', ev => {
     ev.preventDefault();
     install.prompt = ev; install.offered = true;
@@ -3815,6 +3823,7 @@ const App = (() => {
     row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
     const link = /** @type {HTMLLinkElement | null} */ (document.querySelector('link[rel="manifest"]'));
     if (!link) row('bad', 'This page has no manifest link, so the browser cannot see the manifest. Checking manifest.webmanifest directly.');
+    else if (install.linkRestored) row('wait', 'The page arrived without its manifest link, probably removed by an ad blocker. The app put it back.');
     try {
       const res = await fetch(link ? link.href : 'manifest.webmanifest', { cache: 'no-store' });
       const m = await res.json();
