@@ -1,5 +1,5 @@
 /* Mockup layer, Advanced v3: v1 (advanced.js) with the v2 trick circles, scores back in the seats, and one uniform
-   style (one table color, one tag style). Not app code.
+   style (one table color, one tag shape; each role keeps its color). Not app code.
    Inputs set by the shot scripts: __turn, __led (seat ids), __lastWinner (HTML), __collapsed (log collapsed). */
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const css = `
@@ -174,7 +174,8 @@ html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
 /* One uniform style: one table color, one tag style. */
 .table,.table.showdown{background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)!important}
 .table.showdown .not-sd{background:var(--panel)!important}
-.tagbox .tag{background:rgba(255,255,255,.06)!important;color:var(--ink)!important;border:1px solid rgba(255,255,255,.35);border-radius:999px;font-weight:700;letter-spacing:.02em}
+/* Tags: each role keeps its own color (filled); the shape is uniform: one pill, one size, one weight. */
+.tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
 `;
 document.head.insertAdjacentHTML('beforeend', '<style id="mockAdv">' + css + '</style>');
 
