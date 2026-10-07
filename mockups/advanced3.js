@@ -383,3 +383,19 @@ for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
   if (sk && sp) { sk.classList.add('skip-top'); sp.before(sk); const pa = $('.center > .pile-act'); if (pa && !pa.children.length) pa.remove(); } }
 // Names never truncate: the hand backs give way first.
 document.head.insertAdjacentHTML('beforeend', '<style>.seat .seat-head .seat-name{flex:none;overflow:visible}.seat .seat-head .backs{min-width:0;overflow:hidden}@media (max-width:720px){.sscore{font-size:22px!important}}</style>');
+// No mirroring: East reads exactly like West (left-aligned, same order). Opponents' hand backs get their own row,
+// just above the trick circles.
+for (const s of $$('#seat1,#seat2')) {
+  const b = $('.seat-head .backs', s), p = $('.pips', s);
+  if (b && p) { b.classList.add('backrow'); p.before(b); }
+}
+document.head.insertAdjacentHTML('beforeend', `<style>
+.seat-east{align-items:stretch!important}
+.seat-east .seat-head{flex-direction:row!important}
+.seat-east .tagbox{direction:ltr!important}
+.seat-east .pips{align-self:flex-start!important;flex-direction:row!important}
+.seat-east .score-row{justify-content:flex-start!important}
+.seat .backrow{order:3;display:flex;align-self:flex-start;margin:0!important;padding:0 0 0 0!important;min-height:calc(var(--card-tiny)*1.45)}
+.seat .backrow .mini-back{margin-right:-6px!important}
+.seat .pips{order:4}
+</style>`);
