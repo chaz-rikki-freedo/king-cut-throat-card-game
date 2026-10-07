@@ -83,6 +83,14 @@ const css = `
 .trick .slot-0 .card{box-shadow:0 18px 22px rgba(0,0,0,.5)}
 .c-tag.king{background:#f2c14e;color:#1b1b1b}
 .gamelog li.gap:first-child{margin-top:0}
+.info .hand.wide{flex:0 0 auto;min-width:140px}
+.info .out .val{gap:8px}
+.minis{display:inline-flex}
+.mc{width:14px;height:20px;border-radius:2px;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 2px,#93303d 2px 4px);display:inline-grid;place-items:center;font-size:8px;font-weight:800;line-height:1}
+.mc + .mc{margin-left:-6px}
+.mc.up{background:#fdfbf5;color:#1b1b1b;width:20px}.mc.up.red{color:#d32f2f}
+.table.showdown .not-sd{background:var(--felt-edge)!important}
+.skip-top{height:40px;padding:0 12px;font-size:14px}
 .won .wt span .tn{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:900;opacity:.6;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .seat-west .won .wt span .tn,.me .won .wt span .tn{place-items:center start;padding-left:3px}.seat-east .won .wt span .tn{place-items:center end;padding-right:3px}
 /* Seats: a fixed ratio, so West and East always match. */
@@ -207,12 +215,19 @@ const turnedTxt = pilesTxt.match(/Turned card:\s*(\S+)/) || pilesTxt.match(/turn
 const tl = (($('.trick-label') || {}).textContent || '').match(/(Showdown )?trick (\d+) of (\d+)/i);
 const trickVal = tl ? (tl[1] ? 'Showdown ' : 'Trick ') + tl[2] + '/' + tl[3] : '–';
 const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
+// No dashes: a cell with nothing to show hides. During a Showdown the turned card no longer matters, so Turned up
+// hides and the Hand cell widens. Outside shows its count with two tiny cards: the top one face up when it is a
+// card you discarded (you know it), otherwise face down.
+const isSD = $('#table').classList.contains('showdown');
+const myOut = (st.myOut) || (() => { try { return KCT.buildView(KCT.App.app.state, 0).myOut; } catch (e) { return []; } })() || [];
+const mini = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/); return m ? '<span class="mc up' + (/[HD]/.test(m[2]) ? ' red' : '') + '">' + m[1] + sym[m[2]] + '</span>' : '<span class="mc"></span>'; };
+const outCards = '<span class="minis"><span class="mc"></span>' + (myOut.length ? mini(myOut[myOut.length - 1]) : '<span class="mc"></span>') + '</span>';
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
-  cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + (sym[st.trump] || '–') + '</span>') +
-  cell('', 'Hand ' + st.handNumber, trickVal) +
+  (st.trump ? cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + sym[st.trump] + '</span>') : '') +
+  cell(isSD && tl ? 'hand wide' : 'hand', 'Hand ' + st.handNumber, tl ? trickVal : '') +
   cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
-  cell('muted', 'Outside', outN ? outN[1] + ' cards' : '–') +
-  cell('muted', 'Turned up', turnedTxt ? turnedTxt[1] : '–') +
+  (turnedTxt && !isSD ? cell('muted', 'Turned up', turnedTxt[1]) : '') +
+  (outN ? cell('muted out', 'Outside', outCards + outN[1]) : '') +
   '</section>');
 
 // Trick stacking: each card sits above the cards played before it; your empty slot, still to play, is on top.
@@ -273,7 +288,8 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   const c = tr.cells; if (!c || !c.length || tr.querySelector('th')) continue;
   const m = c[0].textContent.match(/^(You|Kit|Tex)(.*)$/); if (!m) continue;
   const id = NAME[m[1]], col = 'var(--name' + id + ')';
-  c[0].innerHTML = '<span style="color:' + col + '">' + m[1] + '</span>' + (m[2].trim() ? ' <small>' + m[2].trim() + '</small>' : '');
+  const extra = m[2].replace(/\([^)]*\)/g, '').trim();   // role notes repeat the tags: dropped
+  c[0].innerHTML = '<span style="color:' + col + '">' + m[1] + '</span>' + (extra ? ' ' + extra : '');
   c[c.length - 1].style.color = col;
 }
 
@@ -315,3 +331,10 @@ for (const b of $$('.seat .bubble.pass, .me .bubble.pass')) {
   else if ((m = t.match(/^(\S+) goes to (\w+)/))) msg = m[1] + ' goes to ' + m[2] + ' · Kitty';
   else if ((m = t.match(/^SHOWDOWN! (\w+) and (\w+) tied.*?(\w+) (?:are|is) the mediator/))) msg = 'SHOWDOWN! ' + m[1] + ' vs ' + m[2] + ' · ' + (m[3] === 'You' ? 'you mediate' : m[3] + ' mediates');
   if (msg && !$$('#toasts .toast').some(x => x.textContent === msg)) $('#toasts').insertAdjacentHTML('afterbegin', '<div class="toast info" style="animation:none">' + msg + '</div>'); }
+
+// Showdown: no banner; the seat that is not in the Showdown keeps the regular table color.
+{ const b = $('.center .banner'); if (b) b.remove();
+  for (const t of $$('.tag.mediator')) { const seat = t.closest('.seat, .me'); if (seat) seat.classList.add('not-sd'); } }
+// Skip is a speed control: a temporary button in the top bar, left of the speed icon.
+{ const sk = $('[data-action="skip"]'), sp = $('.speed-pick');
+  if (sk && sp) { sk.classList.add('skip-top'); sp.before(sk); const pa = $('.center > .pile-act'); if (pa && !pa.children.length) pa.remove(); } }
