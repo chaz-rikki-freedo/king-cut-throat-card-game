@@ -164,13 +164,13 @@ const css = `
 }
 /* ---- v3 ---- */
 /* Card sizes: five named tiers, every card on screen uses one of them.
-   Big: the trick. Normal: your hand. Small: the kitty and the outside pile.
+   Big: everything in the play area (the trick, the kitty, the outside pile). Normal: your hand. Small: spare tier.
    Tiny: face-down backs (hand counts on the seats, the Showdown outside pile).
    Micro: text-sized cards (the log, the information strip), the same width as the name chips. */
 :root{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:14px;--card-micro:40px}
 .trick .slot .card,.trick .slot .empty{--w:var(--card-big)!important}
 .hand .card{--w:var(--card-normal)}
-.kitty-spot{--kw:var(--card-small)!important}
+.kitty-spot{--kw:var(--card-big)!important}
 .mini-back,.seat .seat-head .mini-back{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
 .mc{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
 .gamelog .p0,.gamelog .p1,.gamelog .p2,.gamelog .card-tag,.micro{display:inline-block;box-sizing:border-box;width:var(--card-micro);text-align:center;padding:0;line-height:1.35;border-radius:4px;white-space:nowrap;vertical-align:baseline}
