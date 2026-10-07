@@ -3813,9 +3813,10 @@ const App = (() => {
     if (standalone || install.installed) row('ok', 'Running as an installed app.');
     else row('wait', 'Running in a browser tab.');
     row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
-    const link = /** @type {HTMLLinkElement} */ (document.querySelector('link[rel="manifest"]'));
+    const link = /** @type {HTMLLinkElement | null} */ (document.querySelector('link[rel="manifest"]'));
+    if (!link) row('bad', 'This page has no manifest link, so the browser cannot see the manifest. Checking manifest.webmanifest directly.');
     try {
-      const res = await fetch(link.href, { cache: 'no-store' });
+      const res = await fetch(link ? link.href : 'manifest.webmanifest', { cache: 'no-store' });
       const m = await res.json();
       row(res.ok ? 'ok' : 'bad', 'Manifest loaded (' + res.status + ', ' + (res.headers.get('content-type') || 'no type') + '): ' + m.name + '.');
       for (const ic of m.icons || []) {
