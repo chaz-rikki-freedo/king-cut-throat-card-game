@@ -490,7 +490,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 
   // Information the AI's view holds that the screen does not show at a glance, offered on tap (one panel at a time):
   //  - Outside cell -> your own discards (the AI remembers its discards: View.myOut).
-  //  - Bids this hand and the suits a player is void in (View.bidLog, View.voids): not on the table. A future
+  //  - Bids this hand and the suits a player is void of (View.bidLog, View.voids): not on the table. A future
   //    setting, off by default, adds them to that player's profile popup (opened from the seat face).
   //  - Trick circles -> the tricks that player won this hand, card by card (View.playLog, View.trickWinners).
   const NAMES = ['You', 'Kit', 'Tex'];
@@ -532,13 +532,13 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .panel p{margin:2px 0;color:var(--muted)}
 </style>`);
 // Profile popup: with the future setting "Show bids and suits shown out of in profiles" on (off by default), the popup
-// of a player opened during a hand adds a "This hand" section: the player's bids and the suits they are void in.
+// of a player opened during a hand adds a "This hand" section: the player's bids and the suits they are void of.
 window.__profileThisHand = seat => {
   const m = $('.modal.persona'), I = (st.info || {}); if (!m) return;
   const bids = (I.bids || [])[seat] || [], voids = (I.voids || [])[seat] || [];
   const v = voids.length ? voids.map(x => '<b class="' + (/[♥♦]/.test(x) ? 'pip-red' : '') + '">' + x + '</b>').join(' ') : 'none yet';
   const dials = $('.p-dials', m), html = '<div class="p-hand"><span class="lab">This hand</span><dl><dt>Bids</dt><dd>' +
-    (bids.length ? bids.join(' · ') : 'none yet') + '</dd><dt>Void in</dt><dd>' + v + '</dd></dl></div>';
+    (bids.length ? bids.join(' · ') : 'none yet') + '</dd><dt>Void of</dt><dd>' + v + '</dd></dl></div>';
   if (dials) dials.insertAdjacentHTML('beforebegin', html); else m.insertAdjacentHTML('beforeend', html);
 };
 document.head.insertAdjacentHTML('beforeend', `<style>
@@ -553,7 +553,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 // The winning card of a finished trick is marked: lifted toward the viewer with a gold edge.
 document.head.insertAdjacentHTML('beforeend', `<style>
 .trick .slot.win{z-index:9!important}
-.trick .slot.win .card{box-shadow:0 0 0 3px var(--gold),0 0 22px rgba(242,193,78,.55),0 18px 22px rgba(0,0,0,.5)!important}
+.trick .slot.win .card{box-shadow:0 0 0 3px #0b1a12,0 0 0 6px #fff,0 0 24px rgba(255,255,255,.55),0 18px 22px rgba(0,0,0,.5)!important}
 .trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(60px)!important}
 .trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(60px)!important}
 .trick .slot-0.win .card{transform:rotateX(22deg) translateZ(60px)!important}
