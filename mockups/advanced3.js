@@ -442,16 +442,19 @@ document.head.insertAdjacentHTML('beforeend', `<style>
   const offset = (el, seat) => { const a = el.getBoundingClientRect(), b = document.getElementById('seat' + seat).getBoundingClientRect();
     return [(b.left + b.width / 2) - (a.left + a.width / 2), (b.top + b.height / 2) - (a.top + a.height / 2)]; };
   const tilt = { 1: -30, 2: 30, 0: 0 };
-  window.__kittyDeal = dealer => {
+  // elapsed (ms): resume a deal already under way, as when the live build redraws the table mid-deal.
+  window.__kittyDeal = (dealer, elapsed = 0) => {
     // All 3 kitty cards come from the dealer face down and land straight; then the dealer turns the top card up in place.
     const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1], up = !/\bback\b/.test(top.className);
-    if (up) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
+    const t0 = ms + (cards.length - 1) * ms * 0.45 + ms * 0.4;
+    if (!ms || elapsed >= t0 + ms * 0.8) return;
+    if (up && elapsed < t0 + ms * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
     cards.forEach((c, i) => { const [x, y] = offset(c, dealer);
       c.animate([{ transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt[dealer] + 'deg)' }, { transform: 'none' }],
-        { duration: ms, delay: i * ms * 0.45, easing: 'ease-out', fill: 'backwards' }); });
-    if (up) { const t0 = ms + (cards.length - 1) * ms * 0.45 + ms * 0.4;
-      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: ms * 0.8, delay: t0, easing: 'ease-in-out' });
-      setTimeout(() => { const b = $('.kback', top); if (b) b.remove(); }, t0 + ms * 0.4); }
+        { duration: ms, delay: i * ms * 0.45, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
+    if (up) {
+      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: ms * 0.8, delay: t0, easing: 'ease-in-out' }).currentTime = elapsed;
+      setTimeout(() => { const b = $('.kback', top); if (b) b.remove(); }, Math.max(0, t0 + ms * 0.4 - elapsed)); }
   };
   window.__kittyTake = receiver => {
     const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1];
@@ -558,9 +561,9 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 document.head.insertAdjacentHTML('beforeend', `<style>
 .trick .slot.win{z-index:9!important}
 .trick .slot.win .card{box-shadow:0 0 0 3px #0b1a12,0 0 0 6px #fff,0 0 24px rgba(255,255,255,.55),0 18px 22px rgba(0,0,0,.5)!important}
-.trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(60px)!important}
-.trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(60px)!important}
-.trick .slot-0.win .card{transform:rotateX(22deg) translateZ(60px)!important}
+.trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(60px)}
+.trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(60px)}
+.trick .slot-0.win .card{transform:rotateX(22deg) translateZ(60px)}
 @media (max-width:720px){.seat .tagbox .tag{font-size:8px!important;padding:0 1px!important}}
 </style>`);
 // On phones the Mediator tag reads MED (like SD for Showdown); the full word stays in its tooltip.
