@@ -20,12 +20,15 @@ const fs = require('fs'), ADV = fs.readFileSync(__dirname + '/' + (process.env.L
           const s = app.state, html = '<!doctype html>' + document.documentElement.outerHTML.replace(/<script[\\s\\S]*?<\\/script>/g, '').replace(/ enter"/g, '"');
           const done = /rickDone/.test(s.phase), plays = done ? s.lastTrick.plays : s.trick.plays;
           const out = { why, phase: s.phase, plays: plays.map(p => p.player), winner: done ? s.lastTrick.winner : null, html,
-            state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, lastTrick: s.lastTrick, phase: s.phase, myOut: [], sdDiscards: 0 } };
+            // Copied now: the engine empties these objects in place as play goes on, before this result is sent.
+            state: JSON.parse(JSON.stringify({ trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, lastTrick: s.lastTrick, phase: s.phase, myOut: [], sdDiscards: 0 })) };
           speed('instant'); const v0 = s.version; await drive(() => app.state.version > v0 + 1, 60000);
           return out;`, null, ['drive.js']);
         if (r.why !== 'stop') break;
         await view.setContent(r.html.replace('<head>', '<head><base href="' + srv.url + '">'));
         const res = await view.evaluate(([src, st, plays, winner]) => {
+          // Transitions off: sample the cards' final pose, not the start of the game's tilt transition.
+          document.head.insertAdjacentHTML('beforeend', '<style>*{transition:none!important}</style>');
           window.KCT = { App: { app: { state: st } } }; window.__collapsed = true; new Function(src)();
           const el = p => { const e = document.querySelector('.trick .slot-' + p + ' .card') || document.querySelector('.trick .slot-' + p + ' .empty');
             return e && getComputedStyle(e).visibility !== 'hidden' && e.offsetWidth ? e : null; };
@@ -39,9 +42,12 @@ const fs = require('fs'), ADV = fs.readFileSync(__dirname + '/' + (process.env.L
             const x0 = Math.max(ra.left, rb.left), x1 = Math.min(ra.right, rb.right), y0 = Math.max(ra.top, rb.top), y1 = Math.min(ra.bottom, rb.bottom);
             if (x1 - x0 < 6 || y1 - y0 < 6) continue;
             const pts = [[(x0 + x1) / 2, (y0 + y1) / 2], [x0 + 3, y0 + 3], [x1 - 3, y1 - 3]];
-            for (const [x, y] of pts) { const hit = document.elementFromPoint(x, y); const top = hit && hit.closest('.slot');
-              if (!top || !(a.closest('.slot') === top || b.closest('.slot') === top)) continue; n++;
-              if (top !== b.closest('.slot')) { bad.push('seat ' + order[i] + ' over seat ' + order[j]); break; } }
+            // Tilted cards are not rectangles: a point counts only where it lies on both cards (each is in the hit
+            // list there); the first of the two in that list is the one painted on top.
+            for (const [x, y] of pts) { const at = document.elementsFromPoint(x, y), sa = a.closest('.slot'), sb = b.closest('.slot');
+              const ia = at.findIndex(e => sa.contains(e)), ib = at.findIndex(e => sb.contains(e));
+              if (ia < 0 || ib < 0) continue; n++;
+              if (ia < ib) { bad.push('seat ' + order[i] + ' over seat ' + order[j]); break; } }
           }
           return { n, bad };
         }, [ADV, r.state, r.plays, r.winner]);
