@@ -301,6 +301,233 @@ button.card{cursor:pointer}
 .ask p{margin:0 0 4px;line-height:1.5}
 .update-note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
 .update-note[hidden]{display:none}
+/* ---- Advanced UI (Settings → Interface). A minimal table: tags, numbers and circles in the seats, the shared
+   facts in one information strip, every action button in the play area, and motion that shows each move.
+   Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
+   and the This hand box of the profile dialog (its own setting). ---- */
+.table > .info[hidden],.skip-slot[hidden],.lp-toggle[hidden]{display:none!important}
+.persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:10px 16px;border:1px solid rgba(242,193,78,.35)}
+.persona .p-hand .lab{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:800}
+.persona .p-hand dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.persona .p-hand dt{color:var(--muted)}
+.persona .p-hand dd{margin:0}
+.persona .p-hand .pip-red{color:#ff6b6b}
+body.adv .layout:not(.log-collapsed) #gameLog{display:flex;flex-direction:column}
+body.adv .speed-pick{position:relative}
+body.adv .speed-pick select{display:block!important;position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+body.adv .trick .card.enter{animation:none!important}
+body.adv .trick .slot .card{transition:none!important}
+body.adv #fx{position:fixed;inset:0;pointer-events:none;z-index:30}
+body.adv #fx > *{position:fixed!important;margin:0!important;box-sizing:border-box}
+body.adv #fx .olayer,body.adv #fx .olayer .card{animation:none!important}
+body.adv .tpips i.on.wait{background:transparent!important;border-color:rgba(255,255,255,.45)!important}
+body.adv .tpips i{transition:background-color .15s,border-color .15s}
+body.adv #trumpChip,body.adv #handChip,body.adv .trick-label,body.adv .who,body.adv .status,body.adv .prompt,body.adv .actionbar .hint,body.adv .score small,body.adv .center .piles,body.adv .center .lasttrick{display:none!important}
+body.adv .actionbar:not(:has(.btn)){display:none}
+body.adv .seat .discard-note,body.adv .hand .hint{display:none!important}
+body.adv .speed-pick select{display:none}
+body.adv .speed-pick{padding:0 10px}
+body.adv .table{grid-template-areas:"info info info" "west center east" "me me me"!important}
+@media (max-width:720px){
+  body.adv .table{grid-template-areas:"info info" "west east" "center center" "me me"!important}
+}
+body.adv .info{grid-area:info;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;background:rgba(0,0,0,.22);border-radius:12px;padding:6px}
+body.adv .info .cell{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.04);min-width:0}
+body.adv .info .lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+body.adv .info .val{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
+body.adv .info .pip{font-size:40px;line-height:1;color:#ff6b6b;text-align:center}
+body.adv .info .latest{flex:1 1 180px}
+body.adv .info .latest .val{font-weight:400;font-size:14px}
+body.adv .info ul.gamelog{all:unset;display:block}
+body.adv .info ul.gamelog li{list-style:none;padding:0}
+body.adv .hand{min-height:0!important}
+@media (max-width:720px){
+  body.adv .info{gap:4px;padding:4px}
+  body.adv .info .cell{padding:3px 8px}
+  body.adv .info .pip{font-size:28px}
+  body.adv .info .latest{order:6;flex:1 1 100%;flex-direction:row;align-items:center;gap:8px}
+  body.adv .info .latest .lab{min-width:64px}
+  body.adv .info .muted{flex:1 1 0}
+}
+body.adv .info .muted .val{font-weight:600;font-size:13px;color:var(--muted)}
+body.adv .center{justify-content:center}
+body.adv .trick{grid-template-rows:calc(var(--cw)*.55) auto!important}
+body.adv .score{font-size:46px!important}
+body.adv .seat-name{font-size:21px!important}
+body.adv .seat-east .seat-head{flex-direction:row-reverse}
+body.adv .seat-east{align-items:flex-end}
+body.adv .seat .seat-head{order:0}
+body.adv .seat .tagbox{order:1}
+body.adv .seat .backs{order:2}
+body.adv .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
+body.adv .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.adv .info .latest{min-width:0}
+body.adv .info .latest .val{white-space:normal;overflow:hidden;display:block}
+body.adv .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;width:100%;min-height:44px}
+body.adv .seat-east .tagbox{direction:rtl}
+body.adv .tagbox .tag{margin:0;flex:0 0 calc((100% - 8px) / 3);height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
+body.adv .seat .tagbox .tag.mediator,body.adv .seat .tagbox .tag.duelist{flex-basis:calc((100% - 8px) / 3 * 2 + 4px)}
+body.adv .seat{position:relative}
+body.adv .me .tagbox{width:auto;min-height:20px;flex:0 1 auto}
+body.adv .me .tagbox .tag{flex-basis:66px}
+body.adv .me .tagbox .tag.duelist,body.adv .me .tagbox .tag.mediator{flex-basis:auto;padding:0 8px}
+@media (max-width:720px){
+  body.adv .tagbox .tag{font-size:9px;letter-spacing:0}
+  body.adv .me .tagbox .tag{flex-basis:calc((100% - 12px) / 4)}
+  body.adv .me .tagbox .tag.mediator{flex-basis:auto;padding:0 6px}
+  body.adv .me .tagbox{flex:1 1 200px;min-height:20px}
+}
+body.adv .trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
+body.adv .trick .slot{transform-style:preserve-3d}
+body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
+body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
+body.adv .trick .slot{position:relative}
+body.adv .trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
+body.adv .trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
+body.adv .trick .slot .empty{background:none;border-color:#8fa79a}
+body.adv .trick .slot-1 .empty,body.adv .trick .slot-2 .empty{visibility:hidden}
+body.adv .trick{min-height:calc(var(--cw)*4.2)!important}
+body.adv .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
+body.adv .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:10px 18px 22px rgba(0,0,0,.5)}
+body.adv .trick .slot-0 .card,body.adv .trick .slot-0 .empty{transform:rotateX(22deg) translateZ(30px)}
+body.adv .trick .slot-0 .card{box-shadow:0 18px 22px rgba(0,0,0,.5)}
+body.adv .c-tag.king{background:#f2c14e;color:#1b1b1b}
+body.adv .gamelog li.gap:first-child{margin-top:0}
+body.adv .info .hand.wide{flex:0 0 auto;min-width:140px}
+body.adv .info .out .val{gap:8px}
+body.adv .minis{display:inline-flex}
+body.adv .mc{width:14px;height:20px;border-radius:2px;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 2px,#93303d 2px 4px);display:inline-grid;place-items:center;font-size:8px;font-weight:800;line-height:1}
+body.adv .mc + .mc{margin-left:3px}
+body.adv .table.showdown .not-sd{background:var(--felt-edge)!important}
+body.adv .skip-top{height:40px;padding:0 12px;font-size:14px}
+body.adv .seat-west,body.adv .seat-east{align-self:stretch}
+body.adv .table{grid-template-columns:minmax(150px,.85fr) minmax(0,2.3fr) minmax(150px,.85fr)!important}
+@media (max-width:720px){
+  body.adv .table{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+}
+body.adv .center{justify-content:safe center}
+body.adv }
+
+
+.me{justify-content:flex-start}
+body.adv .me .hand{flex-wrap:wrap;gap:6px;padding-top:10px}
+body.adv .me .hand .card{flex:none}
+body.adv .center{position:relative}
+body.adv .center{position:relative;padding-top:58px!important;padding-bottom:6px;min-height:calc(var(--cw)*4.2 + 128px)}
+body.adv .trick{padding-bottom:64px!important}
+body.adv .summary table.stats td:first-child{white-space:nowrap;font-size:18px;font-weight:800;text-align:left}
+body.adv .summary table.stats td:last-child{font-size:26px;font-weight:800;line-height:1.1}
+body.adv .trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.45)}
+body.adv .center:not(:has(.trick)){padding-bottom:58px!important}
+body.adv .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*3.3)}
+body.adv .kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
+body.adv .kitty-spot{--kw:var(--cw)}
+body.adv .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:calc(var(--kw)*1.4)}
+body.adv .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
+body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9;z-index:3}
+body.adv .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
+body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:8px}
+body.adv .pile-act .btn{font-size:15px;padding:8px 18px;white-space:nowrap;flex:none}
+body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
+body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
+body.adv .table.showdown > .seat,body.adv .table.showdown > .me{background:linear-gradient(var(--panel),var(--panel)),var(--felt-showdown-edge)!important}
+body.adv .table > .center{z-index:1}
+body.adv .outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
+body.adv .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
+@keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
+@keyframes ofan{0%{transform:translateX(var(--fx)) rotate(var(--fan))}60%{transform:translateX(calc(var(--fx) * .6)) rotate(calc(var(--fan) * .6))}100%{transform:translate(calc(var(--fx) * .12),0) rotate(calc(var(--fan) * .3))}}
+@media (prefers-reduced-motion:reduce){
+  body.adv .outpile .olayer,body.adv .outpile .olayer .card{animation:none}
+}
+body.adv .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
+body.adv .outpile.empty{border:2px dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
+body.adv .logpanel h2{display:flex;align-items:center;justify-content:space-between;gap:8px}
+body.adv .lp-toggle{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:var(--ink);font-size:16px}
+body.adv .lp-toggle:hover{background:rgba(255,255,255,.08)}
+body.adv .lp-toggle:focus-visible{outline:2px solid var(--gold)}
+body.adv .layout.log-collapsed .logpanel{min-height:0}
+body.adv .layout.log-collapsed #gameLog{display:none}
+@media (min-width:1150px){
+  body.adv .layout.log-collapsed{grid-template-columns:minmax(0,1fr) 48px!important}
+  body.adv .layout.log-collapsed .logpanel{padding:10px 4px;align-items:center}
+  body.adv .layout.log-collapsed .logpanel h2{flex-direction:column-reverse;writing-mode:vertical-rl;margin:0}
+  body.adv .layout.log-collapsed .logpanel h2 .lp-toggle{writing-mode:horizontal-tb}
+}
+body.adv{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:14px;--card-micro:40px}
+body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:var(--card-big)!important}
+body.adv .hand .card{--w:var(--card-normal)}
+body.adv .kitty-spot{--kw:var(--card-big)!important}
+body.adv .mini-back{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+body.adv .mc{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+body.adv .gamelog .p0,body.adv .gamelog .p1,body.adv .gamelog .p2,body.adv .gamelog .card-tag,body.adv .micro{display:inline-block;box-sizing:border-box;width:var(--card-micro);text-align:center;padding:0;line-height:1.35;border-radius:4px;white-space:nowrap;vertical-align:baseline}
+body.adv .micro{background:#fff;color:#1b1b1b;font-weight:800;font-size:13px}
+body.adv .micro .rank{color:#6b6b6b}
+body.adv .micro .pip-red{color:#d32f2f}
+body.adv .micro .pip-black{color:#000}
+body.adv .micro + .micro,body.adv .micro + .mc,body.adv .mc + .micro{margin-left:4px}
+body.adv .tpips{display:flex;gap:4px;order:4;min-height:14px;align-items:center}
+body.adv .seat-east .tpips{align-self:flex-end;flex-direction:row-reverse}
+body.adv .tpips i{flex:none;width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(255,255,255,.45)}
+body.adv .tpips i.on{background:var(--ink);border-color:var(--ink)}
+body.adv .me > .tpips{order:9;align-self:center}
+body.adv .sscore{font-size:26px!important;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)!important}
+body.adv .summary table.stats td:last-child{color:var(--ink)!important}
+body.adv .center{padding-top:10px!important}
+body.adv .table.showdown .not-sd{background:var(--panel)!important}
+body.adv .tagbox .tag.mediator,body.adv .tagbox .tag.duelist{flex-basis:calc((100% - 8px) / 3)!important}
+body.adv .me .tagbox .tag.mediator,body.adv .me .tagbox .tag.duelist{flex-basis:66px!important;padding:0 2px!important}
+body.adv .tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
+body.adv .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+body.adv .seat .seat-head .seat-name{flex:none;overflow:visible}
+@media (max-width:720px){
+  body.adv .sscore{font-size:22px!important}
+}
+body.adv .seat-east{align-items:stretch!important}
+body.adv .seat-east .seat-head{flex-direction:row!important}
+body.adv .seat-east .tagbox{direction:ltr!important}
+body.adv .seat-east .tpips{align-self:flex-start!important;flex-direction:row!important}
+body.adv .seat .backrow{order:3;display:flex;align-self:flex-start;margin:0!important;padding:0 0 0 0!important;min-height:calc(var(--card-tiny)*1.45)}
+body.adv .seat .backrow .mini-back{margin-right:-6px!important}
+body.adv .seat .tpips{order:4}
+body.adv .tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;padding:0 3px!important}
+body.adv .me .tagbox .tag{flex-basis:72px!important}
+body.adv .kpile .card.blocked{filter:grayscale(.6) brightness(.8)}
+body.adv .kpile .card .kx{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--kw)*.7);font-weight:900;color:rgba(198,40,40,.8);z-index:3}
+body.adv .info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:2px}
+body.adv .pile-act .btn.sym-btn{min-width:46px;padding:8px 12px;font-size:20px;line-height:1}
+@media (max-width:720px){
+  body.adv .pile-act{gap:6px}
+  body.adv .pile-act .btn{padding:8px 12px}
+}
+body.adv .tappable{cursor:pointer}
+body.adv .info .cell.tappable{box-shadow:inset 0 -2px 0 rgba(255,255,255,.18)}
+body.adv .info .cell.tappable.open{box-shadow:0 0 0 2px var(--gold)!important}
+body.adv .tpips.tappable.open{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+body.adv .panel{position:absolute;z-index:30;min-width:180px;max-width:300px;background:#0b2a1a;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;box-shadow:0 10px 26px rgba(0,0,0,.55);font-size:13px}
+body.adv .panel .ptitle{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.04em}
+body.adv .panel .prow{display:flex;align-items:center;gap:4px;margin:4px 0}
+body.adv .panel .tn{width:18px;color:var(--muted);font-weight:800}
+body.adv .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px}
+body.adv .panel dt{color:var(--muted)}
+body.adv .panel dd{margin:0}
+body.adv .panel .pip-red{color:#ff6b6b}
+body.adv .panel p{margin:2px 0;color:var(--muted)}
+body.adv .persona .habit{background:#4a5a6a;border-color:transparent!important;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+body.adv .trick .slot.win .card{box-shadow:0 0 0 3px #0b1a12,0 0 0 6px #fff,0 0 24px rgba(255,255,255,.55),0 18px 22px rgba(0,0,0,.5)!important}
+body.adv .trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(60px)}
+body.adv .trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(60px)}
+body.adv .trick .slot-0.win .card{transform:rotateX(22deg) translateZ(60px)}
+@media (max-width:720px){
+  body.adv .seat .tagbox .tag{font-size:8px!important;padding:0 1px!important}
+}
+body.adv .tag.turn{background:#2e7d32;color:#fff}
+body.adv .tag.led{background:#00838f;color:#fff}
+body.adv .tag .short{display:none}
+@media (max-width:720px){
+  body.adv .tag.mediator .long{display:none}
+  body.adv .tag.mediator .short{display:inline}
+}
+body.adv #toasts{width:min(92vw,380px)}
 </style>
 </head>
 <body>
@@ -313,6 +540,7 @@ button.card{cursor:pointer}
     <span class="hand-chip" id="handChip"></span>
   </div>
   <div class="tools">
+    <span class="skip-slot" id="skipSlot" hidden></span>
     <label class="speed-pick" title="Game speed">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="M12 15.5l4.5-5"/></svg>
       <span class="sr">Speed</span>
@@ -329,13 +557,14 @@ button.card{cursor:pointer}
 
 <div class="layout">
   <main class="table" id="table">
+    <section class="info" id="info" aria-label="Shared information" hidden></section>
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
     <section class="me" id="seat0"></section>
   </main>
   <aside class="logpanel">
-    <h2>Latest Scroll</h2>
+    <h2>Latest Scroll<button type="button" class="lp-toggle" id="logToggle" data-action="toggle-log" aria-expanded="true" aria-label="Collapse the Latest Scroll" title="Collapse the Latest Scroll" hidden>›</button></h2>
     <ol class="gamelog" id="gameLog"></ol>
   </aside>
 </div>
@@ -356,6 +585,17 @@ button.card{cursor:pointer}
     <h2 class="set-title">Settings</h2>
     <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close the settings panel">✕ Close</button>
   </header>
+  <section class="set-section" id="setInterface">
+    <h3 class="set-head">Interface</h3>
+    <div class="set-fields">
+      <label for="setAdvancedUI">Advanced UI</label>
+      <label title="A minimal table for players who know the rules: no instructions, the shared facts in one strip, and motion that shows each move"><input type="checkbox" id="setAdvancedUI"> <span class="k-name">On</span></label>
+      <label for="setThisHand">Profiles</label>
+      <label title="A player's profile, opened during a hand, also shows their bids and the suits they are void of"><input type="checkbox" id="setThisHand"> <span class="k-name">Show this hand's bids and voids</span></label>
+    </div>
+    <p class="k-hint">Advanced UI (off by default): a minimal table with no instructions. Tags, numbers and circles replace the seat texts, one strip shows the trump, the hand, the latest event, the turned card and the outside pile, and the action buttons sit in the play area. The Outside cell and the trick circles open what they stand for. Reduced motion (a system setting) turns its animations off.</p>
+    <p class="k-hint">Profiles (off by default): during a hand, a player's profile adds their bids and the suits they are void of: what every player at the table has seen.</p>
+  </section>
   <section class="set-section" id="setBots">
     <h3 class="set-head">Bots</h3>
     <div class="set-fields" id="setPersonaRow">
@@ -2714,7 +2954,9 @@ const Render = (() => {
     const inner = c.isJoker
       ? '<span class="c-tl">★</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
       : '<span class="c-tl">' + c.rank + '<br>' + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + '<br>' + sym + '</span>';
-    const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + (o.isNew ? '<span class="c-new">NEW</span>' : '');
+    /* The Advanced UI tags every King, the card that scores when it wins a trick. */
+    const king = adv && !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
+    const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
     if (o.button) {
       return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
     }
@@ -2895,7 +3137,8 @@ const Render = (() => {
     if (!opts.preShowdown) head.push(sd ? 'SD pts' : 'Hand pts');
     head.push('King pts', 'Score');
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
-      const c = [n(p) + role(p), hs.tricks[p]];
+      /* The Advanced UI names each player in their color; the tags already show the roles. */
+      const c = [adv ? '<span style="color:var(--name' + p + ')">' + n(p) + '</span>' + (v.gameOver && p === v.winner ? ' 🏆' : '') : n(p) + role(p), hs.tricks[p]];
       if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
       if (!opts.preShowdown) c.push(signedPointsHTML(sd ? st.pts[p].showdown : st.pts[p].hand));
       c.push(signedPointsHTML(st.pts[p].king), scoreText(v.scores[p]));
@@ -3043,7 +3286,209 @@ const Render = (() => {
     return t;
   }
 
+  /* ---- Advanced UI (Settings → Interface): the same View, drawn as a minimal table. Seats show tags, numbers
+     and circles; the information strip (#info) holds what every player shares; the action buttons sit at the
+     bottom of the play area; Skip moves to the top bar. Motion is Fx's (section 7b). ---- */
+  let adv = false;   // true while render() draws the Advanced UI (cardHTML adds the KING tag then)
+  const advKey = { seats: '', info: '' };
+
+  /* A text-sized card: rank and suit on white, as in the log. */
+  function microHTML(id, joker) {
+    const c = R.card(id);
+    if (c.isJoker) return '<span class="micro" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
+    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '">' + R.SYMBOL[c.suit] + '</span></span>';
+  }
+  const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
+  const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
+
+  /* Tags: one shape, in one fixed order as they come up: Human or AI, Dealer, Namer, Kitty, Turn, Led, then
+     Mediator or Showdown (SD). On phones Mediator reads MED. */
+  function advTags(v, p, ui) {
+    const t = [], human = v.players[p].human, auto = human && ui.autoplay;
+    if (human && ui.allowSeatAI) t.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
+    else t.push(human && !auto ? '<span class="tag you">Human</span>' : '<span class="tag ai">AI</span>');
+    if (v.dealer === p) t.push('<span class="tag dealer" title="Dealer">Dealer</span>');
+    if (v.caller === p && v.trump) t.push('<span class="tag caller" title="Named trump">Namer</span>');
+    if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
+    if (turnSeat(v) === p) t.push('<span class="tag turn">Turn</span>');
+    if (v.trick.plays.length && v.trick.plays[0].player === p) t.push('<span class="tag led">Led</span>');
+    if (v.showdown) t.push(v.showdown.mediator === p ? '<span class="tag mediator" title="Mediator"><span class="long">Mediator</span><span class="short">MED</span></span>' : '<span class="tag duelist" title="Showdown">SD</span>');
+    return '<div class="tagbox">' + t.join('') + '</div>';
+  }
+  /* Trick circles fill as tricks are won: 7 a hand; a Showdown player counts Showdown tricks (5). A click opens
+     the tricks that player won this hand. */
+  function advCircles(v, p) {
+    const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(p);
+    const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? 5 : 7;
+    let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
+    return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + n + ' of ' + of + ' tricks won">' + dots + '</div>';
+  }
+  function advSeatHTML(v, p, ctx) {
+    let backs = '';
+    for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
+    return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + '<span class="score sscore' + (ctx.flashSeats.has(p) ? ' flash' : '') + '">' + boardScore(v.scores[p]) + '</span></div>' +
+      advTags(v, p, ctx.ui) + '<div class="backs backrow" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p);
+  }
+  function advMeHTML(v, ui, ctx) {
+    const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    const hand = handHTML(v, ui).replace('<div class="hand" id="hand">', '<div class="hand" id="hand" style="--n:' + Math.max(2, v.hand.length) + '">');
+    return '<div class="me-head">' + (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>' +
+      '<span class="score sscore' + (ctx.flashSeats.has(v.seat) ? ' flash' : '') + '">' + boardScore(v.scores[v.seat]) + '</span>' + advTags(v, v.seat, ui) +
+      (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
+      hand + advCircles(v, v.seat);
+  }
+
+  /* The information strip: Trump, Hand (and the trick), Latest (the newest line of the Latest Scroll), Turned up
+     (Blocked in round 2), Outside. A cell with nothing to show is left out. */
+  function advInfoHTML(v, latest) {
+    const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
+    const sd = sdShown(v), tricks = Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
+    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
+    const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
+    const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
+    let html = '';
+    if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>');
+    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick);
+    html += cell('latest', 'Latest', latest ? '<ul class="gamelog"><li>' + latest + '</li></ul>' : '');
+    if (v.flipped && !sd && v.phase !== P.BID1) {
+      const blocked = v.phase === P.BID2 && v.flippedBlocked;
+      html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped));
+    }
+    if (sd) {
+      const n = v.showdown.active ? v.showdown.discardCount : 0;
+      let minis = ''; for (let i = 0; i < n; i++) minis += i < v.myOut.length ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
+      if (n) html += '<div class="cell muted out tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val"><span class="minis">' + minis + '</span></span></div>';
+    } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
+      html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val">' + v.outsideCount + '</span></div>';
+    }
+    return html;
+  }
+
+  /* The trick in 3D, cards stacked in play order: each card lies above the cards played before it (also at the
+     trick's end), and your empty space, while you still have to play, lies above them all. */
+  function advTrickHTML(v, ctx) {
+    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
+    const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
+    const winner = done && v.lastTrick ? v.lastTrick.winner : null;
+    let html = '<div class="trick">';
+    for (const p of [1, 2, 0]) {
+      const at = plays.findIndex(x => x.player === p), z = at >= 0 ? at + 1 : plays.length + 1;
+      if (!v.activePlayers.includes(p)) { html += '<div class="slot slot-' + p + '" style="z-index:' + z + '"></div>'; continue; }
+      const play = plays[at];
+      const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
+      html += '<div class="slot slot-' + p + (winner === p ? ' win' : '') + '" style="z-index:' + z + '">' + card + '</div>';
+    }
+    return html + '</div>';
+  }
+
+  /* Before the first trick the kitty lies in the play area, spread so its cards can be counted: face down, the top
+     card face up from the turn-up (dimmed and crossed out when blocked in round 2). During the discard the same
+     spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
+  function advKittyHTML(v, order) {
+    if (v.phase === P.DISCARD) {
+      const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
+      const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
+        [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>').join('');
+      return '<div class="kitty-spot"><div class="piles-row"><div class="outpile' + (order.length ? '' : ' empty') + '" aria-label="Outside pile: ' + v.outsideCount + ' cards">' + layers + '</div></div></div>';
+    }
+    const face = v.flipped && (v.phase === P.BID1 || v.phase === P.BID2 || v.phase === P.JOKER_VOID);
+    let cards = '';
+    for (let i = 0; i < v.kittyCount; i++) {
+      const left = 'left:calc(' + i + ' * var(--kw) * .45)';
+      if (face && i === v.kittyCount - 1) {
+        const blocked = v.phase === P.BID2 && v.flippedBlocked;
+        cards += cardHTML(v.flipped, null, { cls: blocked ? ['blocked'] : [] }).replace('<div class="', '<div style="' + left + '" class="').replace(/<\/div>$/, (blocked ? '<span class="kx">✕</span>' : '') + '</div>');
+      } else cards += '<div class="card back" aria-hidden="true" style="' + left + '"></div>';
+    }
+    return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + cards + '</div></div></div>';
+  }
+
+  /* Every action button, in the play area; the primary action outermost. Round 2's suits are symbols. */
+  function advButtonsHTML(v, ui, ctx) {
+    const you = v.seat, sel = ui.selected.size;
+    const b = [];
+    if (v.gameOver) b.push(ui.endButtons || '');
+    else if (v.phase === P.SETUP) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>');
+    else if (!(ui.autoplay && isTurn(v, you))) {
+      switch (v.phase) {
+        case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 ? '' : ' disabled') + '>Discard 3</button>'); break;
+        case P.BID1: if (v.bidTurn === you) { const s = R.card(v.flipped).suit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
+        case P.BID2: if (v.bidTurn === you) {
+          const blocked = R.card(v.flipped).suit;
+          b.push(R.SUITS.map(s => '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + (s === blocked ? ' (blocked)' : '') + '" aria-label="Name ' + R.SUIT_NAME[s] + '"' + (s === blocked ? ' disabled' : '') + '>' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
+        } break;
+        case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
+        case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 ? '' : ' disabled') + '>Discard 1</button>'); break;
+        default: break;
+      }
+      if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>');
+    }
+    const html = b.join('');
+    return html ? '<div class="pile-act">' + html + '</div>' : '';
+  }
+
+  function advCenterHTML(v, ui, ctx, order) {
+    const summary = summaryText(v);
+    const trick = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
+    let html = '';
+    if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order);
+    html += summary || (trick ? advTrickHTML(v, ctx) : '');
+    return html + advButtonsHTML(v, ui, ctx);
+  }
+
+  /* The newest line of the Latest Scroll (headings left out), for the Latest cell. */
+  function latestLine() {
+    const ol = $('gameLog');
+    for (let li = ol && ol.lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('gap')) return li.innerHTML;
+    return '';
+  }
+
+  /* Draws the Advanced UI. A redraw that changes nothing is skipped (the game redraws the same table several
+     times in a row, and each redraw would restart the motion); the enter and flash marks count only once. */
+  function renderAdvanced(v, ui, ctx) {
+    ctx.ui = ui;
+    const table = $('table');
+    table.classList.toggle('showdown', sdShown(v));
+    $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
+    $('handChip').textContent = handChipText(v);
+    const said = statusText(v), live = $('liveStatus');
+    if (live && live.textContent !== said) live.textContent = said;
+    const order = Fx.discardOrder(v);
+    const parts = /** @type {[HTMLElement, string][]} */ ([[$('seat1'), advSeatHTML(v, 1, ctx)], [$('seat2'), advSeatHTML(v, 2, ctx)], [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat0'), advMeHTML(v, ui, ctx)], [$('info'), advInfoHTML(v, latestLine())]]);
+    const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
+    const botSd = v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat);
+    const skip = ctx.waiting && botSd && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
+    const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
+    if (key === advKey.seats) return false;
+    advKey.seats = key;
+    Fx.capture();
+    for (const [el, h] of parts) el.innerHTML = h;
+    $('info').hidden = false;
+    const slot = $('skipSlot'); slot.innerHTML = skip; slot.hidden = !skip;
+    for (const p of [1, 2]) {
+      const el = $('seat' + p);
+      el.classList.toggle('turn', isTurn(v, p));
+      el.classList.toggle('out', !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(p)));
+      el.classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === p));
+    }
+    $('seat0').classList.toggle('turn', isTurn(v, v.seat));
+    $('seat0').classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
+    Fx.after(v, ui);
+    return true;
+  }
+  /* Leaving the Advanced UI: its parts go, and the next draw is a full one. */
+  function leaveAdvanced() {
+    advKey.seats = '';
+    $('info').hidden = true; $('info').innerHTML = '';
+    $('skipSlot').hidden = true; $('skipSlot').innerHTML = '';
+    for (const id of ['seat0', 'seat1', 'seat2']) $(id).classList.remove('not-sd');
+    Fx.reset();
+  }
+
   function render(v, ui, ctx) {
+    adv = !!ui.advanced;
+    if (adv) return renderAdvanced(v, ui, ctx);
+    if (advKey.seats) leaveAdvanced();
     const table = $('table');
     table.classList.toggle('showdown', !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP)));
     $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
@@ -3080,8 +3525,346 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
+  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
 })();
+
+/* ---------------------------------------------------------------------
+   7b. FX — the motion of the Advanced UI. Each move shows where the cards
+   go: the deal round the table, the discards onto the outside pile, the
+   kitty, each trick card from its seat, the sweep to the trick winner, the
+   collect of a thrown-in hand. Render.renderAdvanced calls capture() just
+   before it redraws (the outgoing table is still on screen) and after()
+   once the new table is drawn. Every motion is timed from when its cards
+   first showed, so a redraw part way through resumes it. A count (the
+   Outside cell, a trick circle) changes when its cards arrive. Reads the
+   View only, plus what it saw on screen. Speed Instant, or the system's
+   reduced-motion setting, turns all of it off.
+   --------------------------------------------------------------------- */
+const Fx = (() => {
+  const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
+  const STEP = { slow: 700, normal: 450, fast: 250, instant: 0 };
+  let speed = 'normal';
+  const ms = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : STEP[speed] ?? 450;
+  const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const cw = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+  const TILT = { 0: 0, 1: -30, 2: 30 };
+  const REST = { 1: -7, 2: 6, 0: 1 };   // each player's discard layer keeps a slight turn toward its seat
+
+  let prev = null, out = null, last = null;
+  let handDeal = { key: '', t0: 0, end: 0 }, dealHold = 0, kittyHold = 0, mineLand = null;
+  let discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '';
+  const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
+
+  /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
+  function discardOrder(v) {
+    if (v.phase === Engine.P.DISCARD) {
+      if (discardHand !== v.handNumber) { discardHand = v.handNumber; discarders = []; layerStart.length = 0; }
+      for (const p of [1, 2, 0]) if (!discarders.includes(p) && !v.pendingDiscard[p]) discarders.push(p);
+    }
+    return discarders.slice();
+  }
+
+  /* ---- Before a redraw: keep what may leave, measured at rest (a motion still running is finished first). ---- */
+  function keep(el) {
+    if (!el) return null;
+    for (const a of el.getAnimations({ subtree: true })) try { a.finish(); } catch (e) { /* an endless one: none here */ }
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el), vars = {};
+    for (const k of cs) if (k.startsWith('--')) vars[k] = cs.getPropertyValue(k);
+    return { el, r, vars };
+  }
+  function capture() {
+    const tr = q('#center .trick');
+    const kt = tr && q('.slot.win', tr) ? keep(tr) : null;
+    if (kt && last) { kt.hand = last.handNumber; kt.sd = !!(last.showdown && last.showdown.active); }
+    out = { trick: kt, kpile: keep(q('#center .kpile')), outpile: keep(q('#center .outpile')),
+      hand: qa('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })) };
+  }
+  /* A kept element goes into the effects layer exactly where it was, with the variables it had. */
+  function place(k) {
+    let layer = q('#fx'); if (!layer) { layer = document.createElement('div'); layer.id = 'fx'; layer.setAttribute('aria-hidden', 'true'); document.body.appendChild(layer); }
+    const el = k.el; el.removeAttribute('id');
+    for (const [n, v] of Object.entries(k.vars)) el.style.setProperty(n, v);
+    Object.assign(el.style, { left: k.r.left + 'px', top: k.r.top + 'px', width: k.r.width + 'px', height: k.r.height + 'px', minHeight: '0' });
+    layer.appendChild(el); return el;
+  }
+  /* A card back at a seat's center: the cards of a player whose hand shows only backs. */
+  function backAt(p, i, spread) {
+    const r = q('#seat' + p).getBoundingClientRect(), w = cw(), b = document.createElement('div');
+    b.className = 'card back';
+    return place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + i * spread, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
+  }
+  /* A card (or a stack) flies to a target and shrinks away. */
+  function fly(el, to, t, delay = 0, turn = 0) {
+    const [sx, sy] = center(el), [tx, ty] = center(to), from = getComputedStyle(el).transform;
+    return el.animate([{ transform: from === 'none' ? 'none' : from, opacity: 1 }, { opacity: 1, offset: 0.7 },
+      { transform: 'translate(' + (tx - sx) + 'px,' + (ty - sy) + 'px) rotate(' + turn + 'deg) scale(.35)', opacity: 0 }],
+      { duration: t * 1.3, delay, easing: 'ease-in-out', fill: 'both' });
+  }
+  /* A card lands on a pile: it moves there, takes the pile card's size, then gives way to the pile. */
+  function land(el, to, t, delay = 0) {
+    const [sx, sy] = center(el), [tx, ty] = center(to), sc = (to.getBoundingClientRect().width || 1) / (el.getBoundingClientRect().width || 1);
+    const at = 'translate(' + (tx - sx) + 'px,' + (ty - sy) + 'px) scale(' + sc.toFixed(3) + ')';
+    return el.animate([{ transform: 'none', opacity: 1 }, { transform: at, opacity: 1, offset: 0.85 }, { transform: at, opacity: 0 }],
+      { duration: t, delay, easing: 'ease-in-out', fill: 'both' });
+  }
+  const done = (el, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => el.remove());
+  const outsideCell = () => qa('#info .cell').find(c => /Outside/i.test(c.textContent)) || q('#info');
+  const seatOf = p => p === 0 ? (q('#hand') || q('#seat0')) : q('#seat' + p);
+  const dealWait = key => handDeal.key === key ? Math.max(0, handDeal.end - performance.now()) : 0;
+
+  /* ---- Counts change when the cards arrive. Each pending arrival is keyed, so a redraw does not count it twice. ---- */
+  const pending = new Map();   // key -> { kind: 'out' | 'pip', p, n, until, fallback }
+  let countTimer = 0;
+  const expect = (key, x) => { if (!pending.has(key)) pending.set(key, x); };
+  function refreshCounts() {
+    const now = performance.now();
+    for (const [k, x] of pending) if (x.until <= now) pending.delete(k);
+    const cell = qa('#info .cell').find(c => /Outside/i.test(c.textContent)), val = cell && q('.val', cell);
+    if (val && /^\d+$/.test(val.dataset.actual ?? val.textContent.trim())) {
+      if (val.dataset.actual == null) val.dataset.actual = val.textContent.trim();
+      let n = +val.dataset.actual; for (const x of pending.values()) if (x.kind === 'out') n -= x.n;
+      val.textContent = String(Math.max(0, n));
+    }
+    for (const p of [0, 1, 2]) {
+      const on = qa('#seat' + p + ' .tpips i.on'); on.forEach(e => e.classList.remove('wait'));
+      let hold = 0; for (const x of pending.values()) if (x.kind === 'pip' && x.p === p) hold++;
+      for (let k = 0; k < hold && k < on.length; k++) on[on.length - 1 - k].classList.add('wait');
+    }
+    clearTimeout(countTimer);
+    if (pending.size) countTimer = setTimeout(refreshCounts, Math.max(0, Math.min(...[...pending.values()].map(x => x.until)) - now) + 5);
+  }
+  const cardIds = el => qa('.slot .card[data-card]', el).map(c => c.dataset.card).sort().join();
+  const pipKey = (hand, sd, ids) => 'pip' + hand + (sd ? 'sd' : '') + '|' + ids;
+  /* A finished trick on the table: its winner's new circle stays empty until the sweep lands (with a fallback). When
+     play stops on the trick (game over), the circle fills now. */
+  function holdTrickPip(v) {
+    if (v.phase !== Engine.P.TRICK_DONE && v.phase !== Engine.P.SHOWDOWN_TRICK_DONE) { for (const [k, x] of pending) if (x.fallback) pending.delete(k); return; }
+    const tr = q('#center .trick'), w = tr && q('.slot.win', tr); if (!w || !ms()) return;
+    pending.set(pipKey(v.handNumber, v.showdown && v.showdown.active, cardIds(tr)), { kind: 'pip', p: +w.className.match(/slot-(\d)/)[1], until: performance.now() + 4000, fallback: true });
+  }
+
+  /* ---- What left the table, and where it went. ---- */
+  function transitions(v, o, before) {
+    const t = ms(); if (!t || !o || !before) return;
+    const P = Engine.P;
+    // A thrown-in hand (no trump named, or a Joker void): every card goes back to the dealer, who deals again.
+    if ((before.phase === P.ABANDONED || before.phase === P.JOKER_VOID) && v.phase !== before.phase) {
+      const to = q('#seat' + v.dealer); if (!to) return;
+      o.hand.forEach((x, i) => { const g = place(x.k); done(g, [fly(g, to, t, i * 25)]); });
+      if (o.kpile) { const g = place(o.kpile); done(g, [fly(g, to, t)]); }
+      for (const p of [1, 2]) if (before.counts[p]) for (let i = 0; i < 3; i++) { const g = backAt(p, i - 1, 12); done(g, [fly(g, to, t, i * 40)]); }
+      dealHold = performance.now() + t * 1.4; handDeal.key = '';   // a fresh deal, once the cards are back
+      return;
+    }
+    if (before.hand !== v.handNumber) return;
+    // Trick end: the three cards sweep to the winner's trick circles.
+    if (o.trick) {
+      const now = q('#center .trick'), stay = now && q('.slot.win', now) && cardIds(now) === cardIds(o.trick.el);
+      if (!stay) {
+        const g = place(o.trick), w = q('.slot.win', g), p = w ? +w.className.match(/slot-(\d)/)[1] : -1;
+        const to = p >= 0 && (q('#seat' + p + ' .tpips') || q('#seat' + p));
+        if (to) {
+          pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150 });
+          done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
+        } else g.remove();
+      }
+    }
+    // Bid won. Round 1: the turned card goes to the receiver, the 2 face-down cards to the outside pile.
+    // Round 2: the 2 face-down cards go to the receiver, the turned card to the outside pile.
+    if (o.kpile && !q('#center .kpile') && v.trump && v.receiver !== null) {
+      const g = place(o.kpile), cards = qa('.card', g), top = cards[cards.length - 1], r1 = v.exchangeCount === 1;
+      const recv = seatOf(v.receiver), oc = outsideCell();
+      expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
+      done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : fly(c, oc, t, t * 0.5 + i * 80)));
+    }
+    // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
+    // the pile did not show yet land first (a bot's as backs from its seat), then the pile goes to the Outside cell,
+    // and the kitty is dealt after that.
+    const ids = new Set(v.hand);
+    const mine = before.phase === P.DISCARD ? o.hand.filter(x => !ids.has(x.id)) : [], pileNow = q('#center .outpile');
+    if (o.outpile && !pileNow) {
+      const shown = discarders.slice(0, qa('.olayer', o.outpile.el).length), missing = [1, 2, 0].filter(p => !shown.includes(p));
+      const g = place(o.outpile), gap = t * 0.4, wait = missing.length ? t + (missing.length - 1) * gap : 0;
+      missing.forEach((p, n) => {
+        expect('pile' + v.handNumber + '|' + p, { kind: 'out', n: 3, until: performance.now() + n * gap + t });
+        if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, n * gap + i * 70)]); }); return; }
+        for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, n * gap + i * 70)]); }
+      });
+      done(g, [fly(g, outsideCell(), t, wait)]);
+      kittyHold = performance.now() + wait + t * 0.9;
+    } else if (pileNow && mine.length) {
+      const hold = dealWait(String(v.handNumber));
+      mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
+      mineLand = { hand: v.handNumber, idx: discarders.indexOf(0), t0: performance.now() + hold };
+      expect('pile' + v.handNumber + '|0', { kind: 'out', n: 3, until: mineLand.t0 + t });
+      holdMyLayer(v, performance.now());
+    }
+    // Exchange and Showdown discards fly to the Outside cell: your cards themselves, a bot's as backs from its seat.
+    // A Showdown discard made during the deal waits for the deal to end; its cards stay in the hand backs until then.
+    if (before.phase === P.EXCHANGE || before.phase === P.SHOWDOWN_DISCARD) {
+      const oc = outsideCell(), sd = v.showdown && v.showdown.active, hold = dealWait(v.handNumber + (sd ? 'sd' : ''));
+      for (const p of [0, 1, 2]) {
+        const k = before.counts[p] - v.handCounts[p]; if (k <= 0) continue;
+        expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 1.3 + 80 * k });
+        if (p === 0) { for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, t, hold)]); } continue; }
+        if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
+        for (let i = 0; i < k; i++) {
+          const g = backAt(p, i, 10); done(g, [fly(g, oc, t, hold + i * 80)]);
+          if (hold) g.animate([{ opacity: 0 }, { opacity: 0 }], { duration: hold });   // not on screen until it leaves
+        }
+      }
+    }
+  }
+  /* Hand backs kept for a Showdown discard that waits for the deal; drawn again after each redraw until it leaves. */
+  function holdBacks() {
+    qa('.mini-back.sdheld').forEach(e => e.remove());
+    for (const [p, h] of Object.entries(heldBacks)) {
+      const wait = h.until - performance.now(), row = q('#seat' + p + ' .backrow');
+      if (wait <= 0) { delete heldBacks[p]; continue; }
+      if (row) for (let k = 0; k < h.n; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back sdheld"></span>');
+      setTimeout(holdBacks, wait + 32);
+    }
+  }
+  /* Your layer of the outside pile stays hidden until your cards have landed on the pile. */
+  function holdMyLayer(v, now) {
+    if (!mineLand || mineLand.hand !== v.handNumber) return;
+    const el = qa('#center .outpile .olayer')[mineLand.idx], e = now - mineLand.t0, t = ms();
+    if (!el) return;
+    el.style.setProperty('--ms', '0ms'); for (const x of [el, ...el.children]) x.style.animationDelay = '';
+    if (e < t) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: t - e });
+  }
+
+  /* The discard layers: each slides out from under its player's seat into the pile, after the deal, one after another
+     in the order made. A bot's 3 discards stay in its hand backs until its layer leaves. */
+  function discardLayers(v, now) {
+    const t = ms(), pile = q('#center .outpile');
+    qa('.mini-back.held').forEach(e => e.remove());
+    if (!pile) return;
+    const pr = pile.getBoundingClientRect();
+    qa('.olayer', pile).forEach((el, i) => {
+      const p = +el.dataset.seat, sr = q('#seat' + p).getBoundingClientRect();
+      el.style.setProperty('--from', 'translate(' + Math.round(sr.left + sr.width / 2 - pr.left - pr.width / 2) + 'px,' + Math.round(sr.top + sr.height / 2 - pr.top - pr.height / 2) + 'px) rotate(' + REST[p] * 4 + 'deg)');
+      if (layerStart[i] == null) layerStart[i] = Math.max(now, handDeal.key === String(v.handNumber) ? handDeal.end : 0, i ? (layerStart[i - 1] ?? 0) + t * 0.4 : 0);
+      if (mineLand && mineLand.hand === v.handNumber && mineLand.idx === i) return;
+      expect('pile' + v.handNumber + '|' + discarders[i], { kind: 'out', n: 3, until: layerStart[i] + t });
+      const e = now - layerStart[i];
+      if (t && e < 0 && p) {
+        const row = q('#seat' + p + ' .backrow');
+        if (row) { for (let k = 0; k < 3; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back held"></span>'); setTimeout(() => qa('#seat' + p + ' .mini-back.held').forEach(x => x.remove()), -e + 32); }
+      }
+      if (!t || e >= t) return;
+      if (e < 0) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: -e });
+      el.style.setProperty('--ms', t + 'ms');
+      for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
+    });
+    holdMyLayer(v, now);
+  }
+
+  /* The kitty: the dealer's cards come face down from under the dealer's seat and land straight; then the dealer
+     turns the top card up in place. Held while the outside pile clears. */
+  function kittyDeal(v, now) {
+    const kp = q('#center .kpile'), t = ms(); if (!kp) return;
+    const k = v.handNumber + '|' + v.dealer;
+    if (dealKey !== k) { dealKey = k; dealStart = Math.max(now, kittyHold); }
+    const elapsed = now - dealStart, cards = qa('.card', kp), top = cards[cards.length - 1];
+    const turn = t + (cards.length - 1) * t * 0.45 + t * 0.4;
+    if (!t || !top || elapsed >= turn + t * 0.8) return;
+    if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
+    const up = !/\bback\b/.test(top.className), [dx, dy] = center(q('#seat' + v.dealer));
+    if (up && elapsed < turn + t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
+    cards.forEach((c, i) => { const [cx, cy] = center(c);
+      c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[v.dealer] + 'deg)' }, { transform: 'none' }],
+        { duration: t, delay: i * t * 0.45, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
+    if (up) {
+      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, delay: turn, easing: 'ease-in-out' }).currentTime = elapsed;
+      setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, turn + t * 0.4 - elapsed));
+    }
+  }
+
+  /* A new hand (or the Showdown deal): the cards go out from the dealer (the mediator in a Showdown) one at a time,
+     round the table from the dealer's left: your cards and the opponents' hand backs alike. */
+  function dealHand(v, now) {
+    const P = Engine.P, t = ms(), sd = v.showdown && v.showdown.active, key = v.handNumber + (sd ? 'sd' : '');
+    if (v.phase !== P.DISCARD && v.phase !== P.SHOWDOWN_DISCARD) return;
+    const dealer = sd ? v.showdown.mediator : v.dealer, from = q('#seat' + dealer);
+    const order = [1, 2, 3].map(k => (dealer + k) % 3).filter(p => !sd || v.showdown.participants.includes(p));
+    const hands = order.map(p => p === v.seat ? qa('#hand .card[data-card]') : qa('#seat' + p + ' .mini-back'));
+    if (!hands.some(h => h.length)) return;
+    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold), end: 0 };
+    const e = now - handDeal.t0, step = t * 0.06, most = Math.max(...hands.map(h => h.length));
+    handDeal.end = Math.max(handDeal.end, handDeal.t0 + t + step * order.length * most);
+    if (!t || !from || e > t + step * order.length * most) return;
+    const [fx, fy] = center(from);
+    hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
+      c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
+        { duration: t, delay: (i * order.length + j) * step, easing: 'ease-out', fill: 'backwards' }).currentTime = e; }));
+  }
+
+  /* Trick cards slide in from their player's seat; at a trick's end the winner lifts once the last card has landed. */
+  function animateTrick(v, now) {
+    const key = v.handNumber + '|' + (v.showdown && v.showdown.active ? 'sd' : '') + '|' + v.trickNumber, t = ms();
+    if (key !== trickKey) { trickKey = key; for (const k in slotStart) delete slotStart[k]; for (const k in winStart) delete winStart[k]; }
+    for (const slot of qa('#center .trick .slot')) {
+      const card = q('.card[data-card]', slot), m = slot.className.match(/slot-(\d)/);
+      if (!card || !m) continue;
+      const p = m[1], id = p + card.dataset.card;
+      if (slotStart[id] == null) slotStart[id] = now;
+      const e = now - slotStart[id], seat = q('#seat' + p), isWin = slot.classList.contains('win');
+      // The resting poses first, before any motion applies: without the winner's lift, and with it.
+      if (isWin) slot.classList.remove('win');
+      const base = getComputedStyle(card).transform;
+      if (isWin) slot.classList.add('win');
+      const lifted = getComputedStyle(card).transform, rest = base === 'none' ? '' : base;
+      if (t && e < t && seat) {
+        const [sx, sy] = center(seat), [cx, cy] = center(card);
+        card.animate([{ transform: ('translate(' + (sx - cx) + 'px,' + (sy - cy) + 'px) ' + rest).trim(), opacity: 0.4 }, { transform: rest || 'none', opacity: 1 }],
+          { duration: t, easing: 'ease-out', fill: 'backwards' }).currentTime = e;
+      }
+      if (isWin) {
+        if (winStart[p] == null) winStart[p] = now;
+        const delay = Math.max(0, slotStart[id] + t - winStart[p]), w = now - winStart[p];
+        if (t && w < delay + t) card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }).currentTime = w;
+      }
+    }
+  }
+
+  /* Toasts sit over the play area. */
+  function placeToasts() {
+    const c = q('#center'), box = q('#toasts'); if (!c || !box) return;
+    const r = c.getBoundingClientRect();
+    box.style.top = (r.top + 10) + 'px'; box.style.left = (r.left + r.width / 2) + 'px';
+  }
+  window.addEventListener('resize', () => { if (document.body.classList.contains('adv')) placeToasts(); });
+
+  /* After a redraw: run the motion, then the counts. */
+  function after(v, ui) {
+    speed = ui.speed;
+    const now = performance.now();
+    discardLayers(v, now);
+    holdBacks();
+    transitions(v, out, prev); out = null;
+    holdTrickPip(v);
+    kittyDeal(v, now);
+    animateTrick(v, now);
+    dealHand(v, now);
+    prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
+    last = v;
+    placeToasts();
+    refreshCounts();
+  }
+  /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
+  function reset() {
+    const layer = q('#fx'); if (layer) layer.remove();
+    pending.clear(); clearTimeout(countTimer);
+    prev = out = last = mineLand = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
+    discardHand = -1; discarders = []; dealKey = ''; trickKey = ''; layerStart.length = 0;
+    for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
+    const box = q('#toasts'); if (box) { box.style.top = ''; box.style.left = ''; }
+  }
+
+  return Object.freeze({ discardOrder, capture, after, reset });
+})();
+
 
 /* ---------------------------------------------------------------------
    8. CONTROLLER — game flow, timing, and human input.
@@ -3102,7 +3885,8 @@ const App = (() => {
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
     /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '' },
+    /* advanced: the Advanced UI (Settings → Interface). thisHand: profiles show this hand's bids and voids. Both are kept. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false },
     /* n: the wave being played, or null. result: the progress after the game ended. */
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
@@ -3156,6 +3940,7 @@ const App = (() => {
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.state = Engine.createGame(s, ['You', 'West', 'East']);
+    Fx.reset();
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
     clearLog();
@@ -3179,6 +3964,7 @@ const App = (() => {
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
+    Fx.reset();
     seatBots(null, null);
     clearLog();
     const setSeed = $('setSeed');
@@ -3347,6 +4133,7 @@ const App = (() => {
     try {
       app.mode = mode;
       app.state = JSON.parse(JSON.stringify(s.state));
+      Fx.reset();
       app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, result: null };
       app.humanSeatWasAutoplayed = !!s.assisted;
       /* With the Your seat switch off (always so after a reload), you take your seat back. The game stays assisted. */
@@ -3379,9 +4166,83 @@ const App = (() => {
   /* Sets the game speed and the Speed menu. Each page load starts at Normal. */
   function setSpeed(value) {
     $('speedSel').value = value;
+    syncSpeedTitle();
     if (app.ui.speed === value) return;
     app.ui.speed = value;
     schedule();
+  }
+  /* The Advanced UI shows the speed as its icon only: the tooltip names the current speed. */
+  function syncSpeedTitle() {
+    const sel = $('speedSel');
+    sel.closest('.speed-pick').title = app.ui.advanced ? 'Speed: ' + sel.options[sel.selectedIndex].text : 'Game speed';
+  }
+
+  /* ---- Interface (Settings): the Advanced UI and the This hand box of the profiles. ---- */
+  function setAdvanced(on) {
+    app.ui.advanced = on;
+    $('setAdvancedUI').checked = on;
+    document.body.classList.toggle('adv', on);
+    $('logToggle').hidden = !on;
+    if (!on) { document.querySelector('.layout').classList.remove('log-collapsed'); syncLogToggle(); }
+    closePanel();
+    Fx.reset();
+    orderLog();
+    $('gameLog').scrollTop = on ? 0 : $('gameLog').scrollHeight;
+    syncSpeedTitle();
+    if (app.state) draw([]);
+    saveSettings();
+  }
+  function setThisHand(on) {
+    app.ui.thisHand = on;
+    $('setThisHand').checked = on;
+    saveSettings();
+  }
+  /* The Latest Scroll's toggle (Advanced UI): wide screens fold it to a side tab, narrow ones to its heading. */
+  function toggleLog() {
+    document.querySelector('.layout').classList.toggle('log-collapsed');
+    syncLogToggle();
+  }
+  function syncLogToggle() {
+    const closed = document.querySelector('.layout').classList.contains('log-collapsed'), b = $('logToggle');
+    const label = (closed ? 'Open' : 'Collapse') + ' the Latest Scroll';
+    b.textContent = closed ? '‹' : '›'; b.title = label; b.setAttribute('aria-label', label); b.setAttribute('aria-expanded', String(!closed));
+  }
+  /* The Advanced UI's popups: the Outside cell lists your discards, a player's trick circles list the tricks they won
+     this hand. One at a time; a click elsewhere, or a change on the table, closes it. */
+  function closePanel() {
+    const p = document.querySelector('#table > .panel'); if (p) p.remove();
+    for (const e of document.querySelectorAll('#table .open')) e.classList.remove('open');
+  }
+  function showPanel(kind, seat, anchor) {
+    const wasOpen = anchor.classList.contains('open');
+    closePanel();
+    if (wasOpen || !app.state) return;
+    const v = buildView(app.state, HUMAN), mini = id => Render.microHTML(id, 'Jkr');
+    let title, body;
+    if (kind === 'outside') {
+      title = 'Your discards';
+      body = v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>';
+    } else {
+      title = Render.nameOf(v, seat) + ' · tricks won';
+      body = v.trickWinners.map((w, i) => w !== seat ? '' : '<div class="prow"><span class="tn">' + (i + 1) + '</span>' + v.playLog.slice(i * 3, i * 3 + 3).map(x => mini(x.card)).join('') + '</div>').join('') || '<p>None yet.</p>';
+    }
+    const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
+    table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    const pn = table.querySelector(':scope > .panel');
+    pn.style.left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8) + 'px';
+    pn.style.top = (r.bottom - tb.top + 6) + 'px';
+    anchor.classList.add('open');
+  }
+  /* Profiles, with the This hand setting on: during a hand, a seated player's profile adds their bids and the suits
+     they are void of, as every player at the table has seen them. */
+  function thisHandHTML(id) {
+    const st = app.state, seat = app.ui.personas.indexOf(id);
+    if (!app.ui.thisHand || !app.mode || !st || !st.handNumber || seat < 0) return '';
+    const v = buildView(st, HUMAN);
+    const bids = v.bidLog.filter(b => b.player === seat).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + R.SYMBOL[b.suit] : 'passed') + ' round 2');
+    const voids = v.voids[seat] || [];
+    const vd = voids.length ? voids.map(s => '<b' + (R.COLOR[s] === 'red' ? ' class="pip-red"' : '') + '>' + R.SYMBOL[s] + '</b>').join(' ') : 'none yet';
+    return '<div class="p-hand"><span class="lab">This hand</span><dl><dt>Bids</dt><dd>' + (bids.join(' · ') || 'none yet') + '</dd><dt>Void of</dt><dd>' + vd + '</dd></dl></div>';
   }
 
   /* A yes/no question in the game's own style (never the browser's dialog). The game waits while it is open.
@@ -3515,7 +4376,7 @@ const App = (() => {
       if (e.type === 'SCORE_CHANGED' && e.delta !== 0) ctx.flashSeats.add(e.player);
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
     }
-    Render.render(v, app.ui, ctx);
+    if (Render.render(v, app.ui, ctx)) closePanel();
     syncModeUI();
   }
 
@@ -3577,7 +4438,7 @@ const App = (() => {
     const classes = (cls || '').split(' ').filter(Boolean);
     if (isShowdown) classes.push('sd');
     appendLog(text, classes.join(' '));
-    $('gameLog').scrollTop = $('gameLog').scrollHeight;
+    $('gameLog').scrollTop = app.ui.advanced ? 0 : $('gameLog').scrollHeight;
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
@@ -3592,6 +4453,7 @@ const App = (() => {
     ol.appendChild(logItem(text, cls));
     while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
     if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
+    orderLog();
   }
   /* Draws the whole log again from its text. A name's color belongs to its seat, so after
      a seat swap the earlier lines must be drawn again with the new seats. */
@@ -3599,6 +4461,20 @@ const App = (() => {
     const ol = $('gameLog'), keep = ol.scrollTop;
     ol.replaceChildren(...logLines.map(([text, cls]) => logItem(text, cls)));
     ol.scrollTop = keep;
+    orderLog();
+  }
+  /* The Advanced UI shows the Latest Scroll newest first: each group keeps its heading line on top and its other
+     lines newest first. The lines stay in play order in the page (the game trims the oldest); CSS order places them. */
+  function orderLog() {
+    const ol = $('gameLog'), lines = Array.from(ol.children);
+    if (!app.ui.advanced) { for (const li of lines) li.style.order = ''; return; }
+    const groups = [];
+    for (const li of lines) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
+    let k = 0;
+    for (const g of groups.reverse()) {
+      const head = g[0].classList.contains('gap') ? 1 : 0;
+      for (const li of g.slice(0, head).concat(g.slice(head).reverse())) li.style.order = String(k++);
+    }
   }
   function toast(text, cls) {
     const t = document.createElement('div');
@@ -3623,11 +4499,11 @@ const App = (() => {
     const st = app.state;
     const n = p => st.players[p].name;
     switch (e.type) {
-      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
+      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); if (app.ui.advanced) toast(n(e.dealer) + ' deals', 'info'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind'); break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
-      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
+      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); if (app.ui.advanced) toast(n(e.player) + ' passes', 'info'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
@@ -3648,7 +4524,11 @@ const App = (() => {
         }
         break;
       case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
-      case 'SHOWDOWN_STARTED': addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true); toast('SHOWDOWN!', 'neg'); break;
+      case 'SHOWDOWN_STARTED':
+        addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true);
+        /* The Advanced UI has no Showdown banner: its toast names the two players and the mediator. */
+        toast(app.ui.advanced ? 'SHOWDOWN! ' + n(e.participants[0]) + ' vs ' + n(e.participants[1]) + ' · ' + (e.mediator === HUMAN ? 'you mediate' : n(e.mediator) + ' mediates') : 'SHOWDOWN!', 'neg');
+        break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
       case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true); break;
@@ -4004,7 +4884,10 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
       case 'skip': skip(); break;
-      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
+      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x).replace('<div class="p-dials">', thisHandHTML(x.id) + '<div class="p-dials">'); $('overlay').hidden = false; } break; }
+      case 'toggle-log': toggleLog(); break;
+      case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
+      case 'adv-outside': showPanel('outside', null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
       case 'mode-results': showResults(); break;
       case 'menu': showMenu(false); break;
@@ -4160,7 +5043,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -4170,11 +5053,14 @@ const App = (() => {
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
     if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
     if (x.logging === true) Logger.enabled = true;
+    if (typeof x.advancedUI === 'boolean') app.ui.advanced = x.advancedUI;
+    if (typeof x.thisHand === 'boolean') app.ui.thisHand = x.thisHand;
   }
 
   function init() {
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
+      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"]')) closePanel();
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
@@ -4188,12 +5074,19 @@ const App = (() => {
       const t = ev.target instanceof Element ? ev.target : null;
       if (t && /^(BUTTON|SELECT|INPUT)$/.test(t.tagName)) return;
       if (t && t.classList.contains('seat-toggle')) { ev.preventDefault(); toggleAutoplay(); return; }
+      if (t && t.matches('[role="button"][data-action]')) { ev.preventDefault(); onAction(t.getAttribute('data-action'), t); return; }
       if (!$('overlay').hidden) return; /* a dialog is open: its buttons take the keys */
       ev.preventDefault();
       if (app.timerFn) skip();
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     loadSettings();
+    document.body.classList.toggle('adv', app.ui.advanced);
+    $('logToggle').hidden = !app.ui.advanced;
+    $('setAdvancedUI').checked = app.ui.advanced;
+    $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
+    $('setThisHand').checked = app.ui.thisHand;
+    $('setThisHand').addEventListener('change', () => setThisHand($('setThisHand').checked));
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
@@ -4204,6 +5097,7 @@ const App = (() => {
     else window.addEventListener('resize', setHeaderH);
     const speed = $('speedSel');
     speed.value = app.ui.speed;
+    syncSpeedTitle();
     speed.addEventListener('change', () => setSpeed(speed.value));
     const logBox = $('setEnable');
     logBox.checked = Logger.enabled;
