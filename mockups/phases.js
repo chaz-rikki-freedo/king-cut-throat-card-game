@@ -3,8 +3,8 @@
    phases/<name>-desktop[-collapsed].png, phases/<name>-phone-collapsed.png
    Run: cd mockups && NODE_PATH=$(npm root -g) PW_CHROMIUM=/opt/pw-browsers/chromium node phases.js */
 const { serve, launch, openPage, run } = require('../tests/lib/browser');
-const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirname + '/advanced.js', 'utf8');
-const OUT = path.join(__dirname, 'phases');
+const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirname + '/' + (process.env.LAYER || 'advanced.js'), 'utf8');
+const OUT = path.join(__dirname, process.env.OUT || 'phases');
 
 /* name → condition, checked in the page (app, P and KCT in scope). First match wins. */
 const TARGETS = [

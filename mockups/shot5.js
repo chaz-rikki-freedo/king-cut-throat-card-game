@@ -2,7 +2,7 @@
    and both you and Kit have won a Showdown trick; captures your turn there with the Advanced layer.
    Run: cd mockups && NODE_PATH=$(npm root -g) PW_CHROMIUM=/opt/pw-browsers/chromium node shot5.js */
 const { serve, launch, openPage, run } = require('../tests/lib/browser');
-const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirname + '/advanced.js', 'utf8');
+const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirname + '/' + (process.env.LAYER || 'advanced.js'), 'utf8');
 (async () => {
   const srv = await serve(), browser = await launch();
   try {
@@ -40,7 +40,7 @@ const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirnam
         new Function(src)();
       }, [ADV, r.vars]);
       await view.waitForTimeout(150);
-      await view.screenshot({ path: path.join(__dirname, 'phases', '8b-showdown-you-vs-kit-' + tag + '.png'), fullPage: true });
+      await view.screenshot({ path: path.join(__dirname, process.env.OUT || 'phases', '8b-showdown-you-vs-kit-' + tag + '.png'), fullPage: true });
     }
   } finally { await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
