@@ -2,10 +2,13 @@
    played. build-play.js bundles it into advanced3-play.html. Not app code.
    A render that changes the table rebuilds the seats, the play area and your seat. This adapter clears what the layer
    put elsewhere, computes the layer's inputs from the live state, and runs the layer again. Animations are timed from
-   when each thing first appeared, so a rebuild mid-animation resumes it instead of restarting or cutting it. */
+   when each thing first appeared, so a rebuild mid-animation resumes it instead of restarting or cutting it.
+   Phase changes: before a rebuild, the outgoing trick, kitty, outside pile and your hand are kept; after it, they fly
+   to where the cards went (the winner's trick circles, the receiver, the Outside cell), and a new hand is dealt. */
 (() => {
   const SRC = window.__ADV_SRC, $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   window.__live = true;
+  let prev = null, out = null, handDeal = { key: '', t0: 0 };
   let seq = 0, lastHand = 0, logCount = -1, discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '', personaSeat = null;
   const seen = new Set(), layerStart = [], slotStart = {}, winStart = {};
   const speedMs = () => ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
@@ -15,7 +18,7 @@
   window.__advFlush = w => {
     const n = $('#gameLog').children.length;
     if (n === logCount && w.every(([el, h]) => el.__raw === norm(h))) return false;
-    logCount = n;
+    logCount = n; out = capture();
     for (const [el, h] of w) { el.innerHTML = h; el.__raw = norm(h); }
     return true;
   };
@@ -40,17 +43,109 @@
 .speed-pick{position:relative}
 .speed-pick select{display:block!important;position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
 .trick .card.enter{animation:none!important}
-.trick .slot .card{transition:none!important}`;
+.trick .slot .card{transition:none!important}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
+#fx > *{position:fixed!important;margin:0!important;box-sizing:border-box}
+#fx .olayer,#fx .olayer .card{animation:none!important}`;
   document.head.appendChild(live);
 
   const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+
+  // ---- Phase changes. capture() runs just before a rebuild, while the outgoing table is still on screen.
+  // Measured at rest: an animation still running (a deal, a slide-in) is finished first.
+  const keep = el => { if (!el) return null; for (const a of el.getAnimations({ subtree: true })) try { a.finish(); } catch (e) { /* infinite: none here */ }
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el), vars = {};
+    for (const k of cs) if (k.startsWith('--')) vars[k] = cs.getPropertyValue(k);
+    return { el, r, vars }; };
+  function capture() {
+    const tr = $('#center .trick');
+    return { trick: tr && $('.slot.win', tr) ? keep(tr) : null, kpile: keep($('#center .kpile')), outpile: keep($('#center .outpile')),
+      hand: $$('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })) };
+  }
+  // A kept element goes into the effects layer exactly where it was, with the variables it had.
+  function place(k) {
+    let fx = $('#fx'); if (!fx) { fx = document.createElement('div'); fx.id = 'fx'; document.body.appendChild(fx); }
+    const el = k.el; el.removeAttribute('id');
+    for (const [n, v] of Object.entries(k.vars)) el.style.setProperty(n, v);
+    Object.assign(el.style, { left: k.r.left + 'px', top: k.r.top + 'px', width: k.r.width + 'px', height: k.r.height + 'px', minHeight: '0' });
+    fx.appendChild(el); return el;
+  }
+  // One card (or stack) flies to a target and shrinks away; the effects layer is cleared when it lands.
+  function fly(el, to, ms, delay = 0, turn = 0) {
+    const [sx, sy] = center(el), [tx, ty] = center(to);
+    const a = el.animate([{ transform: getComputedStyle(el).transform === 'none' ? 'none' : getComputedStyle(el).transform, opacity: 1 },
+      { opacity: 1, offset: 0.7 },
+      { transform: 'translate(' + (tx - sx) + 'px,' + (ty - sy) + 'px) rotate(' + turn + 'deg) scale(.35)', opacity: 0 }],
+      { duration: ms * 1.3, delay, easing: 'ease-in-out', fill: 'both' });
+    return a;
+  }
+  const done = (root, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => root.remove());
+  const outsideCell = () => $$('.info .cell').find(c => /Outside/i.test(c.textContent)) || $('.info');
+  const seatOf = p => p === 0 ? ($('#hand') || $('#seat0')) : $('#seat' + p);
+
+  function transitions(s, o, before) {
+    const ms = speedMs(); if (!ms || !o || !before || before.hand !== s.handNumber) return;
+    // Trick end: the three cards sweep to the winner's trick circles.
+    if (o.trick) {
+      const ids = k => $$('.slot .card[data-card]', k).map(c => c.dataset.card).sort().join();
+      const now = $('#center .trick'), stay = now && $('.slot.win', now) && ids(now) === ids(o.trick.el);
+      if (!stay) {
+        const g = place(o.trick), w = $('.slot.win', g), p = w ? +(w.className.match(/slot-(\d)/) || [])[1] : -1;
+        const to = $('#seat' + p + ' .pips') || $('#seat' + p);
+        if (to) done(g, $$('.slot', g).map((sl, i) => { if (!$('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, ms, i * 60); }).filter(Boolean));
+        else g.remove();
+      }
+    }
+    // Bid won: round 1, the turned card goes to the receiver and the 2 face-down cards to the outside pile;
+    // round 2, the 2 face-down cards go to the receiver and the turned card to the outside pile.
+    if (o.kpile && !$('#center .kpile') && s.trump && s.receiver != null) {
+      const g = place(o.kpile), cards = $$('.card', g), top = cards[cards.length - 1], r1 = s.exchangeCount === 1;
+      const recv = seatOf(s.receiver), oc = outsideCell(), tilt = { 0: 0, 1: -30, 2: 30 }[s.receiver];
+      done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, ms, i * 80, tilt) : fly(c, oc, ms, ms * 0.5 + i * 80)));
+    }
+    // Discards complete: the outside pile slides off to the Outside cell; the kitty takes its spot.
+    if (o.outpile && !$('#center .outpile')) { const g = place(o.outpile); done(g, [fly(g, outsideCell(), ms)]); }
+    // Exchange and Showdown discards: cards that leave a hand outside trick play fly to the Outside cell. Yours are the
+    // cards themselves; a bot's are backs from its seat.
+    if (before.phase !== 'discard' && !/Play$|rickDone/.test(before.phase)) {
+      const oc = outsideCell(), ids = new Set(s.hands[0]);
+      for (const p of [0, 1, 2]) {
+        const k = before.counts[p] - s.hands[p].length; if (k <= 0) continue;
+        if (p === 0) {
+          for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, ms)]); }
+          continue;
+        }
+        const r = $('#seat' + p).getBoundingClientRect(), w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+        for (let i = 0; i < k; i++) {
+          const b = document.createElement('div'); b.className = 'card back';
+          const g = place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + i * 10, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
+          done(g, [fly(g, oc, ms, i * 80)]);
+        }
+      }
+    }
+  }
+
+  // A new hand (or the Showdown deal): your cards come in from the dealer, one after another. Timed from when the hand
+  // first showed, so a rebuild mid-deal resumes it.
+  function dealHand(s, now) {
+    const ms = speedMs(), cards = $$('#hand .card[data-card]'), sd = s.showdown && s.showdown.active;
+    const key = s.handNumber + (sd ? 'sd' : '');
+    if (!cards.length || !/^(discard|showdownDiscard)$/.test(s.phase)) return;
+    if (handDeal.key !== key) handDeal = { key, t0: now };
+    const from = $('#seat' + (sd ? s.showdown.mediator : s.dealer)), e = now - handDeal.t0, step = ms * 0.12;
+    if (!ms || !from || e > ms + step * cards.length) return;
+    const [fx, fy] = center(from);
+    cards.forEach((c, i) => { const [cx, cy] = center(c);
+      c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
+        { duration: ms, delay: i * step, easing: 'ease-out', fill: 'backwards' }).currentTime = e; });
+  }
 
   // Trick cards slide in from the player's seat; at a trick's end the winner lifts once the last card has landed.
   function animateTrick(s, now) {
     const sd = s.showdown && s.showdown.active, key = s.handNumber + '|' + (sd ? 'sd' : '') + '|' + s.trickNumber;
     if (key !== trickKey) { trickKey = key; for (const k in slotStart) delete slotStart[k]; for (const k in winStart) delete winStart[k]; }
     const ms = speedMs();
-    for (const slot of $$('.trick .slot')) {
+    for (const slot of $$('#center .trick .slot')) {
       const card = $(':scope > .card', slot) || $('.card', slot), p = (slot.className.match(/slot-(\d)/) || [])[1];
       if (!card || !card.dataset.card || p == null) continue;
       const id = p + card.dataset.card;
@@ -101,16 +196,19 @@
     // Discards: who has discarded, in the order seen. Each layer's slide is timed from when it first appeared.
     if (s.phase === 'discard') {
       if (discardHand !== s.handNumber) { discardHand = s.handNumber; discarders = []; layerStart.length = 0; }
-      for (const p of [1, 2, 0]) if (!discarders.includes(p) && /Discarded/.test((($('#seat' + p + ' .discard-note') || {}).textContent || ''))) discarders.push(p);
+      for (const p of [1, 2, 0]) if (!discarders.includes(p) && !s.pendingDiscard[p]) discarders.push(p);
     }
     window.__discarders = discarders.concat([1, 2, 0].filter(p => !discarders.includes(p)));
     window.__outside = s.phase === 'discard' ? discarders.length * 3 : undefined;
-    window.__animFrom = 99;   // the layer draws every layer at rest; the timing below sets the moving ones
+    window.__animFrom = 99; window.__pileAll = true;   // the layer draws every layer at rest; the timing below sets the moving ones
 
+    // The layer finds things by class across the page; cards still flying in the effects layer stay out of its way.
+    const fx = $('#fx'); if (fx) fx.remove();
     try { new Function(SRC)(); } catch (e) { console.error('Advanced layer:', e); }
+    if (fx) document.body.appendChild(fx);
 
     const ms = speedMs();
-    $$('.outpile .olayer').forEach((el, i) => {
+    $$('#center .outpile .olayer').forEach((el, i) => {
       if (layerStart[i] == null) layerStart[i] = now;
       const e = now - layerStart[i];
       if (!ms || e >= ms) return;
@@ -118,12 +216,15 @@
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
     });
     // The kitty deal: timed from when the kitty first showed this hand.
-    if ($('.kpile') && window.__kittyDeal) {
+    if ($('#center .kpile') && window.__kittyDeal) {
       const k = s.handNumber + '|' + s.dealer;
       if (dealKey !== k) { dealKey = k; dealStart = now; }
       window.__kittyDeal(s.dealer, now - dealStart);
     }
     animateTrick(s, now);
+    dealHand(s, now);
+    transitions(s, out, prev); out = null;
+    prev = { hand: s.handNumber, phase: s.phase, counts: s.hands.map(h => h.length) };
 
     // The log shows newest first through CSS order; the DOM stays in play order so the game can trim its oldest line.
     const shown = [...log.children];

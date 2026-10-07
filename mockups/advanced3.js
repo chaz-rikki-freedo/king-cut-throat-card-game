@@ -312,7 +312,8 @@ if (kitty && !$('.center .trick')) {
 // Discard phase: the outside pile is a neat squared stack in the kitty's spot (the kitty shows from the bids on), its count on the top card in transparent
 // black. The action buttons sit above both piles.
 const discardBtn = $('[data-action="confirm-discard"]');
-if (discardBtn && $('.kitty-spot')) {
+// The live build keeps the pile for the whole discard phase (window.__pileAll), also after you confirm.
+if ((discardBtn || (window.__pileAll && st.phase === 'discard')) && $('.kitty-spot')) {
   const n = window.__outside != null ? window.__outside : $$('.seat .discard-note, .me .discard-note').filter(d => /Discarded/.test(d.textContent)).length * 3;
   // One coherent pile, built in layers: each player's 3 discards arrive as a small fan from that player's seat, at the
   // seat's angle (the same angles as the trick), then square up into a layer that keeps a slight turn toward its seat.
@@ -332,7 +333,7 @@ if (discardBtn && $('.kitty-spot')) {
   };
   (window.__discarders || [1, 2, 0]).slice(0, Math.min(Math.round(n / 3), 3)).forEach((seat, i) => window.__addDiscard(seat, i >= (window.__animFrom ?? 9)));
   $('.kitty-spot').insertAdjacentHTML('afterbegin', '<div class="pile-act"></div>');
-  $('.kitty-spot .pile-act').appendChild(discardBtn);
+  if (discardBtn) $('.kitty-spot .pile-act').appendChild(discardBtn);
 }
 // Bidding: the same rule, the action buttons go below the kitty.
 if (!discardBtn && $('.kitty-spot') && $('.actionbar .btn')) {
