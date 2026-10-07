@@ -305,7 +305,7 @@ if (kitty && !$('.center .trick')) {
   const cards = $$('.pile-cards .card', kitty).reverse(), top = cards.length - 1;
   $('.center .piles').insertAdjacentHTML('afterend', '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + cards.length + ' cards">' +
     cards.map((c, i) => c.outerHTML.replace('class="card', 'style="left:calc(' + i + ' * var(--kw) * .45)" class="card')
-      .replace(/<\/div>$/, i === top && /\bback\b/.test(c.className) ? CAT + '</div>' : '</div>')).join('') + '</div></div></div>');
+      ).join('') + '</div></div></div>');
 }
 // Discard phase: the outside pile is a neat squared stack in the kitty's spot (the kitty shows from the bids on), its count on the top card in transparent
 // black. The action buttons sit above both piles.
@@ -441,7 +441,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
   window.__kittyDeal = dealer => {
     // All 3 kitty cards come from the dealer face down and land straight; then the dealer turns the top card up in place.
     const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1], up = !/\bback\b/.test(top.className);
-    if (up) top.insertAdjacentHTML('beforeend', '<div class="kback">' + CAT + '</div>');
+    if (up) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
     cards.forEach((c, i) => { const [x, y] = offset(c, dealer);
       c.animate([{ transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt[dealer] + 'deg)' }, { transform: 'none' }],
         { duration: ms, delay: i * ms * 0.45, easing: 'ease-out', fill: 'backwards' }); });
