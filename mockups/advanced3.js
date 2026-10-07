@@ -145,6 +145,9 @@ const css = `
 .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 .pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
+/* Where each seat's discards come from: beside the play area on wide screens; above it (under the seats) on phones. */
+.olayer.from-1{--from:translate(-230%,-10%) rotate(-38deg)}.olayer.from-2{--from:translate(230%,-10%) rotate(38deg)}.olayer.from-0{--from:translate(0,190%) rotate(0deg)}
+@media (max-width:720px){.olayer.from-1{--from:translate(-150%,-230%) rotate(-30deg)}.olayer.from-2{--from:translate(150%,-230%) rotate(30deg)}}
 .outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
 .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
 @keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
@@ -314,7 +317,7 @@ if (discardBtn && $('.kitty-spot')) {
   window.__addDiscard = (seat, animate = true) => {
     const k = SEAT[seat], i = pile.children.length;
     pile.classList.remove('empty');
-    pile.insertAdjacentHTML('beforeend', '<div class="olayer" style="--from:' + k.from + ';--rest:' + k.rest + 'deg;--dx:' + k.dx + 'px;--lift:' + (-i * 2) + 'px;--ms:' + (animate ? ms : 0) + 'ms">' +
+    pile.insertAdjacentHTML('beforeend', '<div class="olayer from-' + seat + '" style="--rest:' + k.rest + 'deg;--dx:' + k.dx + 'px;--lift:' + (-i * 2) + 'px;--ms:' + (animate ? ms : 0) + 'ms">' +
       [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>');
   };
   for (const seat of (window.__discarders || [1, 2, 0]).slice(0, Math.min(Math.round(n / 3), 3))) window.__addDiscard(seat, false);
