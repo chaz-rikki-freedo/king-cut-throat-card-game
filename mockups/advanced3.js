@@ -299,7 +299,7 @@ log.scrollTop = 0;
 // Kitty in the middle of the table before the first trick: spread flat and overlapping like the bots' hand backs
 // (each card covers more than half of the one before), so its few cards can be counted. Until the
 // turn-up, the top card carries a black cat silhouette at 50% opacity.
-const CAT = '<svg class="cat" viewBox="0 0 64 80" aria-hidden="true"><path d="M20 6l5 9c2-.6 4-.9 6-.9s4 .3 6 .9l5-9 2 13c2 3 3 6 3 9 0 5-2 9-6 12 6 5 10 13 10 22 0 6-1 10-3 13h6c4 0 6-2 6-5s-2-4-4-4c-2 0-3 1-3 3h-3c0-4 3-6 6-6 5 0 7 3 7 7 0 5-4 8-9 8H17c-3 0-5-2-5-4s1-4 3-5c-2-4-3-8-3-13 0-9 4-17 10-22-4-3-6-7-6-12 0-3 1-6 3-9z"/></svg>';
+const CAT = '<svg class="cat" viewBox="0 0 60 100" aria-hidden="true"><path d="M22 6l4 10h8l4-10 2 14c2 6-1 11-6 13 6 7 8 19 7 33-1 12-3 20-1 28H20c2-8 0-16-1-28-1-14 1-26 7-33-5-2-8-7-6-13z"/><path d="M40 92c12-2 14-16 8-22" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/></svg>';
 const kitty = $$('.center .piles .pile').find(p => /Kitty/.test(p.textContent));
 if (kitty && !$('.center .trick')) {
   const cards = $$('.pile-cards .card', kitty).reverse(), top = cards.length - 1;
