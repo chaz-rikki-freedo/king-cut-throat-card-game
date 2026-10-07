@@ -25,7 +25,12 @@ const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirnam
       const html = '<!doctype html>' + document.documentElement.outerHTML.replace(/<script[\\s\\S]*?<\\/script>/g, '').replace(/ enter"/g, '"');
       const vars = { turn: ac.length === 1 ? ac[0] : -1, led: s.trick && s.trick.plays.length ? s.trick.plays[0].player : -1,
         lastWinner: w == null ? '' : names[w] + ' won',
-        state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, phase: s.phase,
+        info: (() => { const R = KCT.Render, v = KCT.buildView(s, 0), sym = { S: '♠', H: '♥', D: '♦', C: '♣' };
+            const won = [[], [], []]; const pl = v.playLog || []; (v.trickWinners || []).forEach((w, i) => won[w].push({ n: i + 1, cards: pl.slice(i * 3, i * 3 + 3).map(x => x.card) }));
+            return { flippedHTML: s.flippedId ? R.cardHTML(s.flippedId, null) : '', flipped: s.flippedId, flippedBlocked: s.flippedBlocked,
+              bids: [0, 1, 2].map(p => v.bidLog.filter(b => b.player === p).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + sym[b.suit] : 'passed') + ' round 2')),
+              voids: v.voids.map(x => x.map(c => sym[c] || c)), myOut: v.myOut, won,
+              cardHTML: Object.fromEntries([].concat(v.myOut, pl.map(x => x.card)).map(id => [id, R.cardHTML(id, s.trump)])) }; })(), state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, phase: s.phase,
           myOut: KCT.buildView(s, 0).myOut, sdDiscards: s.showdown.discards.length } };
       return { why, seed, html, vars, scores: s.scores, sd: s.showdown.tricksWon };`, null, ['drive.js']);
     console.log('seed', r.seed, r.why, 'scores', r.scores, 'sd tricks', r.sd);
@@ -35,7 +40,7 @@ const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirnam
       await view.setViewportSize({ width: w, height: h });
       await view.setContent(r.html.replace('<head>', '<head><base href="' + srv.url + '">'));
       await view.evaluate(([src, v]) => {
-        window.KCT = { App: { app: { state: v.state } } };
+        window.KCT = { App: { app: { state: Object.assign({}, v.state, { info: v.info }) } } };
         Object.assign(window, { __turn: v.turn, __led: v.led, __lastWinner: v.lastWinner, __collapsed: true });
         new Function(src)();
       }, [ADV, r.vars]);

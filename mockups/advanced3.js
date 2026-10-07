@@ -464,3 +464,72 @@ document.head.insertAdjacentHTML('beforeend', `<style>
         { duration: ms, delay: ms * 1.2, easing: 'ease-out', fill: 'forwards' }); });
   };
 }
+
+// ---- Rules pass: the turned card, round 2 buttons, and information the AI has that the screen must offer.
+{ const I = st.info || {}, phase = st.phase;
+  // Turned card: face up on top of the kitty in round 1, blocked (✕, dimmed) on top in round 2, and the Joker shown
+  // face up when it voids the hand. The Turned up cell names it in every one of these phases.
+  const kp = $('.kpile');
+  if (kp && I.flippedHTML && /bid1|bid2|jokerVoid/.test(phase)) {
+    const cards = $$('.card', kp), top = cards[cards.length - 1], tmp = document.createElement('div');
+    tmp.innerHTML = I.flippedHTML; const face = tmp.firstElementChild;
+    face.setAttribute('style', top.getAttribute('style') || '');
+    if (I.flippedBlocked && phase === 'bid2') { face.classList.add('blocked'); face.insertAdjacentHTML('beforeend', '<span class="kx">✕</span>'); }
+    cards.slice(0, -1).forEach(c => { if (!/\bback\b/.test(c.className)) { const b = document.createElement('div'); b.className = 'card back'; b.setAttribute('style', c.getAttribute('style') || ''); c.replaceWith(b); } });
+    top.replaceWith(face);
+  }
+  if (I.flipped && /bid2|jokerVoid/.test(phase) && !$$('.info .cell').some(c => /Turned up/i.test(c.textContent))) {
+    const m = I.flipped.match(/^(10|[2-9AKQJ])([SHDC])$/), sy = { S: '♠', H: '♥', D: '♦', C: '♣' };
+    const val = m ? micro(m[1], sy[m[2]]) : '<span class="micro" style="background:#000;color:#f2c14e">Joker</span>';
+    const out = $$('.info .cell').find(c => /Outside/i.test(c.textContent));
+    const html = '<div class="cell muted' + (I.flippedBlocked && phase === 'bid2' ? ' blockedcell' : '') + '"><span class="lab">' + (I.flippedBlocked && phase === 'bid2' ? 'Blocked' : 'Turned up') + '</span><span class="val">' + val + '</span></div>';
+    if (out) out.insertAdjacentHTML('beforebegin', html); else $('.info').insertAdjacentHTML('beforeend', html);
+  }
+  // Round 2: suit buttons are compact symbols (Advanced), so five buttons fit a phone on one line.
+  for (const b of $$('[data-action="name-suit"]')) { const t = b.textContent.trim(); b.title = t; b.setAttribute('aria-label', 'Name ' + t); b.textContent = t.split(/\s+/)[0]; b.classList.add('sym-btn'); }
+
+  // Information the AI's view holds that the screen does not show at a glance, offered on tap (one panel at a time):
+  //  - Outside cell -> your own discards (the AI remembers its discards: View.myOut).
+  //  - A seat       -> that player's bids this hand and the suits they have shown out of (View.bidLog, View.voids).
+  //  - Trick circles -> the tricks that player won this hand, card by card (View.playLog, View.trickWinners).
+  const NAMES = ['You', 'Kit', 'Tex'];
+  const microOf = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/), sy = { S: '♠', H: '♥', D: '♦', C: '♣' }; return m ? micro(m[1], sy[m[2]]) : '<span class="micro" style="background:#000;color:#f2c14e">Jkr</span>'; };
+  const outCell = $$('.info .cell').find(c => /Outside/i.test(c.textContent)); if (outCell) outCell.classList.add('tappable');
+  for (const s of $$('#seat1,#seat2,#seat0')) { s.classList.add('tappable'); const p = $('.pips', s); if (p) p.classList.add('tappable'); }
+  window.__panel = (kind, seat) => {
+    const old = $('.panel'); if (old) old.remove(); $$('.open').forEach(e => e.classList.remove('open'));
+    let title = '', body = '', anchor;
+    if (kind === 'outside') { anchor = outCell; title = 'Your discards';
+      body = (I.myOut || []).length ? '<div class="prow">' + I.myOut.map(microOf).join('') + '</div>' : '<p>None yet.</p>'; }
+    if (kind === 'seat') { anchor = $('#seat' + seat + ' .tagbox') || $('#seat' + seat); title = NAMES[seat];
+      const bids = (I.bids || [])[seat] || [], voids = (I.voids || [])[seat] || [];
+      body = '<dl><dt>Bids</dt><dd>' + (bids.length ? bids.join(' · ') : 'none yet') + '</dd><dt>Shown out of</dt><dd>' + (voids.length ? voids.map(v => '<b class="' + (/[♥♦]/.test(v) ? 'pip-red' : '') + '">' + v + '</b>').join(' ') : 'no suit yet') + '</dd></dl>'; }
+    if (kind === 'tricks') { anchor = $('#seat' + seat + ' .pips'); title = NAMES[seat] + ' · tricks won';
+      const w = ((I.won || [])[seat] || []);
+      body = w.length ? w.map(t => '<div class="prow"><span class="tn">' + t.n + '</span>' + t.cards.map(microOf).join('') + '</div>').join('') : '<p>None yet.</p>'; }
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect(), tb = $('#table').getBoundingClientRect();
+    $('#table').insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    const pn = $('.panel'), left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8);
+    pn.style.left = left + 'px'; pn.style.top = (r.bottom - tb.top + 6) + 'px';
+    (kind === 'seat' ? $('#seat' + seat) : anchor).classList.add('open');
+  };
+}
+document.head.insertAdjacentHTML('beforeend', `<style>
+.kpile .card.blocked{filter:grayscale(.6) brightness(.8)}
+.kpile .card .kx{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--kw)*.7);font-weight:900;color:rgba(198,40,40,.8);z-index:3}
+.info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:2px}
+.pile-act .btn.sym-btn{min-width:46px;padding:8px 12px;font-size:20px;line-height:1}
+@media (max-width:720px){.pile-act{gap:6px}.pile-act .btn{padding:8px 12px}}
+.tappable{cursor:pointer}
+.info .cell.tappable{box-shadow:inset 0 -2px 0 rgba(255,255,255,.18)}
+.info .cell.tappable.open,.seat.open,.me.open{box-shadow:0 0 0 2px var(--gold)!important}
+.pips.tappable.open{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+.panel{position:absolute;z-index:30;min-width:180px;max-width:300px;background:#0b2a1a;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;box-shadow:0 10px 26px rgba(0,0,0,.55);font-size:13px}
+.panel .ptitle{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.04em}
+.panel .prow{display:flex;align-items:center;gap:4px;margin:4px 0}
+.panel .tn{width:18px;color:var(--muted);font-weight:800}
+.panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px}.panel dt{color:var(--muted)}.panel dd{margin:0}
+.panel .pip-red{color:#ff6b6b}
+.panel p{margin:2px 0;color:var(--muted)}
+</style>`);
