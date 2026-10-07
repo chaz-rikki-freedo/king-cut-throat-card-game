@@ -124,9 +124,11 @@
   // no sweep follows, as at the end of a game).
   const pipKey = (hand, sd, ids) => 'pip' + hand + (sd ? 'sd' : '') + '|' + ids;
   function holdTrickPip(s) {
+    // Only while a finished trick waits for its sweep; when play stops on it (game over), its circle fills now.
+    if (!/rickDone$/.test(s.phase)) { for (const [k, x] of pending) if (x.fallback) pending.delete(k); return; }
     const tr = $('#center .trick'), w = tr && $('.slot.win', tr); if (!w || !speedMs()) return;
     const p = +(w.className.match(/slot-(\d)/) || [])[1], ids = $$('.slot .card[data-card]', tr).map(c => c.dataset.card).sort().join();
-    pending.set(pipKey(s.handNumber, s.showdown && s.showdown.active, ids), { kind: 'pip', p, until: performance.now() + 4000 });
+    pending.set(pipKey(s.handNumber, s.showdown && s.showdown.active, ids), { kind: 'pip', p, until: performance.now() + 4000, fallback: true });
   }
 
   function transitions(s, o, before) {
@@ -351,7 +353,7 @@
     });
     holdBacks();
     transitions(s, out, prev); out = null;
-    holdTrickPip(s);
+    holdTrickPip(s);   // before refreshCounts (end of apply)
     // The kitty deal: timed from when the kitty first showed this hand, and held while the outside pile clears.
     const kp = $('#center .kpile');
     if (kp && window.__kittyDeal) {
