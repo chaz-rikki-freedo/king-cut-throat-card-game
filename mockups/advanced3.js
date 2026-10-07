@@ -399,3 +399,10 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .seat .backrow .mini-back{margin-right:-6px!important}
 .seat .pips{order:4}
 </style>`);
+// Toasts appear over the play area, not over the information strip or the seats.
+{ const t = $('#toasts'), c = $('#center'); if (t && c) { c.appendChild(t); t.classList.add('in-play'); } }
+document.head.insertAdjacentHTML('beforeend', `<style>
+#toasts.in-play{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:min(92%,380px);z-index:20}
+.tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;padding:0 3px!important}
+.me .tagbox .tag{flex-basis:72px!important}
+</style>`);
