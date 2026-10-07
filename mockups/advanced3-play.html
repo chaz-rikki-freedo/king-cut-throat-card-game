@@ -457,7 +457,7 @@ button.card{cursor:pointer}
 (() => {
   const SRC = window.__ADV_SRC, $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   window.__live = true;
-  let prev = null, out = null, handDeal = { key: '', t0: 0 }, kittyHold = 0, mineLand = null;
+  let prev = null, out = null, handDeal = { key: '', t0: 0 }, kittyHold = 0, mineLand = null, dealHold = 0;
   let seq = 0, lastHand = 0, logCount = -1, discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '', personaSeat = null;
   const seen = new Set(), layerStart = [], slotStart = {}, winStart = {};
   // Reduced motion (the system setting) turns every animation off, like Instant.
@@ -543,7 +543,22 @@ button.card{cursor:pointer}
   const seatOf = p => p === 0 ? ($('#hand') || $('#seat0')) : $('#seat' + p);
 
   function transitions(s, o, before) {
-    const ms = speedMs(); if (!ms || !o || !before || before.hand !== s.handNumber) return;
+    const ms = speedMs(); if (!ms || !o || !before) return;
+    // A thrown-in hand (no trump named, or a Joker void): every card goes back to the dealer, who deals again.
+    if (/^(abandoned|jokerVoid)$/.test(before.phase) && s.phase !== before.phase) {
+      const to = $('#seat' + s.dealer), w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+      if (to) {
+        o.hand.forEach((x, i) => { const g = place(x.k); done(g, [fly(g, to, ms, i * 25)]); });
+        if (o.kpile) { const g = place(o.kpile); done(g, [fly(g, to, ms)]); }
+        for (const p of [1, 2]) { if (!before.counts[p]) continue; const r = $('#seat' + p).getBoundingClientRect();
+          for (let i = 0; i < 3; i++) { const b = document.createElement('div'); b.className = 'card back';
+            const g = place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + (i - 1) * 12, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
+            done(g, [fly(g, to, ms, i * 40)]); } }
+        dealHold = performance.now() + ms * 1.4; handDeal.key = '';   // a fresh deal, once the cards are back
+      }
+      return;
+    }
+    if (before.hand !== s.handNumber) return;
     // Trick end: the three cards sweep to the winner's trick circles.
     if (o.trick) {
       const ids = k => $$('.slot .card[data-card]', k).map(c => c.dataset.card).sort().join();
@@ -592,7 +607,7 @@ button.card{cursor:pointer}
     // Exchange and Showdown discards: cards that leave a hand outside trick play fly to the Outside cell. Yours are the
     // cards themselves; a bot's are backs from its seat. A discard made during the deal waits for the deal to end
     // (a Showdown player can discard as soon as the cards are dealt); its cards stay in the hand backs until then.
-    if (before.phase !== 'discard' && !/Play$|rickDone/.test(before.phase)) {
+    if (before.phase === 'exchange' || before.phase === 'showdownDiscard') {
       const oc = outsideCell(), ids = new Set(s.hands[0]), sd = s.showdown && s.showdown.active;
       const hold = handDeal.key === s.handNumber + (sd ? 'sd' : '') ? Math.max(0, handDeal.end - performance.now()) : 0;
       for (const p of [0, 1, 2]) {
@@ -634,7 +649,7 @@ button.card{cursor:pointer}
     const order = [1, 2, 3].map(k => (dealer + k) % 3).filter(p => !sd || s.showdown.participants.includes(p));
     const hands = order.map(p => p === 0 ? $$('#hand .card[data-card]') : $$('#seat' + p + ' .mini-back'));
     if (!hands.some(h => h.length)) return;
-    if (handDeal.key !== key) handDeal = { key, t0: now, end: 0 };
+    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold), end: 0 };
     const e = now - handDeal.t0, step = ms * 0.06, most = Math.max(...hands.map(h => h.length));
     handDeal.end = Math.max(handDeal.end, handDeal.t0 + ms + step * order.length * most);
     if (!ms || !from || e > ms + step * order.length * most) return;
