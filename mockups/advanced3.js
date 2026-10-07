@@ -531,3 +531,20 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .panel .pip-red{color:#ff6b6b}
 .panel p{margin:2px 0;color:var(--muted)}
 </style>`);
+// Profile popup: with the future setting "Show bids and suits shown out of in profiles" on (off by default), the popup
+// of a player opened during a hand adds a "This hand" section: the player's bids and the suits they have shown out of.
+window.__profileThisHand = seat => {
+  const m = $('.modal.persona'), I = (st.info || {}); if (!m) return;
+  const bids = (I.bids || [])[seat] || [], voids = (I.voids || [])[seat] || [];
+  const v = voids.length ? voids.map(x => '<b class="' + (/[♥♦]/.test(x) ? 'pip-red' : '') + '">' + x + '</b>').join(' ') : 'none yet';
+  const dials = $('.p-dials', m), html = '<div class="p-hand"><span class="lab">This hand</span><dl><dt>Bids</dt><dd>' +
+    (bids.length ? bids.join(' · ') : 'none yet') + '</dd><dt>Shown out of</dt><dd>' + v + '</dd></dl></div>';
+  if (dials) dials.insertAdjacentHTML('beforebegin', html); else m.insertAdjacentHTML('beforeend', html);
+};
+document.head.insertAdjacentHTML('beforeend', `<style>
+.persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:10px 16px;border:1px solid rgba(242,193,78,.35)}
+.persona .p-hand .lab{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:800}
+.persona .p-hand dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.persona .p-hand dt{color:var(--muted)}.persona .p-hand dd{margin:0}.persona .p-hand .pip-red{color:#ff6b6b}
+.persona .pips{order:0;min-height:0}
+</style>`);
