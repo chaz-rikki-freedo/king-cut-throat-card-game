@@ -87,7 +87,7 @@ const css = `
 .info .out .val{gap:8px}
 .minis{display:inline-flex}
 .mc{width:14px;height:20px;border-radius:2px;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 2px,#93303d 2px 4px);display:inline-grid;place-items:center;font-size:8px;font-weight:800;line-height:1}
-.mc + .mc{margin-left:-6px}
+.mc + .mc{margin-left:3px}
 .mc.up{background:#fdfbf5;color:#1b1b1b;width:20px}.mc.up.red{color:#d32f2f}
 .table.showdown .not-sd{background:var(--felt-edge)!important}
 .skip-top{height:40px;padding:0 12px;font-size:14px}
@@ -216,18 +216,21 @@ const tl = (($('.trick-label') || {}).textContent || '').match(/(Showdown )?tric
 const trickVal = tl ? (tl[1] ? 'Showdown ' : 'Trick ') + tl[2] + '/' + tl[3] : '–';
 const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
 // No dashes: a cell with nothing to show hides. During a Showdown the turned card no longer matters, so Turned up
-// hides and the Hand cell widens. Outside shows its count with two tiny cards: the top one face up when it is a
-// card you discarded (you know it), otherwise face down.
+// hides and the Hand cell widens.
+// Outside: in normal play, just the count. In a Showdown the 12 outside cards are dealt out, and each tied player
+// discards 1 face down, so the Showdown's outside pile is those discards: one tiny card each, face up when it is
+// the card you discarded (you know it), face down otherwise.
 const isSD = $('#table').classList.contains('showdown');
-const myOut = (st.myOut) || (() => { try { return KCT.buildView(KCT.App.app.state, 0).myOut; } catch (e) { return []; } })() || [];
+const myOut = st.myOut || [], sdN = st.sdDiscards || 0;
 const mini = id => { const m = String(id).match(/^(10|[2-9AKQJ])([SHDC])$/); return m ? '<span class="mc up' + (/[HD]/.test(m[2]) ? ' red' : '') + '">' + m[1] + sym[m[2]] + '</span>' : '<span class="mc"></span>'; };
-const outCards = '<span class="minis"><span class="mc"></span>' + (myOut.length ? mini(myOut[myOut.length - 1]) : '<span class="mc"></span>') + '</span>';
+const sdOut = sdN ? '<span class="minis">' + Array.from({ length: sdN }, (_, i) => i < myOut.length ? mini(myOut[i]) : '<span class="mc"></span>').join('') + '</span>' : '';
+const outCell = isSD ? (sdN ? cell('muted out', 'Outside', sdOut) : '') : (outN ? cell('muted', 'Outside', outN[1]) : '');
 $('#table').insertAdjacentHTML('afterbegin', '<section class="info" aria-label="Shared information">' +
   (st.trump ? cell('', 'Trump', '<span class="pip" style="color:' + (red ? '#ff6b6b' : 'var(--ink)') + '">' + sym[st.trump] + '</span>') : '') +
   cell(isSD && tl ? 'hand wide' : 'hand', 'Hand ' + st.handNumber, tl ? trickVal : '') +
   cell('latest', 'Latest', latest ? '<ul class="gamelog">' + latest.outerHTML.replace(/class="[^"]*"/, '') + '</ul>' : '') +
   (turnedTxt && !isSD ? cell('muted', 'Turned up', turnedTxt[1]) : '') +
-  (outN ? cell('muted out', 'Outside', outCards + outN[1]) : '') +
+  outCell +
   '</section>');
 
 // Trick stacking: each card sits above the cards played before it; your empty slot, still to play, is on top.

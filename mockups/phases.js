@@ -41,7 +41,7 @@ const TARGETS = [
         const html = '<!doctype html>' + document.documentElement.outerHTML.replace(/<script[\\s\\S]*?<\\/script>/g, '').replace(/ enter"/g, '"');
         const vars = { turn: ac.length === 1 ? ac[0] : -1, led: s.trick && s.trick.plays.length ? s.trick.plays[0].player : -1,
           lastWinner: w == null ? '' : '<span style="background:var(--name' + w + ');color:#0b1a12;font-weight:800;border-radius:4px;padding:0 4px">' + names[w] + '</span> won',
-          state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, phase: s.phase, myOut: KCT.buildView(s, 0).myOut } };
+          state: { trump: s.trump, handNumber: s.handNumber, trickNumber: s.trickNumber, trick: s.trick, phase: s.phase, myOut: KCT.buildView(s, 0).myOut, sdDiscards: s.showdown && s.showdown.active ? s.showdown.discards.length : 0 } };
         speed('fast');
         return { why, name, html, vars };`, null, ['drive.js']);
       if (r.why !== 'stop') { console.log('end:', r.why); break; }
