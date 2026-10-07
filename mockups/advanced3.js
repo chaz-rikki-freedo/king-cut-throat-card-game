@@ -143,7 +143,7 @@ const css = `
 /* Action buttons: bottom of the play area, right-justified (primary action rightmost, Pass to its left).
    Left-hand mode (a future setting) mirrors it: bottom left, primary action leftmost. */
 .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
-.pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
+.pile-act{display:flex;flex-wrap:nowrap;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px;white-space:nowrap;flex:none}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 /* Discards start under the center of the discarding player's seat (measured), so they slide out from beneath it:
    the seats sit above the play area in the stacking order. */
@@ -428,3 +428,32 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;padding:0 3px!important}
 .me .tagbox .tag{flex-basis:72px!important}
 </style>`);
+
+// Kitty animations, in the same language as the discards: cards slide out from under (or back under) a seat.
+// __kittyDeal(dealer): the dealer's 3 kitty cards slide out from under the dealer's seat into the spread, one by one.
+// __kittyTake(receiver): the turned card slides under the receiver's seat; the other 2 square into the outside pile.
+{ const speedMs = () => ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
+  const offset = (el, seat) => { const a = el.getBoundingClientRect(), b = document.getElementById('seat' + seat).getBoundingClientRect();
+    return [(b.left + b.width / 2) - (a.left + a.width / 2), (b.top + b.height / 2) - (a.top + a.height / 2)]; };
+  const tilt = { 1: -30, 2: 30, 0: 0 };
+  window.__kittyDeal = dealer => {
+    const ms = speedMs();
+    $$('.kpile .card').forEach((c, i) => { const [x, y] = offset(c, dealer);
+      c.animate([{ transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt[dealer] + 'deg)' }, { transform: 'none' }],
+        { duration: ms, delay: i * ms * 0.45, easing: 'ease-out', fill: 'backwards' }); });
+  };
+  window.__kittyTake = receiver => {
+    const ms = speedMs(), cards = $$('.kpile .card'), top = cards[cards.length - 1];
+    const pa = $('.pile-act'); if (pa) pa.remove();   // the call is made: no bid buttons
+    const oc = $$('.info .cell').find(c => /Outside/i.test(c.textContent));
+    if (oc) setTimeout(() => { const v = $('.val', oc); v.textContent = String((parseInt(v.textContent, 10) || 0) + cards.length - 1); }, ms * 2.2);
+    const [x, y] = offset(top, receiver);
+    top.style.zIndex = '1';
+    top.animate([{ transform: 'none', opacity: 1 }, { opacity: 1, offset: .8 }, { transform: 'translate(' + x + 'px,' + y + 'px) rotate(' + tilt[receiver] + 'deg)', opacity: 0 }],
+      { duration: ms * 1.2, easing: 'ease-in', fill: 'forwards' });
+    cards.slice(0, -1).forEach((c, i) => {
+      const dx = -parseFloat(getComputedStyle(c).left) + (cards[0].offsetWidth * 0.45) + i * 2;
+      c.animate([{ transform: 'none' }, { transform: 'translate(' + dx + 'px,' + (-i * 2) + 'px) rotate(' + (i ? 3 : -2) + 'deg)' }],
+        { duration: ms, delay: ms * 1.2, easing: 'ease-out', fill: 'forwards' }); });
+  };
+}
