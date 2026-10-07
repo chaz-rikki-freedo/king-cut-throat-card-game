@@ -24,7 +24,7 @@ const OUT = path.join(__dirname, 'discard'); fs.mkdirSync(OUT, { recursive: true
       const order = [[1, 'kit'], [2, 'tex'], [0, 'you']];
       for (let i = 0; i < order.length; i++) {
         await v.evaluate(s => window.__addDiscard(s), order[i][0]); await cell((i + 1) * 3);
-        if (i === 1) { await v.waitForTimeout(140); await v.screenshot({ path: path.join(OUT, '2-tex-midflight-' + tag + '.png'), fullPage: tag === 'phone' }); }
+        if (i === 1) { await v.waitForTimeout(40); await v.screenshot({ path: path.join(OUT, '2-tex-emerging-' + tag + '.png'), fullPage: tag === 'phone' }); await v.waitForTimeout(60); await v.screenshot({ path: path.join(OUT, '2-tex-midflight-' + tag + '.png'), fullPage: tag === 'phone' }); }
         await v.waitForTimeout(900);
         await v.screenshot({ path: path.join(OUT, (i + 1) + '-' + order[i][1] + '-' + tag + '.png'), fullPage: tag === 'phone' });
       }
