@@ -142,8 +142,7 @@ const css = `
 .kpile .card .cat{position:absolute;left:15%;top:10%;width:70%;height:80%;fill:#000;opacity:.5}
 /* Action buttons: bottom of the play area, right-justified (primary action rightmost, Pass to its left).
    Left-hand mode (a future setting) mirrors it: bottom left, primary action leftmost. */
-.center > .pile-act{position:absolute;bottom:10px;right:12px;z-index:9;flex-direction:row-reverse}
-html.lefthand .center > .pile-act{right:auto;left:12px;flex-direction:row}
+.center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 .pile-act{display:flex;gap:8px}.pile-act .btn{font-size:15px;padding:8px 18px}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
@@ -322,7 +321,6 @@ for (const id of ['seat1', 'seat2', 'seat0']) {
   const sc = $('#' + id + ' .score'); if (!sc) continue;
   const row = sc.closest('.score-row'), name = $('#' + id + ' .seat-name');
   sc.classList.add('sscore'); name.after(sc);
-  if (parseInt(sc.textContent, 10) === 0) sc.style.visibility = 'hidden';
   if (row && !row.children.length) row.remove();
 }
 
@@ -352,7 +350,7 @@ for (const tr of $$('.summary table.stats tbody tr, .summary table.stats tr')) {
   for (const b of btns) pa.appendChild(b);
   if (!pa.children.length) pa.remove();
   const bar = $('.me .actionbar'); if (bar) bar.style.display = 'none'; }
-if (window.__leftHand) document.documentElement.classList.add('lefthand');
+
 // Calls (Accepts ♥, Names ♥) are toasts, not seat bubbles: the game already toasts them. Pass bubbles stay.
 for (const b of $$('.seat .bubble.call, .me .bubble.call')) {
   const seat = b.closest('.seat, .me'), who = (($('.seat-name', seat) || {}).textContent || '').trim();
