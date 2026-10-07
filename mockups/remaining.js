@@ -1,15 +1,14 @@
-/* Mockup: finds the rarer moments across wave 1 seeds and renders them with the v3 layer:
+/* Mockup (remaining.js): trick end, Showdown discard, Showdown trick end, an abandoned hand. Derived from rare.js; finds the rarer moments across wave 1 seeds and renders them with the v3 layer:
    round 2 bid (turned suit blocked), the 2-card kitty exchange, a Joker turn-up, an abandoned hand, game over.
    Run: cd mockups && NODE_PATH=$(npm root -g) PW_CHROMIUM=/opt/pw-browsers/chromium node rare.js */
 const { serve, launch, openPage, run } = require('../tests/lib/browser');
 const fs = require('fs'), path = require('path'), ADV = fs.readFileSync(__dirname + '/advanced3.js', 'utf8');
 const OUT = path.join(__dirname, 'phases-v3'); fs.mkdirSync(OUT, { recursive: true });
 const TARGETS = [
-  ['10-bid2', `s.phase === P.BID2 && mine`],
-  ['11-exchange2', `s.phase === P.EXCHANGE && mine && s.exchangeCount === 2`],
-  ['12-joker-void', `s.phase === P.JOKER_VOID`],
+  ['17-trick-done', `s.phase === P.TRICK_DONE && s.trickNumber >= 2`],
+  ['18-showdown-discard', `s.phase === P.SHOWDOWN_DISCARD && mine`],
+  ['19-showdown-trick-done', `s.phase === P.SHOWDOWN_TRICK_DONE`],
   ['13-abandoned', `s.phase === P.ABANDONED`],
-  ['14-game-over', `s.phase === P.GAME_OVER`],
 ];
 (async () => {
   const srv = await serve(), browser = await launch();
@@ -18,6 +17,10 @@ const TARGETS = [
     const got = {}, snaps = [];
     for (let seed = 1; seed < 80 && Object.keys(got).length < TARGETS.length; seed++) {
       await run(page, `KCT.App.newGame(${seed}, 1); speed('instant');`, null, ['drive.js']);
+      if (!got['13-abandoned']) await run(page, `speed('slow'); await drive(() => app.state.phase === P.BID1, 60000);
+        for (let k = 0; k < 8 && (app.state.phase === P.BID1 || app.state.phase === P.BID2); k++) { const p = KCT.Engine.actors(app.state)[0];
+          KCT.App.act(app.state.phase === P.BID1 ? { type: 'BID', player: p, accept: false } : { type: 'NAME', player: p, suit: null }); }
+        speed('instant');`, null, ['drive.js']);
       for (;;) {
         const r = await run(page, `
           const T = ${JSON.stringify(TARGETS.filter(t => !got[t[0]]))};
