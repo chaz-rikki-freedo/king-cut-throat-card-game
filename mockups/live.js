@@ -8,7 +8,7 @@
 (() => {
   const SRC = window.__ADV_SRC, $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   window.__live = true;
-  let prev = null, out = null, handDeal = { key: '', t0: 0 };
+  let prev = null, out = null, handDeal = { key: '', t0: 0 }, kittyHold = 0, mineLand = null;
   let seq = 0, lastHand = 0, logCount = -1, discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '', personaSeat = null;
   const seen = new Set(), layerStart = [], slotStart = {}, winStart = {};
   const speedMs = () => ({ slow: 700, normal: 450, fast: 250, instant: 0 }[($('#speedSel') || {}).value] ?? 450);
@@ -79,6 +79,15 @@
       { duration: ms * 1.3, delay, easing: 'ease-in-out', fill: 'both' });
     return a;
   }
+  // A card lands on a pile: it moves there and takes the pile card's size, then gives way to the pile.
+  function land(el, to, ms, delay = 0) {
+    const [sx, sy] = center(el), [tx, ty] = center(to), sc = (to.getBoundingClientRect().width || 1) / (el.getBoundingClientRect().width || 1);
+    const at = 'translate(' + (tx - sx) + 'px,' + (ty - sy) + 'px) scale(' + sc.toFixed(3) + ')';
+    return el.animate([{ transform: 'none', opacity: 1 }, { transform: at, opacity: 1, offset: 0.85 }, { transform: at, opacity: 0 }],
+      { duration: ms, delay, easing: 'ease-in-out', fill: 'both' });
+  }
+  // Your discards: the cards that just left your hand, kept where they were.
+  const leftMyHand = (o, s) => { const ids = new Set(s.hands[0]); return o.hand.filter(x => !ids.has(x.id)); };
   const done = (root, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => root.remove());
   const outsideCell = () => $$('.info .cell').find(c => /Outside/i.test(c.textContent)) || $('.info');
   const seatOf = p => p === 0 ? ($('#hand') || $('#seat0')) : $('#seat' + p);
@@ -104,7 +113,31 @@
       done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, ms, i * 80, tilt) : fly(c, oc, ms, ms * 0.5 + i * 80)));
     }
     // Discards complete: the outside pile slides off to the Outside cell; the kitty takes its spot.
-    if (o.outpile && !$('#center .outpile')) { const g = place(o.outpile); done(g, [fly(g, outsideCell(), ms)]); }
+    // Your discard: your 3 cards fly from your hand onto the pile. When it was the last discard, the pile then slides
+    // to the Outside cell, and the kitty is dealt only after that (kittyHold).
+    const mine = before.phase === 'discard' ? leftMyHand(o, s) : [], pileNow = $('#center .outpile');
+    if (o.outpile && !pileNow) {
+      // The last discards never reached the pile on screen: they land on it first, one player after another (your
+      // cards themselves; a bot's as backs from its seat), then the pile leaves.
+      const shown = discarders.slice(0, $$('.olayer', o.outpile.el).length), missing = [1, 2, 0].filter(p => !shown.includes(p));
+      const g = place(o.outpile), gap = ms * 0.4, wait = missing.length ? ms + (missing.length - 1) * gap : 0;
+      const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+      missing.forEach((p, n) => {
+        if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, ms, n * gap + i * 70)]); }); return; }
+        const r = $('#seat' + p).getBoundingClientRect();
+        for (let i = 0; i < 3; i++) {
+          const b = document.createElement('div'); b.className = 'card back';
+          const c = place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + (i - 1) * 12, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
+          done(c, [land(c, g, ms, n * gap + i * 70)]);
+        }
+      });
+      done(g, [fly(g, outsideCell(), ms, wait)]);
+      kittyHold = performance.now() + wait + ms * 0.9;
+    } else if (pileNow && mine.length) {
+      mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, ms, i * 70)]); });
+      mineLand = { hand: s.handNumber, idx: discarders.indexOf(0), t0: performance.now() };
+      holdMyLayer(performance.now());
+    }
     // Exchange and Showdown discards: cards that leave a hand outside trick play fly to the Outside cell. Yours are the
     // cards themselves; a bot's are backs from its seat.
     if (before.phase !== 'discard' && !/Play$|rickDone/.test(before.phase)) {
@@ -169,6 +202,15 @@
     }
   }
 
+  // Your layer of the outside pile stays hidden until your cards have landed on the pile.
+  function holdMyLayer(now) {
+    if (!mineLand || mineLand.hand !== KCT.App.app.state.handNumber) return;
+    const el = $$('#center .outpile .olayer')[mineLand.idx], e = now - mineLand.t0, ms = speedMs();
+    if (!el) return;
+    el.style.setProperty('--ms', '0ms'); for (const x of [el, ...el.children]) x.style.animationDelay = '';
+    if (e < ms) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: ms - e });
+  }
+
   function apply() {
     const s = KCT.App.app.state, log = $('#gameLog'), now = performance.now();
     // Clear the previous pass: the strip, a panel, the log toggle, and Skip in the top bar.
@@ -210,20 +252,24 @@
     const ms = speedMs();
     $$('#center .outpile .olayer').forEach((el, i) => {
       if (layerStart[i] == null) layerStart[i] = now;
+      if (mineLand && mineLand.hand === s.handNumber && mineLand.idx === i) return;
       const e = now - layerStart[i];
       if (!ms || e >= ms) return;
       el.style.setProperty('--ms', ms + 'ms');
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
     });
-    // The kitty deal: timed from when the kitty first showed this hand.
-    if ($('#center .kpile') && window.__kittyDeal) {
+    holdMyLayer(now);
+    transitions(s, out, prev); out = null;
+    // The kitty deal: timed from when the kitty first showed this hand, and held while the outside pile clears.
+    const kp = $('#center .kpile');
+    if (kp && window.__kittyDeal) {
       const k = s.handNumber + '|' + s.dealer;
-      if (dealKey !== k) { dealKey = k; dealStart = now; }
+      if (dealKey !== k) { dealKey = k; dealStart = Math.max(now, kittyHold); }
+      if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
       window.__kittyDeal(s.dealer, now - dealStart);
     }
     animateTrick(s, now);
     dealHand(s, now);
-    transitions(s, out, prev); out = null;
     prev = { hand: s.handNumber, phase: s.phase, counts: s.hands.map(h => h.length) };
 
     // The log shows newest first through CSS order; the DOM stays in play order so the game can trim its oldest line.
