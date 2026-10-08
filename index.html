@@ -305,14 +305,13 @@ button.card{cursor:pointer}
    facts in one information strip, every action button in the play area, and motion that shows each move.
    Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
    and the This hand box of the profile dialog (its own setting). ---- */
-.topbar > .info[hidden],.skip-slot[hidden],.lp-toggle[hidden]{display:none!important}
+.topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden]{display:none!important}
 .persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:10px 16px;border:1px solid rgba(242,193,78,.35)}
 .persona .p-hand .lab{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:800}
 .persona .p-hand dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
 .persona .p-hand dt{color:var(--muted)}
 .persona .p-hand dd{margin:0}
 .persona .p-hand .pip-red{color:#ff6b6b}
-body.adv .layout:not(.log-collapsed) #gameLog{display:flex;flex-direction:column}
 body.adv .speed-pick{position:relative}
 body.adv .speed-pick select{display:block!important;position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
 body.adv .trick .card.enter{animation:none!important}
@@ -336,6 +335,7 @@ body.adv .info .val{font-size:15px;font-weight:700;display:flex;align-items:cent
 body.adv .info .pip{font-size:40px;line-height:1;color:#ff6b6b;text-align:center}
 body.adv .info .latest{flex:1 1 180px}
 body.adv .info .latest .val{font-weight:400;font-size:14px}
+body.adv .info .info-part{display:contents}
 body.adv .info ul.gamelog{all:unset;display:block}
 body.adv .info ul.gamelog li{list-style:none;padding:0}
 body.adv .hand{min-height:0!important}
@@ -343,8 +343,7 @@ body.adv .hand{min-height:0!important}
   body.adv .info{gap:4px;padding:4px}
   body.adv .info .cell{padding:3px 8px}
   body.adv .info .pip{font-size:28px}
-  body.adv .info .latest{order:6;flex:1 1 100%;flex-direction:row;align-items:center;gap:8px}
-  body.adv .info .latest .lab{min-width:64px}
+  body.adv .info .latest{order:6;flex:1 1 100%}
   body.adv .info .muted{flex:1 1 0}
 }
 body.adv .info .muted .val{font-weight:600;font-size:13px;color:var(--muted)}
@@ -390,7 +389,7 @@ body.adv .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(1
 body.adv .trick .slot-0 .card,body.adv .trick .slot-0 .empty{transform:rotateX(22deg) translateZ(30px)}
 body.adv .trick .slot-0 .card{box-shadow:0 18px 22px rgba(0,0,0,.5)}
 body.adv .c-tag.king{background:#f2c14e;color:#1b1b1b}
-body.adv .gamelog li.gap:first-child{margin-top:0}
+body.adv .gamelog li.gap.top{margin-top:0}
 body.adv .info .hand.wide{flex:0 0 auto;min-width:140px}
 body.adv .info .out .val{gap:8px}
 body.adv .minis{display:inline-flex}
@@ -442,17 +441,21 @@ body.adv .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
 body.adv .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 2px 4px rgba(0,0,0,.4)}
 body.adv .outpile.empty{border:2px dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
 body.adv .logpanel h2{display:flex;align-items:center;justify-content:space-between;gap:8px}
-body.adv .lp-toggle{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:var(--ink);font-size:16px}
-body.adv .lp-toggle:hover{background:rgba(255,255,255,.08)}
-body.adv .lp-toggle:focus-visible{outline:2px solid var(--gold)}
-body.adv .layout.log-collapsed .logpanel{min-height:0}
-body.adv .layout.log-collapsed #gameLog{display:none}
-@media (min-width:1150px){
-  body.adv .layout.log-collapsed{grid-template-columns:minmax(0,1fr) 48px!important}
-  body.adv .layout.log-collapsed .logpanel{padding:10px 4px;align-items:center}
-  body.adv .layout.log-collapsed .logpanel h2{flex-direction:column-reverse;writing-mode:vertical-rl;margin:0}
-  body.adv .layout.log-collapsed .logpanel h2 .lp-toggle{writing-mode:horizontal-tb}
-}
+/* The Latest cell, the toasts and the Latest Scroll are one thing in the Advanced UI. Each new line drops in from
+   above, exactly the size of the cell, and becomes the Latest line. The cell opens the Latest Scroll below the
+   strip, in the header, so it pushes the table down; the side panel goes. */
+body.adv .logpanel{display:none}
+body.adv .layout{grid-template-columns:minmax(0,1fr)!important}
+body.adv .info .latest{position:relative;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;cursor:pointer}
+body.adv .info .latest:hover{background:rgba(255,255,255,.08)}
+body.adv .info .latest:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+body.adv .drop-ind{flex:none;font-size:13px;line-height:1;color:var(--muted);transition:transform .2s}
+body.adv .latest[aria-expanded="true"] .drop-ind{transform:rotate(180deg)}
+body.adv .latest-drop{position:absolute;left:0;right:0;top:0;min-height:100%;z-index:2;display:flex;align-items:center;gap:8px;padding:inherit;border-radius:8px;pointer-events:none;
+  background:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04)),linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+body.adv .latest-drop .drop-ind{visibility:hidden}
+body.adv .logdrop{order:21;flex:1 1 100%;min-width:0;display:flex}
+body.adv #gameLog{display:flex;flex-direction:column;height:160px;max-height:none}
 body.adv{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:14px;--card-micro:40px}
 body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:var(--card-big)!important}
 body.adv .hand .card{--w:var(--card-normal)}
@@ -530,7 +533,6 @@ body.adv .tag .short{display:none}
   body.adv .tag.mediator .long{display:none}
   body.adv .tag.mediator .short{display:inline}
 }
-body.adv #toasts{width:min(92vw,380px)}
 </style>
 </head>
 <body>
@@ -556,7 +558,15 @@ body.adv #toasts{width:min(92vw,380px)}
     </label>
     <button class="icon-btn" type="button" data-action="toggle-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg></button>
   </div>
-  <section class="info" id="info" aria-label="Shared information" hidden></section>
+  <section class="info" id="info" aria-label="Shared information" hidden>
+    <div class="info-part" id="infoA"></div>
+    <div class="cell latest" id="latestCell" role="button" tabindex="0" data-action="toggle-log" aria-expanded="false" aria-controls="logDrop" title="Latest Scroll">
+      <span class="drop-ind" aria-hidden="true">▾</span>
+      <span class="val"><ul class="gamelog" id="latestLine" aria-live="polite"></ul></span>
+    </div>
+    <div class="info-part" id="infoB"></div>
+  </section>
+  <div class="logdrop" id="logDrop" aria-label="Latest Scroll" hidden></div>
 </header>
 
 <div class="layout">
@@ -567,7 +577,7 @@ body.adv #toasts{width:min(92vw,380px)}
     <section class="me" id="seat0"></section>
   </main>
   <aside class="logpanel">
-    <h2>Latest Scroll<button type="button" class="lp-toggle" id="logToggle" data-action="toggle-log" aria-expanded="true" aria-label="Collapse the Latest Scroll" title="Collapse the Latest Scroll" hidden>›</button></h2>
+    <h2>Latest Scroll</h2>
     <ol class="gamelog" id="gameLog"></ol>
   </aside>
 </div>
@@ -3290,7 +3300,7 @@ const Render = (() => {
   }
 
   /* ---- Advanced UI (Settings → Interface): the same View, drawn as a minimal table. Seats show tags, numbers
-     and circles; the information strip (#info) holds what every player shares; the action buttons sit at the
+     and circles; the information strip (#info, in the header) holds what every player shares; the action buttons sit at the
      bottom of the play area; Skip moves to the top bar. Motion is Fx's (section 7b). ---- */
   let adv = false;   // true while render() draws the Advanced UI (cardHTML adds the KING tag then)
   const advKey = { seats: '', info: '' };
@@ -3343,16 +3353,17 @@ const Render = (() => {
 
   /* The information strip: Trump, Hand (and the trick), Latest (the newest line of the Latest Scroll), Turned up
      (Blocked in round 2), Outside. A cell with nothing to show is left out. */
-  function advInfoHTML(v, latest) {
+  /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
+  function advInfoHTML(v) {
     const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
     const sd = sdShown(v), tricks = Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
     const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
     const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
     const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
-    let html = '';
+    let html = '', before = '';
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>');
     if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick);
-    html += cell('latest', 'Latest', latest ? '<ul class="gamelog"><li>' + latest + '</li></ul>' : '');
+    before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
       html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped));
@@ -3364,7 +3375,7 @@ const Render = (() => {
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
       html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val">' + v.outsideCount + '</span></div>';
     }
-    return html;
+    return [before, html];
   }
 
   /* The trick in 3D, cards stacked in play order: each card lies above the cards played before it (also at the
@@ -3439,13 +3450,6 @@ const Render = (() => {
     return html + advButtonsHTML(v, ui, ctx);
   }
 
-  /* The newest line of the Latest Scroll (headings left out), for the Latest cell. */
-  function latestLine() {
-    const ol = $('gameLog');
-    for (let li = ol && ol.lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('gap')) return li.innerHTML;
-    return '';
-  }
-
   /* Draws the Advanced UI. A redraw that changes nothing is skipped (the game redraws the same table several
      times in a row, and each redraw would restart the motion); the enter and flash marks count only once. */
   function renderAdvanced(v, ui, ctx) {
@@ -3457,7 +3461,7 @@ const Render = (() => {
     const said = statusText(v), live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
     const order = Fx.discardOrder(v);
-    const parts = /** @type {[HTMLElement, string][]} */ ([[$('seat1'), advSeatHTML(v, 1, ctx)], [$('seat2'), advSeatHTML(v, 2, ctx)], [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat0'), advMeHTML(v, ui, ctx)], [$('info'), advInfoHTML(v, latestLine())]]);
+    const parts = /** @type {[HTMLElement, string][]} */ ([[$('seat1'), advSeatHTML(v, 1, ctx)], [$('seat2'), advSeatHTML(v, 2, ctx)], [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat0'), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
     const botSd = v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat);
     const skip = ctx.waiting && botSd && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
@@ -3482,7 +3486,7 @@ const Render = (() => {
   /* Leaving the Advanced UI: its parts go, and the next draw is a full one. */
   function leaveAdvanced() {
     advKey.seats = '';
-    $('info').hidden = true; $('info').innerHTML = '';
+    $('info').hidden = true; $('infoA').innerHTML = $('infoB').innerHTML = '';
     $('skipSlot').hidden = true; $('skipSlot').innerHTML = '';
     for (const id of ['seat0', 'seat1', 'seat2']) $(id).classList.remove('not-sd');
     Fx.reset();
@@ -3844,14 +3848,6 @@ const Fx = (() => {
     }
   }
 
-  /* Toasts sit over the play area. */
-  function placeToasts() {
-    const c = q('#center'), box = q('#toasts'); if (!c || !box) return;
-    const r = c.getBoundingClientRect();
-    box.style.top = (r.top + 10) + 'px'; box.style.left = (r.left + r.width / 2) + 'px';
-  }
-  window.addEventListener('resize', () => { if (document.body.classList.contains('adv')) placeToasts(); });
-
   /* After a redraw: run the motion, then the counts. */
   function after(v, ui) {
     speed = ui.speed;
@@ -3865,7 +3861,6 @@ const Fx = (() => {
     dealHand(v, now);
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
-    placeToasts();
     refreshCounts();
   }
   /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
@@ -3875,7 +3870,6 @@ const Fx = (() => {
     prev = out = last = mineLand = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; trickKey = ''; layerStart.length = 0;
     for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
-    const box = q('#toasts'); if (box) { box.style.top = ''; box.style.left = ''; }
   }
 
   return Object.freeze({ discardOrder, capture, after, reset });
@@ -4087,7 +4081,7 @@ const App = (() => {
     if (saveFailReported) return;
     saveFailReported = true;
     Logger.log('SAVE_FAILED', { key });
-    toast('This browser is not saving your games, progress or settings. If you close the page, they are lost.', 'neg');
+    note('This browser is not saving your games, progress or settings. If you close the page, they are lost.', 'neg');
   }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
   /* After a restore, this key (outside 'kct.', so not in backups) tells other open tabs of
@@ -4171,7 +4165,7 @@ const App = (() => {
     } catch (e) {
       slots.clear(mode);
       enterIdle();
-      toast('The saved game could not be loaded.', 'neg');
+      note('The saved game could not be loaded.', 'neg');
       return false;
     }
     addLog('Game resumed.', '');
@@ -4198,8 +4192,7 @@ const App = (() => {
     app.ui.advanced = on;
     $('setAdvancedUI').checked = on;
     document.body.classList.toggle('adv', on);
-    $('logToggle').hidden = !on;
-    if (!on) { document.querySelector('.layout').classList.remove('log-collapsed'); syncLogToggle(); }
+    placeLog();
     closePanel();
     Fx.reset();
     orderLog();
@@ -4213,16 +4206,20 @@ const App = (() => {
     $('setThisHand').checked = on;
     saveSettings();
   }
-  /* The Latest Scroll's toggle (Advanced UI): wide screens fold it to a side tab, narrow ones to its heading. */
-  function toggleLog() {
-    document.querySelector('.layout').classList.toggle('log-collapsed');
-    syncLogToggle();
+  /* The Latest Scroll's home: the side panel, or in the Advanced UI the dropdown under the information strip. */
+  function placeLog() {
+    const ol = $('gameLog'), home = app.ui.advanced ? $('logDrop') : document.querySelector('.logpanel');
+    if (ol.parentElement !== home) home.appendChild(ol);
+    if (!app.ui.advanced) openLog(false);
+    showLatest(true);
   }
-  function syncLogToggle() {
-    const closed = document.querySelector('.layout').classList.contains('log-collapsed'), b = $('logToggle');
-    const label = (closed ? 'Open' : 'Collapse') + ' the Latest Scroll';
-    b.textContent = closed ? '‹' : '›'; b.title = label; b.setAttribute('aria-label', label); b.setAttribute('aria-expanded', String(!closed));
+  /* The Latest cell opens and closes the dropdown. It pushes the table down, so a popup placed under the strip closes. */
+  function openLog(open) {
+    $('logDrop').hidden = !open;
+    $('latestCell').setAttribute('aria-expanded', String(open));
+    if (open) { closePanel(); $('gameLog').scrollTop = 0; }
   }
+  const toggleLog = () => openLog($('logDrop').hidden);
   /* The Advanced UI's popups: the Outside cell lists your discards, a player's trick circles list the tricks they won
      this hand. One at a time; a click elsewhere, or a change on the table, closes it. */
   function closePanel() {
@@ -4257,8 +4254,14 @@ const App = (() => {
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
     table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
-    pn.style.left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8) + 'px';
-    pn.style.top = (r.bottom - tb.top + 6) + 'px';
+    if (anchor.closest('#topbar')) {
+      pn.style.position = 'fixed';
+      pn.style.left = Math.min(Math.max(8, r.left), innerWidth - pn.offsetWidth - 8) + 'px';
+      pn.style.top = (r.bottom + 6) + 'px';
+    } else {
+      pn.style.left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8) + 'px';
+      pn.style.top = (r.bottom - tb.top + 6) + 'px';
+    }
     anchor.classList.add('open');
   }
   /* Profiles, with the This hand setting on: during a hand, a seated player's profile adds their bids and the suits
@@ -4465,7 +4468,7 @@ const App = (() => {
   const LOG_MAX = 5000;
   /* The Latest Scroll as data, one [text, classes] pair per line. A save keeps this, never the HTML. */
   let logLines = [];
-  function clearLog() { logLines = []; $('gameLog').innerHTML = ''; }
+  function clearLog() { logLines = []; $('gameLog').innerHTML = ''; showLatest(true); }
 
   /* A Showdown message is indented two steps. */
   function addLog(text, cls, isShowdown) {
@@ -4473,6 +4476,7 @@ const App = (() => {
     if (isShowdown) classes.push('sd');
     appendLog(text, classes.join(' '));
     $('gameLog').scrollTop = app.ui.advanced ? 0 : $('gameLog').scrollHeight;
+    if (!classes.includes('trick-head')) showLatest();
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
@@ -4496,21 +4500,51 @@ const App = (() => {
     ol.replaceChildren(...logLines.map(([text, cls]) => logItem(text, cls)));
     ol.scrollTop = keep;
     orderLog();
+    showLatest(true);
   }
   /* The Advanced UI shows the Latest Scroll newest first: each group keeps its heading line on top and its other
      lines newest first. The lines stay in play order in the page (the game trims the oldest); CSS order places them. */
   function orderLog() {
     const ol = $('gameLog'), lines = Array.from(ol.children);
-    if (!app.ui.advanced) { for (const li of lines) li.style.order = ''; return; }
+    if (!app.ui.advanced) { for (const li of lines) { li.style.order = ''; li.classList.remove('top'); } return; }
     const groups = [];
     for (const li of lines) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
     let k = 0;
     for (const g of groups.reverse()) {
       const head = g[0].classList.contains('gap') ? 1 : 0;
-      for (const li of g.slice(0, head).concat(g.slice(head).reverse())) li.style.order = String(k++);
+      for (const li of g.slice(0, head).concat(g.slice(head).reverse())) { li.classList.toggle('top', !k); li.style.order = String(k++); }
     }
   }
+  /* The Latest cell (Advanced UI): the newest line of the Latest Scroll, trick headings left out. A new line drops in
+     from above the window, exactly the size of the cell, and becomes the Latest line. The newest line wins: a line
+     still falling lands at once. Instant speed, reduced motion, or still (a redraw of the log) set it in place.
+     An app note (text that is not a game event) drops in the same way but stays out of the log. */
+  let falling = null;
+  function showLatest(still, note) {
+    const cell = $('latestCell'), line = $('latestLine');
+    let html = note || '';
+    if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
+    const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
+    if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
+    const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
+    if (still || !html || !ms || !app.ui.advanced || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }
+    const box = document.createElement('div');
+    box.className = 'latest-drop';
+    box.setAttribute('aria-hidden', 'true');
+    box.innerHTML = '<span class="drop-ind">▾</span><span class="val"><ul class="gamelog"><li>' + html + '</li></ul></span>';
+    cell.appendChild(box);
+    const anim = box.animate([{ transform: 'translateY(' + -Math.ceil(cell.getBoundingClientRect().bottom) + 'px)' }, { transform: 'none' }], { duration: ms, easing: 'cubic-bezier(.25,.8,.35,1)' });
+    const me = falling = { anim, html };
+    anim.finished.catch(() => {}).then(() => { box.remove(); if (falling === me) { falling = null; set(); } });
+  }
+  /* A note from the app, not the game: the Latest cell in the Advanced UI, a toast otherwise. */
+  function note(text, cls) {
+    if (app.ui.advanced) showLatest(false, escHTML(text));
+    else toast(text, cls);
+  }
+  /* The classic UI's toasts. The Advanced UI has none: its log lines drop into the Latest cell. */
   function toast(text, cls) {
+    if (app.ui.advanced) return;
     const t = document.createElement('div');
     t.className = 'toast' + (cls ? ' ' + cls : '');
     t.textContent = Render.youText(text);
@@ -4533,11 +4567,11 @@ const App = (() => {
     const st = app.state;
     const n = p => st.players[p].name;
     switch (e.type) {
-      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); if (app.ui.advanced) toast(n(e.dealer) + ' deals', 'info'); break;
+      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind'); break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
-      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); if (app.ui.advanced) toast(n(e.player) + ' passes', 'info'); break;
+      case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
@@ -4561,7 +4595,7 @@ const App = (() => {
       case 'SHOWDOWN_STARTED':
         addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true);
         /* The Advanced UI has no Showdown banner: its toast names the two players and the mediator. */
-        toast(app.ui.advanced ? 'SHOWDOWN! ' + n(e.participants[0]) + ' vs ' + n(e.participants[1]) + ' · ' + (e.mediator === HUMAN ? 'you mediate' : n(e.mediator) + ' mediates') : 'SHOWDOWN!', 'neg');
+        toast('SHOWDOWN!', 'neg');
         break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
@@ -4709,7 +4743,7 @@ const App = (() => {
     if (!ev) { checkInstall(); return; }
     install.prompt = null;
     ev.prompt();
-    ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') toast('Install cancelled.', 'info'); checkInstall(); }).catch(() => checkInstall());
+    ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') note('Install cancelled.', 'info'); checkInstall(); }).catch(() => checkInstall());
     if (app.menuOpen) showMenu(app.menuLaunch);
   }
   /* Lists what the browser needs for an install, as this browser sees it. */
@@ -5104,6 +5138,7 @@ const App = (() => {
     });
     document.addEventListener('keydown', ev => {
       if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
+      if (ev.key === 'Escape' && !$('logDrop').hidden && $('overlay').hidden) { openLog(false); $('latestCell').focus(); return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
       if (t && /^(BUTTON|SELECT|INPUT)$/.test(t.tagName)) return;
@@ -5116,7 +5151,7 @@ const App = (() => {
     });
     loadSettings();
     document.body.classList.toggle('adv', app.ui.advanced);
-    $('logToggle').hidden = !app.ui.advanced;
+    placeLog();
     $('setAdvancedUI').checked = app.ui.advanced;
     $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
     $('setThisHand').checked = app.ui.thisHand;
