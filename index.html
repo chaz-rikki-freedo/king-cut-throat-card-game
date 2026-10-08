@@ -3683,15 +3683,28 @@ const Fx = (() => {
     const ids = new Set(v.hand);
     const mine = before.phase === P.DISCARD ? o.hand.filter(x => !ids.has(x.id)) : [], pileNow = q('#center .outpile');
     if (o.outpile && !pileNow) {
-      const shown = discarders.slice(0, qa('.olayer', o.outpile.el).length), missing = [1, 2, 0].filter(p => !shown.includes(p));
-      const g = place(o.outpile), gap = t * 0.4, wait = missing.length ? t + (missing.length - 1) * gap : 0;
-      missing.forEach((p, n) => {
-        expect('pile' + v.handNumber + '|' + p, { kind: 'out', n: 3, until: performance.now() + n * gap + t });
-        if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, n * gap + i * 70)]); }); return; }
-        for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, n * gap + i * 70)]); }
+      // A layer still on its way (or never drawn) lands now, one player after another; your cards already in flight
+      // land where they were going. Then the pile leaves.
+      const now = performance.now(), g = place(o.outpile), layers = qa('.olayer', g), gap = t * 0.4;
+      const all = discarders.concat([1, 2, 0].filter(p => !discarders.includes(p)));
+      let until = now; const missing = [];
+      all.forEach((p, i) => {
+        const layer = layers[i];
+        if (layer && mineLand && mineLand.hand === v.handNumber && mineLand.idx === i) { until = Math.max(until, mineLand.t0 + t); return; }
+        if (layer && (layerStart[i] ?? now) + t <= now) return;
+        if (layer) layer.style.visibility = 'hidden';
+        missing.push([p, layer]);
       });
+      missing.forEach(([p, layer], n) => {
+        const at = n * gap;
+        pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: 3, until: now + at + t });
+        if (layer) setTimeout(() => { layer.style.visibility = ''; }, at + t);
+        if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
+        for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, at + i * 70)]); }
+      });
+      const wait = Math.max(until - now, missing.length ? t + (missing.length - 1) * gap : 0);
       done(g, [fly(g, outsideCell(), t, wait)]);
-      kittyHold = performance.now() + wait + t * 0.9;
+      kittyHold = now + wait + t * 0.9;
     } else if (pileNow && mine.length) {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
