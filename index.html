@@ -507,6 +507,9 @@ body.adv .panel{position:absolute;z-index:30;min-width:180px;max-width:300px;bac
 body.adv .panel .ptitle{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.04em}
 body.adv .panel .prow{display:flex;align-items:center;gap:4px;margin:4px 0}
 body.adv .panel .tn{width:18px;color:var(--muted);font-weight:800}
+body.adv .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:4px 6px}
+body.adv .panel .pname{font-size:12px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.adv .panel .led .micro{box-shadow:0 0 0 2px #00838f}
 body.adv .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px}
 body.adv .panel dt{color:var(--muted)}
 body.adv .panel dd{margin:0}
@@ -4306,8 +4309,20 @@ const App = (() => {
       title = 'Your discards';
       body = v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>';
     } else {
-      title = Render.nameOf(v, seat) + ' · tricks won';
-      body = v.trickWinners.map((w, i) => w !== seat ? '' : '<div class="prow"><span class="tn">' + (i + 1) + '</span>' + v.playLog.slice(i * 3, i * 3 + 3).map(x => mini(x.card)).join('') + '</div>').join('') || '<p>None yet.</p>';
+      /* One column per player, headed by their name in table order; the card that led the trick is ringed. A Showdown
+         player's circles count Showdown tricks, so their list does too. */
+      const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(seat);
+      const winners = sd ? v.showdown.trickWinners : v.trickWinners, size = sd ? 2 : 3, from = sd ? v.trickWinners.length * 3 : 0;
+      const cols = [1, 2, 0].filter(p => !sd || v.showdown.participants.includes(p));
+      const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + mini(x.card) + '</span>' : '<span></span>'; };
+      const rows = winners.map((w, i) => {
+        if (w !== seat) return '';
+        const plays = v.playLog.slice(from + i * size, from + (i + 1) * size);
+        return '<span class="tn">' + (i + 1) + '</span>' + cols.map(p => cell(plays, p)).join('');
+      }).join('');
+      title = Render.nameOf(v, seat) + ' · ' + (sd ? 'Showdown tricks' : 'tricks won');
+      body = rows ? '<div class="pgrid" style="grid-template-columns:auto repeat(' + cols.length + ',auto)"><span></span>' +
+        cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
     table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
