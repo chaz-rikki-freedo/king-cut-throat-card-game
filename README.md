@@ -71,6 +71,14 @@ Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the
 
 Both settings are kept after a reload. **Defaults** does not change them.
 
+### House rules
+
+| Setting | What it does |
+|---|---|
+| **Showdown lead: The mediator picks who leads** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. |
+
+The setting is kept after a reload. A change applies from your next game: a game keeps the rules it started with, so its replay code gives the same game.
+
 ### Bots
 
 All bot settings apply to all bots and are kept after a reload. **Defaults** resets them all. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
@@ -154,20 +162,28 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
-- **Personalities** (Settings → Bots, on by default): each bot plays its own skill tier, bid courage and Real table setting. Off: every bot plays with the Bots and Advanced settings. For a personality, bid courage alone sets how loose it bids; Real table does not add its extra 0.5.
+- **Personalities** (Settings → Bots, on by default): each bot plays its own skill tier, bid courage, Real table setting and Showdown pick. Off: every bot plays with the Bots and Advanced settings. For a personality, bid courage alone sets how loose it bids; Real table does not add its extra 0.5.
 
-| Bot | Skill | Bid courage | Real table |
-|---|---|---|---|
-| Vex | Shark | Bold | |
-| Doc | Shark | Cautious | |
-| Ace | Club player | Bold | |
-| Mei | Shark | Normal | |
-| Gus | Casual | Bold | on |
-| Lou | Novice | Timid | |
-| Viv | Club player | Cautious | |
-| Tex | Novice | Bold | |
-| Kit | Novice | Cautious | on |
-| Zen | Casual | Normal | on |
+| Bot | Skill | Bid courage | Real table | Showdown pick |
+|---|---|---|---|---|
+| Vex | Shark | Bold | | Impulsive |
+| Doc | Shark | Cautious | | Shrewd |
+| Ace | Club player | Bold | | Fair |
+| Mei | Shark | Normal | | Shrewd |
+| Gus | Casual | Bold | on | Impulsive |
+| Lou | Novice | Timid | | Fair |
+| Viv | Club player | Cautious | | Shrewd |
+| Tex | Novice | Bold | | Impulsive |
+| Kit | Novice | Cautious | on | Fair |
+| Zen | Casual | Normal | on | Fair |
+
+**Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → House rules):
+
+- **Shrewd**: the Showdown player with the lower score leads, which works against the player closer to 10. On equal scores, as Fair.
+- **Fair**: the Showdown player who won the latest main trick leads, as without the house rule.
+- **Impulsive**: a random Showdown player leads.
+
+With Personalities off, a bot picks as Shrewd when **Watches score** is on, and as Fair when it is off.
 
 ## Waves
 
