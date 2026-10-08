@@ -4359,7 +4359,13 @@ const App = (() => {
     /* The game waits while the menu or a question is open. */
     if (app.menuOpen || askDone) return;
     if (!app.mode) { draw(ev); return; }
-    if (st.gameOver) { showGameOver(); return; }
+    /* A game can end mid-trick (a King point reaches 10). The table shows the final play first, for the trick-end
+       wait (at least Normal's, Instant aside), before the game-over dialog covers it. A click on the table opens it
+       at once. */
+    if (st.gameOver) {
+      const t = DELAYS[app.ui.speed].trick;
+      draw(ev); later(t && Math.max(t, DELAYS.normal.trick), showGameOver); return;
+    }
     if (needsSwap()) { draw(ev); showSwap(); return; }
     const d = DELAYS[app.ui.speed];
     const actors = Engine.actors(st);
