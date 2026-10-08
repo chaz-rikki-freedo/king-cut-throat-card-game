@@ -130,7 +130,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Hint | Help line | `.actionbar .hint` | I, D | The line under the prompt: the effect of a choice, or a rule reminder. |
 | Bid buttons | — | `data-action="bid-accept"`, `"bid-pass"` | C | Round 1: "Accept ♠" and "Pass". |
 | Suit buttons | Name buttons | `.btn.suit`, `data-action="name-suit"`, `"name-pass"` | C | Round 2: one button for each suit, and "Pass". The blocked suit is disabled. |
-| Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3", "Discard 1" or "Discard 2". Enabled when you picked enough cards. |
+| Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3", "Discard 1" or "Discard 2". Enabled when you picked enough cards and, for the opening and Showdown discards, it is your turn. |
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |
