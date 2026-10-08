@@ -63,7 +63,9 @@ then 1 or more sections:
 
 GAME fields:
 
-- **rules**: `Engine.RULES_VERSION`. Developers raise this number when a change makes the same seed and decisions give a different game (a rule, the deal or the RNG). A reader must not replay a code with another rules version.
+- **rules**: the rules version the game was played by (`Engine.RULES_VERSION` for a new game). Developers raise `Engine.RULES_VERSION` when a change makes the same seed and decisions give a different game (a rule, the deal or the RNG). A reader replays a code by the code's own rules version, and refuses a version newer than its own.
+  - 1: the first rules. The opening discard and the Showdown discard have no order.
+  - 2: the discards go in turn: the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave.
@@ -182,7 +184,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 ```js
 {
   v: 2,                       // format version of the code (1 for a KCT1 code)
-  rules: 1,                   // Engine.RULES_VERSION
+  rules: 2,                   // the game's rules version (Engine.RULES_VERSION for a new game)
   seed: 4242,
   mode: 'waves',              // 'free', 'waves', null, or 'mode<n>'
   wave: 3,                    // or null
@@ -207,8 +209,8 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 ## 8. Replay procedure
 
 1. Decode the code. Refuse it if the version is newer, a required section is unknown, or the bytes stop early.
-2. Refuse it if `rules` is not `Engine.RULES_VERSION`.
-3. `state = Engine.createGame(seed, names)`.
+2. Refuse it if `rules` is newer than `Engine.RULES_VERSION`.
+3. `state = Engine.createGame(seed, names, rules)`.
 4. Repeat until the game ends:
    - If `Engine.systemAction(state)` gives an action, dispatch it.
    - If not, skip MARK entries and dispatch the next decision. If there is no next decision, stop (an unfinished game). If the next entry is EXT, stop with an error.

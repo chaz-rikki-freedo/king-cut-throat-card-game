@@ -929,7 +929,9 @@ const Engine = (() => {
   /** @type {readonly string[]} */
   const PLAY_PHASES = Object.freeze([P.TRICK_PLAY, P.SHOWDOWN_PLAY]);
 
-  function createGame(seed, names) {
+  /* rules: the rules version of the game (RULES_VERSION for a new game; a save or a replay keeps its own). A game
+     of version 1 has no rules field, so a version-1 save rebuilds to the same state. */
+  function createGame(seed, names, rules = RULES_VERSION) {
     const n = names || ['You', 'West', 'East'];
     const state = {
       version: 0,
@@ -950,6 +952,7 @@ const Engine = (() => {
       winner: null,
       endEvent: null
     };
+    if (rules > 1) state.rules = rules;
     resetHand(state);
     return state;
   }
@@ -1037,8 +1040,21 @@ const Engine = (() => {
     return null;
   }
 
+  /* Whose turn it is to discard, or null. From rules version 2 the discards go in turn, as the cards were dealt:
+     the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
+     Version 1 had no order: every player with a discard pending could discard. */
+  function discardTurn(state) {
+    const from = state.phase === P.DISCARD ? state.dealer : state.phase === P.SHOWDOWN_DISCARD ? state.showdown.mediator : null;
+    if (from === null || (state.rules || 1) < 2) return null;
+    const pending = state.phase === P.DISCARD ? state.pendingDiscard : state.showdown.pendingDiscard;
+    for (let k = 1; k <= C.PLAYERS; k++) if (pending[(from + k) % C.PLAYERS]) return (from + k) % C.PLAYERS;
+    return null;
+  }
+
   /* Who must act now. An empty list means the next step is a system step. */
   function actors(state) {
+    const turn = discardTurn(state);
+    if (turn !== null) return [turn];
     switch (state.phase) {
       case P.DISCARD: return [0, 1, 2].filter(p => state.pendingDiscard[p]);
       case P.BID1: case P.BID2: return [state.bidTurn];
@@ -1058,9 +1074,10 @@ const Engine = (() => {
   }
 
   /* Raise RULES_VERSION when a change makes the same seed and decisions give a different game
-     (a rule, the deal or the RNG). Replay codes carry it, and a replay refuses another version. */
+     (a rule, the deal or the RNG). Replay codes and saves carry it: a replay plays by its own version and refuses
+     a newer one. Version 2: the discards go in turn (see discardTurn). */
   /** @type {number} */
-  const RULES_VERSION = 1;
+  const RULES_VERSION = 2;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
   function decisionOf(a) {
@@ -1082,6 +1099,7 @@ const Engine = (() => {
       case 'DISCARD':
         if (ph !== P.DISCARD) return 'not in the discard phase';
         if (!validSeat(a.player) || !state.pendingDiscard[a.player]) return 'player has no discard pending';
+        if (discardTurn(state) !== null && a.player !== discardTurn(state)) return 'not this player\'s turn to discard';
         return checkCardSet(state.hands[a.player], a.cards, C.INITIAL_DISCARD);
       case 'FLIP': return ph === P.REVEAL ? null : 'not in the reveal phase';
       case 'BID':
@@ -1106,6 +1124,7 @@ const Engine = (() => {
       case 'SHOWDOWN_DISCARD':
         if (ph !== P.SHOWDOWN_DISCARD) return 'not in the showdown discard';
         if (!validSeat(a.player) || !state.showdown.pendingDiscard[a.player]) return 'player has no showdown discard pending';
+        if (discardTurn(state) !== null && a.player !== discardTurn(state)) return 'not this player\'s turn to discard';
         return checkCardSet(state.hands[a.player], [a.card], C.SHOWDOWN_DISCARD);
       case 'ADVANCE': return ADVANCE_PHASES.includes(ph) ? null : 'nothing to advance';
       default: return 'unknown action ' + a.type;
@@ -1435,7 +1454,7 @@ const Engine = (() => {
     return errors;
   }
 
-  return Object.freeze({ P, C, RULES_VERSION, createGame, dispatch, validate, actors, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
+  return Object.freeze({ P, C, RULES_VERSION, createGame, dispatch, validate, actors, discardTurn, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1543,6 +1562,7 @@ const Replay = (() => {
     if (!state || !Array.isArray(state.decisions)) return null;
     const m = meta || {};
     const rec = blank();
+    rec.rules = state.rules || 1;
     rec.seed = state.seed >>> 0;
     rec.mode = m.mode || null;
     rec.wave = m.wave || null;
@@ -1728,9 +1748,10 @@ const Replay = (() => {
   function cursor(recOrCode, names) {
     const rec = toRecord(recOrCode);
     if (!rec || typeof rec !== 'object' || !Array.isArray(rec.decisions)) throw new Error('replay record has no decision list');
-    if ((rec.rules || 1) !== Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
+    const rules = rec.rules || 1;
+    if (!Number.isInteger(rules) || rules < 1 || rules > Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
-    function reset() { state = Engine.createGame(rec.seed, names); next = 0; steps = 0; }
+    function reset() { state = Engine.createGame(rec.seed, names, rules); next = 0; steps = 0; }
     const isMark = d => !!d && d.type === 'MARK';
     function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
@@ -1805,7 +1826,7 @@ function buildView(state, seat) {
     round: state.round, bidTurn: state.bidTurn, bidLog: state.bidLog.map(b => Object.assign({}, b)),
     trump: state.trump, caller: state.caller, receiver: state.receiver, exchangeCount: state.exchangeCount,
     received: seat === state.receiver ? state.received.slice() : [],
-    pendingDiscard: state.pendingDiscard.slice(),
+    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), rules: state.rules || 1,
     activePlayers: state.activePlayers.slice(),
     currentPlayer: state.currentPlayer, leader: state.leader,
     trickNumber: state.trickNumber, totalTricks: state.totalTricks,
@@ -2816,7 +2837,7 @@ const AI = (() => {
     const sd = view.showdown;
     const hs = view.handSummary;
     return {
-      version: 0, seed: 0, rng: { s: seed >>> 0 }, playRng: { s: (seed ^ 0x9E3779B9) >>> 0 }, players: view.players,
+      version: 0, seed: 0, rules: view.rules, rng: { s: seed >>> 0 }, playRng: { s: (seed ^ 0x9E3779B9) >>> 0 }, players: view.players,
       scores: view.scores.slice(), dealer: view.dealer, handNumber: view.handNumber, phase: view.phase,
       gameOver: false, winner: null, endEvent: null,
       deck: [], hands: w.hands.map(h => h.slice()), kitty: w.kitty.slice(), outside: w.outside.slice(),
@@ -2993,14 +3014,16 @@ const Render = (() => {
     return b.join('');
   }
 
+  /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
+  const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
   function isTurn(v, p) {
     if (v.gameOver) return false;
     switch (v.phase) {
-      case P.DISCARD: return v.pendingDiscard[p];
+      case P.DISCARD: return canDiscard(v, p, v.pendingDiscard[p]);
       case P.BID1: case P.BID2: return v.bidTurn === p;
       case P.EXCHANGE: return v.receiver === p;
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.currentPlayer === p;
-      case P.SHOWDOWN_DISCARD: return !!v.showdown.pendingDiscard[p];
+      case P.SHOWDOWN_DISCARD: return canDiscard(v, p, v.showdown.pendingDiscard[p]);
       default: return false;
     }
   }
@@ -3046,8 +3069,9 @@ const Render = (() => {
     let backs = '';
     for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
     let note = '';
-    if (v.phase === P.DISCARD) note = v.pendingDiscard[p] ? '<div class="discard-note">Choosing 3 discards…</div>' : '<div class="discard-note">Discarded 3 ✓</div>';
-    if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = v.showdown.pendingDiscard[p] ? '<div class="discard-note">Choosing 1 discard…</div>' : '<div class="discard-note">Discarded 1 ✓</div>';
+    const pend = (pending, k) => !pending ? 'Discarded ' + k + ' ✓' : canDiscard(v, p, pending) ? 'Choosing ' + k + ' discard' + (k > 1 ? 's' : '') + '…' : 'Waiting to discard…';
+    if (v.phase === P.DISCARD) note = '<div class="discard-note">' + pend(v.pendingDiscard[p], 3) + '</div>';
+    if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = '<div class="discard-note">' + pend(v.showdown.pendingDiscard[p], 1) + '</div>';
     return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + badges(v, p) + '</div>' +
       '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p]) + '<small> / 10</small></span></div>' +
       tricksLine(v, p) +
@@ -3203,7 +3227,7 @@ const Render = (() => {
     switch (v.phase) {
       case P.SETUP: return 'No game is running.';
       case P.HAND_START: return 'Hand ' + (v.handNumber + 1) + ' · ' + n(v.dealer) + ' deals.';
-      case P.DISCARD: return 'Everyone discards 3 cards face-down to the outside pile.';
+      case P.DISCARD: return v.discardTurn == null ? 'Everyone discards 3 cards face-down to the outside pile.' : (v.discardTurn === you ? 'Your turn to discard' : n(v.discardTurn) + ' is discarding') + ' 3 cards face-down to the outside pile.';
       case P.REVEAL: return n(v.dealer) + ' turns up the top kitty card…';
       case P.BID1: return 'Round 1 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + ' on ' + R.SUIT_NAME[R.card(v.flipped).suit] + '.';
       case P.BID2: return 'Round 2 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + '. ' + R.SUIT_NAME[R.card(v.flipped).suit] + ' is blocked.';
@@ -3227,7 +3251,10 @@ const Render = (() => {
     if (ui.autoplay && isTurn(v, you)) return '';
     switch (v.phase) {
       case P.DISCARD:
-        if (v.pendingDiscard[you]) return '<div class="prompt">Choose 3 cards to discard face-down to the outside pile (' + sel + '/3).</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 ? '' : ' disabled') + '>Discard 3</button>';
+        if (v.pendingDiscard[you]) {
+          const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
+          return '<div class="prompt">Choose 3 cards to discard face-down to the outside pile (' + sel + '/3).' + wait + '</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && now ? '' : ' disabled') + '>Discard 3</button>';
+        }
         break;
       case P.BID1:
         if (v.bidTurn === you) {
@@ -3247,7 +3274,10 @@ const Render = (() => {
         if (v.receiver === you) return '<div class="prompt">' + n(v.caller) + ' named ' + suitLabel(v.trump) + '. You receive ' + v.received.map(R.shortName).join(', ') + '. Discard ' + v.exchangeCount + ' (' + sel + '/' + v.exchangeCount + ').</div><button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>';
         break;
       case P.SHOWDOWN_DISCARD:
-        if (v.showdown.pendingDiscard[you]) return '<div class="prompt">Showdown: discard 1 of your 6 cards (' + sel + '/1). Trump is ' + suitLabel(v.trump) + '.</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 ? '' : ' disabled') + '>Discard 1</button>';
+        if (v.showdown.pendingDiscard[you]) {
+          const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
+          return '<div class="prompt">Showdown: discard 1 of your 6 cards (' + sel + '/1). Trump is ' + suitLabel(v.trump) + '.' + wait + '</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && now ? '' : ' disabled') + '>Discard 1</button>';
+        }
         break;
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY:
@@ -3425,14 +3455,14 @@ const Render = (() => {
     else if (v.phase === P.SETUP) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>');
     else if (!(ui.autoplay && isTurn(v, you))) {
       switch (v.phase) {
-        case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 ? '' : ' disabled') + '>Discard 3</button>'); break;
+        case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 3</button>'); break;
         case P.BID1: if (v.bidTurn === you) { const s = R.card(v.flipped).suit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
         case P.BID2: if (v.bidTurn === you) {
           const blocked = R.card(v.flipped).suit;
           b.push(R.SUITS.map(s => '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + (s === blocked ? ' (blocked)' : '') + '" aria-label="Name ' + R.SUIT_NAME[s] + '"' + (s === blocked ? ' disabled' : '') + '>' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
         } break;
         case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
-        case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 ? '' : ' disabled') + '>Discard 1</button>'); break;
+        case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
         default: break;
       }
       if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>');
@@ -3566,7 +3596,7 @@ const Fx = (() => {
   function discardOrder(v) {
     if (v.phase === Engine.P.DISCARD) {
       if (discardHand !== v.handNumber) { discardHand = v.handNumber; discarders = []; layerStart.length = 0; }
-      for (const p of [1, 2, 0]) if (!discarders.includes(p) && !v.pendingDiscard[p]) discarders.push(p);
+      for (const k of [1, 2, 3]) { const p = (v.dealer + k) % 3; if (!discarders.includes(p) && !v.pendingDiscard[p]) discarders.push(p); }
     }
     return discarders.slice();
   }
@@ -4870,14 +4900,14 @@ const App = (() => {
       '<li>33-card deck: 7–A in four suits plus the Joker. Deal: 3 each, 3 to the kitty, 4 each, 3 each.</li>' +
       '<li>Trump order: Joker, Right Bower (Jack of trump), Left Bower (other Jack of the same color, counts as trump), A, K, Q, 10, 9, 8, 7.</li>' +
       '<li><b>Bower</b> comes from the German <i>Bauer</i>, “farmer”. The Jacks are the farmers.</li>' +
-      '<li>Before bidding, everyone discards 3 face-down to the outside pile (7 cards left).</li>' +
+      '<li>Before bidding, each player discards 3 face-down to the outside pile (7 cards left), in turn from the dealer\'s left, the dealer last.</li>' +
       '<li>Round 1: the dealer turns the top kitty card (a Joker voids the hand). Accept its suit or pass. If accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1.</li>' +
       '<li>Round 2: name another suit or pass. If named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned.</li>' +
       '<li>7 tricks. The player left of the dealer leads. Follow suit if you can.</li>' +
       '<li><b>King points:</b> +1 at once when a King wins a trick. A losing King scores nothing.</li>' +
       '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3.</li>' +
       '<li>The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</li>' +
-      '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1 and they play 5 tricks with the same trump. The player who won the latest main trick between them leads. Winner +1, loser −1 (not below 0).</li>' +
+      '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. The player who won the latest main trick between them leads. Winner +1, loser −1 (not below 0).</li>' +
       '</ul><div class="row"><button class="btn primary" type="button" data-action="menu-back">Back</button></div></div>';
     ov.hidden = false;
   }
@@ -5316,6 +5346,25 @@ const SelfTest = (() => {
       const s = Engine.createGame(42); D(s, { type: 'START_GAME' }); D(s, { type: 'DEAL' });
       eq('dealt state passes audit', Engine.audit(s), []);
       eq('kitty has 3', s.kitty.length, 3);
+    });
+
+    /* --- The discards go in turn (rules version 2); a version-1 game keeps no order --- */
+    safeRun('discard order', () => {
+      const s = Engine.createGame(9); D(s, { type: 'START_GAME' }); s.dealer = 1; D(s, { type: 'DEAL' });
+      eq('a new game plays by the current rules', s.rules, Engine.RULES_VERSION);
+      eq('the opening discard starts left of the dealer', [Engine.actors(s), Engine.discardTurn(s)], [[2], 2]);
+      check('a discard out of turn is refused', !D(s, { type: 'DISCARD', player: 0, cards: s.hands[0].slice(0, 3) }).ok);
+      const order = [];
+      while (s.phase === P.DISCARD) { const p = Engine.actors(s)[0]; order.push(p); D(s, { type: 'DISCARD', player: p, cards: s.hands[p].slice(0, 3) }); }
+      eq('then in turn, the dealer last', order, [2, 0, 1]);
+      const old = Engine.createGame(9, null, 1); D(old, { type: 'START_GAME' }); old.dealer = 1; D(old, { type: 'DEAL' });
+      eq('a version-1 game has no rules field and no order', ['rules' in old, Engine.actors(old), Engine.discardTurn(old)], [false, [0, 1, 2], null]);
+      check('a version-1 game takes a discard from any pending player', D(old, { type: 'DISCARD', player: 1, cards: old.hands[1].slice(0, 3) }).ok);
+      const v1 = Engine.createGame(11, null, 1); D(v1, { type: 'START_GAME' }); D(v1, { type: 'DEAL' });
+      for (const p of [2, 1, 0]) D(v1, { type: 'DISCARD', player: p, cards: v1.hands[p].slice(0, 3) });
+      const rec = Replay.fromState(v1), cur = Replay.cursor(Replay.encode(rec));
+      eq('its record keeps rules version 1, and replays by it', [rec.rules, cur.seek(v1.version), JSON.stringify(cur.state) === JSON.stringify(v1)], [1, v1.version, true]);
+      eq('the view tells whose turn it is', buildView(s, 0).discardTurn, null);
     });
 
     /* --- Bidding --- */
@@ -5894,6 +5943,8 @@ const SelfTest = (() => {
       eq('12-card pool fully dealt from the outside pile', [s.outside.length, s.hands[0].concat(s.hands[1]).sort()], [0, pool.slice().sort()]);
       eq('showdown audit', Engine.audit(s), []);
       check('mediator cannot discard', !D(s, { type: 'SHOWDOWN_DISCARD', player: 2, card: 'AS' }).ok);
+      eq('the Showdown discard starts left of the mediator', Engine.actors(s), [0]);
+      check('a Showdown discard out of turn is refused', !D(s, { type: 'SHOWDOWN_DISCARD', player: 1, card: s.hands[1][0] }).ok);
       D(s, { type: 'SHOWDOWN_DISCARD', player: 0, card: s.hands[0][0] });
       check('showdown waits for both discards', s.phase === P.SHOWDOWN_DISCARD);
       D(s, { type: 'SHOWDOWN_DISCARD', player: 1, card: s.hands[1][0] });
@@ -6077,7 +6128,7 @@ const SelfTest = (() => {
       const where = [s.hands[0], s.hands[1], s.hands[2], s.kitty].find(a => a.includes(topCard));
       const i = where.indexOf(topCard);
       where[i] = s.kitty[0]; s.kitty[0] = topCard;
-      for (const p of [0, 1, 2]) Engine.dispatch(s, { type: 'DISCARD', player: p, cards: s.hands[p].slice(0, 3) });
+      while (s.phase === P.DISCARD) { const p = Engine.actors(s)[0]; Engine.dispatch(s, { type: 'DISCARD', player: p, cards: s.hands[p].slice(0, 3) }); }
       return s;
     }
   }

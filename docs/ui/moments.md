@@ -8,7 +8,7 @@ A *game moment* is one step of a hand, as the player sees it. Each moment has a 
 |---|---|---|---|
 | No game | `setup` | "No game is running." | Open the menu: **Choose a game**. |
 | Deal | `handStart` | "Hand 2 · West deals." | Nothing. |
-| Opening discard | `discard` | "Everyone discards 3 cards face-down to the outside pile." | Pick 3 cards, then **Discard 3**. |
+| Opening discard | `discard` | "West is discarding 3 cards face-down to the outside pile." (in turn from the dealer's left; "Your turn to discard…" on yours) | Pick 3 cards, then **Discard 3**. |
 | Seat swap | `discard`, hand 1, Free play | — | The seat-swap dialog opens before the opening discard. |
 | Turn-up | `reveal` | "East turns up the top kitty card…" | Nothing. |
 | Round 1 bid | `bid1` | "Round 1 · Your call on Spades." | **Accept ♠** or **Pass**. |
