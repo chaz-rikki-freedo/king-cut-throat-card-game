@@ -60,7 +60,16 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this also turns on logging). The panel has five parts, from top to bottom.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this also turns on logging). The panel has six parts, from top to bottom.
+
+### Interface
+
+| Setting | What it does |
+|---|---|
+| **Advanced UI** | Off by default. A minimal table for players who know the rules. See **Advanced UI** below. |
+| **Profiles: Show this hand's bids and voids** | Off by default. During a hand, a seated player's profile adds a **This hand** box: their bids (for example, "passed round 1 · named ♥") and the suits they are **void of**. It shows only what every player at the table has seen. Works with either table. |
+
+Both settings are kept after a reload. **Defaults** does not change them.
 
 ### Bots
 
@@ -128,6 +137,17 @@ Click the heading to open it. **AI can play your seat** (off by default): on, th
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Run self-tests** | At the bottom. Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
+
+## Advanced UI
+
+Settings → Interface → **Advanced UI**. The same game, drawn as a minimal table with no instructions. The game still enforces every rule: cards you cannot play stay dimmed, and a confirm button waits for enough cards.
+
+- **Seats.** The name, the score as a number, and tags in one fixed order as they come up: **Human** or **AI**, **Dealer**, **Namer**, **Kitty**, **Turn**, **Led**, then **Mediator** (**MED** on phones) or **SD** (Showdown). A bot's hand shows as small backs. Circles fill as tricks are won: 7 in a hand; a Showdown player counts Showdown tricks (5). Click the circles to see the cards of each trick that player won this hand.
+- **Information strip** (above the seats): **Trump**, **Hand** and the trick number, **Latest** (the newest line of the Latest Scroll), **Turned up** (**Blocked** in round 2) and **Outside** (the outside pile's count; in a Showdown, a small card per discard, yours face up). Click **Outside** to see the cards you put in the outside pile.
+- **Play area.** Before the first trick, the kitty lies spread so you can count it, with the turned card face up on top. During the discard, the same spot holds the outside pile. The trick is in 3D: each bot card faces your space, the cards stack in play order, and the winning card lifts with a white edge. Every **King** has a **KING** tag. All action buttons sit at the bottom of the play area; round 2 names a suit with its symbol. **Skip** moves to the header.
+- **Latest Scroll.** Newest first: each group keeps its heading on top. The **›** button folds it away and **‹** opens it again.
+- **Toasts** over the play area also say who deals, who passes, and who plays the Showdown.
+- **Motion** shows each move: the deal goes round the table from the dealer's left, the discards slide onto the outside pile (no one discards before the deal ends), the kitty comes from the dealer and the turned card turns up, the kitty splits to the receiver and the outside pile when trump is set, each trick card comes from its player's seat, and the trick sweeps to the winner's circles. A thrown-in hand (all pass, or the Joker turned up) goes back to the dealer before the new deal. The Outside count and the circles change when the cards arrive. Motion follows the game speed; **Instant**, or the system setting to reduce motion, turns it off.
 
 ## Opponents
 
@@ -262,7 +282,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 | `sw.js` | Service worker: offline play and the update prompt. |
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
 
-**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. Change `sw.js` only to change how caching works. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
+**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. The check ignores changes that ad blockers make to the page, such as removed `<link>` tags, so turning one on or off is not a new version. Change `sw.js` only to change how caching works. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
 
 **Persistent storage.** At start-up (on HTTPS), the app asks the browser to keep its storage (`navigator.storage.persist()`), so that progress, results, saved games and replay codes are not cleared when the disk is low. It asks only while the storage is not persistent yet. Chrome and Safari decide without a prompt, and they usually agree for an installed app. Firefox asks you one time. **Settings → Install** shows the result. A Safari tab that is not installed can lose its storage after 7 days without a visit, so install the app on iPhone and iPad.
 

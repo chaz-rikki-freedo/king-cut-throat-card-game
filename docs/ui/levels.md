@@ -1,6 +1,6 @@
 # UI levels
 
-Status: **draft**. The levels are planned and are not built yet. The names and the matrix are a starting point for the design.
+Status: **draft**. One level is built: release 0.6.0 adds the **Advanced** level as the **Advanced UI** setting (Settings → Interface, off by default; see the README). In the interface it is a setting, not a level. The other three levels are not built. The names and the matrix are a starting point for their design.
 
 A *UI level* is one version of the interface. All four levels play the same game with the same rules and the same areas. They differ only in how much text they show.
 
