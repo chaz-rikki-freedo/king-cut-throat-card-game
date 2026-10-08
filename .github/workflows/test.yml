@@ -1,0 +1,30 @@
+# Runs the type check and the browser tests (tests/README.md) only for a major release.
+# A major release is a pushed tag 1.0.0, 2.0.0, 10.0.0 and so on, with or without a "v" prefix.
+# Minor and patch tags (for example 0.5.1 or 1.2.0), pull requests and pushes to main do not run the tests.
+# To run the tests at a different time, use "Run workflow" on the Actions tab.
+name: Tests
+on:
+  push:
+    tags:
+      - '[1-9].0.0'
+      - '[1-9][0-9]+.0.0'
+      - 'v[1-9].0.0'
+      - 'v[1-9][0-9]+.0.0'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

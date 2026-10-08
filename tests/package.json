@@ -1,0 +1,17 @@
+{
+  "name": "king-cut-throat-tests",
+  "private": true,
+  "description": "Browser tests for index.html: self-tests, UI scenarios, stress and soak.",
+  "scripts": {
+    "typecheck": "node typecheck.js",
+    "selftest": "node selftest.js",
+    "scenarios": "node scenarios.js",
+    "stress": "node stress.js all 4",
+    "soak": "node soak.js 4 3",
+    "test": "node typecheck.js && node selftest.js && node scenarios.js && node stress.js all 4"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1",
+    "typescript": "^5.9.3"
+  }
+}
