@@ -305,7 +305,7 @@ button.card{cursor:pointer}
    facts in one information strip, every action button in the play area, and motion that shows each move.
    Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
    and the This hand box of the profile dialog (its own setting). ---- */
-.table > .info[hidden],.skip-slot[hidden],.lp-toggle[hidden]{display:none!important}
+.topbar > .info[hidden],.skip-slot[hidden],.lp-toggle[hidden]{display:none!important}
 .persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:10px 16px;border:1px solid rgba(242,193,78,.35)}
 .persona .p-hand .lab{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:800}
 .persona .p-hand dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
@@ -327,11 +327,9 @@ body.adv .actionbar:not(:has(.btn)){display:none}
 body.adv .seat .discard-note,body.adv .hand .hint{display:none!important}
 body.adv .speed-pick select{display:none}
 body.adv .speed-pick{padding:0 10px}
-body.adv .table{grid-template-areas:"info info info" "west center east" "me me me"!important}
-@media (max-width:720px){
-  body.adv .table{grid-template-areas:"info info" "west east" "center center" "me me"!important}
-}
-body.adv .info{grid-area:info;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;background:rgba(0,0,0,.22);border-radius:12px;padding:6px}
+/* The information strip is the last row of the sticky header, so trump and the score facts stay in view. */
+body.adv .game-chips{display:none}
+body.adv .info{order:20;flex:1 1 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;background:rgba(0,0,0,.22);border-radius:12px;padding:6px}
 body.adv .info .cell{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.04);min-width:0}
 body.adv .info .lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 body.adv .info .val{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -351,7 +349,7 @@ body.adv .hand{min-height:0!important}
 }
 body.adv .info .muted .val{font-weight:600;font-size:13px;color:var(--muted)}
 body.adv .center{justify-content:center}
-body.adv .trick{grid-template-rows:calc(var(--cw)*.55) auto!important}
+body.adv .trick{grid-template-rows:0 auto!important}
 body.adv .score{font-size:46px!important}
 body.adv .seat-name{font-size:21px!important}
 body.adv .seat-east .seat-head{flex-direction:row-reverse}
@@ -362,7 +360,7 @@ body.adv .seat .backs{order:2}
 body.adv .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
 body.adv .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
 body.adv .info .latest{min-width:0}
-body.adv .info .latest .val{white-space:normal;overflow:hidden;display:block}
+body.adv .info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 body.adv .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;width:100%;min-height:44px}
 body.adv .seat-east .tagbox{direction:rtl}
 body.adv .tagbox .tag{margin:0;flex:0 0 calc((100% - 8px) / 3);height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;padding:0 2px;overflow:hidden;white-space:nowrap;direction:ltr}
@@ -377,7 +375,7 @@ body.adv .me .tagbox .tag.duelist,body.adv .me .tagbox .tag.mediator{flex-basis:
   body.adv .me .tagbox .tag.mediator{flex-basis:auto;padding:0 6px}
   body.adv .me .tagbox{flex:1 1 200px;min-height:20px}
 }
-body.adv .trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:18px 10px 14px!important}
+body.adv .trick{perspective:900px;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:16px 10px 14px!important}
 body.adv .trick .slot{transform-style:preserve-3d}
 body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
 body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
@@ -386,7 +384,7 @@ body.adv .trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
 body.adv .trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
 body.adv .trick .slot .empty{background:none;border-color:#8fa79a}
 body.adv .trick .slot-1 .empty,body.adv .trick .slot-2 .empty{visibility:hidden}
-body.adv .trick{min-height:calc(var(--cw)*4.2)!important}
+body.adv .trick{min-height:0!important}
 body.adv .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
 body.adv .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(30px);box-shadow:10px 18px 22px rgba(0,0,0,.5)}
 body.adv .trick .slot-0 .card,body.adv .trick .slot-0 .empty{transform:rotateX(22deg) translateZ(30px)}
@@ -413,13 +411,15 @@ body.adv }
 body.adv .me .hand{flex-wrap:wrap;gap:6px;padding-top:10px}
 body.adv .me .hand .card{flex:none}
 body.adv .center{position:relative}
-body.adv .center{position:relative;padding-top:58px!important;padding-bottom:6px;min-height:calc(var(--cw)*4.2 + 128px)}
-body.adv .trick{padding-bottom:64px!important}
+body.adv .center{position:relative;padding-top:58px!important;padding-bottom:6px;min-height:calc(var(--cw)*2.85 + 84px)}
+body.adv .trick{padding-bottom:52px!important}
 body.adv .summary table.stats td:first-child{white-space:nowrap;font-size:18px;font-weight:800;text-align:left}
 body.adv .summary table.stats td:last-child{font-size:26px;font-weight:800;line-height:1.1}
-body.adv .trick .slot-0{margin-top:calc(var(--cw)*1.5*1.4*.45)}
+/* The side cards sit at the top of the trick and yours sits lower, with no empty band above them. */
+body.adv .trick .slot-1,body.adv .trick .slot-2{align-self:start}
+body.adv .trick .slot-0{margin-top:calc(var(--cw)*.75 - 6px)}
 body.adv .center:not(:has(.trick)){padding-bottom:58px!important}
-body.adv .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*3.3)}
+body.adv .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*2.85)}
 body.adv .kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
 body.adv .kitty-spot{--kw:var(--cw)}
 body.adv .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:calc(var(--kw)*1.4)}
@@ -556,11 +556,11 @@ body.adv #toasts{width:min(92vw,380px)}
     </label>
     <button class="icon-btn" type="button" data-action="toggle-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg></button>
   </div>
+  <section class="info" id="info" aria-label="Shared information" hidden></section>
 </header>
 
 <div class="layout">
   <main class="table" id="table">
-    <section class="info" id="info" aria-label="Shared information" hidden></section>
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
