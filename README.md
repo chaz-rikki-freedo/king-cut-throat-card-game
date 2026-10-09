@@ -90,7 +90,7 @@ The setting is kept after a reload. A change applies from your next game: a game
 
 ### Bots
 
-All bot settings apply to all bots and are kept after a reload. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
+All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
 
 | Setting | What it does |
 |---|---|

@@ -700,7 +700,7 @@ body.adv .tag .short{display:none}
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
       <div class="set-card" id="setPersonaRow">
-        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
       </div>
       <p class="k-hint set-note" id="setWaveNote" hidden>Waves always use their personalities. These settings apply to Free play.</p>
       <h3 class="set-head">Every bot</h3>
@@ -5405,7 +5405,7 @@ const App = (() => {
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); setPersonas(true); break;
+      case 'settings-reset': resetBotSettings(); setPersonas(true); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         if (testsRunning) break;
@@ -5460,7 +5460,7 @@ const App = (() => {
     const now = app.ai.knowledge;
     syncKnowledge();
     Logger.log('AI_KNOWLEDGE', now);
-    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
+    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); const name = box && box.closest('.set-row') && box.closest('.set-row').querySelector('.set-name'); return name ? name.textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
     saveSettings();
@@ -5477,6 +5477,8 @@ const App = (() => {
     saveSettings();
   }
   /* Personalities switch: on, each bot plays its own style; off, all bots use the settings below. */
+  /* The bot settings (Bots tab and Expert tab, Personalities aside) back to their defaults. */
+  function resetBotSettings() { setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); }
   function setPersonas(on, quiet) {
     app.usePersonas = on;
     $('setPersonas').checked = on;
@@ -5647,7 +5649,9 @@ const App = (() => {
     $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
     $('setCourage').value = app.ai.style.courage;
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
-    $('setPersonas').addEventListener('change', () => setPersonas($('setPersonas').checked));
+    /* Switching Personalities either way starts the bot settings from their defaults: dimmed (on), they show the
+       defaults rather than an old custom set; enabled (off), you start from a known point. */
+    $('setPersonas').addEventListener('change', () => { resetBotSettings(); setPersonas($('setPersonas').checked); });
     setPersonas(app.usePersonas, true);
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
