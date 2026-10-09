@@ -219,10 +219,12 @@ button.card{cursor:pointer}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
 .toast.info{background:#e3f2fd;color:#0d2a44}
 @keyframes toast{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
-/* The King point (+1): over everything at the screen's center, tilted, green fading to clear from top to bottom.
+/* The King point (+1): over everything at the screen's center, tilted, green fading to clear from top to bottom,
+   with a green stroke.
    kingPop sets the tilt and runs the motion. */
 .king-pop{position:fixed;left:50%;top:45%;z-index:70;pointer-events:none;font-size:clamp(110px,28vmin,280px);font-weight:900;line-height:1;letter-spacing:-.04em;
   background:linear-gradient(to bottom,rgba(52,199,89,.8) 40%,rgba(52,199,89,0) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:max(3px,.018em) rgb(30,142,62);paint-order:stroke fill;
   filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transform:translate(-50%,-50%);opacity:0}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:16px}
 .overlay[hidden]{display:none}
@@ -4868,11 +4870,10 @@ const App = (() => {
     if (app.ui.advanced) showLatest(false, escHTML(text));
     else toast(text, cls);
   }
-  /* A King point: a large green +1 hangs over everything, then drops and dissolves. Both tables. Its length follows
-     the game speed; Instant shows none. With reduced motion (a system setting) it only fades. */
+  /* A King point: a large green +1 hangs over everything, then drops and dissolves, every time, in both tables. Its
+     length follows the game speed (Instant uses Fast's: it holds nothing up). */
   function kingPop() {
-    const ms = { slow: 2400, normal: 1800, fast: 1100 }[app.ui.speed] || 0;
-    if (!ms) return;
+    const ms = { slow: 2400, normal: 1800 }[app.ui.speed] || 1100;
     const old = document.querySelector('.king-pop'); if (old) old.remove();
     const el = document.createElement('div');
     el.className = 'king-pop';
@@ -4880,10 +4881,7 @@ const App = (() => {
     el.textContent = '+1';
     const tilt = 'rotate(' + (Math.random() * 30 - 15).toFixed(1) + 'deg)', at = (y, k) => 'translate(-50%,' + y + '%) ' + tilt + ' scale(' + k + ')';
     const shadow = 'drop-shadow(0 6px 14px rgba(0,0,0,.35))';
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const frames = still
-      ? [{ opacity: 1, transform: at(-50, 1) }, { opacity: 1, offset: .55 }, { opacity: 0, transform: at(-50, 1) }]
-      : [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
+    const frames = [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
         { opacity: 1, transform: at(-50, 1.06), offset: .12 },
         { opacity: 1, transform: at(-48, 1), offset: .22 },
         { opacity: 1, transform: at(-44, 1), filter: shadow + ' blur(0)', offset: .55 },

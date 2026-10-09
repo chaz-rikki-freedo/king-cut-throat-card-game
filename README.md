@@ -148,7 +148,7 @@ Click the heading to open it. **AI can play your seat** (off by default): on, th
 
 ## King points
 
-Each time a King wins a trick, a large green **+1** appears at the center of the screen, over everything. It is tilted at random (up to 15° either way) and fades from solid green at the top to clear at the bottom. It hangs for a moment, then drops and dissolves. It shows in both tables, lasts longer at slower speeds, and does not show at **Instant**. With the system setting to reduce motion, it fades in place.
+Each time a King wins a trick, a large green **+1** appears at the center of the screen, over everything. It is tilted at random (up to 15° either way), has a green stroke, and fades from green (80% opaque) at the top to clear at the bottom. It hangs for a moment, then drops and dissolves. It shows every time, in both tables, and lasts longer at slower speeds.
 
 ## Advanced UI
 
