@@ -329,10 +329,12 @@ body.adv .speed-pick{padding:0 10px}
 /* The information strip is the last row of the sticky header, so trump and the score facts stay in view. */
 body.adv .game-chips{display:none}
 body.adv .info{order:20;flex:1 1 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;background:rgba(0,0,0,.22);border-radius:12px;padding:6px}
-body.adv .info .cell{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.04);min-width:0}
-body.adv .info .lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-body.adv .info .val{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
-body.adv .info .pip{font-size:40px;line-height:1;color:#ff6b6b;text-align:center}
+body.adv .info .cell{display:flex;flex-direction:column;justify-content:flex-start;gap:2px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.04);min-width:0}
+body.adv .info .lab{font-size:10px;line-height:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* Every cell has the same two rows, a label and a value: the labels line up and the strip keeps its height when
+   the Trump cell comes and goes. */
+body.adv .info .val{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;min-height:22px;line-height:22px}
+body.adv .info .pip{font-size:26px;line-height:22px;color:#ff6b6b;text-align:center}
 body.adv .info .latest{flex:1 1 180px}
 body.adv .info .latest .val{font-weight:400;font-size:14px}
 body.adv .info .info-part{display:contents}
@@ -342,8 +344,9 @@ body.adv .hand{min-height:0!important}
 @media (max-width:720px){
   body.adv .info{gap:4px;padding:4px}
   body.adv .info .cell{padding:3px 8px}
-  body.adv .info .pip{font-size:28px}
   body.adv .info .latest{order:6;flex:1 1 100%}
+  /* The Latest line can take two lines here: keep room for both, so the header does not change height. */
+  body.adv .info .latest .val{line-height:18px;height:36px;min-height:0;align-content:center}
   body.adv .info .muted{flex:1 1 0}
 }
 body.adv .info .muted .val{font-weight:600;font-size:13px;color:var(--muted)}
@@ -3454,6 +3457,12 @@ const Render = (() => {
 
   /* The information strip: Trump, Hand (and the trick), Latest (the newest line of the Latest Scroll), Turned up
      (Blocked in round 2), Outside. A cell with nothing to show is left out. */
+  /* The Hand cell's value outside trick play: the stage of the hand. */
+  const STAGE = Object.freeze({
+    [P.DISCARD]: 'Discard', [P.REVEAL]: 'Bidding', [P.BID1]: 'Bidding', [P.BID2]: 'Bidding', [P.EXCHANGE]: 'Exchange',
+    [P.HAND_SCORE]: 'Result', [P.ABANDONED]: 'Thrown in', [P.JOKER_VOID]: 'Redeal',
+    [P.SHOWDOWN_SETUP]: 'Showdown', [P.SHOWDOWN_DISCARD]: 'Showdown', [P.SHOWDOWN_LEAD]: 'Showdown', [P.SHOWDOWN_SCORE]: 'Showdown'
+  });
   /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
   function advInfoHTML(v) {
     const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
@@ -3463,7 +3472,7 @@ const Render = (() => {
     const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
     let html = '', before = '';
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>');
-    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick);
+    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick || STAGE[v.phase] || '');
     before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
