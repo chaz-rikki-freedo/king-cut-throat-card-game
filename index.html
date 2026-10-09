@@ -219,6 +219,16 @@ button.card{cursor:pointer}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
 .toast.info{background:#e3f2fd;color:#0d2a44}
 @keyframes toast{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+/* The King point (+1): over everything at the screen's center, tilted, green fading to clear from top to bottom,
+   with a green stroke, weathered: a grime speckle in the fill (SVG noise) and a mask of noise that chips the fill and
+   the stroke (large chips and fine pits).
+   kingPop sets the tilt and runs the motion. */
+.king-pop{position:fixed;left:50%;top:45%;z-index:70;pointer-events:none;font-size:clamp(110px,28vmin,280px);font-weight:900;line-height:1;letter-spacing:-.04em;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.03 0 0 0 0 0.12 0 0 0 0 0.05 0 0 0 1.5 -0.62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E"),linear-gradient(to bottom,rgba(52,199,89,.8) 40%,rgba(52,199,89,0) 100%);background-size:300px 300px,100% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -18 13.24'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -18 13.78'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -18 13.24'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -18 13.78'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");-webkit-mask-composite:source-in;mask-composite:intersect;mask-size:300px 300px;
+  -webkit-text-stroke:max(3px,.018em) rgb(30,142,62);paint-order:stroke fill;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transform:translate(-50%,-50%);opacity:0}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:16px}
 .overlay[hidden]{display:none}
 .modal{background:#123f28;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:20px;max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.5)}
@@ -4783,7 +4793,7 @@ const App = (() => {
     appendLog(text, classes.join(' '));
     if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
     else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
-    if (!classes.includes('trick-head')) showLatest();
+    if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
@@ -4825,12 +4835,26 @@ const App = (() => {
   /* The Latest cell (Advanced UI): the newest line of the Latest Scroll, trick headings left out. A new line drops in
      from above the window, exactly the size of the cell, and becomes the Latest line. The newest line wins: a line
      still falling lands at once. Instant speed, reduced motion, or still (a redraw of the log) set it in place.
-     An app note (text that is not a game event) drops in the same way but stays out of the log. */
+     An app note (text that is not a game event) drops in the same way but stays out of the log.
+     One move can add several lines at once (an accept and the kitty card it moves; the last card, the trick's winner
+     and a King point). They show together, at most 2, so the first is not gone before it can be read: a card played
+     is left out when the same move adds more (the card is on the table). */
   let falling = null;
+  /* burst: the lines that the current move added, as [html, classes]. It closes after the move (a microtask). */
+  let burst = [], burstOpen = false;
+  function noteBurst(li) {
+    if (!burstOpen) { burst = []; burstOpen = true; queueMicrotask(() => { burstOpen = false; }); }
+    burst.push(li);
+  }
+  function burstHTML() {
+    const more = burst.filter(li => !li.classList.contains('play'));
+    return (more.length ? more : burst).slice(-2).map(li => li.innerHTML).join('</li><li>');
+  }
   function showLatest(still, note) {
     const cell = $('latestCell'), line = $('latestLine');
     let html = note || '';
-    if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
+    if (!note && burstOpen && burst.length) html = burstHTML();
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
@@ -4848,6 +4872,40 @@ const App = (() => {
   function note(text, cls) {
     if (app.ui.advanced) showLatest(false, escHTML(text));
     else toast(text, cls);
+  }
+  /* A King point: a large green +1 hangs over everything, every time, in both tables. Yours then drops toward your
+     seat and dissolves; a bot's flies into that bot's seat and shrinks into its score, so it is clear who scored. Its
+     length follows the game speed (Instant uses Fast's: it holds nothing up). */
+  function kingPop(p) {
+    const ms = { slow: 2400, normal: 1800 }[app.ui.speed] || 1100;
+    const old = document.querySelector('.king-pop'); if (old) old.remove();
+    const el = document.createElement('div');
+    el.className = 'king-pop';
+    el.setAttribute('aria-hidden', 'true');
+    el.textContent = '+1';
+    const tilt = 'rotate(' + (Math.random() * 30 - 15).toFixed(1) + 'deg)', at = (y, k) => 'translate(-50%,' + y + '%) ' + tilt + ' scale(' + k + ')';
+    const shadow = 'drop-shadow(0 6px 14px rgba(0,0,0,.35))';
+    /** @type {Keyframe[]} */
+    const start = [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
+        { opacity: 1, transform: at(-50, 1.06), offset: .12 },
+        { opacity: 1, transform: at(-48, 1), offset: .22 }];
+    document.body.appendChild(el);
+    /* A bot's seat: the +1 ends on its score (the seat when the score is not drawn). */
+    const seat = p !== HUMAN && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
+    /** @type {Keyframe[]} */
+    let frames;
+    if (seat) {
+      const r = seat.getBoundingClientRect(), c = el.getBoundingClientRect();
+      const dx = Math.round(r.left + r.width / 2 - (c.left + c.width / 2)), dy = Math.round(r.top + r.height / 2 - (c.top + c.height / 2));
+      const to = k => 'translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px)) ' + tilt + ' scale(' + k + ')';
+      frames = start.concat([{ opacity: 1, transform: at(-48, 1), filter: shadow + ' blur(0)', offset: .45 },
+        { opacity: .95, transform: to(.16), filter: shadow + ' blur(0)', offset: .88, easing: 'ease-out' },
+        { opacity: 0, transform: to(.08), filter: shadow + ' blur(2px)' }]);
+    } else {
+      frames = start.concat([{ opacity: 1, transform: at(-44, 1), filter: shadow + ' blur(0)', offset: .55 },
+        { opacity: 0, transform: at(-18, .92), filter: shadow + ' blur(10px)' }]);
+    }
+    el.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
   }
   /* The classic UI's toasts. The Advanced UI has none: its log lines drop into the Latest cell. */
   function toast(text, cls) {
@@ -4890,7 +4948,7 @@ const App = (() => {
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); kingPop(e.player); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
