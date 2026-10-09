@@ -589,6 +589,10 @@ body.adv .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 
 body.adv .panel dt{color:var(--muted)}
 body.adv .panel dd{margin:0}
 body.adv .panel .pip-red{color:#ff6b6b}
+body.adv .panel .pvoid{display:flex;align-items:center;gap:8px;margin:2px 0 0}
+body.adv .panel .vpip{font-size:22px;line-height:1;color:var(--ink)}
+body.adv .panel .vpip.pip-red{color:#ff6b6b}
+body.adv .panel .vpip.none{color:var(--muted);font-weight:400}
 body.adv .panel p{margin:2px 0;color:var(--muted)}
 body.adv .persona .habit{background:#4a5a6a;border-color:transparent!important;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
 body.adv .trick .slot.win .card{box-shadow:0 0 0 3px #0b1a12,0 0 0 6px #fff,0 0 24px rgba(255,255,255,.55),0 18px 22px rgba(0,0,0,.5)!important}
@@ -4480,13 +4484,17 @@ const App = (() => {
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
     table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
+    /* Under the anchor; when it does not fit there, above it; always inside the window (a popup never opens off
+       screen, e.g. from your trick circles at the bottom of a phone). */
+    const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
+    const y = below + h <= innerHeight - 8 || above < 8 ? Math.max(8, Math.min(below, innerHeight - 8 - h)) : above;
     if (anchor.closest('#topbar')) {
       pn.style.position = 'fixed';
       pn.style.left = Math.min(Math.max(8, r.left), innerWidth - pn.offsetWidth - 8) + 'px';
-      pn.style.top = (r.bottom + 6) + 'px';
+      pn.style.top = y + 'px';
     } else {
       pn.style.left = Math.min(Math.max(8, r.left - tb.left), tb.width - pn.offsetWidth - 8) + 'px';
-      pn.style.top = (r.bottom - tb.top + 6) + 'px';
+      pn.style.top = (y - tb.top) + 'px';
     }
     anchor.classList.add('open');
   }
@@ -4553,15 +4561,10 @@ const App = (() => {
         return [n(seat) + ' · score', body];
       }
       case 'backs': {
-        const k = v.handCounts[seat];
-        let body = p1(n(seat) + ' holds ' + k + (k === 1 ? ' card.' : ' cards.'));
-        if (memory) {
-          const voids = v.voids[seat] || [], bids = bidsText(v, seat);
-          body += sub('Bids this hand') + p1(bids.length ? bids.join(' · ') : 'None yet.');
-          body += sub('Shown void in') + p1(voids.length ? voids.map(suit).join(', ') + ' (could not follow suit)' : 'No suit yet.');
-          if (turnedTo() === seat) body += turnedNote();
-        }
-        return [n(seat) + ' · hand', body + off];
+        /* A hand of backs: only the suits this player has shown void in (could not follow suit), as pips. */
+        const voids = v.voids[seat] || [];
+        const pips = voids.length ? voids.map(x => '<b class="vpip' + (R.COLOR[x] === 'red' ? ' pip-red' : '') + '" title="' + R.SUIT_NAME[x] + '">' + R.SYMBOL[x] + '</b>').join('') : '<b class="vpip none">—</b>';
+        return [n(seat) + ' · hand', '<p class="pvoid">Void of ' + pips + '</p>'];
       }
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
