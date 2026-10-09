@@ -70,7 +70,7 @@ Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the
 | Setting | What it does |
 |---|---|
 | **Advanced UI** | Off by default. A minimal table for players who know the rules. See **Advanced UI** below. |
-| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet and where the turned card went. In the standard table, a seated player's profile adds a **This hand** box with the same bids and voids. |
+| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet and where the turned card went. Your own discards and the turned card count as seen. In the standard table, a seated player's profile adds a **This hand** box with the same bids and voids. |
 
 Both settings are kept after a reload. **Defaults** (Bots tab) does not change them.
 
@@ -80,7 +80,9 @@ Both settings are kept after a reload. **Defaults** (Bots tab) does not change t
 |---|---|
 | **Mediator picks the Showdown lead** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
 
-The setting is kept after a reload. A change applies from your next game: a game keeps the rules it started with, so its replay code gives the same game.
+| **Polite Play** | On by default. In the Advanced UI, a click on a player's trick circles shows the tricks they won this hand. Off: the circles only count, and you keep track of the tricks yourself. This is table manners, not a game rule, so a change applies at once. |
+
+Both settings are kept after a reload. A change to **Mediator picks the Showdown lead** applies from your next game: a game keeps the rules it started with, so its replay code gives the same game. **Polite Play** is not part of a game or its replay code.
 
 ### Game: Your seat
 
@@ -157,7 +159,7 @@ Each time a King wins a trick, a large green **+1** appears at the center of the
 
 Settings → Game → **Advanced UI**. The same game, drawn as a minimal table with no instructions. The game still enforces every rule: cards you cannot play stay dimmed, and a confirm button waits for enough cards.
 
-- **Seats.** The name, the score as a number, and tags in one fixed order as they come up: **Human** or **AI**, **Dealer**, **Namer**, **Kitty**, **Turn**, **Led**, then **Mediator** (**MED** on phones) or **SD** (Showdown). A bot's hand shows as small backs. Circles fill as tricks are won: 7 in a hand; a Showdown player counts Showdown tricks (5). Click the circles to see the cards of each trick that player won this hand: one column per player, headed by their name and starting with that player, with the card that led the trick ringed. During a Showdown, a Showdown player's list shows their Showdown tricks.
+- **Seats.** The name, the score as a number, and tags in one fixed order as they come up: **Human** or **AI**, **Dealer**, **Namer**, **Kitty**, **Turn**, **Led**, then **Mediator** (**MED** on phones) or **SD** (Showdown). A bot's hand shows as small backs. Circles fill as tricks are won: 7 in a hand; a Showdown player counts Showdown tricks (5). Click the circles to see the cards of each trick that player won this hand: one column per player, headed by their name and starting with that player, with the card that led the trick ringed. With the house rule **Polite Play** off, the circles only count. During a Showdown, a Showdown player's list shows their Showdown tricks.
 - **Information strip** (the bottom row of the header, so it stays in view when you scroll): **Trump**, **Hand** and the trick number (outside trick play, the stage of the hand: Discard, Bidding, Exchange, Result or Showdown), the **Latest** line (see below), **Turned up** (**Blocked** in round 2) and **Outside** (the outside pile's count; in a Showdown, a small card per discard, yours face up). Click **Outside** to see what the pile is and the cards you put in it.
 - **Play area.** Before the first trick, the kitty lies spread so you can count it, with the turned card face up on top. During the discard, the kitty lies beside the outside pile. The trick is in 3D: each bot card faces your space, the cards stack in play order, and the winning card lifts with a white edge. Every **King** has a **KING** tag. All action buttons sit at the bottom of the play area; round 2 names a suit with its symbol. **Skip** moves to the header.
 - **Information popups.** Click any strip cell (**Trump**, **Hand**, **Turned up**, **Outside**), any seat tag, a score or a hand of backs to see what it means: the trump order, who dealt and who leads, what the turned card did, a player's points this game and this hand, and so on. **Table memory** (Settings → Game) adds the counts a careful player keeps: trumps and Kings played and still out, where the turned card went. A bot's hand of backs shows only **Void of** and the suits it has shown void in (could not follow suit). A bot's profile (tap its figure) stays about who it is. A popup opens under what you clicked, or above it when it would not fit, and always inside the window.

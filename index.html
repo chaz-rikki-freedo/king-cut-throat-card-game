@@ -691,6 +691,7 @@ body.adv .tag .short{display:none}
       <div class="set-card" id="setHouseRules">
         <label class="set-row"><span class="set-text"><span class="set-name">Mediator picks the Showdown lead</span><span class="set-desc">Off: the latest main-trick winner leads. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setMediatorLead"></label>
         <p class="k-hint rule-note set-note" id="setMediatorNow" hidden></p>
+        <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Advanced UI: a click on trick circles shows the tricks won. Off: you remember them. Applies at once.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
       </div>
       <h3 class="set-head">Your seat</h3>
       <div class="set-card" id="setSeat">
@@ -3490,12 +3491,14 @@ const Render = (() => {
     return '<div class="tagbox">' + t.join('') + '</div>';
   }
   /* Trick circles fill as tricks are won: 7 a hand; a Showdown player counts Showdown tricks (5). A click opens
-     the tricks that player won this hand. */
-  function advCircles(v, p) {
+     the tricks that player won this hand, unless the house rule Polite Play is off: then the circles only count. */
+  function advCircles(v, p, ui) {
     const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(p);
     const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? 5 : 7;
     let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
-    return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + n + ' of ' + of + ' tricks won">' + dots + '</div>';
+    const label = n + ' of ' + of + ' tricks won';
+    if (ui && ui.houseRules && ui.houseRules.politePlay === false) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
+    return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + label + '">' + dots + '</div>';
   }
   /* A seat's score: a click opens the points (adv-info). */
   const scoreButton = (v, p, ctx) => '<span class="score sscore tappable' + (ctx.flashSeats.has(p) && !held(ctx, p) ? ' flash' : '') + '" role="button" tabindex="0" data-action="adv-info" data-kind="score" data-seat="' + p + '" aria-label="Score ' + v.scores[p] + ', about the points">' + boardScore(v.scores[p] - held(ctx, p)) + '</span>';
@@ -3503,7 +3506,7 @@ const Render = (() => {
     let backs = '';
     for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
     return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + scoreButton(v, p, ctx) + '</div>' +
-      advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p);
+      advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p, ctx.ui);
   }
   function advMeHTML(v, ui, ctx) {
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
@@ -3511,7 +3514,7 @@ const Render = (() => {
     return '<div class="me-head">' + (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>' +
       scoreButton(v, v.seat, ctx) + advTags(v, v.seat, ui) +
       (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
-      hand + advCircles(v, v.seat);
+      hand + advCircles(v, v.seat, ui);
   }
 
   /* The information strip: Trump, Hand (and the trick), Latest (the newest line of the Latest Scroll), Turned up
@@ -3706,7 +3709,7 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText });
+  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4108,8 +4111,9 @@ const App = (() => {
   };
   const HUMAN = 0;
   /* House rules (Settings → Game), for new games: a game keeps the rules it started with. Render reads
-     them through app.ui to say when the running game differs. */
-  const HOUSE = { mediatorLead: true };
+     them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
+     Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code. */
+  const HOUSE = { mediatorLead: true, politePlay: true };
   const app = {
     state: null,
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
@@ -4520,9 +4524,14 @@ const App = (() => {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
         let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
         if (memory) {
-          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), unseen = order.filter(id => !played.includes(id) && !inHand(id));
+          /* Seen but not played: your own discards, and the turned card (everyone saw it turned up). */
+          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), left = order.filter(id => !played.includes(id) && !inHand(id));
+          const discarded = left.filter(id => v.myOut.includes(id)), turnedOut = v.flippedOut && left.includes(v.flipped) ? v.flipped : null;
+          const unseen = left.filter(id => !discarded.includes(id) && id !== v.flipped);
           body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
-            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) + p1('You hold ' + mine.length + '. The others are in other hands or out of play.') + turnedNote();
+            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) +
+            p1('You hold ' + mine.length + '.' + (discarded.length ? ' You discarded ' + discarded.map(mini).join(' ') + '.' : '') +
+              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.') + turnedNote();
         }
         return ['Trump', body + off];
       }
@@ -5374,7 +5383,7 @@ const App = (() => {
       case 'skip': skip(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x).replace('<div class="p-dials">', thisHandHTML(x.id) + '<div class="p-dials">'); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
-      case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
+      case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
@@ -5558,7 +5567,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -5573,6 +5582,7 @@ const App = (() => {
     if (typeof x.memory !== 'boolean' && x.thisHand === true) app.ui.memory = true;
     if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
+    if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
   }
 
   function init() {
@@ -5619,6 +5629,8 @@ const App = (() => {
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); draw([]); });
+    $('setPolitePlay').checked = app.houseRules.politePlay;
+    $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; closePanel(); saveSettings(); if (app.state) draw([]); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
@@ -6548,6 +6560,20 @@ const SelfTest = (() => {
       } finally { ui.memory = wasMemory; }
       eq('every information popup builds, all through 3 games, Table memory off and on', fails, []);
       check('the popup check ran', built > 1000, built + ' popups');
+      /* Table memory: a trump you discarded, or the turned card, is never listed as not seen yet. */
+      {
+        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker), m = id => Render.microHTML(id, 'Jkr');
+        Object.assign(tv, { trump: T, hand: [], played: [], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        ui.memory = true;
+        try {
+          const body = App.infoPanel(tv, 'trump', null, anchor())[1], unseen = body.split('Not seen yet')[1].split('<p>')[0];
+          check('Table memory: own discards and the turned card are not listed as not seen yet', !unseen.includes(m(trumps[0])) && !unseen.includes(m(trumps[1])) && unseen.includes(m(trumps[2])) && body.includes('You discarded'));
+        } finally { ui.memory = wasMemory; }
+      }
+      /* Polite Play (house rule): on, trick circles open the tricks won; off, they only count. */
+      const pv = buildView(Engine.createGame(2100), 0), circles = polite => Render.advCircles(pv, 1, { houseRules: { politePlay: polite } });
+      check('Polite Play on: trick circles open the tricks won', circles(true).includes('data-action="adv-tricks"'));
+      check('Polite Play off: trick circles only count', !circles(false).includes('data-action') && circles(false).includes('tricks won'));
     });
 
     safeRun('restart', () => {
