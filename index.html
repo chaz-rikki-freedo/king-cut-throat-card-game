@@ -184,7 +184,7 @@ button.card{cursor:pointer}
 @keyframes enter{from{transform:translateY(14px) scale(.92);opacity:0}to{transform:none;opacity:1}}
 .logpanel{background:var(--felt-edge);border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:200px;max-height:80vh}
 .logpanel h2{font-size:14px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.gamelog{list-style:none;margin:0;padding:8px 10px;overflow:auto;font-size:13px;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
+.gamelog{list-style:none;margin:0;padding:8px 10px;overflow:auto;overscroll-behavior:contain;font-size:13px;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
 .gamelog li{padding:3px 0}
 .gamelog li.k{color:var(--gold);font-weight:700}
 .gamelog li.h,.gamelog li.s{font-weight:600}
@@ -485,7 +485,10 @@ body.adv .table.showdown .not-sd{background:var(--panel)!important}
 body.adv .tagbox .tag.mediator,body.adv .tagbox .tag.duelist{flex-basis:calc((100% - 8px) / 3)!important}
 body.adv .me .tagbox .tag.mediator,body.adv .me .tagbox .tag.duelist{flex-basis:66px!important;padding:0 2px!important}
 body.adv .tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
-body.adv .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em;box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+/* Tags are flat badges; only the one you can click (Human/AI, with the Your seat setting on) is raised like a button. */
+body.adv .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em}
+body.adv .tagbox .tag.seat-toggle{box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+body.adv .tagbox .tag.seat-toggle:hover{filter:brightness(1.15)}
 body.adv .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   body.adv .sscore{font-size:22px!important}
@@ -508,7 +511,9 @@ body.adv .pile-act .btn.sym-btn{min-width:46px;padding:8px 12px;font-size:20px;l
   body.adv .pile-act .btn{padding:8px 12px}
 }
 body.adv .tappable{cursor:pointer}
-body.adv .info .cell.tappable{box-shadow:inset 0 -2px 0 rgba(255,255,255,.18)}
+body.adv .info .cell.tappable{box-shadow:inset 0 -2px 0 rgba(255,255,255,.18);cursor:pointer}
+body.adv .info .cell.tappable:hover{background:rgba(255,255,255,.08)}
+body.adv .info .cell.tappable:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 body.adv .info .cell.tappable.open{box-shadow:0 0 0 2px var(--gold)!important}
 body.adv .tpips.tappable.open{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
 body.adv .panel{position:absolute;z-index:30;min-width:180px;max-width:300px;background:#0b2a1a;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;box-shadow:0 10px 26px rgba(0,0,0,.55);font-size:13px}
@@ -4634,8 +4639,13 @@ const App = (() => {
   function addLog(text, cls, isShowdown) {
     const classes = (cls || '').split(' ').filter(Boolean);
     if (isShowdown) classes.push('sd');
+    /* The log follows new lines only from its newest end (the top in the Advanced UI, the bottom otherwise). A reader
+       scrolled into older lines stays on the same lines. */
+    const ol = $('gameLog'), top = app.ui.advanced, h0 = ol.scrollHeight;
+    const away = top ? ol.scrollTop : h0 - ol.scrollTop - ol.clientHeight;
     appendLog(text, classes.join(' '));
-    $('gameLog').scrollTop = app.ui.advanced ? 0 : $('gameLog').scrollHeight;
+    if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
+    else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
     if (!classes.includes('trick-head')) showLatest();
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
