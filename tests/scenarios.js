@@ -140,7 +140,7 @@ function expect(name, ok, detail) {
       StorageGate.locked = true;
       localStorage.setItem('kct.slots', JSON.stringify({ free: { format: SAVE_FORMAT, mode: 'free', state: s, personas: [null, 'kit', 'tex'], wave: { n: null } }, waves: null, last: 'free' }));`);
     await reload();
-    r = await step(`return { note: q('#overlay .wave-note') && q('#overlay .wave-note').textContent, resume: !!q('[data-action="resume-free"]') };`);
+    r = await step(`return { note: q('#overlay .wave-note') && q('#overlay .wave-note').textContent, resume: !!q('[data-action="resume-free"]:not([disabled])') };`);
     expect('the menu says once that the game could not be loaded', /could not be loaded/.test(r.note || '') && !r.resume, r);
     await reload();
     r = await step(`return !!q('#overlay .wave-note');`);

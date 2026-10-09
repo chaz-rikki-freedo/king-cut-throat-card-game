@@ -6,6 +6,20 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
 
+The menu has a card for each mode, **Free play** and **Waves**, and a row of tools. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game**. Every button stays in the same place whatever is saved or running.
+
+| Item | What it does |
+|---|---|
+| **Resume** (in each card) | Continues that mode's game: the one you are playing (the menu closes), or the saved one. Disabled when there is none. At launch, the last game played is the main button. |
+| **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
+| **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. |
+| **Rules** | The quick rules. **Back** returns to the menu. |
+| **Tutorial** | Coming soon (disabled). |
+| **Install** | Shown when the browser offers it: play from your home screen, also offline. |
+| **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
+
+A link with `?seed=` or `?wave=` starts that game at once, without the menu.
+
 ## Header
 
 The header stays at the top of the window, and the page scrolls under it. From left to right:
@@ -15,17 +29,6 @@ The header stays at the top of the window, and the page scrolls under it. From l
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
 - **Settings** (the sliders icon).
-
-| Item | What it does |
-|---|---|
-| **Resume Waves** / **Resume Free play** | Continues the unfinished game of that mode. Shown only when one is saved. At launch, the last game played is the main button. |
-| **Play wave** | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. |
-| **New game** | Free play: the seed picks two random opponents. |
-| **Tutorial** | Coming soon (disabled). |
-| **Rules** | The quick rules. **Back** returns to the menu. |
-| **Just enter** (launch) / **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
-
-A link with `?seed=` or `?wave=` starts that game at once, without the menu.
 
 ### Free play: choose seats
 
