@@ -286,13 +286,15 @@ button.card{cursor:pointer}
 .menu-wave select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 10px;min-height:40px;font:inherit}
 .wave-note{margin:8px 0;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.25);font-weight:600}
 .swap{max-width:520px;text-align:center}
-.swap-seats{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px 0}
+.swap-seats{display:flex;align-items:stretch;justify-content:center;gap:12px;margin:14px 0}
 .swap-seat{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border-radius:12px;background:rgba(0,0,0,.25)}
 .swap-seat .p-face{width:84px;height:84px;background:center bottom/contain no-repeat}
 .swap-seat b{font-size:18px}
 .swap-seat small{font-size:12px;color:var(--muted)}
 .swap-side{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.swap-btn{font-size:22px;padding:8px 14px;flex:none}
+.swap-btn{font-size:22px;padding:8px 14px;flex:none;align-self:center}
+/* On a phone a seat's label can take two lines: both keep room for two, so the two figures line up. */
+@media (max-width:599px){ .swap-side{min-height:2.6em;display:flex;align-items:center} }
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:13px}
 .install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:#8fb89a}
 .ask-layer{z-index:75}
@@ -3461,7 +3463,8 @@ const Render = (() => {
   const STAGE = Object.freeze({
     [P.DISCARD]: 'Discard', [P.REVEAL]: 'Bidding', [P.BID1]: 'Bidding', [P.BID2]: 'Bidding', [P.EXCHANGE]: 'Exchange',
     [P.HAND_SCORE]: 'Result', [P.ABANDONED]: 'Thrown in', [P.JOKER_VOID]: 'Redeal',
-    [P.SHOWDOWN_SETUP]: 'Showdown', [P.SHOWDOWN_DISCARD]: 'Showdown', [P.SHOWDOWN_LEAD]: 'Showdown', [P.SHOWDOWN_SCORE]: 'Showdown'
+    [P.SHOWDOWN_SETUP]: 'Showdown', [P.SHOWDOWN_DISCARD]: 'Showdown', [P.SHOWDOWN_LEAD]: 'Showdown', [P.SHOWDOWN_SCORE]: 'Showdown',
+    [P.GAME_OVER]: 'Game over'
   });
   /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
   function advInfoHTML(v) {
@@ -4777,7 +4780,9 @@ const App = (() => {
     const sd = v.showdown && v.showdown.active;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const k = st.pts[p].king;
-      return '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
+      /* The Advanced UI names each player in their color, as the hand result does. */
+      const name = app.ui.advanced ? '<span style="color:var(--name' + p + ')">' + n(p) + '</span>' : n(p);
+      return '<tr><td>' + name + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
     }).join('');
     return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
