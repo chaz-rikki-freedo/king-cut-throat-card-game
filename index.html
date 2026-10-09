@@ -3498,11 +3498,14 @@ const Render = (() => {
      card face up from the turn-up (dimmed and crossed out when blocked in round 2). During the discard the same
      spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
   function advKittyHTML(v, order) {
+    const backs = n => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * .45)"></div>'; return h; };
     if (v.phase === P.DISCARD) {
       const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
       const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
         [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>').join('');
-      return '<div class="kitty-spot"><div class="piles-row"><div class="outpile' + (order.length ? '' : ' empty') + '" aria-label="Outside pile: ' + v.outsideCount + ' cards">' + layers + '</div></div></div>';
+      /* The kitty, dealt as the fourth packet, lies beside the outside pile until the discards are done. */
+      return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + backs(v.kittyCount) + '</div>' +
+        '<div class="outpile' + (order.length ? '' : ' empty') + '" aria-label="Outside pile: ' + v.outsideCount + ' cards">' + layers + '</div></div></div>';
     }
     const face = v.flipped && (v.phase === P.BID1 || v.phase === P.BID2 || v.phase === P.JOKER_VOID);
     let cards = '';
@@ -3659,7 +3662,7 @@ const Fx = (() => {
 
   let prev = null, out = null, last = null;
   let handDeal = { key: '', t0: 0, end: 0 }, dealHold = 0, kittyHold = 0, mineLand = null;
-  let discardHand = -1, discarders = [], dealKey = '', dealStart = 0, trickKey = '';
+  let discardHand = -1, discarders = [], dealKey = '', dealStart = 0, turnStart = 0, trickKey = '';
   const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
@@ -3880,29 +3883,51 @@ const Fx = (() => {
     holdMyLayer(v, now);
   }
 
+  /* The deal of a hand goes in packets, as the Engine deals (dealCards), round the table from the dealer's left:
+     3 to each player, 3 to the kitty, 4 to each, then 3 to each. A packet's cards leave together, a little apart.
+     PACKET_GAP and PACKET_CARD are parts of the card's flight time. */
+  const PACKET_GAP = 0.25, PACKET_CARD = 0.05;
+  const KITTY_SLOT = 3;                      // the kitty's packet comes after the first round of three
+  const PACKETS = [[0, 3, 0], [3, 4, 4], [7, 3, 7]];   // [first card, cards, first slot] of each player's 3 packets
+  /* The start of a hand's deal: after the outside pile has cleared and the hand backs are home. */
+  function dealClock(key, now) {
+    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold), end: 0 };
+    return handDeal.t0;
+  }
+
   /* The kitty: the dealer's cards come face down from under the dealer's seat and land straight; then the dealer
-     turns the top card up in place. Held while the outside pile clears. */
+     turns the top card up in place. In the deal of a hand it is the fourth packet; otherwise it is held while the
+     outside pile clears. */
   function kittyDeal(v, now) {
     const kp = q('#center .kpile'), t = ms(); if (!kp) return;
     const k = v.handNumber + '|' + v.dealer;
-    if (dealKey !== k) { dealKey = k; dealStart = Math.max(now, kittyHold); }
+    if (dealKey !== k) {
+      dealKey = k; turnStart = 0;
+      dealStart = v.phase === Engine.P.DISCARD ? dealClock(String(v.handNumber), now) + KITTY_SLOT * PACKET_GAP * t : Math.max(now, kittyHold);
+    }
     const elapsed = now - dealStart, cards = qa('.card', kp), top = cards[cards.length - 1];
-    const turn = t + (cards.length - 1) * t * 0.45 + t * 0.4;
-    if (!t || !top || elapsed >= turn + t * 0.8) return;
-    if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
-    const up = !/\bback\b/.test(top.className), [dx, dy] = center(q('#seat' + v.dealer));
-    if (up && elapsed < turn + t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
-    cards.forEach((c, i) => { const [cx, cy] = center(c);
-      c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[v.dealer] + 'deg)' }, { transform: 'none' }],
-        { duration: t, delay: i * t * 0.45, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
-    if (up) {
-      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, delay: turn, easing: 'ease-in-out' }).currentTime = elapsed;
-      setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, turn + t * 0.4 - elapsed));
+    if (!t || !top) return;
+    const flight = t + (cards.length - 1) * t * PACKET_CARD, up = !/\bback\b/.test(top.className);
+    /* The dealer turns the top card up once it has landed: the first draw that shows it face up starts the turn. */
+    if (up && !turnStart) turnStart = Math.max(now, dealStart + flight + t * 0.4);
+    if (elapsed < flight) {
+      if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
+      const [dx, dy] = center(q('#seat' + v.dealer));
+      cards.forEach((c, i) => { const [cx, cy] = center(c);
+        c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[v.dealer] + 'deg)' }, { transform: 'none' }],
+          { duration: t, delay: i * t * PACKET_CARD, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
+    }
+    const turned = now - turnStart;
+    if (up && turned < t * 0.8) {
+      if (turned < t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
+      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, easing: 'ease-in-out' }).currentTime = turned;
+      setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, t * 0.4 - turned));
     }
   }
 
-  /* A new hand (or the Showdown deal): the cards go out from the dealer (the mediator in a Showdown) one at a time,
-     round the table from the dealer's left: your cards and the opponents' hand backs alike. */
+  /* A new hand: the cards go out from the dealer in packets (see PACKETS), round the table from the dealer's left:
+     your cards and the opponents' hand backs alike, each packet onto the next places of the hand from the left.
+     The Showdown deal: the mediator deals one card at a time, alternately, as the Engine does (dealShowdown). */
   function dealHand(v, now) {
     const P = Engine.P, t = ms(), sd = v.showdown && v.showdown.active, key = v.handNumber + (sd ? 'sd' : '');
     if (v.phase !== P.DISCARD && v.phase !== P.SHOWDOWN_DISCARD) return;
@@ -3910,14 +3935,19 @@ const Fx = (() => {
     const order = [1, 2, 3].map(k => (dealer + k) % 3).filter(p => !sd || v.showdown.participants.includes(p));
     const hands = order.map(p => p === v.seat ? qa('#hand .card[data-card]') : qa('#seat' + p + ' .mini-back'));
     if (!hands.some(h => h.length)) return;
-    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold), end: 0 };
-    const e = now - handDeal.t0, step = t * 0.06, most = Math.max(...hands.map(h => h.length));
-    handDeal.end = Math.max(handDeal.end, handDeal.t0 + t + step * order.length * most);
-    if (!t || !from || e > t + step * order.length * most) return;
+    const e = now - dealClock(key, now), step = t * 0.06;
+    /* When card i of the j-th player in the order leaves the dealer. */
+    const delay = sd ? (i, j) => (i * order.length + j) * step : (i, j) => {
+      const [first, , slot] = PACKETS.find(([f, n]) => i < f + n) || PACKETS[PACKETS.length - 1];
+      return (slot + j) * PACKET_GAP * t + (i - first) * PACKET_CARD * t;
+    };
+    const last = Math.max(...hands.map((h, j) => h.length ? delay(h.length - 1, j) : 0));
+    handDeal.end = Math.max(handDeal.end, handDeal.t0 + t + last);
+    if (!t || !from || e > t + last) return;
     const [fx, fy] = center(from);
     hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
       c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
-        { duration: t, delay: (i * order.length + j) * step, easing: 'ease-out', fill: 'backwards' }).currentTime = e; }));
+        { duration: t, delay: delay(i, j), easing: 'ease-out', fill: 'backwards' }).currentTime = e; }));
   }
 
   /* Trick cards slide in from their player's seat; at a trick's end the winner lifts once the last card has landed. */
@@ -3968,7 +3998,7 @@ const Fx = (() => {
     const layer = q('#fx'); if (layer) layer.remove();
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
-    discardHand = -1; discarders = []; dealKey = ''; trickKey = ''; layerStart.length = 0;
+    discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; trickKey = ''; layerStart.length = 0;
     for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
   }
 
