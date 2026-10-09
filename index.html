@@ -238,45 +238,62 @@ button.card{cursor:pointer}
 .modal td,.modal th{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:20px}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
-.settings{--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--set-bg:#0b0f0c;--set-line:#2c4434;--set-field:#11201a;--set-hint:#8fb89a;position:fixed;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;background:var(--set-bg);border:1px solid var(--set-line);border-radius:12px;z-index:60;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.6);font-size:14px;line-height:1.4}
+/* Settings: full screen, one tab at a time (Game, Bots, Expert, Tools). Each setting is a row: its name and a
+   one-line description, then its control. On/off settings are switches; the whole row toggles them. */
+.settings{--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--set-bg:#0b0f0c;--set-card:#111b15;--set-line:#24382c;--set-field:#16261d;--set-hint:#8fb89a;
+  position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--set-bg);font-size:15px;line-height:1.4}
 .settings[hidden]{display:none}
-.settings .set-top{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);position:sticky;top:0;background:var(--set-bg);z-index:1}
-.settings .set-title{margin:0;font-size:17px;font-weight:800}
-.settings .set-close{margin-left:auto;font-size:15px;font-weight:700;padding:8px 16px;min-height:44px}
-.settings .set-section{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s5) var(--s4);border-bottom:1px solid var(--set-line)}
-.settings .set-head{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--set-hint)}
-.settings .set-sub{margin:0;font-size:14px;font-weight:700}
-.settings .set-fields{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:var(--s3) var(--s4);align-items:center}
-.settings .set-fields > label{font-weight:600}
-.settings .set-fields > :nth-child(even){justify-self:start}
-.settings select,.settings input[type=number]{background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:6px;padding:6px 10px;min-height:36px;font:inherit}
-.settings input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--gold)}
-.settings input[type=range]{accent-color:var(--gold)}
-.settings label{display:inline-flex;gap:var(--s2);align-items:center}
+body.set-open{overflow:hidden}
+.settings .set-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);background:var(--set-bg)}
+.settings .set-title{margin:0;font-size:18px;font-weight:800}
+.settings .set-close{justify-self:end;font-size:15px;font-weight:700;padding:8px 16px;min-height:44px;margin:0}
+.settings .set-tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--set-field)}
+.settings .set-tab{appearance:none;border:0;background:transparent;color:var(--set-hint);font:inherit;font-weight:700;padding:8px 18px;min-height:40px;border-radius:9px;cursor:pointer}
+.settings .set-tab:hover{color:var(--ink)}
+.settings .set-tab[aria-selected="true"]{background:var(--gold);color:var(--gold-ink)}
+.settings .set-tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.settings .set-body{flex:1;overflow:auto;overscroll-behavior:contain}
+.settings .set-pane{max-width:720px;margin:0 auto;padding:var(--s5) var(--s4) 48px;display:flex;flex-direction:column;gap:var(--s3)}
+.settings .set-pane[hidden]{display:none}
+.settings .set-head{margin:var(--s3) 0 0;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.settings .set-head:first-child{margin-top:0}
+.settings .set-card{background:var(--set-card);border:1px solid var(--set-line);border-radius:12px;padding:0 var(--s4)}
+.settings .set-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s4);padding:14px 0;border-bottom:1px solid var(--set-line);min-height:60px}
+.settings .set-card > :last-child{border-bottom:0}
+.settings label.set-row{cursor:pointer}
+.settings .set-row-wide{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--s2)}
+.settings .set-row-wide .install-check{grid-column:1 / -1;grid-row:2}
+.settings .set-row-wide .set-btns{grid-column:2;grid-row:1}
+.settings .set-row-end{display:flex;justify-content:flex-end;min-height:0;padding:var(--s2) 0 var(--s3)}
+.settings .set-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.settings .set-name{font-weight:700}
+.settings .set-desc{color:var(--set-hint);font-size:13px}
+.settings .set-note{padding:var(--s2) 0}
+.settings .set-card > .set-note{border-bottom:1px solid var(--set-line);padding:var(--s3) 0 var(--s3) var(--s3)}
+.settings .set-card > .set-note:last-child{border-bottom:0}
+.settings select,.settings input[type=number]{background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:8px;padding:6px 10px;min-height:40px;font:inherit;max-width:12rem}
+.settings input[type=number]{width:5.5em}
+.settings input[type=range]{accent-color:var(--gold);width:9rem}
 .settings .set-range{display:inline-flex;gap:var(--s3);align-items:center}
-.settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums}
-.settings .k-hint{margin:0;color:var(--set-hint);font-size:13px;line-height:1.45;max-width:60ch}
+.settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums;text-align:right}
+.settings .set-btns{display:inline-flex;gap:var(--s2);flex-wrap:wrap;justify-content:flex-end}
+.settings .set-row > .btn{margin:0;min-width:5.5rem}
+/* The switch: a checkbox drawn as a track and a knob. */
+.settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:48px;height:28px;margin:0;border-radius:14px;background:#2f4337;border:1px solid #3d5747;position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.settings input.sw::before{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .15s}
+.settings input.sw:checked{background:var(--gold);border-color:var(--gold)}
+.settings input.sw:checked::before{transform:translateX(20px);background:#fff}
+.settings input.sw:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before{transition:none}}
+.settings .k-hint{margin:0;color:var(--set-hint);font-size:13px;line-height:1.45}
 /* The running game plays a house rule other than the setting (see leadRuleNote). */
 .rule-note{border-left:3px solid var(--gold);padding-left:8px}
 .settings .k-hint.rule-note{color:inherit}
-.settings details.set-section{display:block}
-.settings summary{cursor:pointer;display:flex;align-items:center;gap:var(--s2);min-height:24px}
-.settings details[open] > summary{margin-bottom:var(--s5)}
-.settings summary::-webkit-details-marker{display:none}
-.settings summary::before{content:'▸';color:var(--set-hint);font-size:12px;transition:transform .15s}
-.settings details[open] > summary::before{transform:rotate(90deg)}
-.settings summary:focus-visible{outline:2px solid var(--gold);outline-offset:4px;border-radius:4px}
-.settings .set-group{display:flex;flex-direction:column;gap:var(--s3)}
-.settings .set-group + .set-group{margin-top:var(--s5);padding-top:var(--s5);border-top:1px dashed var(--set-line)}
-.settings .set-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--s2) var(--s4)}
-.settings .set-checks label{min-height:32px}
 .settings .set-off{opacity:.45;pointer-events:none}
-.settings .set-actions{flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
-.settings .set-inline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5)}
-.settings .set-seed{display:inline-flex;gap:var(--s2);align-items:center}
+.settings .set-seed{display:inline-flex;gap:var(--s2);align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .settings .set-seed code{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;font-variant-numeric:tabular-nums}
-.settings .btn-sm{padding:4px 10px;font-size:12px}
-.settings .set-tests{padding:var(--s4);border-bottom:1px solid #2c4434;font-size:13px}
+.settings .btn-sm{padding:6px 12px;font-size:13px;min-height:36px;margin:0}
+.settings .set-tests{padding:var(--s3) 0;border-bottom:1px solid var(--set-line);font-size:13px}
 .settings .set-tests .t-sum{font-size:15px;font-weight:800;margin-bottom:6px}
 .settings .set-tests .t-sum.ok{color:#9be59b}.settings .set-tests .t-sum.bad{color:#ff8a80}
 .settings .set-tests ul{list-style:none;margin:0 0 6px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px 12px}
@@ -284,9 +301,19 @@ button.card{cursor:pointer}
 .settings .set-tests .t-fail{margin:6px 0;padding:6px 8px;background:#2a1212;border-radius:6px}
 .settings .set-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
 .settings .set-tests .t-stats{color:#8fb89a}
-.settings .set-bottom{display:flex;gap:var(--s3);padding:var(--s3) var(--s4);border-top:1px solid var(--set-line);position:sticky;bottom:0;background:var(--set-bg)}
-.settings pre:empty::before{content:'Event log is empty. Logging records only new events, from the moment it is turned on.';color:#7f9a86;font-style:italic}
-.settings pre{margin:0;padding:var(--s3) var(--s4);overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;flex:none;min-height:80px;max-height:30vh;white-space:pre-wrap;word-break:break-word}
+.settings pre:empty::before{content:'The event log is empty. It records new events while Event log is on.';color:#7f9a86;font-style:italic}
+.settings pre{margin:var(--s3) 0 0;padding:var(--s3);border-radius:8px;background:#070a08;overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;min-height:80px;max-height:40vh;white-space:pre-wrap;word-break:break-word}
+@media (max-width:620px){
+  .settings .set-top{grid-template-columns:1fr auto;padding:var(--s2) var(--s3) var(--s3)}
+  .settings .set-tabs{grid-column:1 / -1;grid-row:2}
+  .settings .set-tab{flex:1;padding:8px 6px}
+  .settings .set-close-word{display:none}
+  .settings .set-close{padding:8px 14px}
+  .settings .set-pane{padding:var(--s4) var(--s3) 40px}
+  .settings .set-card{padding:0 var(--s3)}
+  .settings select{max-width:9.5rem}
+  .settings input[type=range]{width:6.5rem}
+}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -324,7 +351,7 @@ button.card{cursor:pointer}
 .ask p{margin:0 0 4px;line-height:1.5}
 .update-note{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 32px)}
 .update-note[hidden]{display:none}
-/* ---- Advanced UI (Settings → Interface). A minimal table: tags, numbers and circles in the seats, the shared
+/* ---- Advanced UI (Settings → Game). A minimal table: tags, numbers and circles in the seats, the shared
    facts in one information strip, every action button in the play area, and motion that shows each move.
    Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
    and the This hand box of the profile dialog (with Table memory, standard table only). ---- */
@@ -638,117 +665,89 @@ body.adv .tag .short{display:none}
   <button class="btn" type="button" data-action="update-later">Later</button>
 </div>
 
-<div class="settings" id="settingsPanel" hidden>
+<div class="settings" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
   <header class="set-top">
-    <h2 class="set-title">Settings</h2>
-    <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close the settings panel">✕ Close</button>
+    <h2 class="set-title" id="setTitle">Settings</h2>
+    <div class="set-tabs" role="tablist" aria-label="Settings sections">
+      <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
+      <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
+      <button class="set-tab" type="button" role="tab" id="setTabExpert" aria-controls="setPaneExpert" data-action="set-tab" data-tab="Expert">Expert</button>
+      <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
+    </div>
+    <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close settings">✕<span class="set-close-word"> Close</span></button>
   </header>
-  <section class="set-section" id="setInterface">
-    <h3 class="set-head">Interface</h3>
-    <div class="set-fields">
-      <label for="setAdvancedUI">Advanced UI</label>
-      <label title="A minimal table for players who know the rules: no instructions, the shared facts in one strip, and motion that shows each move"><input type="checkbox" id="setAdvancedUI"> <span class="k-name">On</span></label>
-      <label for="setMemory">Table memory</label>
-      <label title="Also show what every player has seen this hand: bids, trumps and Kings played, voids shown, where the turned card went"><input type="checkbox" id="setMemory"> <span class="k-name">Count what has been played</span></label>
-    </div>
-    <p class="k-hint">Advanced UI (off by default): a minimal table with no instructions. Tags, numbers and circles replace the seat texts, one strip shows the trump, the hand, the latest event, the turned card and the outside pile, and the action buttons sit in the play area. The Outside cell and the trick circles open what they stand for. Reduced motion (a system setting) turns its animations off.</p>
-    <p class="k-hint">Table memory (off by default): shows what every player at the table has seen this hand. Never a card someone holds unseen. In the Advanced UI, a click on a strip cell, a tag, a score or a hand of backs explains it, and Table memory adds the counts: trumps and Kings played, and where the turned card went. A player's bids and the suits they have shown void in are in the popup of their hand of backs. In the standard table, they are in the player's profile.</p>
-  </section>
-  <section class="set-section" id="setHouseRules">
-    <h3 class="set-head">House rules</h3>
-    <div class="set-fields">
-      <label for="setMediatorLead">Showdown lead</label>
-      <label title="In a Showdown, the mediator picks which Showdown player leads the first trick"><input type="checkbox" id="setMediatorLead"> <span class="k-name">The mediator picks who leads</span></label>
-    </div>
-    <p class="k-hint rule-note" id="setMediatorNow" hidden></p>
-    <p class="k-hint">On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. Off: the Showdown player who won the latest main trick leads. A change applies from your next game: a game keeps the rules it started with.</p>
-  </section>
-  <section class="set-section" id="setBots">
-    <h3 class="set-head">Bots</h3>
-    <div class="set-fields" id="setPersonaRow">
-      <label for="setPersonas">Personalities</label>
-      <label title="Each bot plays its own style. Off: every bot plays with the settings below"><input type="checkbox" id="setPersonas" checked> <span class="k-name">Each bot plays its own way</span></label>
-    </div>
-    <p class="k-hint" id="setWaveNote" hidden>Waves always use their personalities. These bot settings apply to Free play.</p>
-    <div class="set-fields" id="setBotFields">
-      <label for="setTier" title="Sets AI thinking and AI knowledge together. Custom: you changed them under Advanced">Skill</label>
-      <select id="setTier">
-        <option value="novice">Novice</option>
-        <option value="casual">Casual</option>
-        <option value="club">Club player</option>
-        <option value="shark">Shark</option>
-        <option value="custom" disabled>Custom</option>
-      </select>
-      <label for="setCourage" title="How readily the bots call trump in both bidding rounds">Bid courage</label>
-      <select id="setCourage">
-        <option value="timid">Timid</option>
-        <option value="cautious">Cautious</option>
-        <option value="normal">Normal</option>
-        <option value="bold">Bold</option>
-      </select>
-      <label for="setRealTable">Real table</label>
-      <label title="Bots play like a typical human table: they pass more in both bidding rounds and pitch their lowest cards in the first discard"><input type="checkbox" id="setRealTable"> <span class="k-name">Human habits</span></label>
-    </div>
-    <p class="k-hint">With Personalities on, the settings below do not apply. Defaults: Personalities on; Casual, Normal, Real table off. Stronger skill makes the bots think longer.</p>
-  </section>
-  <details class="set-section" id="setAdvanced">
-    <summary><h3 class="set-head">Advanced</h3></summary>
-    <div class="set-group" id="setThinking">
-      <h4 class="set-sub">AI thinking</h4>
-      <div class="set-fields">
-        <label for="setWorlds" title="How many guesses about the hidden cards the bots make for each decision. Default 10.">Hunches</label>
-        <span class="set-range"><input type="number" id="setWorlds" min="1" max="200" step="1" value="10" style="width:5.5em"> <span class="k-hint">per decision</span></span>
-        <label for="setSkill" title="How often the bots imagine a random card when they replay a hand in their heads. Default 30%.">Brain farts</label>
-        <span class="set-range"><input type="range" id="setSkill" min="0" max="100" step="10" value="30"> <output id="setSkillOut">30%</output></span>
+  <div class="set-body">
+    <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
+      <h3 class="set-head">Table</h3>
+      <div class="set-card" id="setInterface">
+        <label class="set-row"><span class="set-text"><span class="set-name">Advanced UI</span><span class="set-desc">A minimal table for players who know the rules.</span></span><input class="sw" type="checkbox" id="setAdvancedUI"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Table memory</span><span class="set-desc">Show what everyone has seen this hand: bids, voids, trumps and Kings played.</span></span><input class="sw" type="checkbox" id="setMemory"></label>
       </div>
-      <p class="k-hint">Defaults: 10 hunches, 30% brain farts. Both change how long the bots think.</p>
-    </div>
-    <div class="set-group" id="setKnowledge">
-      <h4 class="set-sub">AI knowledge</h4>
-      <div class="set-checks">
-        <label title="Remember which suits each player has shown that they are out of (could not follow suit)"><input type="checkbox" data-knowledge="voids" checked> <span class="k-name">Spots voids</span></label>
-        <label title="Remember which cards it put in the outside pile"><input type="checkbox" data-knowledge="ownDiscards" checked> <span class="k-name">Remembers discards</span></label>
-        <label title="Also test the duck and balance plans. Off: greedy play only"><input type="checkbox" data-knowledge="showdownPlans" checked> <span class="k-name">Plans showdowns</span></label>
-        <label title="Read each player's bids as evidence about their hand"><input type="checkbox" data-knowledge="bids" checked> <span class="k-name">Reads bids</span></label>
-        <label title="Watch the race to 10 more and more as the leading score passes 5. Off: play for points only"><input type="checkbox" data-knowledge="scoreAware" checked> <span class="k-name">Watches score</span></label>
-        <label title="Track where the turned card went after the bidding"><input type="checkbox" data-knowledge="turnedCard" checked> <span class="k-name">Tracks upcard</span></label>
+      <h3 class="set-head">House rules</h3>
+      <div class="set-card" id="setHouseRules">
+        <label class="set-row"><span class="set-text"><span class="set-name">Mediator picks the Showdown lead</span><span class="set-desc">Off: the latest main-trick winner leads. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setMediatorLead"></label>
+        <p class="k-hint rule-note set-note" id="setMediatorNow" hidden></p>
       </div>
-    </div>
-  </details>
-  <details class="set-section" id="setSeat">
-    <summary><h3 class="set-head">Your seat</h3></summary>
-    <div class="set-fields">
-      <label for="setSeatAI">AI can play your seat</label>
-      <label title="On: a click on the Human tag of your seat hands it to the AI for this game"><input type="checkbox" id="setSeatAI"> <span class="k-name">The Human/AI tag works</span></label>
-      <label for="setSeatPersona" title="The personality the AI uses when it plays your seat">AI personality</label>
-      <select id="setSeatPersona"><option value="">From the seed</option></select>
-    </div>
-    <p class="k-hint">Off (default): the Human tag on your seat is a label only. On: click it to hand your seat to the AI, for this game only. Each new game starts with you in your seat. A game where the AI played your seat does not clear a wave and adds no results. A reload turns this off.</p>
-    <p class="k-hint">AI personality: the AI plays your seat as this personality. If it already sits West or East, or with From the seed (default), the seed picks one that is not at the table, so a replayed seed gets the same one. Your seat keeps the personality from its first hand-over for the rest of that game. Unlike the switch, this setting is kept after a reload.</p>
-  </details>
-  <section class="set-section set-actions">
-    <button class="btn" type="button" data-action="settings-reset">Defaults</button>
-    <p class="k-hint">Resets all bot settings. Settings are kept after a reload.</p>
-  </section>
-  <section class="set-section" id="setTools">
-    <h3 class="set-head">Tools</h3>
-    <div class="set-inline">
-      <label><input type="checkbox" id="setEnable"> Logging</label>
-      <span class="set-seed">Seed <code id="setSeed"></code> <button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button> <span class="k-hint" id="setCopied" aria-live="polite"></span></span>
-    </div>
-    <p class="k-hint" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser and are separate from the progress on the hosted game. The browser can clear them without a warning.</p>
-    <div class="set-group">
-      <h4 class="set-sub">Install</h4>
-      <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
-      <div class="set-inline"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button> <button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></div>
-    </div>
-  </section>
-  <div class="set-tests" id="setTests" hidden></div>
-  <pre id="setLog"></pre>
-  <footer class="set-bottom">
-    <button class="btn" type="button" data-action="run-tests">Run self-tests</button>
-    <button class="btn" type="button" data-action="clear-log">Clear</button>
-  </footer>
+      <h3 class="set-head">Your seat</h3>
+      <div class="set-card" id="setSeat">
+        <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
+      </div>
+    </section>
+    <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
+      <div class="set-card" id="setPersonaRow">
+        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
+      </div>
+      <p class="k-hint set-note" id="setWaveNote" hidden>Waves always use their personalities. These settings apply to Free play.</p>
+      <h3 class="set-head">Every bot</h3>
+      <div class="set-card" id="setBotFields">
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setTier">Skill</label><span class="set-desc">How well the bots play. Stronger bots think longer.</span></span>
+          <select id="setTier"><option value="novice">Novice</option><option value="casual">Casual</option><option value="club">Club player</option><option value="shark">Shark</option><option value="custom" disabled>Custom</option></select></div>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setCourage">Bid courage</label><span class="set-desc">How readily they call trump.</span></span>
+          <select id="setCourage"><option value="timid">Timid</option><option value="cautious">Cautious</option><option value="normal">Normal</option><option value="bold">Bold</option></select></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Real table</span><span class="set-desc">Human habits: pass more, pitch the lowest cards first.</span></span><input class="sw" type="checkbox" id="setRealTable"></label>
+      </div>
+      <div class="set-card">
+        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Personalities on; Casual, Normal, no habits; Expert at its defaults.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
+      </div>
+    </section>
+    <section class="set-pane" id="setPaneExpert" role="tabpanel" aria-labelledby="setTabExpert" hidden>
+      <p class="k-hint set-note">Fine-tunes Skill for every bot. With Personalities on, it does not apply.</p>
+      <div id="setAdvanced">
+        <h3 class="set-head">AI thinking</h3>
+        <div class="set-card" id="setThinking">
+          <div class="set-row"><span class="set-text"><label class="set-name" for="setWorlds">Hunches</label><span class="set-desc">Guesses about the hidden cards per decision. Default 10.</span></span><input type="number" id="setWorlds" min="1" max="200" step="1" value="10"></div>
+          <div class="set-row"><span class="set-text"><label class="set-name" for="setSkill">Brain farts</label><span class="set-desc">How often a bot imagines a random card while it thinks. Default 30%.</span></span><span class="set-range"><input type="range" id="setSkill" min="0" max="100" step="10" value="30"><output id="setSkillOut">30%</output></span></div>
+        </div>
+        <h3 class="set-head">AI knowledge</h3>
+        <div class="set-card" id="setKnowledge">
+          <label class="set-row"><span class="set-text"><span class="set-name">Spots voids</span><span class="set-desc">Remembers who could not follow suit.</span></span><input class="sw" type="checkbox" data-knowledge="voids" checked></label>
+          <label class="set-row"><span class="set-text"><span class="set-name">Remembers discards</span><span class="set-desc">Remembers the cards it put in the outside pile.</span></span><input class="sw" type="checkbox" data-knowledge="ownDiscards" checked></label>
+          <label class="set-row"><span class="set-text"><span class="set-name">Plans showdowns</span><span class="set-desc">Also tries ducking and balancing, not only greedy play.</span></span><input class="sw" type="checkbox" data-knowledge="showdownPlans" checked></label>
+          <label class="set-row"><span class="set-text"><span class="set-name">Reads bids</span><span class="set-desc">Takes each bid as a clue to that player's hand.</span></span><input class="sw" type="checkbox" data-knowledge="bids" checked></label>
+          <label class="set-row"><span class="set-text"><span class="set-name">Watches score</span><span class="set-desc">Plays the race to 10 harder once a score passes 5.</span></span><input class="sw" type="checkbox" data-knowledge="scoreAware" checked></label>
+          <label class="set-row"><span class="set-text"><span class="set-name">Tracks upcard</span><span class="set-desc">Follows where the turned card went.</span></span><input class="sw" type="checkbox" data-knowledge="turnedCard" checked></label>
+        </div>
+      </div>
+    </section>
+    <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
+      <div class="set-card" id="setTools">
+        <div class="set-row"><span class="set-text"><span class="set-name">Seed</span><span class="set-desc">This game's seed, to share or replay its deal.</span></span><span class="set-seed"><code id="setSeed"></code><button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button><span class="k-hint" id="setCopied" aria-live="polite"></span></span></div>
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline.</span></span>
+          <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
+          <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></span></div>
+        <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
+      </div>
+      <h3 class="set-head">Diagnostics</h3>
+      <div class="set-card">
+        <div class="set-row"><span class="set-text"><span class="set-name">Self-tests</span><span class="set-desc">Check the game in this browser.</span></span><button class="btn" type="button" data-action="run-tests">Run</button></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Event log</span><span class="set-desc">Record each game event below, from now on.</span></span><input class="sw" type="checkbox" id="setEnable"></label>
+        <div class="set-tests" id="setTests" hidden></div>
+        <pre id="setLog"></pre>
+        <div class="set-row set-row-end"><button class="btn btn-sm" type="button" data-action="clear-log">Clear log</button></div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
@@ -3106,7 +3105,7 @@ const Render = (() => {
   }
   const backHTML = () => '<div class="card back" aria-hidden="true"></div>';
 
-  /* auto: the AI is playing the human seat. canToggle: the human seat's tag toggles it (Settings → Your seat). */
+  /* auto: the AI is playing the human seat. canToggle: the human seat's tag toggles it (Settings → Game). */
   function badges(v, p, auto, canToggle) {
     const b = [];
     if (v.players[p].human && canToggle) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
@@ -3455,7 +3454,7 @@ const Render = (() => {
     return t;
   }
 
-  /* ---- Advanced UI (Settings → Interface): the same View, drawn as a minimal table. Seats show tags, numbers
+  /* ---- Advanced UI (Settings → Game): the same View, drawn as a minimal table. Seats show tags, numbers
      and circles; the information strip (#info, in the header) holds what every player shares; the action buttons sit at the
      bottom of the play area; Skip moves to the top bar. Motion is Fx's (section 7b). ---- */
   let adv = false;   // true while render() draws the Advanced UI (cardHTML adds the KING tag then)
@@ -4104,15 +4103,15 @@ const App = (() => {
     instant: { ai: 0, trick: 0, sys: 0 }
   };
   const HUMAN = 0;
-  /* House rules (Settings → House rules), for new games: a game keeps the rules it started with. Render reads
+  /* House rules (Settings → Game), for new games: a game keeps the rules it started with. Render reads
      them through app.ui to say when the running game differs. */
   const HOUSE = { mediatorLead: true };
   const app = {
     state: null,
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
-    /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
-    /* advanced: the Advanced UI (Settings → Interface). memory: Table memory, what every player has seen this hand. Both are kept. */
+    /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
+    /* advanced: the Advanced UI (Settings → Game). memory: Table memory, what every player has seen this hand. Both are kept. */
     ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
@@ -4124,7 +4123,7 @@ const App = (() => {
     seatSwapPending: false,
     usePersonas: true,
     houseRules: HOUSE,
-    /* Settings → Your seat → AI personality: a persona id, or '' to pick one from the seed (see seatPersona). */
+    /* Settings → Game → AI personality: a persona id, or '' to pick one from the seed (see seatPersona). */
     seatPersona: '',
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
     ai: AI.DEFAULT_CONFIG,
@@ -4570,7 +4569,7 @@ const App = (() => {
         const r = callRound();
         const TEXT = {
           ai: [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
-          you: ['You · Human', 'You play this seat. Settings → Your seat → AI can play your seat lets the AI take it.'],
+          you: ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
           dealer: [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
           caller: [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
           receiver: [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card ' + mini(v.flipped)) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
@@ -4641,7 +4640,7 @@ const App = (() => {
     saveGame();
   }
 
-  /* Your seat's personality for the AI: the one from Settings → Your seat if it is not at the table.
+  /* Your seat's personality for the AI: the one from Settings → Game if it is not at the table.
      Else one from the seed, so a replayed seed with the same hand-overs gives the same game. */
   function seatPersona() {
     const taken = app.ui.personas;
@@ -4655,7 +4654,7 @@ const App = (() => {
     saveSettings();
   }
 
-  /* Settings → Your seat. Off while the AI has your seat: you take it back at once (the game stays assisted). */
+  /* Settings → Game. Off while the AI has your seat: you take it back at once (the game stays assisted). */
   function setAllowSeatAI(on) {
     app.ui.allowSeatAI = on;
     $('setSeatAI').checked = on;
@@ -5392,13 +5391,8 @@ const App = (() => {
       case 'install-check': checkInstall(); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
-      case 'toggle-settings': {
-        const d = $('settingsPanel'); d.hidden = !d.hidden;
-        /* Lines logged while the panel was closed are shown when it opens. */
-        if (!d.hidden) checkInstall();
-        if (!d.hidden) { const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight; }
-        break;
-      }
+      case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
+      case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
       case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); setPersonas(true); break;
       case 'copy-seed': copySeed(); break;
@@ -5414,6 +5408,33 @@ const App = (() => {
       }
       default: break;
     }
+  }
+
+  /* ---- The Settings panel: full screen, one tab at a time. The tab last shown is remembered in this browser. ---- */
+  const SET_TABS = ['Game', 'Bots', 'Expert', 'Tools'];
+  function showSettingsTab(name, focus) {
+    const tab = SET_TABS.includes(name) ? name : 'Game';
+    for (const t of SET_TABS) {
+      const b = $('setTab' + t), on = t === tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      $('setPane' + t).hidden = !on;
+    }
+    $('settingsPanel').querySelector('.set-body').scrollTop = 0;
+    try { localStorage.setItem('kct.setTab', tab); } catch (e) { /* not kept */ }
+    if (focus) $('setTab' + tab).focus();
+  }
+  function openSettings(open) {
+    const d = $('settingsPanel');
+    d.hidden = !open;
+    document.body.classList.toggle('set-open', open);
+    if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
+    let tab = 'Game';
+    try { tab = localStorage.getItem('kct.setTab') || tab; } catch (e) { /* default */ }
+    showSettingsTab(tab, true);
+    checkInstall();
+    /* Lines logged while the panel was closed are shown when it opens. */
+    const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
   }
 
   /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
@@ -5550,6 +5571,17 @@ const App = (() => {
     });
     document.addEventListener('keydown', ev => {
       if (askDone) { if (ev.key === 'Escape') { ev.preventDefault(); answerAsk(false); } return; }
+      if (!$('settingsPanel').hidden) {
+        if (ev.key === 'Escape') { ev.preventDefault(); openSettings(false); return; }
+        /* The tabs: arrow keys move between them (Home and End to the ends). */
+        const t = ev.target instanceof Element ? ev.target.closest('.set-tab') : null;
+        if (t && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) {
+          ev.preventDefault();
+          const i = SET_TABS.indexOf(t.getAttribute('data-tab')), n = SET_TABS.length;
+          showSettingsTab(SET_TABS[ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : (i + (ev.key === 'ArrowRight' ? 1 : n - 1)) % n], true);
+        }
+        return;
+      }
       if (ev.key === 'Escape' && !$('logDrop').hidden && $('overlay').hidden) { openLog(false); $('latestCell').focus(); return; }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
@@ -5619,7 +5651,7 @@ const App = (() => {
       pre.scrollTop = pre.scrollHeight;
     });
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
-    if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; $('settingsPanel').hidden = false; }
+    if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; openSettings(true); showSettingsTab('Tools'); }
     initUpdates();
     /* A ?seed= or ?wave= link starts that game at once. Otherwise every launch opens on the menu. */
     const seedParam = params.get('seed');
