@@ -76,7 +76,7 @@ All three settings are kept after a reload. **Defaults** does not change them.
 
 | Setting | What it does |
 |---|---|
-| **Showdown lead: The mediator picks who leads** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. |
+| **Showdown lead: The mediator picks who leads** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
 
 The setting is kept after a reload. A change applies from your next game: a game keeps the rules it started with, so its replay code gives the same game.
 
