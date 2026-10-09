@@ -489,6 +489,16 @@ body.adv .tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
 body.adv .tagbox .tag{border-radius:999px;font-weight:800;letter-spacing:.03em}
 body.adv .tagbox .tag.seat-toggle{box-shadow:0 1px 2px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
 body.adv .tagbox .tag.seat-toggle:hover{filter:brightness(1.15)}
+/* Tags, scores and hand backs open what they mean (adv-info): a pointer, a hover and a focus ring, no button look. */
+body.adv .tagbox .tag.tappable,body.adv .sscore.tappable,body.adv .backs.tappable{cursor:pointer}
+body.adv .tagbox .tag.tappable:hover,body.adv .sscore.tappable:hover{filter:brightness(1.2)}
+body.adv .backs.tappable{align-self:flex-start;border-radius:4px}
+body.adv .backs.tappable:hover{outline:1px solid rgba(255,255,255,.35);outline-offset:2px}
+body.adv .tagbox .tag.tappable:focus-visible,body.adv .sscore.tappable:focus-visible,body.adv .backs.tappable:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+body.adv .tagbox .tag.open,body.adv .sscore.open,body.adv .backs.open{outline:2px solid var(--gold);outline-offset:2px}
+body.adv .panel p{margin:4px 0;line-height:1.4}
+body.adv .panel .psub{display:block;margin:8px 0 2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+body.adv .panel .pnote{color:var(--muted);font-size:12px}
 body.adv .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   body.adv .sscore{font-size:22px!important}
@@ -613,10 +623,13 @@ body.adv .tag .short{display:none}
     <div class="set-fields">
       <label for="setAdvancedUI">Advanced UI</label>
       <label title="A minimal table for players who know the rules: no instructions, the shared facts in one strip, and motion that shows each move"><input type="checkbox" id="setAdvancedUI"> <span class="k-name">On</span></label>
+      <label for="setMemory">Table memory</label>
+      <label title="The Advanced UI's information popups also count what every player has seen: trumps and Kings played, voids shown, where the turned card went"><input type="checkbox" id="setMemory"> <span class="k-name">Count what has been played</span></label>
       <label for="setThisHand">Profiles</label>
       <label title="A player's profile, opened during a hand, also shows their bids and the suits they are void of"><input type="checkbox" id="setThisHand"> <span class="k-name">Show this hand's bids and voids</span></label>
     </div>
     <p class="k-hint">Advanced UI (off by default): a minimal table with no instructions. Tags, numbers and circles replace the seat texts, one strip shows the trump, the hand, the latest event, the turned card and the outside pile, and the action buttons sit in the play area. The Outside cell and the trick circles open what they stand for. Reduced motion (a system setting) turns its animations off.</p>
+    <p class="k-hint">Table memory (off by default): in the Advanced UI, a click on a strip cell, a tag, a score or a hand of backs explains it. With Table memory on, the popup also counts what every player at the table has seen: trumps and Kings played, the suits each player has shown void in, and where the turned card went. Never a card someone holds unseen.</p>
     <p class="k-hint">Profiles (off by default): during a hand, a player's profile adds their bids and the suits they are void of: what every player at the table has seen.</p>
   </section>
   <section class="set-section" id="setHouseRules">
@@ -3041,7 +3054,7 @@ const Render = (() => {
   /* Text from data (names, personality texts) goes into HTML only through escHTML. */
   const nameOf = (v, p) => escHTML(v.players[p].name);
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
-  const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive', picks: 'pick' };
+  const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive', picks: 'pick', bids: 'bid', holds: 'hold', mediates: 'mediate', needs: 'need' };
   /* "You" takes the plural verb, also for each verb after "and" in the same sentence. */
   const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
@@ -3427,16 +3440,18 @@ const Render = (() => {
 
   /* Tags: one shape, in one fixed order as they come up: Human or AI, Dealer, Namer, Kitty, Turn, Led, then
      Mediator or Showdown (SD). On phones Mediator reads MED. */
+  /* Every tag opens what it means for that seat (adv-info); the Human/AI switch keeps its own action. */
   function advTags(v, p, ui) {
     const t = [], human = v.players[p].human, auto = human && ui.autoplay;
+    const tag = (kind, label, inner) => '<span class="tag ' + kind + ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="tag" data-tag="' + kind + '" data-seat="' + p + '" title="About ' + label + '">' + (inner || label) + '</span>';
     if (human && ui.allowSeatAI) t.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
-    else t.push(human && !auto ? '<span class="tag you">Human</span>' : '<span class="tag ai">AI</span>');
-    if (v.dealer === p) t.push('<span class="tag dealer" title="Dealer">Dealer</span>');
-    if (v.caller === p && v.trump) t.push('<span class="tag caller" title="Named trump">Namer</span>');
-    if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
-    if (turnSeat(v) === p) t.push('<span class="tag turn">Turn</span>');
-    if (v.trick.plays.length && v.trick.plays[0].player === p) t.push('<span class="tag led">Led</span>');
-    if (v.showdown) t.push(v.showdown.mediator === p ? '<span class="tag mediator" title="Mediator"><span class="long">Mediator</span><span class="short">MED</span></span>' : '<span class="tag duelist" title="Showdown">SD</span>');
+    else t.push(human && !auto ? tag('you', 'Human') : tag('ai', 'AI'));
+    if (v.dealer === p) t.push(tag('dealer', 'Dealer'));
+    if (v.caller === p && v.trump) t.push(tag('caller', 'Namer'));
+    if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push(tag('receiver', 'Kitty'));
+    if (turnSeat(v) === p) t.push(tag('turn', 'Turn'));
+    if (v.trick.plays.length && v.trick.plays[0].player === p) t.push(tag('led', 'Led'));
+    if (v.showdown) t.push(v.showdown.mediator === p ? tag('mediator', 'Mediator', '<span class="long">Mediator</span><span class="short">MED</span>') : tag('duelist', 'SD'));
     return '<div class="tagbox">' + t.join('') + '</div>';
   }
   /* Trick circles fill as tricks are won: 7 a hand; a Showdown player counts Showdown tricks (5). A click opens
@@ -3447,17 +3462,19 @@ const Render = (() => {
     let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
     return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + n + ' of ' + of + ' tricks won">' + dots + '</div>';
   }
+  /* A seat's score: a click opens the points (adv-info). */
+  const scoreButton = (v, p, ctx) => '<span class="score sscore tappable' + (ctx.flashSeats.has(p) ? ' flash' : '') + '" role="button" tabindex="0" data-action="adv-info" data-kind="score" data-seat="' + p + '" aria-label="Score ' + v.scores[p] + ', about the points">' + boardScore(v.scores[p]) + '</span>';
   function advSeatHTML(v, p, ctx) {
     let backs = '';
     for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
-    return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + '<span class="score sscore' + (ctx.flashSeats.has(p) ? ' flash' : '') + '">' + boardScore(v.scores[p]) + '</span></div>' +
-      advTags(v, p, ctx.ui) + '<div class="backs backrow" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p);
+    return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + scoreButton(v, p, ctx) + '</div>' +
+      advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p);
   }
   function advMeHTML(v, ui, ctx) {
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const hand = handHTML(v, ui).replace('<div class="hand" id="hand">', '<div class="hand" id="hand" style="--n:' + Math.max(2, v.hand.length) + '">');
     return '<div class="me-head">' + (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>' +
-      '<span class="score sscore' + (ctx.flashSeats.has(v.seat) ? ' flash' : '') + '">' + boardScore(v.scores[v.seat]) + '</span>' + advTags(v, v.seat, ui) +
+      scoreButton(v, v.seat, ctx) + advTags(v, v.seat, ui) +
       (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
       hand + advCircles(v, v.seat);
   }
@@ -3473,18 +3490,18 @@ const Render = (() => {
   });
   /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
   function advInfoHTML(v) {
-    const cell = (cls, lab, val) => '<div class="cell ' + cls + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
+    const cell = (cls, lab, val, kind) => '<div class="cell ' + cls + (kind ? ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '" title="About ' + lab : '') + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
     const sd = sdShown(v), tricks = Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
     const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
     const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
     const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
     let html = '', before = '';
-    if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>');
-    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick || STAGE[v.phase] || '');
+    if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>', 'trump');
+    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick || STAGE[v.phase] || '', 'hand');
     before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
-      html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped));
+      html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped), 'turned');
     }
     if (sd) {
       const n = v.showdown.active ? v.showdown.discardCount : 0;
@@ -4059,7 +4076,7 @@ const App = (() => {
     mode: null,
     /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
     /* advanced: the Advanced UI (Settings → Interface). thisHand: profiles show this hand's bids and voids. Both are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false },
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false, memory: false },
     /* n: the wave being played, or null. result: the progress after the game ended. */
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
@@ -4366,6 +4383,12 @@ const App = (() => {
     if (app.state) draw([]);
     saveSettings();
   }
+  function setMemory(on) {
+    app.ui.memory = on;
+    $('setMemory').checked = on;
+    closePanel();
+    saveSettings();
+  }
   function setThisHand(on) {
     app.ui.thisHand = on;
     $('setThisHand').checked = on;
@@ -4389,7 +4412,7 @@ const App = (() => {
      this hand. One at a time; a click elsewhere, or a change on the table, closes it. */
   function closePanel() {
     const p = document.querySelector('#table > .panel'); if (p) p.remove();
-    for (const e of document.querySelectorAll('#table .open')) e.classList.remove('open');
+    for (const e of document.querySelectorAll('#table .open, #info .open')) e.classList.remove('open');
   }
   function showPanel(kind, seat, anchor) {
     const wasOpen = anchor.classList.contains('open');
@@ -4398,8 +4421,11 @@ const App = (() => {
     const v = buildView(app.state, HUMAN), mini = id => Render.microHTML(id, 'Jkr');
     let title, body;
     if (kind === 'outside') {
-      title = 'Your discards';
-      body = v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>';
+      title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
+      body = '<p>Face-down cards out of play: each player\'s 3 opening discards, then the kitty cards the receiver did not get and the receiver\'s discards (12 in all). Only a Showdown uses them.</p>' +
+        '<b class="psub">Your discards</b>' + (v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>');
+    } else if (kind !== 'tricks') {
+      [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
       /* One column per player, headed by their name: the trick winner first, then the others in table order. The card
          that led the trick is ringed. A Showdown player's circles count Showdown tricks, so their list does too. */
@@ -4428,6 +4454,101 @@ const App = (() => {
       pn.style.top = (r.bottom - tb.top + 6) + 'px';
     }
     anchor.classList.add('open');
+  }
+  /* The information popups of the Advanced UI (adv-info): what a strip cell, a tag, a score or a hand of backs means.
+     With Settings → Table memory on, they add what every player at the table has seen, counted for you: the AI keeps
+     the same facts (see its Knowledge settings). Never a card that someone holds unseen. Returns [title, body]. */
+  function infoPanel(v, kind, seat, anchor) {
+    const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr'), minis = ids => '<div class="prow">' + ids.map(mini).join('') + '</div>';
+    const memory = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
+    const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
+    const callRound = () => { const b = v.bidLog.filter(x => x.player === v.caller && (x.action === 'accept' || x.action === 'name')).pop(); return b ? b.round : null; };
+    const inHand = id => v.hand.includes(id);
+    /* The turned card when it went to the receiver in round 1: public, so the receiver may still hold it. */
+    const turnedTo = () => v.trump && v.flipped && !v.flippedOut && v.receiver !== null ? v.receiver : null;
+    const turnedNote = () => {
+      const r = turnedTo(); if (r === null) return '';
+      if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
+      return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
+    };
+    const off = memory ? '' : '<p class="pnote">Settings → Table memory adds what has been played.</p>';
+    switch (kind) {
+      case 'trump': {
+        const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
+        let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
+        if (memory) {
+          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), unseen = order.filter(id => !played.includes(id) && !inHand(id));
+          body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
+            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) + p1('You hold ' + mine.length + '. The others are in other hands or out of play.') + turnedNote();
+        }
+        return ['Trump', body + off];
+      }
+      case 'hand': {
+        const sd = v.showdown && v.showdown.active;
+        const STAGE_HELP = {
+          [P.DISCARD]: 'Each player discards 3 face down, in turn from the dealer\'s left.',
+          [P.REVEAL]: 'The dealer turns up the top kitty card.', [P.BID1]: 'Round 1: accept the turned card\'s suit as trump, or pass.',
+          [P.BID2]: 'Round 2: name another suit, or pass.', [P.EXCHANGE]: 'The player left of the namer takes the kitty card(s) and discards as many.',
+          [P.HAND_SCORE]: 'The hand is over.', [P.ABANDONED]: 'Everyone passed: no trump, no points. The deal passes left.', [P.JOKER_VOID]: 'The Joker was turned up: the same dealer deals again.'
+        };
+        let body = p1('Dealer: ' + n(v.dealer) + '. The player left of the dealer leads the first trick.');
+        if (STAGE_HELP[v.phase]) body += p1(STAGE_HELP[v.phase]);
+        if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
+        if (memory && T) {
+          const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
+          body += sub('Kings not played yet (' + out.length + ')') + (out.length ? minis(out) : p1('None.')) + p1('A King that wins a trick scores +1 at once.' + (out.some(inHand) ? ' You hold ' + out.filter(inHand).map(mini).join(' ') + '.' : ''));
+        }
+        return ['Hand ' + v.handNumber, body + (T ? off : '')];
+      }
+      case 'turned': {
+        const blocked = v.phase === P.BID2 && v.flippedBlocked;
+        let body = blocked ? p1(suit(R.card(v.flipped).suit) + ' was turned down in round 1, so it cannot be named in round 2.')
+          : p1('The dealer turned up the top kitty card. In round 1, a player who accepts makes its suit trump, and this card goes to the player left of them.');
+        if (v.flippedOut) body += p1('Round 2 named another suit, so this card went to the outside pile.');
+        if (memory) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
+        return [blocked ? 'Blocked suit' : 'Turned-up card', body + off];
+      }
+      case 'score': {
+        const st = v.handStats && v.handStats.pts[seat], need = Math.max(0, 10 - v.scores[seat]);
+        let body = p1(n(seat) + ' has ' + v.scores[seat] + (v.scores[seat] === 1 ? ' point' : ' points') + (need ? ' and needs ' + need + ' more to win.' : '.') + ' The first player to 10 wins at once.');
+        if (st) {
+          const parts = [['Kings', st.king], ['hand', st.hand], ['Showdown', st.showdown]].filter(([, x]) => x).map(([k, x]) => (x > 0 ? '+' : '−') + Math.abs(x) + ' ' + k);
+          body += sub('This hand') + p1(parts.length ? parts.join(' · ') : 'No points yet.');
+        }
+        return [n(seat) + ' · score', body];
+      }
+      case 'backs': {
+        const k = v.handCounts[seat];
+        let body = p1(n(seat) + ' holds ' + k + (k === 1 ? ' card.' : ' cards.'));
+        if (memory) {
+          const voids = v.voids[seat] || [];
+          body += sub('Shown void in') + p1(voids.length ? voids.map(suit).join(', ') + ' (could not follow suit)' : 'No suit yet.');
+          if (turnedTo() === seat) body += turnedNote();
+        }
+        return [n(seat) + ' · hand', body + off];
+      }
+      default: {
+        const tag = anchor.getAttribute('data-tag'), who = n(seat);
+        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && (app.usePersonas || app.wave.n) ? PERSONA_BY_ID[id] : null;
+        const TIER_NAME = { novice: 'novice', casual: 'casual', club: 'club player', shark: 'shark' };
+        const r = callRound();
+        const TEXT = {
+          ai: [who + ' · AI', who + ' is a computer player' + (persona ? ': ' + TIER_NAME[persona.tier] + ' skill, ' + persona.courage + ' bidder. Tap the figure for the profile.' : ', with the Bots settings.')],
+          you: ['You · Human', 'You play this seat. Settings → Your seat → AI can play your seat lets the AI take it.'],
+          dealer: [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
+          caller: [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
+          receiver: [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card ' + mini(v.flipped)) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
+          turn: [who + ' · Turn', Render.statusText(v)],
+          led: [who + ' · Led', v.trick.plays.length ? who + ' led this trick with ' + mini(v.trick.plays[0].card) + '. Everyone must follow ' + (v.trick.leadSuit ? suit(v.trick.leadSuit) : 'suit') + ' if they can.' : who + ' led this trick.'],
+          mediator: [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.'],
+          duelist: [who + ' · Showdown', who + ' plays the Showdown: 5 tricks with the same trump. Winner +1, loser −1 (not below 0). Kings that win still score +1.']
+        };
+        const [title, text] = TEXT[tag] || [who, ''];
+        let body = p1(text);
+        if (tag === 'receiver' && memory) body += turnedNote();
+        return [title, body];
+      }
+    }
   }
   /* Profiles, with the This hand setting on: during a hand, a seated player's profile adds their bids and the suits
      they are void of, as every player at the table has seen them. */
@@ -5131,6 +5252,7 @@ const App = (() => {
       case 'toggle-log': toggleLog(); break;
       case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
+      case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
       case 'mode-results': showResults(); break;
       case 'menu': showMenu(false); break;
@@ -5286,7 +5408,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand, mediatorLead: app.houseRules.mediatorLead });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -5298,13 +5420,14 @@ const App = (() => {
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.advancedUI === 'boolean') app.ui.advanced = x.advancedUI;
     if (typeof x.thisHand === 'boolean') app.ui.thisHand = x.thisHand;
+    if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
   }
 
   function init() {
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
-      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"]')) closePanel();
+      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"]')) closePanel();
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
@@ -5332,6 +5455,8 @@ const App = (() => {
     $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
     $('setThisHand').checked = app.ui.thisHand;
     $('setThisHand').addEventListener('change', () => setThisHand($('setThisHand').checked));
+    $('setMemory').checked = app.ui.memory;
+    $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
