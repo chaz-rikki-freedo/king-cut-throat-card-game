@@ -3663,6 +3663,9 @@ const Fx = (() => {
   let prev = null, out = null, last = null;
   let handDeal = { key: '', t0: 0, end: 0 }, dealHold = 0, kittyHold = 0, mineLand = null;
   let discardHand = -1, discarders = [], dealKey = '', dealStart = 0, turnStart = 0, trickKey = '';
+  /** The kitty's slide from beside the outside pile to the middle, after the discard (see transitions).
+      @type {{ x: number, y: number, t0: number, hold: number, hand: number } | null} */
+  let kittySlide = null;
   const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
@@ -3815,6 +3818,8 @@ const Fx = (() => {
       const wait = Math.max(until - now, missing.length ? t + (missing.length - 1) * gap : 0);
       done(g, [fly(g, outsideCell(), t, wait)]);
       kittyHold = now + wait + t * 0.9;
+      /* The kitty lay beside the pile: it stays where it was until the pile has left, then slides to the middle. */
+      if (o.kpile) kittySlide = { x: o.kpile.r.left + scrollX, y: o.kpile.r.top + scrollY, t0: now, hold: kittyHold - now, hand: v.handNumber };
     } else if (pileNow && mine.length) {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
@@ -3896,8 +3901,8 @@ const Fx = (() => {
   }
 
   /* The kitty: the dealer's cards come face down from under the dealer's seat and land straight; then the dealer
-     turns the top card up in place. In the deal of a hand it is the fourth packet; otherwise it is held while the
-     outside pile clears. */
+     turns the top card up in place, once the kitty has slid to the middle (see transitions). In the deal of a hand
+     it is the fourth packet; otherwise it is held while the outside pile clears. */
   function kittyDeal(v, now) {
     const kp = q('#center .kpile'), t = ms(); if (!kp) return;
     const k = v.handNumber + '|' + v.dealer;
@@ -3907,9 +3912,18 @@ const Fx = (() => {
     }
     const elapsed = now - dealStart, cards = qa('.card', kp), top = cards[cards.length - 1];
     if (!t || !top) return;
+    /* A redraw makes a new kitty: the slide goes on from where it is (it is kept in page coordinates). */
+    const sl = kittySlide;
+    if (sl && sl.hand === v.handNumber && now - sl.t0 < sl.hold + t) {
+      const r = kp.getBoundingClientRect(), from = 'translate(' + (sl.x - r.left - scrollX) + 'px,' + (sl.y - r.top - scrollY) + 'px)';
+      /* The inline transform holds the start until the animation starts (a new animation shows from the next frame). */
+      kp.style.transform = from;
+      kp.animate([{ transform: from }, { transform: from, offset: sl.hold / (sl.hold + t) }, { transform: 'none' }], { duration: sl.hold + t, easing: 'ease-in-out', fill: 'forwards' }).currentTime = now - sl.t0;
+      setTimeout(() => { kp.style.transform = ''; }, sl.hold + t - (now - sl.t0));
+    }
     const flight = t + (cards.length - 1) * t * PACKET_CARD, up = !/\bback\b/.test(top.className);
     /* The dealer turns the top card up once it has landed: the first draw that shows it face up starts the turn. */
-    if (up && !turnStart) turnStart = Math.max(now, dealStart + flight + t * 0.4);
+    if (up && !turnStart) turnStart = Math.max(now, dealStart + flight + t * 0.4, kittyHold + t);
     if (elapsed < flight) {
       if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
       const [dx, dy] = center(q('#seat' + v.dealer));
@@ -3998,7 +4012,7 @@ const Fx = (() => {
     const layer = q('#fx'); if (layer) layer.remove();
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
-    discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; trickKey = ''; layerStart.length = 0;
+    discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
     for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
   }
 
