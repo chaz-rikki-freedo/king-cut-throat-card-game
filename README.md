@@ -63,7 +63,7 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has four tabs: **Game**, **Bots**, **Expert** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has four tabs: **Game**, **Bots**, **Expert** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
 ### Game: Table
 
@@ -86,11 +86,11 @@ The setting is kept after a reload. A change applies from your next game: a game
 
 **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code.
 
-**AI personality** (default **From the seed**): the personality the AI uses when it plays your seat. If you choose one that already sits West or East, or with **From the seed**, the seed picks one that is not at the table. The game keeps this setting after a reload.
+**AI personality** (default **From the seed**): the personality the AI uses when it plays your seat. It can be changed only while **AI can play your seat** is on, and not once the AI has taken your seat in the running game (the game keeps that personality; the row says which). If you choose one that already sits West or East, or with **From the seed**, the seed picks one that is not at the table. The game keeps this setting after a reload.
 
 ### Bots
 
-All bot settings apply to all bots and are kept after a reload. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
+All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
 
 | Setting | What it does |
 |---|---|

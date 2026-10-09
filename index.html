@@ -695,12 +695,12 @@ body.adv .tag .short{display:none}
       <h3 class="set-head">Your seat</h3>
       <div class="set-card" id="setSeat">
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
+        <div class="set-row" id="setSeatPersonaRow"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc" id="setSeatPersonaDesc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
       <div class="set-card" id="setPersonaRow">
-        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
       </div>
       <p class="k-hint set-note" id="setWaveNote" hidden>Waves always use their personalities. These settings apply to Free play.</p>
       <h3 class="set-head">Every bot</h3>
@@ -4753,11 +4753,19 @@ const App = (() => {
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode;
     chip.title = waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
+    const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setPersonas').disabled = waves;
-    $('setPersonaRow').classList.toggle('set-off', waves);
+    off('setPersonaRow', waves);
     $('setWaveNote').hidden = !waves;
-    $('setBotFields').classList.toggle('set-off', waves || app.usePersonas);
-    $('setAdvanced').classList.toggle('set-off', waves || app.usePersonas);
+    off('setBotFields', waves || app.usePersonas);
+    off('setAdvanced', waves || app.usePersonas);
+    /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
+       has fixed it (it stays for the game). */
+    const fixed = app.mode && !app.state.gameOver && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
+    off('setSeatPersonaRow', seatOff);
+    $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
+      : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
     /* The running game keeps its house rule: say so when the setting now differs. */
     const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
     now.hidden = !differs;
@@ -5397,7 +5405,7 @@ const App = (() => {
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); setPersonas(true); break;
+      case 'settings-reset': resetBotSettings(); setPersonas(true); break;
       case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         if (testsRunning) break;
@@ -5431,6 +5439,8 @@ const App = (() => {
     const d = $('settingsPanel');
     d.hidden = !open;
     document.body.classList.toggle('set-open', open);
+    /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). */
+    for (const el of document.body.children) if (el !== d && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
     let tab = 'Game';
     try { tab = localStorage.getItem('kct.setTab') || tab; } catch (e) { /* default */ }
@@ -5450,7 +5460,7 @@ const App = (() => {
     const now = app.ai.knowledge;
     syncKnowledge();
     Logger.log('AI_KNOWLEDGE', now);
-    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); return box ? box.parentElement.querySelector('.k-name').textContent : key; };
+    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); const name = box && box.closest('.set-row') && box.closest('.set-row').querySelector('.set-name'); return name ? name.textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
     addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
     saveSettings();
@@ -5467,6 +5477,8 @@ const App = (() => {
     saveSettings();
   }
   /* Personalities switch: on, each bot plays its own style; off, all bots use the settings below. */
+  /* The bot settings (Bots tab and Expert tab, Personalities aside) back to their defaults. */
+  function resetBotSettings() { setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); }
   function setPersonas(on, quiet) {
     app.usePersonas = on;
     $('setPersonas').checked = on;
@@ -5625,7 +5637,8 @@ const App = (() => {
       if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
       saveSettings();
     });
-    $('setWorlds').addEventListener('change', () => setThinking({ worlds: Number($('setWorlds').value) }));
+    /* An empty or unreadable entry keeps the current value (AI.config clamps the rest to 1–200). */
+    $('setWorlds').addEventListener('change', () => { const w = $('setWorlds').value.trim(); if (w === '' || !isFinite(Number(w))) syncThinking(); else setThinking({ worlds: Number(w) }); });
     $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
     $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
     for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) {
@@ -5636,7 +5649,9 @@ const App = (() => {
     $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
     $('setCourage').value = app.ai.style.courage;
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
-    $('setPersonas').addEventListener('change', () => setPersonas($('setPersonas').checked));
+    /* Switching Personalities either way starts the bot settings from their defaults: dimmed (on), they show the
+       defaults rather than an old custom set; enabled (off), you start from a known point. */
+    $('setPersonas').addEventListener('change', () => { resetBotSettings(); setPersonas($('setPersonas').checked); });
     setPersonas(app.usePersonas, true);
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
