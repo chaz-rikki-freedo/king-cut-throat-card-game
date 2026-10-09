@@ -246,6 +246,9 @@ button.card{cursor:pointer}
 .settings .set-range{display:inline-flex;gap:var(--s3);align-items:center}
 .settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums}
 .settings .k-hint{margin:0;color:var(--set-hint);font-size:13px;line-height:1.45;max-width:60ch}
+/* The running game plays a house rule other than the setting (see leadRuleNote). */
+.rule-note{border-left:3px solid var(--gold);padding-left:8px}
+.settings .k-hint.rule-note{color:inherit}
 .settings details.set-section{display:block}
 .settings summary{cursor:pointer;display:flex;align-items:center;gap:var(--s2);min-height:24px}
 .settings details[open] > summary{margin-bottom:var(--s5)}
@@ -431,6 +434,8 @@ body.adv .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px
 body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9;z-index:3}
 body.adv .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:8px}
+/* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
+body.adv .center > .pile-act.seats{flex-direction:row}
 body.adv .pile-act .btn{font-size:15px;padding:8px 18px;white-space:nowrap;flex:none}
 body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
@@ -638,6 +643,7 @@ body.adv .tag .short{display:none}
       <label for="setMediatorLead">Showdown lead</label>
       <label title="In a Showdown, the mediator picks which Showdown player leads the first trick"><input type="checkbox" id="setMediatorLead"> <span class="k-name">The mediator picks who leads</span></label>
     </div>
+    <p class="k-hint rule-note" id="setMediatorNow" hidden></p>
     <p class="k-hint">On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. Off: the Showdown player who won the latest main trick leads. A change applies from your next game: a game keeps the rules it started with.</p>
   </section>
   <section class="set-section" id="setBots">
@@ -3100,7 +3106,7 @@ const Render = (() => {
   }
 
   /* The mediator's choice (house rule): one button for each Showdown player. */
-  const leadButtonsHTML = v => v.showdown.participants.map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
+  const leadButtonsHTML = v => v.showdown.participants.slice().sort((a, b) => a - b).map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
   /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
   const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
   function isTurn(v, p) {
@@ -3272,11 +3278,12 @@ const Render = (() => {
     return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
   }
 
-  function summaryHTML(v) {
+  /* ui (optional): the app's ui, whose houseRules say when the running game plays a different Showdown lead rule. */
+  function summaryHTML(v, ui) {
     const n = p => nameOf(v, p);
     const hs = v.handSummary;
     /* Hand or Showdown points can end the game: show that result, not an empty center. */
-    if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }));
+    if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }), ui);
     switch (v.phase) {
       case P.ABANDONED:
         return '<div class="summary"><h3>Hand ' + v.handNumber + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
@@ -3289,7 +3296,7 @@ const Render = (() => {
         const [a, b] = hs.participants;
         return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : '') + ' then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
+          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play 5 tricks' + (v.mediatorLead ? '' : ', led by the one who won the latest main trick') + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
@@ -3299,7 +3306,13 @@ const Render = (() => {
       default: return '';
     }
   }
-  const summaryText = v => youText(summaryHTML(v));
+  const summaryText = (v, ui) => youText(summaryHTML(v, ui));
+  /* The Showdown lead house rule of the running game, when Settings now says otherwise: a game keeps the rules it
+     started with, so the change waits for the next game. */
+  function leadRuleNote(v, ui) {
+    if (!ui || !ui.houseRules || ui.houseRules.mediatorLead === !!v.mediatorLead) return '';
+    return '<p class="rule-note">This game started with the house rule “The mediator picks who leads” ' + (v.mediatorLead ? 'on' : 'off') + '. Your change in Settings applies from your next game.</p>';
+  }
 
   const CONTINUE_LABEL = {};
   CONTINUE_LABEL[P.ABANDONED] = 'Next deal';
@@ -3571,7 +3584,7 @@ const Render = (() => {
         } break;
         case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
         case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
-        case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) b.push(leadButtonsHTML(v)); break;
+        case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) return '<div class="pile-act seats">' + leadButtonsHTML(v) + '</div>'; break;
         default: break;
       }
       if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>');
@@ -3581,7 +3594,7 @@ const Render = (() => {
   }
 
   function advCenterHTML(v, ui, ctx, order) {
-    const summary = summaryText(v);
+    const summary = summaryText(v, ui);
     const trick = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
     let html = '';
     if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order);
@@ -3652,7 +3665,7 @@ const Render = (() => {
       center += '<div class="banner">SHOWDOWN<small>' + parts + ' · mediator: ' + nameOf(v, v.showdown.mediator) + '</small></div>';
     }
     center += pilesHTML(v);
-    const summary = summaryText(v);
+    const summary = summaryText(v, ui);
     if (summary) center += summary;
     else if (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick)) center += trickHTML(v, ctx);
     center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
@@ -4070,13 +4083,16 @@ const App = (() => {
     instant: { ai: 0, trick: 0, sys: 0 }
   };
   const HUMAN = 0;
+  /* House rules (Settings → House rules), for new games: a game keeps the rules it started with. Render reads
+     them through app.ui to say when the running game differs. */
+  const HOUSE = { mediatorLead: true };
   const app = {
     state: null,
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
     /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
     /* advanced: the Advanced UI (Settings → Interface). thisHand: profiles show this hand's bids and voids. Both are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false, memory: false },
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false, memory: false, houseRules: HOUSE },
     /* n: the wave being played, or null. result: the progress after the game ended. */
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
@@ -4084,8 +4100,7 @@ const App = (() => {
     /* Free play only: the swap is offered once, before the first discard. */
     seatSwapPending: false,
     usePersonas: true,
-    /* House rules (Settings → House rules), for new games: a game keeps the rules it started with. */
-    houseRules: { mediatorLead: true },
+    houseRules: HOUSE,
     /* Settings → Your seat → AI personality: a persona id, or '' to pick one from the seed (see seatPersona). */
     seatPersona: '',
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
@@ -4717,6 +4732,10 @@ const App = (() => {
     $('setWaveNote').hidden = !waves;
     $('setBotFields').classList.toggle('set-off', waves || app.usePersonas);
     $('setAdvanced').classList.toggle('set-off', waves || app.usePersonas);
+    /* The running game keeps its house rule: say so when the setting now differs. */
+    const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
+    now.hidden = !differs;
+    if (differs) now.textContent = 'This game started with this rule ' + (st.mediatorLead ? 'on' : 'off') + '. Your change applies from your next game.';
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
@@ -5458,7 +5477,7 @@ const App = (() => {
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
-    $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); });
+    $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); draw([]); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
