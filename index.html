@@ -3314,7 +3314,11 @@ const Render = (() => {
     /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
     if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div>' + (ui.endButtons || '');
     if (v.phase === P.SETUP) return '<div class="prompt">No game is running.</div><button class="btn primary" type="button" data-action="menu">Choose a game</button>';
-    if (ui.autoplay && isTurn(v, you)) return '';
+    /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. With the AI in your
+       seat, that also covers your pick of the leader as the mediator (house rule). */
+    const botShowdown = v.showdown && v.showdown.active && !v.showdown.participants.includes(you);
+    const skipHTML = () => '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
+    if (ui.autoplay && isTurn(v, you)) return ctx.waiting && botShowdown ? skipHTML() : '';
     switch (v.phase) {
       case P.DISCARD:
         if (v.pendingDiscard[you]) {
@@ -3358,9 +3362,7 @@ const Render = (() => {
       default: break;
     }
     if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>';
-    /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. */
-    const botShowdown = v.showdown && v.showdown.active && !v.showdown.participants.includes(you);
-    if (ctx.waiting && botShowdown) return '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
+    if (ctx.waiting && botShowdown) return skipHTML();
     return '<div class="hint">' + statusText(v) + '</div>';
   }
 
