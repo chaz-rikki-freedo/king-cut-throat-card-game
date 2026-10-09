@@ -695,7 +695,7 @@ body.adv .tag .short{display:none}
       <h3 class="set-head">Your seat</h3>
       <div class="set-card" id="setSeat">
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
+        <div class="set-row" id="setSeatPersonaRow"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc" id="setSeatPersonaDesc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
@@ -4753,11 +4753,19 @@ const App = (() => {
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode;
     chip.title = waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
+    const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setPersonas').disabled = waves;
-    $('setPersonaRow').classList.toggle('set-off', waves);
+    off('setPersonaRow', waves);
     $('setWaveNote').hidden = !waves;
-    $('setBotFields').classList.toggle('set-off', waves || app.usePersonas);
-    $('setAdvanced').classList.toggle('set-off', waves || app.usePersonas);
+    off('setBotFields', waves || app.usePersonas);
+    off('setAdvanced', waves || app.usePersonas);
+    /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
+       has fixed it (it stays for the game). */
+    const fixed = app.mode && !app.state.gameOver && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
+    off('setSeatPersonaRow', seatOff);
+    $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
+      : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
     /* The running game keeps its house rule: say so when the setting now differs. */
     const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
     now.hidden = !differs;
@@ -5431,6 +5439,8 @@ const App = (() => {
     const d = $('settingsPanel');
     d.hidden = !open;
     document.body.classList.toggle('set-open', open);
+    /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). */
+    for (const el of document.body.children) if (el !== d && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
     let tab = 'Game';
     try { tab = localStorage.getItem('kct.setTab') || tab; } catch (e) { /* default */ }
@@ -5625,7 +5635,8 @@ const App = (() => {
       if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
       saveSettings();
     });
-    $('setWorlds').addEventListener('change', () => setThinking({ worlds: Number($('setWorlds').value) }));
+    /* An empty or unreadable entry keeps the current value (AI.config clamps the rest to 1–200). */
+    $('setWorlds').addEventListener('change', () => { const w = $('setWorlds').value.trim(); if (w === '' || !isFinite(Number(w))) syncThinking(); else setThinking({ worlds: Number(w) }); });
     $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
     $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
     for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) {
