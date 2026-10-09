@@ -4524,9 +4524,14 @@ const App = (() => {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
         let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
         if (memory) {
-          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), unseen = order.filter(id => !played.includes(id) && !inHand(id));
+          /* Seen but not played: your own discards, and the turned card (everyone saw it turned up). */
+          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), left = order.filter(id => !played.includes(id) && !inHand(id));
+          const discarded = left.filter(id => v.myOut.includes(id)), turnedOut = v.flippedOut && left.includes(v.flipped) ? v.flipped : null;
+          const unseen = left.filter(id => !discarded.includes(id) && id !== v.flipped);
           body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
-            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) + p1('You hold ' + mine.length + '. The others are in other hands or out of play.') + turnedNote();
+            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) +
+            p1('You hold ' + mine.length + '.' + (discarded.length ? ' You discarded ' + discarded.map(mini).join(' ') + '.' : '') +
+              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.') + turnedNote();
         }
         return ['Trump', body + off];
       }
@@ -6555,6 +6560,16 @@ const SelfTest = (() => {
       } finally { ui.memory = wasMemory; }
       eq('every information popup builds, all through 3 games, Table memory off and on', fails, []);
       check('the popup check ran', built > 1000, built + ' popups');
+      /* Table memory: a trump you discarded, or the turned card, is never listed as not seen yet. */
+      {
+        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker), m = id => Render.microHTML(id, 'Jkr');
+        Object.assign(tv, { trump: T, hand: [], played: [], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        ui.memory = true;
+        try {
+          const body = App.infoPanel(tv, 'trump', null, anchor())[1], unseen = body.split('Not seen yet')[1].split('<p>')[0];
+          check('Table memory: own discards and the turned card are not listed as not seen yet', !unseen.includes(m(trumps[0])) && !unseen.includes(m(trumps[1])) && unseen.includes(m(trumps[2])) && body.includes('You discarded'));
+        } finally { ui.memory = wasMemory; }
+      }
       /* Polite Play (house rule): on, trick circles open the tricks won; off, they only count. */
       const pv = buildView(Engine.createGame(2100), 0), circles = polite => Render.advCircles(pv, 1, { houseRules: { politePlay: polite } });
       check('Polite Play on: trick circles open the tricks won', circles(true).includes('data-action="adv-tricks"'));

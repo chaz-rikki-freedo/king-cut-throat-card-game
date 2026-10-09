@@ -70,7 +70,7 @@ Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the
 | Setting | What it does |
 |---|---|
 | **Advanced UI** | Off by default. A minimal table for players who know the rules. See **Advanced UI** below. |
-| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet and where the turned card went. In the standard table, a seated player's profile adds a **This hand** box with the same bids and voids. |
+| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet and where the turned card went. Your own discards and the turned card count as seen. In the standard table, a seated player's profile adds a **This hand** box with the same bids and voids. |
 
 Both settings are kept after a reload. **Defaults** (Bots tab) does not change them.
 
