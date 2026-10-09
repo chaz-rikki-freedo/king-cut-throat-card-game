@@ -4873,9 +4873,10 @@ const App = (() => {
     if (app.ui.advanced) showLatest(false, escHTML(text));
     else toast(text, cls);
   }
-  /* A King point: a large green +1 hangs over everything, then drops and dissolves, every time, in both tables. Its
+  /* A King point: a large green +1 hangs over everything, every time, in both tables. Yours then drops toward your
+     seat and dissolves; a bot's flies into that bot's seat and shrinks into its score, so it is clear who scored. Its
      length follows the game speed (Instant uses Fast's: it holds nothing up). */
-  function kingPop() {
+  function kingPop(p) {
     const ms = { slow: 2400, normal: 1800 }[app.ui.speed] || 1100;
     const old = document.querySelector('.king-pop'); if (old) old.remove();
     const el = document.createElement('div');
@@ -4884,12 +4885,26 @@ const App = (() => {
     el.textContent = '+1';
     const tilt = 'rotate(' + (Math.random() * 30 - 15).toFixed(1) + 'deg)', at = (y, k) => 'translate(-50%,' + y + '%) ' + tilt + ' scale(' + k + ')';
     const shadow = 'drop-shadow(0 6px 14px rgba(0,0,0,.35))';
-    const frames = [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
+    /** @type {Keyframe[]} */
+    const start = [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
         { opacity: 1, transform: at(-50, 1.06), offset: .12 },
-        { opacity: 1, transform: at(-48, 1), offset: .22 },
-        { opacity: 1, transform: at(-44, 1), filter: shadow + ' blur(0)', offset: .55 },
-        { opacity: 0, transform: at(-18, .92), filter: shadow + ' blur(10px)' }];
+        { opacity: 1, transform: at(-48, 1), offset: .22 }];
     document.body.appendChild(el);
+    /* A bot's seat: the +1 ends on its score (the seat when the score is not drawn). */
+    const seat = p !== HUMAN && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
+    /** @type {Keyframe[]} */
+    let frames;
+    if (seat) {
+      const r = seat.getBoundingClientRect(), c = el.getBoundingClientRect();
+      const dx = Math.round(r.left + r.width / 2 - (c.left + c.width / 2)), dy = Math.round(r.top + r.height / 2 - (c.top + c.height / 2));
+      const to = k => 'translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px)) ' + tilt + ' scale(' + k + ')';
+      frames = start.concat([{ opacity: 1, transform: at(-48, 1), filter: shadow + ' blur(0)', offset: .45 },
+        { opacity: .95, transform: to(.16), filter: shadow + ' blur(0)', offset: .88, easing: 'ease-out' },
+        { opacity: 0, transform: to(.08), filter: shadow + ' blur(2px)' }]);
+    } else {
+      frames = start.concat([{ opacity: 1, transform: at(-44, 1), filter: shadow + ' blur(0)', offset: .55 },
+        { opacity: 0, transform: at(-18, .92), filter: shadow + ' blur(10px)' }]);
+    }
     el.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
   }
   /* The classic UI's toasts. The Advanced UI has none: its log lines drop into the Latest cell. */
@@ -4933,7 +4948,7 @@ const App = (() => {
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); kingPop(); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); kingPop(e.player); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
