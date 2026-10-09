@@ -290,13 +290,21 @@ button.card{cursor:pointer}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.menu{max-width:440px}
-.menu-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.menu-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 14px;min-height:48px;width:100%}
-.menu-item small{font-size:12px;font-weight:400;color:var(--muted)}
-.menu-item.primary small{color:var(--gold-ink)}
-.menu-wave{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:rgba(0,0,0,.2)}
-.menu-wave select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 10px;min-height:40px;font:inherit}
+.menu{width:min(440px,100%);max-width:440px}
+/* The menu: a card per mode, then the tools. Fixed shapes, so no button moves (see showMenu). */
+.mcard{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:10px}
+.mhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.mhead h3{margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.mtail{font-size:12px;color:var(--muted)}
+.mstat{margin:0;display:flex;flex-direction:column;font-size:13px;line-height:18px;color:var(--muted)}
+.mstat span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mstat span:first-child{color:var(--ink)}
+.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mbtns .btn,.mtools .btn{margin:0;min-height:44px;width:100%}
+.mcard select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:6px 10px;min-height:40px;font:inherit;width:100%}
+.mtools{display:flex;gap:8px;margin-top:14px}
+.mtools .btn{width:auto;flex:none;padding-left:14px;padding-right:14px}
+.mtools .mclose{margin-left:auto}
 .wave-note{margin:8px 0;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.25);font-weight:600}
 .swap{max-width:520px;text-align:center}
 .swap-seats{display:flex;align-items:stretch;justify-content:center;gap:12px;margin:14px 0}
@@ -5037,20 +5045,22 @@ const App = (() => {
     return '<p class="wave-note">Wave ' + n + ' is not cleared yet.</p>';
   }
 
-  /* ---- The menu. At launch it is the "welcome back" dialog; Just enter closes it on the empty table. ---- */
-  function slotLine(m) {
-    const sl = slots.get(m);
-    if (!sl) return '';
-    const st = sl.state;
+  /* ---- The menu. At launch it is the "welcome back" dialog; Close then leaves the empty table. ----
+     One card per mode, then a row of tools. Every button is always in the same place: Resume is there with no saved
+     game (disabled), and the cards' status lines hold a fixed two lines, so nothing moves whatever is saved or running.
+     Explanations sit in the status lines, never on the buttons. */
+  /* A game's two status lines: who, then the hand and the scores. now: the game being played. */
+  function gameStatus(st, personas, wave, now) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    const who = name(sl.personas[1]) + ' / ' + name(sl.personas[2]);
-    const score = 'You ' + st.scores[0] + ' · ' + name(sl.personas[1]) + ' ' + st.scores[1] + ' · ' + name(sl.personas[2]) + ' ' + st.scores[2];
-    return (m === 'waves' ? 'Wave ' + sl.wave.n + ' · ' : '') + who + ' · hand ' + st.handNumber + ' · ' + score;
+    return [(now ? 'Playing now · ' : '') + (wave ? 'Wave ' + wave + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
+      'Hand ' + st.handNumber + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
-  function menuItem(action, title, sub, opts) {
-    const o = opts || {};
-    return '<button class="btn menu-item' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' + (o.disabled ? ' disabled' : '') + '><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</button>';
+  function slotStatus(m) {
+    const sl = slots.get(m);
+    return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n, false) : null;
   }
+  const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' +
+    (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
   function showMenu(launch) {
     clearTimer();
     const p = Waves.progress();
@@ -5059,18 +5069,25 @@ const App = (() => {
     const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
       '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
+    const main = launch ? slots.last() || resumable[0] : null;
+    /* A mode's card: its status (two lines) and its buttons. Resume returns to the game: the one being played (the
+       menu closes), or the saved one. */
+    const card = (m, title, extra, tail, buttons) => {
+      const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
+      const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', m === 'free' ? 'Two random opponents each game' : 'Clear a wave to open the next'];
+      const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: main === m, disabled: !now && !st });
+      return '<section class="mcard"><div class="mhead"><h3>' + title + '</h3>' + (tail || '') + '</div><p class="mstat"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span></p>' +
+        (extra || '') + '<div class="mbtns">' + resume + buttons + '</div></section>';
+    };
     let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + (lost[0] === 'waves' ? 'Waves' : 'Free play') + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
-    html += '<div class="menu-list">';
-    for (const m of resumable) html += menuItem('resume-' + m, 'Resume ' + (m === 'waves' ? 'Waves' : 'Free play'), slotLine(m), { primary: launch && m === (slots.last() || resumable[0]) });
-    html += '<div class="menu-wave"><label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>' +
-      menuItem('play-wave', 'Play wave', p.cleared.length + ' of ' + p.total + ' cleared' + (slots.get('waves') ? ' · replaces the saved Waves game' : '')) + '</div>';
-    html += menuItem('new-free', 'New game', 'Free play: two random opponents' + (slots.get('free') && !(playing && app.mode === 'free') ? ' · replaces the saved Free play game' : ''));
-    html += menuItem('tutorial', 'Tutorial', 'Coming soon', { disabled: true });
-    if (install.prompt) html += menuItem('install-app', 'Install app', 'Play it from your home screen, also offline');
-    html += menuItem('menu-rules', 'Rules', 'How to play King Cut-Throat');
-    html += menuItem(launch ? 'just-enter' : 'close-menu', launch ? 'Just enter' : 'Close', launch ? 'The table without a game. The menu and Settings work.' : '');
-    html += '</div></div>';
+    html += card('free', 'Free play', '', '', menuButton('new-free', 'New game'));
+    html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
+      '<span class="mtail">' + p.cleared.length + ' of ' + p.total + ' cleared</span>', menuButton('play-wave', 'Play wave'));
+    html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
+      (install.prompt ? menuButton('install-app', 'Install', { title: 'Play it from your home screen, also offline' }) : '') +
+      menuButton(launch ? 'just-enter' : 'close-menu', 'Close', { cls: 'mclose', title: launch ? 'The table without a game. The menu and Settings work.' : '' }) + '</div>';
+    html += '</div>';
     const ov = $('overlay');
     ov.innerHTML = html;
     ov.hidden = false;
