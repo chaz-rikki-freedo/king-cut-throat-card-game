@@ -309,7 +309,7 @@ button.card{cursor:pointer}
 /* ---- Advanced UI (Settings → Interface). A minimal table: tags, numbers and circles in the seats, the shared
    facts in one information strip, every action button in the play area, and motion that shows each move.
    Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
-   and the This hand box of the profile dialog (its own setting). ---- */
+   and the This hand box of the profile dialog (with Table memory, standard table only). ---- */
 .topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden]{display:none!important}
 .persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:10px;padding:10px 16px;border:1px solid rgba(242,193,78,.35)}
 .persona .p-hand .lab{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:800}
@@ -326,6 +326,8 @@ body.adv #fx > *{position:fixed!important;margin:0!important;box-sizing:border-b
 body.adv #fx .olayer,body.adv #fx .olayer .card{animation:none!important}
 body.adv .tpips i.on.wait{background:transparent!important;border-color:rgba(255,255,255,.45)!important}
 body.adv .tpips i{transition:background-color .15s,border-color .15s}
+/* A redraw rebuilds the circles filled, then empties a held one at once: only the fill when the sweep lands fades. */
+body.adv .tpips i.wait{transition:none}
 body.adv #trumpChip,body.adv #handChip,body.adv .trick-label,body.adv .who,body.adv .status,body.adv .prompt,body.adv .actionbar .hint,body.adv .score small,body.adv .center .piles,body.adv .center .lasttrick{display:none!important}
 body.adv .actionbar:not(:has(.btn)){display:none}
 body.adv .seat .discard-note,body.adv .hand .hint{display:none!important}
@@ -629,13 +631,10 @@ body.adv .tag .short{display:none}
       <label for="setAdvancedUI">Advanced UI</label>
       <label title="A minimal table for players who know the rules: no instructions, the shared facts in one strip, and motion that shows each move"><input type="checkbox" id="setAdvancedUI"> <span class="k-name">On</span></label>
       <label for="setMemory">Table memory</label>
-      <label title="The Advanced UI's information popups also count what every player has seen: trumps and Kings played, voids shown, where the turned card went"><input type="checkbox" id="setMemory"> <span class="k-name">Count what has been played</span></label>
-      <label for="setThisHand">Profiles</label>
-      <label title="A player's profile, opened during a hand, also shows their bids and the suits they are void of"><input type="checkbox" id="setThisHand"> <span class="k-name">Show this hand's bids and voids</span></label>
+      <label title="Also show what every player has seen this hand: bids, trumps and Kings played, voids shown, where the turned card went"><input type="checkbox" id="setMemory"> <span class="k-name">Count what has been played</span></label>
     </div>
     <p class="k-hint">Advanced UI (off by default): a minimal table with no instructions. Tags, numbers and circles replace the seat texts, one strip shows the trump, the hand, the latest event, the turned card and the outside pile, and the action buttons sit in the play area. The Outside cell and the trick circles open what they stand for. Reduced motion (a system setting) turns its animations off.</p>
-    <p class="k-hint">Table memory (off by default): in the Advanced UI, a click on a strip cell, a tag, a score or a hand of backs explains it. With Table memory on, the popup also counts what every player at the table has seen: trumps and Kings played, the suits each player has shown void in, and where the turned card went. Never a card someone holds unseen.</p>
-    <p class="k-hint">Profiles (off by default): during a hand, a player's profile adds their bids and the suits they are void of: what every player at the table has seen.</p>
+    <p class="k-hint">Table memory (off by default): shows what every player at the table has seen this hand. Never a card someone holds unseen. In the Advanced UI, a click on a strip cell, a tag, a score or a hand of backs explains it, and Table memory adds the counts: trumps and Kings played, and where the turned card went. A player's bids and the suits they have shown void in are in the popup of their hand of backs. In the standard table, they are in the player's profile.</p>
   </section>
   <section class="set-section" id="setHouseRules">
     <h3 class="set-head">House rules</h3>
@@ -4091,8 +4090,8 @@ const App = (() => {
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
     /* allowSeatAI: Settings → Your seat, the Human/AI tag works. Like speed, for this page load only. */
-    /* advanced: the Advanced UI (Settings → Interface). thisHand: profiles show this hand's bids and voids. Both are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, thisHand: false, memory: false, houseRules: HOUSE },
+    /* advanced: the Advanced UI (Settings → Interface). memory: Table memory, what every player has seen this hand. Both are kept. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, memory: false, houseRules: HOUSE },
     /* n: the wave being played, or null. result: the progress after the game ended. */
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
@@ -4384,7 +4383,7 @@ const App = (() => {
     sel.closest('.speed-pick').title = app.ui.advanced ? 'Speed: ' + sel.options[sel.selectedIndex].text : 'Game speed';
   }
 
-  /* ---- Interface (Settings): the Advanced UI and the This hand box of the profiles. ---- */
+  /* ---- Interface (Settings): the Advanced UI and Table memory. ---- */
   function setAdvanced(on) {
     app.ui.advanced = on;
     $('setAdvancedUI').checked = on;
@@ -4402,11 +4401,6 @@ const App = (() => {
     app.ui.memory = on;
     $('setMemory').checked = on;
     closePanel();
-    saveSettings();
-  }
-  function setThisHand(on) {
-    app.ui.thisHand = on;
-    $('setThisHand').checked = on;
     saveSettings();
   }
   /* The Latest Scroll's home: the side panel, or in the Advanced UI the dropdown under the information strip. */
@@ -4536,7 +4530,8 @@ const App = (() => {
         const k = v.handCounts[seat];
         let body = p1(n(seat) + ' holds ' + k + (k === 1 ? ' card.' : ' cards.'));
         if (memory) {
-          const voids = v.voids[seat] || [];
+          const voids = v.voids[seat] || [], bids = bidsText(v, seat);
+          body += sub('Bids this hand') + p1(bids.length ? bids.join(' · ') : 'None yet.');
           body += sub('Shown void in') + p1(voids.length ? voids.map(suit).join(', ') + ' (could not follow suit)' : 'No suit yet.');
           if (turnedTo() === seat) body += turnedNote();
         }
@@ -4545,10 +4540,9 @@ const App = (() => {
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
         const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && (app.usePersonas || app.wave.n) ? PERSONA_BY_ID[id] : null;
-        const TIER_NAME = { novice: 'novice', casual: 'casual', club: 'club player', shark: 'shark' };
         const r = callRound();
         const TEXT = {
-          ai: [who + ' · AI', who + ' is a computer player' + (persona ? ': ' + TIER_NAME[persona.tier] + ' skill, ' + persona.courage + ' bidder. Tap the figure for the profile.' : ', with the Bots settings.')],
+          ai: [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
           you: ['You · Human', 'You play this seat. Settings → Your seat → AI can play your seat lets the AI take it.'],
           dealer: [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
           caller: [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
@@ -4565,13 +4559,16 @@ const App = (() => {
       }
     }
   }
-  /* Profiles, with the This hand setting on: during a hand, a seated player's profile adds their bids and the suits
-     they are void of, as every player at the table has seen them. */
+  /* A seat's bids this hand, as every player heard them. */
+  const bidsText = (v, seat) => v.bidLog.filter(b => b.player === seat).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + R.SYMBOL[b.suit] : 'passed') + ' round 2');
+  /* Profiles in the standard table, with Table memory on: during a hand, a seated player's profile adds their bids
+     and the suits they are void of, as every player at the table has seen them. A profile is who the player is; in
+     the Advanced UI, these facts are in the popup of the player's hand of backs instead (one place each). */
   function thisHandHTML(id) {
     const st = app.state, seat = app.ui.personas.indexOf(id);
-    if (!app.ui.thisHand || !app.mode || !st || !st.handNumber || seat < 0) return '';
+    if (!app.ui.memory || app.ui.advanced || !app.mode || !st || !st.handNumber || seat < 0) return '';
     const v = buildView(st, HUMAN);
-    const bids = v.bidLog.filter(b => b.player === seat).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + R.SYMBOL[b.suit] : 'passed') + ' round 2');
+    const bids = bidsText(v, seat);
     const voids = v.voids[seat] || [];
     const vd = voids.length ? voids.map(s => '<b' + (R.COLOR[s] === 'red' ? ' class="pip-red"' : '') + '>' + R.SYMBOL[s] + '</b>').join(' ') : 'none yet';
     return '<div class="p-hand"><span class="lab">This hand</span><dl><dt>Bids</dt><dd>' + (bids.join(' · ') || 'none yet') + '</dd><dt>Void of</dt><dd>' + vd + '</dd></dl></div>';
@@ -5427,7 +5424,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -5438,7 +5435,8 @@ const App = (() => {
     if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.advancedUI === 'boolean') app.ui.advanced = x.advancedUI;
-    if (typeof x.thisHand === 'boolean') app.ui.thisHand = x.thisHand;
+    /* Profiles → Show this hand's bids and voids (up to 0.6.14) is now part of Table memory. */
+    if (typeof x.memory !== 'boolean' && x.thisHand === true) app.ui.memory = true;
     if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
   }
@@ -5472,8 +5470,6 @@ const App = (() => {
     placeLog();
     $('setAdvancedUI').checked = app.ui.advanced;
     $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
-    $('setThisHand').checked = app.ui.thisHand;
-    $('setThisHand').addEventListener('change', () => setThisHand($('setThisHand').checked));
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
