@@ -4783,7 +4783,7 @@ const App = (() => {
     appendLog(text, classes.join(' '));
     if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
     else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
-    if (!classes.includes('trick-head')) showLatest();
+    if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
@@ -4825,12 +4825,26 @@ const App = (() => {
   /* The Latest cell (Advanced UI): the newest line of the Latest Scroll, trick headings left out. A new line drops in
      from above the window, exactly the size of the cell, and becomes the Latest line. The newest line wins: a line
      still falling lands at once. Instant speed, reduced motion, or still (a redraw of the log) set it in place.
-     An app note (text that is not a game event) drops in the same way but stays out of the log. */
+     An app note (text that is not a game event) drops in the same way but stays out of the log.
+     One move can add several lines at once (an accept and the kitty card it moves; the last card, the trick's winner
+     and a King point). They show together, at most 2, so the first is not gone before it can be read: a card played
+     is left out when the same move adds more (the card is on the table). */
   let falling = null;
+  /* burst: the lines that the current move added, as [html, classes]. It closes after the move (a microtask). */
+  let burst = [], burstOpen = false;
+  function noteBurst(li) {
+    if (!burstOpen) { burst = []; burstOpen = true; queueMicrotask(() => { burstOpen = false; }); }
+    burst.push(li);
+  }
+  function burstHTML() {
+    const more = burst.filter(li => !li.classList.contains('play'));
+    return (more.length ? more : burst).slice(-2).map(li => li.innerHTML).join('</li><li>');
+  }
   function showLatest(still, note) {
     const cell = $('latestCell'), line = $('latestLine');
     let html = note || '';
-    if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
+    if (!note && burstOpen && burst.length) html = burstHTML();
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
