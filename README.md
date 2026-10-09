@@ -146,6 +146,10 @@ Click the heading to open it. **AI can play your seat** (off by default): on, th
 | **Run self-tests** | At the bottom. Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear** | At the bottom. Clears the log and the test results. |
 
+## King points
+
+Each time a King wins a trick, a large green **+1** appears at the center of the screen, over everything. It is tilted at random (up to 15° either way) and fades from solid green at the top to clear at the bottom. It hangs for a moment, then drops and dissolves. It shows in both tables, lasts longer at slower speeds, and does not show at **Instant**. With the system setting to reduce motion, it fades in place.
+
 ## Advanced UI
 
 Settings → Interface → **Advanced UI**. The same game, drawn as a minimal table with no instructions. The game still enforces every rule: cards you cannot play stay dimmed, and a confirm button waits for enough cards.

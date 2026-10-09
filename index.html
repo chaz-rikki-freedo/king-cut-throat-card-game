@@ -219,6 +219,11 @@ button.card{cursor:pointer}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
 .toast.info{background:#e3f2fd;color:#0d2a44}
 @keyframes toast{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+/* The King point (+1): over everything at the screen's center, tilted, green fading to clear from top to bottom.
+   kingPop sets the tilt and runs the motion. */
+.king-pop{position:fixed;left:50%;top:45%;z-index:70;pointer-events:none;font-size:clamp(110px,28vmin,280px);font-weight:900;line-height:1;letter-spacing:-.04em;
+  background:linear-gradient(to bottom,rgba(52,199,89,.8) 40%,rgba(52,199,89,0) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transform:translate(-50%,-50%);opacity:0}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:16px}
 .overlay[hidden]{display:none}
 .modal{background:#123f28;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:20px;max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.5)}
@@ -4863,6 +4868,29 @@ const App = (() => {
     if (app.ui.advanced) showLatest(false, escHTML(text));
     else toast(text, cls);
   }
+  /* A King point: a large green +1 hangs over everything, then drops and dissolves. Both tables. Its length follows
+     the game speed; Instant shows none. With reduced motion (a system setting) it only fades. */
+  function kingPop() {
+    const ms = { slow: 2400, normal: 1800, fast: 1100 }[app.ui.speed] || 0;
+    if (!ms) return;
+    const old = document.querySelector('.king-pop'); if (old) old.remove();
+    const el = document.createElement('div');
+    el.className = 'king-pop';
+    el.setAttribute('aria-hidden', 'true');
+    el.textContent = '+1';
+    const tilt = 'rotate(' + (Math.random() * 30 - 15).toFixed(1) + 'deg)', at = (y, k) => 'translate(-50%,' + y + '%) ' + tilt + ' scale(' + k + ')';
+    const shadow = 'drop-shadow(0 6px 14px rgba(0,0,0,.35))';
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const frames = still
+      ? [{ opacity: 1, transform: at(-50, 1) }, { opacity: 1, offset: .55 }, { opacity: 0, transform: at(-50, 1) }]
+      : [{ opacity: 0, transform: at(-62, .6), filter: shadow + ' blur(0)' },
+        { opacity: 1, transform: at(-50, 1.06), offset: .12 },
+        { opacity: 1, transform: at(-48, 1), offset: .22 },
+        { opacity: 1, transform: at(-44, 1), filter: shadow + ' blur(0)', offset: .55 },
+        { opacity: 0, transform: at(-18, .92), filter: shadow + ' blur(10px)' }];
+    document.body.appendChild(el);
+    el.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
+  }
   /* The classic UI's toasts. The Advanced UI has none: its log lines drop into the Latest cell. */
   function toast(text, cls) {
     if (app.ui.advanced) return;
@@ -4904,7 +4932,7 @@ const App = (() => {
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); kingPop(); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
