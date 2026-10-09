@@ -14,13 +14,14 @@ const speed = v => { const s = q('#speedSel'); s.value = v; s.dispatchEvent(new 
 const seen = window.__seen || (window.__seen = {});
 if (!window.__hooked) { window.__hooked = true; KCT.Logger.enabled = true; KCT.Logger.listeners.push(l => { const t = l.split(' ')[1]; seen[t] = (seen[t] || 0) + 1; }); }
 // The Skip rule, checked on each tick: the button shows only in a Showdown between the two bots.
-const skip = window.__skip || (window.__skip = { botSdWaits: 0, shownInBotSd: 0, missingInBotSd: 0, shownElsewhere: 0, elsewhere: [] });
+const skip = window.__skip || (window.__skip = { botSdWaits: 0, shownInBotSd: 0, missingInBotSd: 0, missing: [], shownElsewhere: 0, elsewhere: [] });
 function checkSkip() {
   const st = app.state, sd = st.showdown;
-  /* A phase with a Continue button (Next hand, ...) shows that button instead, also while the AI plays your seat. */
-  const botSd = !!(sd && sd.active && !sd.participants.includes(0)) && !KCT.Render.CONTINUE_LABEL[st.phase];
+  /* A phase with a Continue button (Next hand, ...) shows that button instead, also while the AI plays your seat.
+     A game that ends in a Showdown holds the final play before the game-over dialog: a click on the table opens it. */
+  const botSd = !!(sd && sd.active && !sd.participants.includes(0)) && !KCT.Render.CONTINUE_LABEL[st.phase] && !st.gameOver;
   const shown = !!q('[data-action="skip"]');
-  if (botSd && app.timerFn) { skip.botSdWaits++; if (shown) skip.shownInBotSd++; else skip.missingInBotSd++; }
+  if (botSd && app.timerFn) { skip.botSdWaits++; if (shown) skip.shownInBotSd++; else { skip.missingInBotSd++; if (skip.missing.length < 5) skip.missing.push(st.phase + (app.ui.autoplay ? ' (AI in your seat)' : '')); } }
   if (shown && !botSd) { skip.shownElsewhere++; if (skip.elsewhere.length < 5) skip.elsewhere.push(st.phase); }
 }
 // The human seat: the fast AI picks, and the test clicks the same controls a player clicks.
