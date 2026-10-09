@@ -1,6 +1,6 @@
 # Replay code specification
 
-Format version: **2**. Code: `Replay` in `index.html` (section 4b).
+Format version: **3**. The app also reads versions 2 and 1. Code: `Replay` in `index.html` (section 4b).
 
 ## 1. Purpose
 
@@ -27,14 +27,14 @@ The seed alone cannot do this. The seed is a 32-bit number. It sets the shuffles
 KCT<version>-<payload>
 ```
 
-- `<version>` is the format version in decimal. This spec is version `2`.
+- `<version>` is the format version in decimal. This spec is version `3`. Version 2 has the same layout, without decision type 8 and the GAME options field; a reader of version 3 reads it too.
 - `<payload>` is base64url (RFC 4648, section 5) with no `=` padding.
-- Example: `KCT2-AgEFAZIhAgMCCQADdmV4A2RvYwPTAgAYCAM…` (seed 4242, wave 3, Vex and Doc)
+- Example (version 2): `KCT2-AgEFAZIhAgMCCQADdmV4A2RvYwPTAgAYCAM…` (seed 4242, wave 3, Vex and Doc)
 
 ## 4. Byte layout
 
 ```
-uint   format version (2)
+uint   format version (3)
 then 1 or more sections:
   uint   tag
   uint   length of the payload, in bytes
@@ -49,11 +49,11 @@ then 1 or more sections:
 4. GAME (1) and DECISIONS (3) must be present. All other sections are optional.
 5. Inside a known section, a reader must read only the fields that it knows. If a later version adds fields to the end of a known section, an older reader ignores them, because it reads by the section length.
 
-### 4.2 Sections in version 2
+### 4.2 Sections in version 3
 
 | Tag | Name | Required | Payload |
 |---|---|---|---|
-| 1 | GAME | yes | `uint rules`, `uint seed`, `uint mode`, `uint wave` |
+| 1 | GAME | yes | `uint rules`, `uint seed`, `uint mode`, `uint wave`, then from rules version 3 `uint options` |
 | 2 | SEATS | no | 3 × `text` persona id (You, West, East). Empty text = no persona. |
 | 3 | DECISIONS | yes | Decision entries to the end of the section (section 5). |
 | 4 | RESULT | no | `uint finished` (0/1), `uint winner` (seat + 1, 0 = none), `uint hands`, 3 × `uint score` |
@@ -66,6 +66,8 @@ GAME fields:
 - **rules**: the rules version the game was played by (`Engine.RULES_VERSION` for a new game). Developers raise `Engine.RULES_VERSION` when a change makes the same seed and decisions give a different game (a rule, the deal or the RNG). A reader replays a code by the code's own rules version, and refuses a version newer than its own.
   - 1: the first rules. The opening discard and the Showdown discard have no order.
   - 2: the discards go in turn: the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
+  - 3: house rules can be on (see **options**). With no house rule on, the game is the same as in version 2.
+- **options** (rules version 3 and up): a bit field of house rules. Bit 0 (value 1), `mediatorLead`: after the Showdown discards, the mediator picks the leader with a SHOWDOWN_LEAD decision. Without it, the Showdown player who won the latest main trick leads. A record keeps it as `mediatorLead` (true or false).
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave.
@@ -146,9 +148,10 @@ bits 1..0  seat (0, 1, 2; 3 = no seat)
 | 5 | SHOWDOWN_DISCARD | card |
 | 6 | MARK | `uint` kind, `blob` data |
 | 7 | EXT | `uint` kind, `blob` data |
-| 8–63 | — | Reserved for new decision types in a later format version. |
+| 8 | SHOWDOWN_LEAD | 1 byte: the seat that leads the Showdown (seat of the entry = the mediator). Format 3. |
+| 9–63 | — | Reserved for new decision types in a later format version. |
 
-Types 0–5 must use a seat from 0 to 2. They go to `Engine.dispatch` in the order of the list. The replay adds the system steps between them.
+Types 0–5 and 8 must use a seat from 0 to 2. They go to `Engine.dispatch` in the order of the list. The replay adds the system steps between them.
 
 ### 5.1 MARK: notes in the stream
 
@@ -183,8 +186,9 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 
 ```js
 {
-  v: 2,                       // format version of the code (1 for a KCT1 code)
-  rules: 2,                   // the game's rules version (Engine.RULES_VERSION for a new game)
+  v: 3,                       // format version of the code (2 or 1 for an older code)
+  rules: 3,                   // the game's rules version (Engine.RULES_VERSION for a new game)
+  mediatorLead: true,         // house rule: the mediator picks the Showdown leader
   seed: 4242,
   mode: 'waves',              // 'free', 'waves', null, or 'mode<n>'
   wave: 3,                    // or null
@@ -210,7 +214,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 
 1. Decode the code. Refuse it if the version is newer, a required section is unknown, or the bytes stop early.
 2. Refuse it if `rules` is newer than `Engine.RULES_VERSION`.
-3. `state = Engine.createGame(seed, names, rules)`.
+3. `state = Engine.createGame(seed, names, rules, { mediatorLead })`.
 4. Repeat until the game ends:
    - If `Engine.systemAction(state)` gives an action, dispatch it.
    - If not, skip MARK entries and dispatch the next decision. If there is no next decision, stop (an unfinished game). If the next entry is EXT, stop with an error.

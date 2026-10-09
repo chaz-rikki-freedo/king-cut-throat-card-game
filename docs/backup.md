@@ -35,7 +35,7 @@ A backup does not hold:
   format: 'kct-backup',        // always this text
   v: 1,                        // backup format version
   createdAt: 1791168759453,    // ms
-  meta: { rules: 1, saveFormat: 1, replay: 'KCT2' },   // information only; import ignores it
+  meta: { rules: 1, saveFormat: 1, replay: 'KCT3' },   // information only; import ignores it
   data: { 'kct.slots': '{"waves":null,"free":{…}}', 'kct.waves': '{…}', … }  // key → stored text
 }
 ```

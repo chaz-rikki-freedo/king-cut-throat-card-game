@@ -130,6 +130,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Hint | Help line | `.actionbar .hint` | I, D | The line under the prompt: the effect of a choice, or a rule reminder. |
 | Bid buttons | — | `data-action="bid-accept"`, `"bid-pass"` | C | Round 1: "Accept ♠" and "Pass". |
 | Suit buttons | Name buttons | `.btn.suit`, `data-action="name-suit"`, `"name-pass"` | C | Round 2: one button for each suit, and "Pass". The blocked suit is disabled. |
+| Lead button | Showdown lead pick | `sd-lead` (`data-seat`) | C | "Mei leads": the mediator's pick of the Showdown leader (house rule). |
 | Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3", "Discard 1" or "Discard 2". Enabled when you picked enough cards and, for the opening and Showdown discards, it is your turn. |
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
