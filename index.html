@@ -4570,18 +4570,20 @@ const App = (() => {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
         const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && (app.usePersonas || app.wave.n) ? PERSONA_BY_ID[id] : null;
         const r = callRound();
+        /* Each tag's [title, text], built only for the tag clicked: some read state that is not always there (the
+           turned card is gone in a Showdown and before the reveal). */
         const TEXT = {
-          ai: [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
-          you: ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
-          dealer: [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
-          caller: [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
-          receiver: [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card ' + mini(v.flipped)) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
-          turn: [who + ' · Turn', Render.statusText(v)],
-          led: [who + ' · Led', v.trick.plays.length ? who + ' led this trick with ' + mini(v.trick.plays[0].card) + '. Everyone must follow ' + (v.trick.leadSuit ? suit(v.trick.leadSuit) : 'suit') + ' if they can.' : who + ' led this trick.'],
-          mediator: [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.'],
-          duelist: [who + ' · Showdown', who + ' plays the Showdown: 5 tricks with the same trump. Winner +1, loser −1 (not below 0). Kings that win still score +1.']
+          ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
+          you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
+          dealer: () => [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
+          caller: () => [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
+          receiver: () => [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
+          turn: () => [who + ' · Turn', Render.statusText(v)],
+          led: () => [who + ' · Led', v.trick.plays.length ? who + ' led this trick with ' + mini(v.trick.plays[0].card) + '. Everyone must follow ' + (v.trick.leadSuit ? suit(v.trick.leadSuit) : 'suit') + ' if they can.' : who + ' led this trick.'],
+          mediator: () => [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.'],
+          duelist: () => [who + ' · Showdown', who + ' plays the Showdown: 5 tricks with the same trump. Winner +1, loser −1 (not below 0). Kings that win still score +1.']
         };
-        const [title, text] = TEXT[tag] || [who, ''];
+        const [title, text] = TEXT[tag] ? TEXT[tag]() : [who, ''];
         let body = p1(text);
         if (tag === 'receiver' && memory) body += turnedNote();
         return [title, body];
@@ -5514,7 +5516,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -5680,7 +5682,7 @@ const App = (() => {
     else { enterIdle(); showMenu(true); }
   }
 
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup, infoPanel };
 })();
 
 /* ---------------------------------------------------------------------
@@ -6497,6 +6499,57 @@ const SelfTest = (() => {
     });
 
     /* --- Restart --- */
+    /* --- Interface: the Settings panel's structure, and every information popup across real games. Reads the page and
+       the settings; changes nothing (Table memory is switched for the check and put back). --- */
+    safeRun('interface', () => {
+      const panel = typeof document !== 'undefined' && document.getElementById('settingsPanel');
+      if (panel) {
+        const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
+        eq('every setting sits in a row with a name', unnamed.map(c => c.id || c.getAttribute('data-knowledge')), []);
+        eq('six AI knowledge switches', panel.querySelectorAll('input[data-knowledge]').length, 6);
+        const tabs = [...panel.querySelectorAll('.set-tab')];
+        check('four settings tabs, each with its pane', tabs.length === 4 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
+      }
+      /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
+      const ui = App.app.ui, wasMemory = ui.memory, fails = [];
+      let built = 0;
+      const anchor = tag => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); return a; };
+      const tryPanel = (v, kind, seat, tag) => {
+        try { const [t, b] = App.infoPanel(v, kind, seat, anchor(tag)); if (typeof t !== 'string' || typeof b !== 'string') throw new Error('no text'); built++; }
+        catch (e) { if (fails.length < 3) fails.push(kind + (tag ? ':' + tag : '') + ' seat ' + seat + ' in ' + v.phase + ': ' + String(e && e.message || e)); }
+      };
+      try {
+        for (let g = 0; g < 3; g++) {
+          ui.memory = g === 1;
+          const s = Engine.createGame(2000 + g);
+          D(s, { type: 'START_GAME' });
+          for (let steps = 0; !s.gameOver && steps < 20000; steps++) {
+            const v = buildView(s, 0);
+            try { Render.statusText(v); Render.summaryText(v, ui); } catch (e) { if (fails.length < 3) fails.push('status/summary in ' + v.phase + ': ' + e.message); }
+            if (v.trump) tryPanel(v, 'trump', null);
+            tryPanel(v, 'hand', null);
+            if (v.flipped) tryPanel(v, 'turned', null);
+            for (const p of [0, 1, 2]) {
+              tryPanel(v, 'score', p);
+              if (p) tryPanel(v, 'backs', p);
+              tryPanel(v, 'tag', p, p ? 'ai' : 'you');
+              if (v.dealer === p) tryPanel(v, 'tag', p, 'dealer');
+              if (v.caller === p) tryPanel(v, 'tag', p, 'caller');
+              if (v.receiver === p) tryPanel(v, 'tag', p, 'receiver');
+              if (Engine.actors(s).includes(p)) tryPanel(v, 'tag', p, 'turn');
+              if (v.trick.plays.length && v.trick.plays[0].player === p) tryPanel(v, 'tag', p, 'led');
+              if (v.showdown) tryPanel(v, 'tag', p, v.showdown.mediator === p ? 'mediator' : 'duelist');
+            }
+            const actors = Engine.actors(s);
+            const res = D(s, actors.length ? AI.fastAction(s, actors[0]) : Engine.systemAction(s));
+            if (!res.ok) { fails.push('game stopped: ' + res.error); break; }
+          }
+        }
+      } finally { ui.memory = wasMemory; }
+      eq('every information popup builds, all through 3 games, Table memory off and on', fails, []);
+      check('the popup check ran', built > 1000, built + ' popups');
+    });
+
     safeRun('restart', () => {
       const s = Engine.createGame(77);
       eq('new game is clean', [s.phase, s.scores, s.handNumber, s.gameOver, Engine.audit(s)], [P.SETUP, [0, 0, 0], 0, false, []]);
