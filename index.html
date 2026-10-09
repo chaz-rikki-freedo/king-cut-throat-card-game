@@ -3799,7 +3799,7 @@ const Fx = (() => {
       // A layer still on its way (or never drawn) lands now, one player after another; your cards already in flight
       // land where they were going. Then the pile leaves.
       const now = performance.now(), g = place(o.outpile), layers = qa('.olayer', g), gap = t * 0.4;
-      const all = discarders.concat([1, 2, 0].filter(p => !discarders.includes(p)));
+      const all = discarders.concat([1, 2, 3].map(k => (v.dealer + k) % 3).filter(p => !discarders.includes(p)));   // in turn order
       let until = now; const missing = [];
       all.forEach((p, i) => {
         const layer = layers[i];
