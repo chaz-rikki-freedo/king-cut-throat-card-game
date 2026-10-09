@@ -35,6 +35,7 @@ function humanStep() {
     case 'DISCARD': a.cards.forEach(card); click('[data-action="confirm-discard"]'); break;
     case 'EXCHANGE': a.cards.forEach(card); click('[data-action="confirm-exchange"]'); break;
     case 'SHOWDOWN_DISCARD': card(a.card); click('[data-action="confirm-sd-discard"]'); break;
+    case 'SHOWDOWN_LEAD': click('[data-action="sd-lead"][data-seat="' + a.leader + '"]'); break;
     case 'BID': click('[data-action="bid-' + (a.accept ? 'accept' : 'pass') + '"]'); break;
     case 'NAME': click(a.suit ? '[data-action="name-suit"][data-suit="' + a.suit + '"]' : '[data-action="name-pass"]'); break;
     case 'PLAY': card(a.card); break;

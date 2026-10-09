@@ -609,6 +609,14 @@ body.adv .tag .short{display:none}
     <p class="k-hint">Advanced UI (off by default): a minimal table with no instructions. Tags, numbers and circles replace the seat texts, one strip shows the trump, the hand, the latest event, the turned card and the outside pile, and the action buttons sit in the play area. The Outside cell and the trick circles open what they stand for. Reduced motion (a system setting) turns its animations off.</p>
     <p class="k-hint">Profiles (off by default): during a hand, a player's profile adds their bids and the suits they are void of: what every player at the table has seen.</p>
   </section>
+  <section class="set-section" id="setHouseRules">
+    <h3 class="set-head">House rules</h3>
+    <div class="set-fields">
+      <label for="setMediatorLead">Showdown lead</label>
+      <label title="In a Showdown, the mediator picks which Showdown player leads the first trick"><input type="checkbox" id="setMediatorLead"> <span class="k-name">The mediator picks who leads</span></label>
+    </div>
+    <p class="k-hint">On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. Off: the Showdown player who won the latest main trick leads. A change applies from your next game: a game keeps the rules it started with.</p>
+  </section>
   <section class="set-section" id="setBots">
     <h3 class="set-head">Bots</h3>
     <div class="set-fields" id="setPersonaRow">
@@ -916,7 +924,7 @@ const Engine = (() => {
     SETUP: 'setup', HAND_START: 'handStart', DISCARD: 'discard', REVEAL: 'reveal',
     BID1: 'bid1', BID2: 'bid2', EXCHANGE: 'exchange',
     TRICK_PLAY: 'trickPlay', TRICK_DONE: 'trickDone', HAND_SCORE: 'handScore',
-    SHOWDOWN_SETUP: 'showdownSetup', SHOWDOWN_DISCARD: 'showdownDiscard',
+    SHOWDOWN_SETUP: 'showdownSetup', SHOWDOWN_DISCARD: 'showdownDiscard', SHOWDOWN_LEAD: 'showdownLead',
     SHOWDOWN_PLAY: 'showdownPlay', SHOWDOWN_TRICK_DONE: 'showdownTrickDone', SHOWDOWN_SCORE: 'showdownScore',
     ABANDONED: 'abandoned', JOKER_VOID: 'jokerVoid', GAME_OVER: 'gameOver'
   });
@@ -930,8 +938,9 @@ const Engine = (() => {
   const PLAY_PHASES = Object.freeze([P.TRICK_PLAY, P.SHOWDOWN_PLAY]);
 
   /* rules: the rules version of the game (RULES_VERSION for a new game; a save or a replay keeps its own). A game
-     of version 1 has no rules field, so a version-1 save rebuilds to the same state. */
-  function createGame(seed, names, rules = RULES_VERSION) {
+     of version 1 has no rules field, so a version-1 save rebuilds to the same state.
+     options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on. */
+  function createGame(seed, names, rules = RULES_VERSION, options) {
     const n = names || ['You', 'West', 'East'];
     const state = {
       version: 0,
@@ -953,6 +962,7 @@ const Engine = (() => {
       endEvent: null
     };
     if (rules > 1) state.rules = rules;
+    if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     resetHand(state);
     return state;
   }
@@ -1061,6 +1071,7 @@ const Engine = (() => {
       case P.EXCHANGE: return [state.receiver];
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return [state.currentPlayer];
       case P.SHOWDOWN_DISCARD: return state.showdown.participants.filter(p => state.showdown.pendingDiscard[p]);
+      case P.SHOWDOWN_LEAD: return [state.showdown.mediator];
       default: return [];
     }
   }
@@ -1075,9 +1086,10 @@ const Engine = (() => {
 
   /* Raise RULES_VERSION when a change makes the same seed and decisions give a different game
      (a rule, the deal or the RNG). Replay codes and saves carry it: a replay plays by its own version and refuses
-     a newer one. Version 2: the discards go in turn (see discardTurn). */
+     a newer one. Version 2: the discards go in turn (see discardTurn). Version 3: the house rule mediatorLead
+     (createGame) can be on. */
   /** @type {number} */
-  const RULES_VERSION = 2;
+  const RULES_VERSION = 3;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
   function decisionOf(a) {
@@ -1085,6 +1097,7 @@ const Engine = (() => {
       case 'DISCARD': case 'EXCHANGE': return { type: a.type, player: a.player, cards: a.cards.slice() };
       case 'BID': return { type: a.type, player: a.player, accept: a.accept };
       case 'NAME': return { type: a.type, player: a.player, suit: a.suit };
+      case 'SHOWDOWN_LEAD': return { type: a.type, player: a.player, leader: a.leader };
       default: return { type: a.type, player: a.player, card: a.card };
     }
   }
@@ -1126,6 +1139,10 @@ const Engine = (() => {
         if (!validSeat(a.player) || !state.showdown.pendingDiscard[a.player]) return 'player has no showdown discard pending';
         if (discardTurn(state) !== null && a.player !== discardTurn(state)) return 'not this player\'s turn to discard';
         return checkCardSet(state.hands[a.player], [a.card], C.SHOWDOWN_DISCARD);
+      case 'SHOWDOWN_LEAD':
+        if (ph !== P.SHOWDOWN_LEAD) return 'not choosing the Showdown leader';
+        if (a.player !== state.showdown.mediator) return 'only the mediator picks the leader';
+        return state.showdown.participants.includes(a.leader) ? null : 'the leader must be a Showdown player';
       case 'ADVANCE': return ADVANCE_PHASES.includes(ph) ? null : 'nothing to advance';
       default: return 'unknown action ' + a.type;
     }
@@ -1257,6 +1274,16 @@ const Engine = (() => {
       if (parts.includes(state.trickWinners[i])) return { player: state.trickWinners[i], mainTrick: i + 1 };
     }
     throw new Error('No showdown participant won a main trick');
+  }
+
+  /* lead: { player, mainTrick } by the rule, or { player, mainTrick: null, by: mediator } when the mediator picked. */
+  function startShowdownPlay(state, lead, events) {
+    state.showdown.lead = lead;
+    state.trickNumber = 1;
+    state.leader = lead.player;
+    state.phase = P.SHOWDOWN_PLAY;
+    events.push(Object.assign({ type: 'SHOWDOWN_LEAD' }, lead));
+    startTrick(state, events);
   }
 
   function dealShowdown(state, events) {
@@ -1407,14 +1434,13 @@ const Engine = (() => {
       sd.pendingDiscard[a.player] = false;
       events.push({ type: 'SHOWDOWN_DISCARD', player: a.player, count: 1 });
       if (!sd.participants.some(p => sd.pendingDiscard[p])) {
-        const lead = showdownLeader(state);
-        sd.lead = lead;
-        state.trickNumber = 1;
-        state.leader = lead.player;
-        state.phase = P.SHOWDOWN_PLAY;
-        events.push({ type: 'SHOWDOWN_LEAD', player: lead.player, mainTrick: lead.mainTrick });
-        startTrick(state, events);
+        /* House rule: the mediator picks the leader (SHOWDOWN_LEAD). Otherwise the latest main-trick winner leads. */
+        if (state.mediatorLead) state.phase = P.SHOWDOWN_LEAD;
+        else startShowdownPlay(state, showdownLeader(state), events);
       }
+    },
+    SHOWDOWN_LEAD(state, a, events) {
+      startShowdownPlay(state, { player: a.leader, mainTrick: null, by: a.player }, events);
     },
     ADVANCE(state, a, events) {
       switch (state.phase) {
@@ -1483,17 +1509,19 @@ const escHTML = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&
    4b. REPLAY — rebuilds a game from its seed and its decision list.
    The seed (32 bits) sets the deals only. A replay record adds the table
    and every player decision. A replay code is that record as one short
-   text: 'KCT2-' + base64url bytes. The full spec is docs/replay-code.md.
+   text: 'KCT3-' + base64url bytes (the app also reads KCT2 and KCT1). The full spec is docs/replay-code.md.
    No UI: the App keeps the codes.
    --------------------------------------------------------------------- */
 const Replay = (() => {
   const R = Rules;
-  const VERSION = 2;
+  /* Format 3 adds decision type 8 (SHOWDOWN_LEAD) and the house-rule bits at the end of GAME. Format 2 has the same
+     layout without them, so this reader reads it too. */
+  const VERSION = 3;
   const PREFIX = 'KCT' + VERSION + '-';
-  /* Decision types 0-5 change the state. 6 is a MARK (a note; a replay skips it).
-     7 is an EXT decision: a future state change, which this version cannot replay. */
+  /* Decision types 0-5 and 8 change the state. 6 is a MARK (a note; a replay skips it).
+     7 is an EXT decision: a future state change, which this version cannot replay. 8 is SHOWDOWN_LEAD (rules 3). */
   const TYPES = Object.freeze(['DISCARD', 'BID', 'NAME', 'EXCHANGE', 'PLAY', 'SHOWDOWN_DISCARD']);
-  const T_MARK = 6, T_EXT = 7, NO_SEAT = 3;
+  const T_MARK = 6, T_EXT = 7, T_LEAD = 8, NO_SEAT = 3;
   /* Section tags. An odd tag is required: a reader that does not know it must refuse the code.
      An even tag is optional: a reader that does not know it skips it (and keeps it on re-encode). */
   const TAG = Object.freeze({ GAME: 1, DECISIONS: 3, SEATS: 2, RESULT: 4, FLAGS: 6, TIME: 8, META: 10 });
@@ -1502,6 +1530,8 @@ const Replay = (() => {
      add a new mode at the end and never change the order. This is not the global MODES list. */
   const REPLAY_MODES = Object.freeze(['free', 'waves']);
   const FLAG = Object.freeze({ assisted: 1 });
+  /* House rules, a bit field at the end of GAME (rules version 3 and up). */
+  const OPTION = Object.freeze({ mediatorLead: 1 });
   const META_TYPE = Object.freeze({ INT: 0, TEXT: 1, BYTES: 2, BOOL: 3 });
 
   /* ---- byte writer and reader: unsigned LEB128 varints and UTF-8 text ---- */
@@ -1550,7 +1580,7 @@ const Replay = (() => {
   /* An empty record: every field that a code can carry. */
   function blank() {
     return {
-      v: VERSION, rules: Engine.RULES_VERSION, seed: 0, mode: null, wave: null,
+      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, seed: 0, mode: null, wave: null,
       seats: [null, null, null], decisions: [],
       result: null, flags: { assisted: false }, endedAt: null, meta: {}, unknown: []
     };
@@ -1563,6 +1593,7 @@ const Replay = (() => {
     const m = meta || {};
     const rec = blank();
     rec.rules = state.rules || 1;
+    rec.mediatorLead = !!state.mediatorLead;
     rec.seed = state.seed >>> 0;
     rec.mode = m.mode || null;
     rec.wave = m.wave || null;
@@ -1585,7 +1616,7 @@ const Replay = (() => {
         w.byte(((d.type === 'MARK' ? T_MARK : T_EXT) << 2) | seat).uint(d.kind).blob(d.data || []);
         continue;
       }
-      const t = TYPES.indexOf(d.type);
+      const t = d.type === 'SHOWDOWN_LEAD' ? T_LEAD : TYPES.indexOf(d.type);
       if (t < 0 || seat === NO_SEAT) throw new Error('bad decision ' + JSON.stringify(d));
       w.byte((t << 2) | seat);
       switch (d.type) {
@@ -1593,6 +1624,7 @@ const Replay = (() => {
         case 'EXCHANGE': w.uint(d.cards.length); d.cards.forEach(card); break;
         case 'BID': w.byte(d.accept ? 1 : 0); break;
         case 'NAME': w.byte(d.suit ? R.SUITS.indexOf(d.suit) + 1 : 0); break;
+        case 'SHOWDOWN_LEAD': if (!(d.leader >= 0 && d.leader < NO_SEAT)) throw new Error('bad leader in ' + JSON.stringify(d)); w.byte(d.leader); break;
         default: card(d.card);
       }
     }
@@ -1604,6 +1636,10 @@ const Replay = (() => {
     while (r.more()) {
       const h = r.byte(), t = h >> 2, seat = h & 3, player = seat === NO_SEAT ? null : seat;
       if (t === T_MARK || t === T_EXT) { out.push({ type: t === T_MARK ? 'MARK' : 'EXT', player, kind: r.uint(), data: r.blob() }); continue; }
+      if (t === T_LEAD && player !== null) {
+        const leader = r.byte(); if (leader >= NO_SEAT) throw new Error('bad Showdown leader in replay code');
+        out.push({ type: 'SHOWDOWN_LEAD', player, leader }); continue;
+      }
       const type = TYPES[t];
       if (!type || player === null) throw new Error('bad decision at byte ' + (r.pos - 1));
       if (type === 'DISCARD') out.push({ type, player, cards: [card(), card(), card()] });
@@ -1651,7 +1687,9 @@ const Replay = (() => {
     const future = /^mode(\d+)$/.exec(rec.mode || '');
     const modeNo = !rec.mode ? 0 : REPLAY_MODES.includes(rec.mode) ? REPLAY_MODES.indexOf(rec.mode) + 1 : future ? Number(future[1]) : -1;
     if (modeNo < 0) throw new Error('unknown mode ' + rec.mode);
-    put(TAG.GAME, writer().uint(rec.rules || 1).uint(rec.seed >>> 0).uint(modeNo).uint(rec.wave || 0));
+    const game = writer().uint(rec.rules || 1).uint(rec.seed >>> 0).uint(modeNo).uint(rec.wave || 0);
+    if ((rec.rules || 1) >= 3) game.uint(rec.mediatorLead ? OPTION.mediatorLead : 0);
+    put(TAG.GAME, game);
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
     put(TAG.DECISIONS, encodeDecisions(rec.decisions));
     if (rec.result) {
@@ -1696,10 +1734,11 @@ const Replay = (() => {
     const v = Number(m[1]);
     const bytes = fromB64(m[2]);
     if (v === 1) return decodeV1(bytes);
-    if (v !== VERSION) throw new Error('replay code version ' + v + ' is newer than this app (' + VERSION + ')');
+    if (v !== 2 && v !== VERSION) throw new Error('replay code version ' + v + ' is newer than this app (' + VERSION + ')');
     const r = reader(bytes);
-    if (r.uint() !== VERSION) throw new Error('replay code version mismatch');
+    if (r.uint() !== v) throw new Error('replay code version mismatch');
     const rec = blank();
+    rec.v = v;
     let last = 0, sawGame = false, sawDecisions = false;
     while (r.more()) {
       const tag = r.uint(), len = r.uint(), start = r.pos;
@@ -1711,7 +1750,9 @@ const Replay = (() => {
         case TAG.GAME: {
           rec.rules = s.uint(); rec.seed = s.uint() >>> 0;
           const mode = s.uint(); rec.mode = mode ? (REPLAY_MODES[mode - 1] || 'mode' + mode) : null;
-          rec.wave = s.uint() || null; sawGame = true; break;
+          rec.wave = s.uint() || null; sawGame = true;
+          rec.mediatorLead = s.more() ? !!(s.uint() & OPTION.mediatorLead) : false;
+          break;
         }
         case TAG.SEATS: rec.seats = [s.text() || null, s.text() || null, s.text() || null]; break;
         case TAG.DECISIONS: rec.decisions = decodeDecisions(s); sawDecisions = true; break;
@@ -1751,7 +1792,7 @@ const Replay = (() => {
     const rules = rec.rules || 1;
     if (!Number.isInteger(rules) || rules < 1 || rules > Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
-    function reset() { state = Engine.createGame(rec.seed, names, rules); next = 0; steps = 0; }
+    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead }); next = 0; steps = 0; }
     const isMark = d => !!d && d.type === 'MARK';
     function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
@@ -1826,7 +1867,7 @@ function buildView(state, seat) {
     round: state.round, bidTurn: state.bidTurn, bidLog: state.bidLog.map(b => Object.assign({}, b)),
     trump: state.trump, caller: state.caller, receiver: state.receiver, exchangeCount: state.exchangeCount,
     received: seat === state.receiver ? state.received.slice() : [],
-    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), rules: state.rules || 1,
+    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead,
     activePlayers: state.activePlayers.slice(),
     currentPlayer: state.currentPlayer, leader: state.leader,
     trickNumber: state.trickNumber, totalTricks: state.totalTricks,
@@ -1855,16 +1896,16 @@ function buildView(state, seat) {
    and in the log. Art is in PERSONA_ART near the end of the script.
    --------------------------------------------------------------------- */
 const PERSONAS = Object.freeze([
-  { id: 'vex', name: 'Vex', color: '#ff7a7a', tier: 'shark', courage: 'bold', realTable: false, quote: "You won't read me.", hint: 'Calls on less than you think.' },
-  { id: 'doc', name: 'Doc', color: '#9db0ff', tier: 'shark', courage: 'cautious', realTable: false, quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.' },
-  { id: 'ace', name: 'Ace', color: '#5fdc8f', tier: 'club', courage: 'bold', realTable: false, quote: 'Feeling lucky?', hint: 'Likes to push the bidding.' },
-  { id: 'mei', name: 'Mei', color: '#ff9fd0', tier: 'shark', courage: 'normal', realTable: false, quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.' },
-  { id: 'gus', name: 'Gus', color: '#5cb8ff', tier: 'casual', courage: 'bold', realTable: true, quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.' },
-  { id: 'lou', name: 'Lou', color: '#ffad5c', tier: 'novice', courage: 'timid', realTable: false, quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.' },
-  { id: 'viv', name: 'Viv', color: '#c99bff', tier: 'club', courage: 'cautious', realTable: false, quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.' },
-  { id: 'tex', name: 'Tex', color: '#d9a874', tier: 'novice', courage: 'bold', realTable: false, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.' },
-  { id: 'kit', name: 'Kit', color: '#d8e45a', tier: 'novice', courage: 'cautious', realTable: true, quote: 'Is it my turn?', hint: 'Still learning the table.' },
-  { id: 'zen', name: 'Zen', color: '#cfd8dc', tier: 'casual', courage: 'normal', realTable: true, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.' }
+  { id: 'vex', name: 'Vex', color: '#ff7a7a', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "You won't read me.", hint: 'Calls on less than you think.' },
+  { id: 'doc', name: 'Doc', color: '#9db0ff', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.' },
+  { id: 'ace', name: 'Ace', color: '#5fdc8f', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', quote: 'Feeling lucky?', hint: 'Likes to push the bidding.' },
+  { id: 'mei', name: 'Mei', color: '#ff9fd0', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.' },
+  { id: 'gus', name: 'Gus', color: '#5cb8ff', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.' },
+  { id: 'lou', name: 'Lou', color: '#ffad5c', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.' },
+  { id: 'viv', name: 'Viv', color: '#c99bff', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.' },
+  { id: 'tex', name: 'Tex', color: '#d9a874', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.' },
+  { id: 'kit', name: 'Kit', color: '#d8e45a', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', quote: 'Is it my turn?', hint: 'Still learning the table.' },
+  { id: 'zen', name: 'Zen', color: '#cfd8dc', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.' }
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
@@ -2318,7 +2359,7 @@ const Backup = (() => {
 /**
  * @typedef {{ worlds: number, playoutSkill: number }} Thinking
  * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
- * @typedef {{ realTable: boolean, courage: string }} Style
+ * @typedef {{ realTable: boolean, courage: string, leadPick: string }} Style
  * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
  * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
  */
@@ -2367,7 +2408,11 @@ const AI = (() => {
   });
   /* Table style. Real table: the bots play like a typical human table.
      They pass more in both bidding rounds and pitch their lowest cards in the first discard. */
-  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal' });
+  /* leadPick: how a mediator picks the Showdown leader (house rule). shrewd: the lower score leads (a tie: fair);
+     fair: the latest main-trick winner between them, as without the house rule; impulsive: at random;
+     auto: shrewd when the bot watches the score, fair when not. */
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto' });
+  const LEAD_PICKS = Object.freeze(['auto', 'shrewd', 'fair', 'impulsive']);
 
   /* ---- Settings ----
      The AI keeps no settings of its own. Each call gets one frozen settings object (a "config"):
@@ -2392,6 +2437,7 @@ const AI = (() => {
     for (const key of Object.keys(KNOWLEDGE_DEFAULTS)) if (typeof pk[key] === 'boolean') knowledge[key] = pk[key];
     if (typeof ps.realTable === 'boolean') style.realTable = ps.realTable;
     if (Object.prototype.hasOwnProperty.call(COURAGE, ps.courage)) style.courage = ps.courage;
+    if (LEAD_PICKS.includes(ps.leadPick)) style.leadPick = ps.leadPick;
     return freezeConfig(thinking, knowledge, style, typeof p.persona === 'boolean' ? p.persona : b.persona);
   }
   /** base with a skill tier's thinking and knowledge. An unknown name returns base.
@@ -2409,10 +2455,10 @@ const AI = (() => {
     }
     return 'custom';
   }
-  /** A personality's config: its tier, its courage and its Real table switch.
-      @param {{ tier: string, courage: string, realTable: boolean }} persona @returns {AIConfig} */
+  /** A personality's config: its tier, its courage, its Real table switch and how it picks a Showdown leader.
+      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @returns {AIConfig} */
   function personaConfig(persona) {
-    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), { style: { courage: persona.courage, realTable: persona.realTable }, persona: true });
+    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), { style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick }, persona: true });
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
   const REAL_TABLE_BID_BUMP = 0.5;
@@ -2669,6 +2715,19 @@ const AI = (() => {
     if (s.plan === 'duck') return duckPlay(s, p);
     return s.showdown && s.showdown.active ? fastPlay(s, p) : balancePlay(s, p);
   }
+  /* The mediator's pick of the Showdown leader (house rule), by cfg.style.leadPick. s is a state or a view: it needs
+     showdown, scores and trickWinners. rng: for an impulsive pick; without it, the pick is fair.
+     @param {AIConfig} cfg @param {{ s: number }} [rng] */
+  function pickLeader(s, cfg, rng) {
+    const parts = s.showdown.participants, [a, b] = parts;
+    let fair = a;
+    for (let i = s.trickWinners.length - 1; i >= 0; i--) if (parts.includes(s.trickWinners[i])) { fair = s.trickWinners[i]; break; }
+    const how = cfg.style.leadPick === 'auto' ? (cfg.knowledge.scoreAware ? 'shrewd' : 'fair') : cfg.style.leadPick;
+    if (how === 'shrewd' && s.scores[a] !== s.scores[b]) return s.scores[a] < s.scores[b] ? a : b;
+    if (how === 'impulsive' && rng) return parts[RNG.int(rng, 2)];
+    return fair;
+  }
+
   /** The fast rule-based action (play-outs and a real-table bot). @param {AIConfig} [cfg] */
   function fastAction(s, p, cfg) {
     const c = cfg || DEFAULT_CONFIG;
@@ -2681,6 +2740,7 @@ const AI = (() => {
       }
       case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
       case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: dropLowest(s.hands[p], 1, s.trump)[0] };
+      case P.SHOWDOWN_LEAD: return { type: 'SHOWDOWN_LEAD', player: p, leader: pickLeader(s, c, s.playRng) };
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         /* Play-out skill: only inside the AI's play-outs (they carry playRng), never in a real game. */
@@ -2837,7 +2897,7 @@ const AI = (() => {
     const sd = view.showdown;
     const hs = view.handSummary;
     return {
-      version: 0, seed: 0, rules: view.rules, rng: { s: seed >>> 0 }, playRng: { s: (seed ^ 0x9E3779B9) >>> 0 }, players: view.players,
+      version: 0, seed: 0, rules: view.rules, mediatorLead: view.mediatorLead, rng: { s: seed >>> 0 }, playRng: { s: (seed ^ 0x9E3779B9) >>> 0 }, players: view.players,
       scores: view.scores.slice(), dealer: view.dealer, handNumber: view.handNumber, phase: view.phase,
       gameOver: false, winner: null, endEvent: null,
       deck: [], hands: w.hands.map(h => h.slice()), kitty: w.kitty.slice(), outside: w.outside.slice(),
@@ -2924,6 +2984,7 @@ const AI = (() => {
         const cands = view.hand.slice().sort((a, b) => cardKeep(a, trump) - cardKeep(b, trump));
         return { type: 'SHOWDOWN_DISCARD', player: me, card: plan(view, cfg, cands, c => ({ type: 'SHOWDOWN_DISCARD', player: me, card: c }), SAMPLES.showdownDiscard) };
       }
+      case P.SHOWDOWN_LEAD: return { type: 'SHOWDOWN_LEAD', player: me, leader: pickLeader(view, cfg, rngFor(view)) };
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         const cands = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
@@ -2947,7 +3008,8 @@ const AI = (() => {
     hands[view.seat] = view.hand.slice();
     const s = {
       phase: view.phase, hands, flippedId: view.flipped, dealer: view.dealer, exchangeCount: view.exchangeCount, trump: view.trump,
-      trick: view.trick, activePlayers: view.activePlayers.slice(), tricksWon: view.tricksWon.slice(), showdown: view.showdown
+      trick: view.trick, activePlayers: view.activePlayers.slice(), tricksWon: view.tricksWon.slice(), showdown: view.showdown,
+      scores: view.scores, trickWinners: view.trickWinners
     };
     return fastAction(s, view.seat, cfg);
   }
@@ -2969,7 +3031,7 @@ const Render = (() => {
   /* Text from data (names, personality texts) goes into HTML only through escHTML. */
   const nameOf = (v, p) => escHTML(v.players[p].name);
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
-  const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive' };
+  const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive', picks: 'pick' };
   /* "You" takes the plural verb, also for each verb after "and" in the same sentence. */
   const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
@@ -3014,6 +3076,8 @@ const Render = (() => {
     return b.join('');
   }
 
+  /* The mediator's choice (house rule): one button for each Showdown player. */
+  const leadButtonsHTML = v => v.showdown.participants.map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
   /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
   const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
   function isTurn(v, p) {
@@ -3024,6 +3088,7 @@ const Render = (() => {
       case P.EXCHANGE: return v.receiver === p;
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.currentPlayer === p;
       case P.SHOWDOWN_DISCARD: return canDiscard(v, p, v.showdown.pendingDiscard[p]);
+      case P.SHOWDOWN_LEAD: return v.showdown.mediator === p;
       default: return false;
     }
   }
@@ -3201,7 +3266,7 @@ const Render = (() => {
         const [a, b] = hs.participants;
         return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1, then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
+          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : '') + ' then they play 5 tricks. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p></div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
@@ -3235,6 +3300,7 @@ const Render = (() => {
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return (v.currentPlayer === you ? 'Your turn.' : n(v.currentPlayer) + ' is playing…');
       case P.TRICK_DONE: case P.SHOWDOWN_TRICK_DONE: return n(v.lastTrick.winner) + ' wins the trick with ' + R.shortName(v.lastTrick.card) + (v.lastTrick.king ? ' — +1 King point!' : '.');
       case P.SHOWDOWN_DISCARD: return 'Showdown · each Showdown player discards 1 card.';
+      case P.SHOWDOWN_LEAD: return 'Showdown · ' + (v.showdown.mediator === you ? 'You pick' : n(v.showdown.mediator) + ' (mediator) is picking') + ' who leads the first trick.';
       case P.GAME_OVER: return n(v.winner) + ' wins the game!';
       default: return '';
     }
@@ -3278,6 +3344,9 @@ const Render = (() => {
           const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
           return '<div class="prompt">Showdown: discard 1 of your 6 cards (' + sel + '/1). Trump is ' + suitLabel(v.trump) + '.' + wait + '</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && now ? '' : ' disabled') + '>Discard 1</button>';
         }
+        break;
+      case P.SHOWDOWN_LEAD:
+        if (v.showdown.mediator === you) return '<div class="prompt">You mediate. Pick the Showdown player who leads the first trick.</div>' + leadButtonsHTML(v);
         break;
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY:
@@ -3463,6 +3532,7 @@ const Render = (() => {
         } break;
         case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
         case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
+        case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) b.push(leadButtonsHTML(v)); break;
         default: break;
       }
       if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>');
@@ -3934,6 +4004,8 @@ const App = (() => {
     /* Free play only: the swap is offered once, before the first discard. */
     seatSwapPending: false,
     usePersonas: true,
+    /* House rules (Settings → House rules), for new games: a game keeps the rules it started with. */
+    houseRules: { mediatorLead: true },
     /* Settings → Your seat → AI personality: a persona id, or '' to pick one from the seed (see seatPersona). */
     seatPersona: '',
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
@@ -3979,7 +4051,7 @@ const App = (() => {
     app.seatSwapPending = !w && !app.ui.autoplay;
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
-    app.state = Engine.createGame(s, ['You', 'West', 'East']);
+    app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, app.houseRules);
     Fx.reset();
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
@@ -4122,7 +4194,7 @@ const App = (() => {
         @returns {BackupEnvelope} */
     create() {
       saveGame();
-      return Backup.create(localStorage, { rules: Engine.RULES_VERSION, saveFormat: SAVE_FORMAT, replay: 'KCT2' });
+      return Backup.create(localStorage, { rules: Engine.RULES_VERSION, saveFormat: SAVE_FORMAT, replay: 'KCT3' });
     },
     /** @returns {string} */
     toJSON() { return Backup.toJSON(backup.create()); },
@@ -4629,7 +4701,9 @@ const App = (() => {
         break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
-      case 'SHOWDOWN_LEAD': addLog(n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true); break;
+      case 'SHOWDOWN_LEAD':
+        addLog(e.by != null ? n(e.by) + ' (mediator) picks ' + n(e.player) + ' to lead the Showdown.' : n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true);
+        break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
       case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end'); break;
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
@@ -4907,7 +4981,7 @@ const App = (() => {
       '<li><b>King points:</b> +1 at once when a King wins a trick. A losing King scores nothing.</li>' +
       '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3.</li>' +
       '<li>The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</li>' +
-      '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. The player who won the latest main trick between them leads. Winner +1, loser −1 (not below 0).</li>' +
+      '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. The mediator picks who leads (house rule, on by default; off: the player who won the latest main trick between them leads). Winner +1, loser −1 (not below 0).</li>' +
       '</ul><div class="row"><button class="btn primary" type="button" data-action="menu-back">Back</button></div></div>';
     ov.hidden = false;
   }
@@ -4976,6 +5050,7 @@ const App = (() => {
       case 'confirm-discard': act({ type: 'DISCARD', player: HUMAN, cards: sel }); break;
       case 'confirm-exchange': act({ type: 'EXCHANGE', player: HUMAN, cards: sel }); break;
       case 'confirm-sd-discard': act({ type: 'SHOWDOWN_DISCARD', player: HUMAN, card: sel[0] }); break;
+      case 'sd-lead': act({ type: 'SHOWDOWN_LEAD', player: HUMAN, leader: Number(el.dataset.seat) }); break;
       case 'bid-accept': act({ type: 'BID', player: HUMAN, accept: true }); break;
       case 'bid-pass': act({ type: 'BID', player: HUMAN, accept: false }); break;
       case 'name-suit': act({ type: 'NAME', player: HUMAN, suit: el.getAttribute('data-suit') }); break;
@@ -5141,7 +5216,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, thisHand: app.ui.thisHand, mediatorLead: app.houseRules.mediatorLead });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -5153,6 +5228,7 @@ const App = (() => {
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.advancedUI === 'boolean') app.ui.advanced = x.advancedUI;
     if (typeof x.thisHand === 'boolean') app.ui.thisHand = x.thisHand;
+    if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
   }
 
   function init() {
@@ -5186,6 +5262,8 @@ const App = (() => {
     $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
     $('setThisHand').checked = app.ui.thisHand;
     $('setThisHand').addEventListener('change', () => setThisHand($('setThisHand').checked));
+    $('setMediatorLead').checked = app.houseRules.mediatorLead;
+    $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
@@ -5364,6 +5442,9 @@ const SelfTest = (() => {
       for (const p of [2, 1, 0]) D(v1, { type: 'DISCARD', player: p, cards: v1.hands[p].slice(0, 3) });
       const rec = Replay.fromState(v1), cur = Replay.cursor(Replay.encode(rec));
       eq('its record keeps rules version 1, and replays by it', [rec.rules, cur.seek(v1.version), JSON.stringify(cur.state) === JSON.stringify(v1)], [1, v1.version, true]);
+      const asV2 = code => { const bytes = Array.from(Base64url.decode(code.slice(5))); bytes[0] = 2; return 'KCT2-' + Base64url.encode(bytes); };
+      const old2 = Replay.decode(asV2(Replay.encode(rec))), cur2 = Replay.cursor(old2);
+      eq('a KCT2 code still reads and replays', [old2.v, old2.rules, old2.mediatorLead, cur2.seek(v1.version)], [2, 1, false, v1.version]);
       eq('the view tells whose turn it is', buildView(s, 0).discardTurn, null);
     });
 
@@ -5509,7 +5590,7 @@ const SelfTest = (() => {
           check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null);
         }
         eq('thinking settings clamp to their ranges', AI.config(full, { thinking: { worlds: 999, playoutSkill: -1 } }).thinking, { worlds: 200, playoutSkill: 0 });
-        eq('bot style defaults: normal courage, real table off', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal' });
+        eq('bot style defaults: normal courage, real table off, auto Showdown pick', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal', leadPick: 'auto' });
         {
           const cfg = AI.config(full, { style: { realTable: true } });
           const st = revealState(11, 0, '9H');
@@ -5694,7 +5775,7 @@ const SelfTest = (() => {
       check('only player decisions are kept', s.decisions.length > 0 && s.decisions.every(d => !['START_GAME', 'DEAL', 'FLIP', 'ADVANCE'].includes(d.type)));
       const rec = Replay.fromState(s, { mode: 'waves', wave: 3, seats: [null, 'vex', 'doc'], assisted: true, endedAt: 1790000000000, meta: { 'ai.tier': 'club', n: 300, on: false, raw: [0, 255] } });
       const code = Replay.encode(rec);
-      check('code is short base64url text', /^KCT2-[A-Za-z0-9_-]+$/.test(code) && code.length < 1200, code.length + ' chars');
+      check('code is short base64url text', /^KCT3-[A-Za-z0-9_-]+$/.test(code) && code.length < 1200, code.length + ' chars');
       const back = Replay.decode(code);
       eq('decoded record matches', back, rec);
       eq('encoding is stable', Replay.encode(back), code);
@@ -5951,6 +6032,29 @@ const SelfTest = (() => {
       eq('5 cards each after discard, play begins', [s.hands.map(h => h.length), s.phase, s.totalTricks], [[5, 5, 0], P.SHOWDOWN_PLAY, 5]);
       eq('lead traces back past the mediator\'s trick 7', [s.leader, s.showdown.lead.mainTrick], [1, 6]);
       eq('trump persists', s.trump, 'S');
+
+      /* House rule: the mediator picks the leader after the discards. */
+      const pickState = scores => {
+        const h = mk(scores); h.mediatorLead = true;
+        D(h, { type: 'ADVANCE' }); D(h, { type: 'ADVANCE' });
+        D(h, { type: 'SHOWDOWN_DISCARD', player: 0, card: h.hands[0][0] }); D(h, { type: 'SHOWDOWN_DISCARD', player: 1, card: h.hands[1][0] });
+        return h;
+      };
+      const h = pickState();
+      eq('house rule: the mediator picks after the discards', [h.phase, Engine.actors(h)], [P.SHOWDOWN_LEAD, [2]]);
+      check('only the mediator picks', !D(h, { type: 'SHOWDOWN_LEAD', player: 0, leader: 0 }).ok);
+      check('the leader must be a Showdown player', !D(h, { type: 'SHOWDOWN_LEAD', player: 2, leader: 2 }).ok);
+      const picked = D(h, { type: 'SHOWDOWN_LEAD', player: 2, leader: 0 });
+      eq('the picked player leads trick 1', [picked.ok, h.phase, h.leader, h.showdown.lead], [true, P.SHOWDOWN_PLAY, 0, { player: 0, mainTrick: null, by: 2 }]);
+      eq('the pick is a decision in the record', h.decisions[h.decisions.length - 1], { type: 'SHOWDOWN_LEAD', player: 2, leader: 0 });
+      const hr = Replay.fromState(h), back = Replay.decode(Replay.encode(hr));
+      eq('a code keeps the house rule and the pick', [back.rules, back.mediatorLead, back.decisions[back.decisions.length - 1]], [Engine.RULES_VERSION, true, { type: 'SHOWDOWN_LEAD', player: 2, leader: 0 }]);
+      /* A bot mediator: shrewd gives the lead to the lower score, fair keeps the trick rule, impulsive is seeded. */
+      const lead = (id, scores) => AI.decide(buildView(pickState(scores), 2), AI.personaConfig(PERSONA_BY_ID[id])).leader;
+      eq('shrewd (Doc): the lower score leads', [lead('doc', [5, 2, 0]), lead('doc', [1, 6, 0])], [1, 0]);
+      eq('shrewd on a tie: the trick rule', lead('doc', [4, 4, 0]), 1);
+      eq('fair (Zen): the latest main-trick winner between them', [lead('zen', [5, 2, 0]), lead('zen', [1, 6, 0])], [1, 1]);
+      check('impulsive (Vex): a Showdown player, the same for the same view', [0, 1].includes(lead('vex', [5, 2, 0])) && lead('vex', [5, 2, 0]) === lead('vex', [5, 2, 0]));
       let tricks = 0;
       while (!s.gameOver && (s.phase === P.SHOWDOWN_PLAY || s.phase === P.SHOWDOWN_TRICK_DONE)) {
         if (s.phase === P.SHOWDOWN_PLAY) { const p = s.currentPlayer; const r2 = D(s, AI.decide(buildView(s, p))); if (!r2.ok) throw new Error(r2.error); }
@@ -6014,6 +6118,7 @@ const SelfTest = (() => {
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
       eq('You-grammar: "You wins." reads "You win."', Render.youText('Game over — You wins.'), 'Game over — You win.');
+      eq('You-grammar: the mediator\'s pick', Render.youText('You (mediator) picks Mei to lead the Showdown.'), 'You (mediator) pick Mei to lead the Showdown.');
       eq('You-grammar: the verb after "and" agrees too', Render.youText('You (left of the namer) takes the kitty card and discards 2.'), 'You (left of the namer) take the kitty card and discard 2.');
       eq('You-grammar: "won 1 trick and is" reads "and are"', Render.youText('You won 1 trick and is the mediator.'), 'You won 1 trick and are the mediator.');
       eq('You-grammar: other players keep the singular verb', Render.youText('Gus takes the kitty card and discards 2.'), 'Gus takes the kitty card and discards 2.');
