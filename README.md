@@ -34,6 +34,10 @@ The header stays at the top of the window, and the page scrolls under it. From l
 
 In Free play only, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
 
+- **New opponents** seats two other random opponents (a new seed), neither of the two shown.
+- **Back** (or **Esc**) does not start the game: the table empties and the menu opens. Your saved Free play game, if any, stays as it was, because a game is saved only once **Play** is pressed.
+- When you have finished a Free play game, a line shows how the latest one ended: the winner and the three scores.
+
 ## Saved games, settings and results
 
 The app keeps these in the browser (`localStorage`), so a closed tab loses nothing:

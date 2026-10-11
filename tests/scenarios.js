@@ -21,8 +21,15 @@ function expect(name, ok, detail) {
     let r = await step(`
       const out = { launch: q('#overlay h2') && q('#overlay h2').textContent };
       speed('fast'); click('[data-action="new-free"]'); await sleep(50);
-      out.bots = app.ui.personas.slice(1);
       while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-back"]'); await sleep(20);
+      out.back = { menu: !!q('#overlay .menu'), mode: app.mode, saved: !!A.slots.get('free') };
+      click('[data-action="new-free"]'); await sleep(50);
+      while (!q('#overlay .swap')) await sleep(10);
+      const first = app.ui.personas.slice(1);
+      click('[data-action="swap-new"]'); await sleep(20);
+      out.bots = app.ui.personas.slice(1);
+      out.newOpponents = !!q('#overlay .swap') && !out.bots.some(x => first.includes(x));
       out.atSwap = { hand: app.state.handNumber, cards: app.state.hands[0].length, dealer: app.state.dealer, prompt: q('.prompt') && q('.prompt').textContent };
       click('[data-action="swap-preview"]'); await sleep(20);
       out.colors = Array.from(q('#gameLog li').querySelectorAll('span[class^="p"]')).every(x => app.state.players[Number(x.className.slice(1))].name === x.textContent);
@@ -33,6 +40,8 @@ function expect(name, ok, detail) {
       out.log = Array.from(document.querySelectorAll('#gameLog li')).map(li => li.outerHTML);
       return out;`);
     expect('launch menu shows', r.launch === 'King Cut-Throat', r.launch);
+    expect('Back from the seat dialog opens the menu with no game and nothing saved', r.back.menu && r.back.mode === null && !r.back.saved, r.back);
+    expect('New opponents seats two other opponents', r.newOpponents, r);
     expect('the seat dialog shows before the dealer is drawn: no dealer, no cards', r.atSwap.hand === 0 && r.atSwap.cards === 0 && r.atSwap.dealer === null, r.atSwap);
     expect('behind the seat dialog, the table says Choosing seats', r.atSwap.prompt === 'Choosing seats.', r.atSwap);
     expect('seat swap changes the seats', r.botsAfter[0] === r.bots[1] && r.botsAfter[1] === r.bots[0], r);
