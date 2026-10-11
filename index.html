@@ -1006,6 +1006,10 @@ const Engine = (() => {
       scores: [0, 0, 0],
       dealer: null,
       handNumber: 0,
+      /* Joker redeals so far, and whether the current deal is one. handNumber counts every deal; players count a
+         redeal as the same hand (see handNo). Display only: they change no rule. */
+      redeals: 0,
+      redeal: false,
       phase: /** @type {string} */ (P.SETUP),
       gameOver: false,
       winner: null,
@@ -1375,6 +1379,8 @@ const Engine = (() => {
   function nextHand(state, rotate, events) {
     resetHand(state);
     if (rotate) state.dealer = seatAfter(state.dealer);
+    else state.redeals = (state.redeals || 0) + 1;
+    state.redeal = !rotate;
     state.phase = P.HAND_START;
     events.push({ type: rotate ? 'DEALER_ROTATED' : 'REDEAL', dealer: state.dealer });
   }
@@ -1898,13 +1904,20 @@ const Replay = (() => {
    5. VIEW — the information boundary. Each seat sees only public data
    plus its own hand and its own private memory. AI and Render use this.
    --------------------------------------------------------------------- */
+/* The hand as players count it: a Joker redeal keeps its hand's number. Between hands (HAND_START), the deal about
+   to start. @param {{ handNumber: number, phase: string, redeals?: number }} x a state or a view @returns {number} */
+function handNo(x) { return x.handNumber + (x.phase === Engine.P.HAND_START ? 1 : 0) - (x.redeals || 0); }
+/** @param {{ handNumber: number, phase: string, redeals?: number, redeal?: boolean }} x a state or a view @returns {string} */
+function handLabel(x) { return 'Hand ' + handNo(x) + (x.redeal ? ' (redeal)' : ''); }
 function buildView(state, seat) {
   const R = Rules, P = Engine.P;
   const sd = state.showdown;
   const inPlay = Engine.PLAY_PHASES.includes(state.phase) && state.currentPlayer === seat;
   const hand = state.hands[seat].slice();
   return {
-    seat, phase: state.phase, version: state.version, handNumber: state.handNumber,
+    seat, phase: state.phase, version: state.version, handNumber: state.handNumber, redeals: state.redeals || 0, redeal: !!state.redeal,
+    /* seating: a game is set up and waits for the seat choice (set by the App; see needsSwap). */
+    seating: false,
     players: state.players.map(p => ({ name: p.name, human: p.human })),
     scores: state.scores.slice(), dealer: state.dealer,
     hand,
@@ -2104,8 +2117,10 @@ function cleanSlot(mode, s) {
     if (cur.seek(saved.version) !== saved.version) return null;
     state = cur.state;
   } catch (e) { return null; /* a decision that the Engine refuses */ }
-  const facts = x => JSON.stringify(Object.assign({}, x, { players: null }));
+  /* redeals and redeal came later: a save made before them takes the rebuilt values. A save that has them must match. */
+  const facts = x => { const o = Object.assign({}, x, { players: null }); delete o.redeals; delete o.redeal; return JSON.stringify(o); };
   if (state.gameOver || facts(state) !== facts(saved)) return null;
+  if (('redeals' in saved || 'redeal' in saved) && (saved.redeals !== state.redeals || saved.redeal !== state.redeal)) return null;
   const seat = id => (typeof id === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, id) ? id : null);
   const personas = Array.isArray(s.personas) ? [0, 1, 2].map(k => seat(s.personas[k])) : [null, null, null];
   const w = s.wave && typeof s.wave === 'object' ? s.wave : {};
@@ -3309,21 +3324,21 @@ const Render = (() => {
     if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }), ui);
     switch (v.phase) {
       case P.ABANDONED:
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
+        return '<div class="summary"><h3>' + handLabel(v) + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
       case P.JOKER_VOID:
         return '<div class="summary"><h3>The Joker was turned up</h3><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
       case P.HAND_SCORE:
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + trumpCallAndDealerHTML(v) +
+        return '<div class="summary"><h3>' + handLabel(v) + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, {}) + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
+        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
           '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play 5 tricks' + (v.mediatorLead ? '' : ', led by the one who won the latest main trick') + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
-        return '<div class="summary"><h3>Hand ' + v.handNumber + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + trumpCallAndDealerHTML(v) +
+        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { showdown: true }) + '<div class="discard-note">SD = Showdown. Score cannot fall below 0.</div></div>';
       }
       default: return '';
@@ -3349,8 +3364,8 @@ const Render = (() => {
     const n = p => nameOf(v, p);
     const you = v.seat;
     switch (v.phase) {
-      case P.SETUP: return 'No game is running.';
-      case P.HAND_START: return 'Hand ' + (v.handNumber + 1) + ' · ' + n(v.dealer) + ' deals.';
+      case P.SETUP: return v.seating ? 'Choosing seats.' : 'No game is running.';
+      case P.HAND_START: return handLabel(v) + ' · ' + n(v.dealer) + ' deals.';
       case P.DISCARD: return v.discardTurn == null ? 'Everyone discards 3 cards face-down to the outside pile.' : (v.discardTurn === you ? 'Your turn to discard' : n(v.discardTurn) + ' is discarding') + ' 3 cards face-down to the outside pile.';
       case P.REVEAL: return n(v.dealer) + ' turns up the top kitty card…';
       case P.BID1: return 'Round 1 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + ' on ' + R.SUIT_NAME[R.card(v.flipped).suit] + '.';
@@ -3372,6 +3387,7 @@ const Render = (() => {
     const L = Engine.seatAfter(you);
     /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
     if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div>' + (ui.endButtons || '');
+    if (v.phase === P.SETUP && v.seating) return '<div class="prompt">Choosing seats.</div>';
     if (v.phase === P.SETUP) return '<div class="prompt">No game is running.</div><button class="btn primary" type="button" data-action="menu">Choose a game</button>';
     /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. With the AI in your
        seat, that also covers your pick of the leader as the mediator (house rule). */
@@ -3452,7 +3468,7 @@ const Render = (() => {
   /* Small counter in the top bar: hand number, and the trick number while tricks are played. */
   function handChipText(v) {
     if (!v.handNumber) return '';
-    let t = 'Hand ' + v.handNumber;
+    let t = handLabel(v);
     if (v.trickNumber > 0 && v.trick && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE)) {
       t += ' · ' + (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + '/' + v.totalTricks;
     }
@@ -3535,7 +3551,7 @@ const Render = (() => {
     const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
     let html = '', before = '';
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>', 'trump');
-    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', 'Hand ' + v.handNumber, trick || STAGE[v.phase] || '', 'hand');
+    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', handLabel(v), trick || STAGE[v.phase] || '', 'hand');
     before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
@@ -3598,7 +3614,7 @@ const Render = (() => {
     const you = v.seat, sel = ui.selected.size;
     const b = [];
     if (v.gameOver) b.push(ui.endButtons || '');
-    else if (v.phase === P.SETUP) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>');
+    else if (v.phase === P.SETUP) { if (!v.seating) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>'); }
     else if (!(ui.autoplay && isTurn(v, you))) {
       switch (v.phase) {
         case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 3</button>'); break;
@@ -4127,7 +4143,7 @@ const App = (() => {
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
     humanSeatWasAutoplayed: false,
-    /* Free play only: the swap is offered once, after the seats are drawn and before the first deal. */
+    /* Free play only: the swap is offered once, before the dealer is drawn and the first deal. */
     seatSwapPending: false,
     usePersonas: true,
     houseRules: HOUSE,
@@ -4189,6 +4205,8 @@ const App = (() => {
     const setSeed = $('setSeed');
     if (setSeed) setSeed.textContent = String(s);
     addLog((w ? 'Wave ' + w.n + ': ' : 'Free play: ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
+    /* Free play: you choose seats first (needsSwap). The dealer is drawn after, when Play schedules START_GAME. */
+    if (app.seatSwapPending) { saveGame(); schedule(); return; }
     act({ type: 'START_GAME' });
   }
 
@@ -4550,7 +4568,7 @@ const App = (() => {
           const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
           body += sub('Kings not played yet (' + out.length + ')') + (out.length ? minis(out) : p1('None.')) + p1('A King that wins a trick scores +1 at once.' + (out.some(inHand) ? ' You hold ' + out.filter(inHand).map(mini).join(' ') + '.' : ''));
         }
-        return ['Hand ' + v.handNumber, body + (T ? off : '')];
+        return [handLabel(v), body + (T ? off : '')];
       }
       case 'turned': {
         const blocked = v.phase === P.BID2 && v.flippedBlocked;
@@ -4743,6 +4761,7 @@ const App = (() => {
 
   function draw(events) {
     const v = buildView(app.state, HUMAN);
+    v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
     for (const id of Array.from(app.ui.selected)) if (!v.hand.includes(id)) app.ui.selected.delete(id);
@@ -4982,7 +5001,7 @@ const App = (() => {
     const st = app.state;
     const n = p => st.players[p].name;
     switch (e.type) {
-      case 'DEAL': addLog('Hand ' + e.hand + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
+      case 'DEAL': addLog(handLabel(st) + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind'); break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
@@ -4994,7 +5013,7 @@ const App = (() => {
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED':
-        addLog('Hand ' + st.handNumber + ' · ' + (e.showdown ? 'SD Trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
+        addLog(handLabel(st) + ' · ' + (e.showdown ? 'SD Trick ' : 'Trick ') + e.number + '/' + st.totalTricks + (e.number === 1 ? ' · ' + n(e.leader) + ' leads' : ''), 'gap trick-head', e.showdown);
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
@@ -5030,7 +5049,7 @@ const App = (() => {
     if (!v.handStats) return '';
     const n = p => Render.nameOf(v, p);
     const hs = v.handSummary;
-    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>Hand ' + v.handNumber + ' stats</h3>' + Render.trumpCallAndDealerHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
+    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>' + handLabel(v) + ' stats</h3>' + Render.trumpCallAndDealerHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
     const st = v.handStats;
     const sd = v.showdown && v.showdown.active;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
@@ -5039,7 +5058,7 @@ const App = (() => {
       const name = app.ui.advanced ? '<span style="color:var(--name' + p + ')">' + n(p) + '</span>' : n(p);
       return '<tr><td>' + name + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
     }).join('');
-    return '<div class="summary"><h3>Hand ' + v.handNumber + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
+    return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
 
   function showGameOver() {
@@ -5050,7 +5069,7 @@ const App = (() => {
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
-      '<p>' + Render.youText('The game ended at once, in hand ' + v.handNumber + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
+      '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
       '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
@@ -5074,7 +5093,7 @@ const App = (() => {
   function gameStatus(st, personas, wave, now) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
     return [(now ? 'Playing now · ' : '') + (wave ? 'Wave ' + wave + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      'Hand ' + st.handNumber + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
@@ -5122,12 +5141,12 @@ const App = (() => {
   async function confirmReplace(mode) {
     const playingThis = app.mode === mode && !app.state.gameOver;
     const sl = playingThis ? { state: app.state } : slots.get(mode);
-    if (!sl || sl.state.scores.every(x => x === 0) && sl.state.handNumber <= 1) return true;
+    if (!sl || sl.state.scores.every(x => x === 0) && handNo(sl.state) <= 1) return true;
     if (app.menuOpen) $('overlay').hidden = true;
     const name = mode === 'waves' ? 'Waves' : 'Free play';
     return ask({
       title: 'Start a new ' + name + ' game?',
-      text: '<p>Your unfinished ' + name + ' game (hand ' + sl.state.handNumber + ', you have ' + sl.state.scores[0] + (sl.state.scores[0] === 1 ? ' point' : ' points') + ') will be lost.</p>',
+      text: '<p>Your unfinished ' + name + ' game (hand ' + handNo(sl.state) + ', you have ' + sl.state.scores[0] + (sl.state.scores[0] === 1 ? ' point' : ' points') + ') will be lost.</p>',
       ok: 'Start new game', cancel: 'Keep it'
     });
   }
@@ -5255,10 +5274,10 @@ const App = (() => {
     } catch (e) { return null; }
   }
 
-  /* ---- Free play seat swap: offered once, before the first deal of the game, so no one has seen a card. ---- */
+  /* ---- Free play seat swap: offered once, before the dealer is drawn, so no one has a role or a card yet. ---- */
   function needsSwap() {
     const st = app.state;
-    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.handNumber === 0 && st.phase === P.HAND_START;
+    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.phase === P.SETUP;
   }
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
@@ -5881,6 +5900,10 @@ const SelfTest = (() => {
       D(s, { type: 'ADVANCE' });
       eq('Joker redeal keeps dealer', [s.phase, s.dealer], [P.HAND_START, 1]);
       eq('redeal collects all cards', Engine.audit(s), []);
+      const before = s.handNumber;
+      eq('a Joker redeal keeps its hand number for players', [handLabel(s), s.redeals], ['Hand ' + before + ' (redeal)', 1]);
+      D(s, { type: 'DEAL' });
+      eq('the redealt hand is labeled as a redeal of the same hand', [s.handNumber, handLabel(s)], [before + 1, 'Hand ' + before + ' (redeal)']);
     });
 
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
@@ -6088,6 +6111,13 @@ const SelfTest = (() => {
       const bad = JSON.parse(JSON.stringify(s)); bad.hands[0].push('AS', 'AS');
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: bad, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
       eq('a game that the replay does not rebuild is dropped', createSlots(store).get('free'), null);
+      const pre = JSON.parse(JSON.stringify(s)); delete pre.redeals; delete pre.redeal;
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: pre, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
+      const preBack = createSlots(store).get('free');
+      check('a game saved before the redeal count loads, with the rebuilt count', !!preBack && preBack.state.redeals === s.redeals);
+      const wrong = JSON.parse(JSON.stringify(s)); wrong.redeals++;
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: wrong, personas: [null, 'vex', 'doc'], wave: { n: null } } }));
+      eq('a saved redeal count that the replay does not rebuild is dropped', createSlots(store).get('free'), null);
       store.poke('{not json');
       eq('a broken save reads as empty', createSlots(store).get('free'), null);
       /* Saved data can come from someone else's backup: nothing in it reaches the page as HTML. */
