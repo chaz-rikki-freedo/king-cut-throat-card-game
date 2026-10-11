@@ -169,14 +169,14 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 ### 3.3 Seat-swap dialog
 
-`.modal.swap`, heading "Choose seats". Free play only, once, before the first discard.
+`.modal.swap`, heading "Choose seats". Free play only, once, before the first deal.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Swap explanation | `.swap p` | I | "You may swap your two opponents now…" |
 | Seat card | `.swap-seat` | L, D | Side label ("Your left · West"), portrait, name and the personality's hint. |
 | Swap button | `.swap-btn`, `swap-preview` | C | "⇄": swaps West and East. The table behind redraws at once. |
-| Play button | `swap-done` | C | Keeps the seats and starts the discard. |
+| Play button | `swap-done` | C | Keeps the seats and starts the deal. |
 
 ### 3.4 Profile dialog
 

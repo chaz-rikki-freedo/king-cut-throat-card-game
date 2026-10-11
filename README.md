@@ -32,7 +32,7 @@ The header stays at the top of the window, and the page scrolls under it. From l
 
 ### Free play: choose seats
 
-In Free play only, after the deal and before anyone discards in hand 1, a dialog shows your two opponents: West (your left) and East (your right). **⇄** swaps them and **Play** starts the discard. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
+In Free play only, before the first deal, a dialog shows your two opponents: West (your left) and East (your right). **⇄** swaps them and **Play** starts the deal. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
 
 ## Saved games, settings and results
 

@@ -4127,7 +4127,7 @@ const App = (() => {
     wave: { n: null, wasOpenAtStart: false, result: null },
     /* When true, the game clears no wave and adds no results. */
     humanSeatWasAutoplayed: false,
-    /* Free play only: the swap is offered once, before the first discard. */
+    /* Free play only: the swap is offered once, after the seats are drawn and before the first deal. */
     seatSwapPending: false,
     usePersonas: true,
     houseRules: HOUSE,
@@ -5255,10 +5255,10 @@ const App = (() => {
     } catch (e) { return null; }
   }
 
-  /* ---- Free play seat swap: offered once, before the first discard of the game. ---- */
+  /* ---- Free play seat swap: offered once, before the first deal of the game, so no one has seen a card. ---- */
   function needsSwap() {
     const st = app.state;
-    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.handNumber === 1 && st.phase === P.DISCARD && st.pendingDiscard.every(Boolean);
+    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.handNumber === 0 && st.phase === P.HAND_START;
   }
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
@@ -5269,7 +5269,7 @@ const App = (() => {
     const [, west, east] = app.ui.personas;
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><h2>Choose seats</h2>' +
-      '<p>You may swap your two opponents now. This is your only chance: after the discard, the seats stay for the whole game.</p>' +
+      '<p>You may swap your two opponents now, before the deal. This is your only chance: once the cards are dealt, the seats stay for the whole game.</p>' +
       '<div class="swap-seats">' + seatCardHTML(west, 'Your left · West') + '<button class="btn swap-btn" type="button" data-action="swap-preview" aria-label="Swap the two seats">⇄</button>' + seatCardHTML(east, 'Your right · East') + '</div>' +
       '<div class="row"><button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;

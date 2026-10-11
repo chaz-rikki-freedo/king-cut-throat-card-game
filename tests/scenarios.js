@@ -23,6 +23,7 @@ function expect(name, ok, detail) {
       speed('fast'); click('[data-action="new-free"]'); await sleep(50);
       out.bots = app.ui.personas.slice(1);
       while (!q('#overlay .swap')) await sleep(10);
+      out.atSwap = { hand: app.state.handNumber, cards: app.state.hands[0].length };
       click('[data-action="swap-preview"]'); await sleep(20);
       out.colors = Array.from(q('#gameLog li').querySelectorAll('span[class^="p"]')).every(x => app.state.players[Number(x.className.slice(1))].name === x.textContent);
       click('[data-action="swap-done"]');
@@ -32,6 +33,7 @@ function expect(name, ok, detail) {
       out.log = Array.from(document.querySelectorAll('#gameLog li')).map(li => li.outerHTML);
       return out;`);
     expect('launch menu shows', r.launch === 'King Cut-Throat', r.launch);
+    expect('the seat dialog shows before the first deal: you hold no cards', r.atSwap.hand === 0 && r.atSwap.cards === 0, r.atSwap);
     expect('seat swap changes the seats', r.botsAfter[0] === r.bots[1] && r.botsAfter[1] === r.bots[0], r);
     expect('after a swap, each name in the log has its seat color', r.colors);
     expect('play reaches hand 2', r.stop === 'stop', r.stop);
