@@ -3814,34 +3814,46 @@ const Fx = (() => {
     return el.animate([{ transform: 'none', opacity: 1 }, { transform: at, opacity: 1, offset: 0.85 }, { transform: at, opacity: 0 }],
       { duration: t, delay, easing: 'ease-in-out', fill: 'both' });
   }
-  /* A pile drops through the table: a slot opens under it, the pile falls in (cut off at the slot's line, as if
-     gravity took it below the felt), and the slot closes. */
-  function sink(el, t, delay = 0) {
-    const r = el.getBoundingClientRect(), m = 400;
+  /* Cards leave the hand through the table: a slot opens under them, they fall in (cut off at the slot's line, as if
+     gravity took them below the felt), and the slot closes. With a target, the cards first slide there at table size
+     (a card from a hand or a seat goes to the middle of the table) and drop there. */
+  function sink(el, t, delay = 0, to = null, dx = 0) {
+    const r = el.getBoundingClientRect(), m = 400, base = getComputedStyle(el).transform, b1 = base === 'none' ? '' : ' ' + base;
     let top = r.top, bottom = r.bottom, left = r.left, right = r.right;
     for (const c of el.querySelectorAll('*')) { const b = c.getBoundingClientRect(); if (!b.width) continue; top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom); left = Math.min(left, b.left); right = Math.max(right, b.right); }
-    const d = bottom - top, b0 = r.bottom - bottom, w = right - left, h = Math.max(8, w * 0.1);
-    const clip = x => 'inset(' + -m + 'px ' + -m + 'px ' + x + 'px ' + -m + 'px)';
+    const d = bottom - top, b0 = r.bottom - bottom, clip = x => 'inset(' + -m + 'px ' + -m + 'px ' + x + 'px ' + -m + 'px)';
+    let at = y => 'translateY(' + y + 'px)' + b1, sc = 1, ox = 0, oy = 0;
+    if (to) {
+      const [sx, sy] = center(el), [tx, ty] = center(to);
+      sc = cw() / (r.width || 1); ox = tx + dx - sx; oy = ty - sy;
+      at = y => 'translate(' + ox + 'px,' + (oy + y) + 'px) scale(' + sc.toFixed(3) + ')';
+    }
+    const travel = to ? t * 0.7 : 0, all = travel + t * 1.3, f = x => (travel + x * t * 1.3) / all;
     const fall = el.animate([
-      { transform: 'none', clipPath: clip(b0), offset: 0 },
-      { transform: 'none', clipPath: clip(b0), offset: 0.2 },
-      { transform: 'translateY(-4px)', clipPath: clip(b0 - 4), offset: 0.3, easing: 'cubic-bezier(.55,0,1,.45)' },
-      { transform: 'translateY(' + d + 'px)', clipPath: clip(b0 + d), offset: 0.85 },
-      { transform: 'translateY(' + d + 'px)', clipPath: clip(b0 + d), offset: 1 }],
-      { duration: t * 1.3, delay, fill: 'both' });
+      { transform: base === 'none' ? 'none' : base, clipPath: clip(b0), offset: 0, easing: 'ease-in-out' },
+      { transform: at(0), clipPath: clip(b0), offset: f(0) },
+      { transform: at(0), clipPath: clip(b0), offset: f(0.2) },
+      { transform: at(-4 * sc), clipPath: clip(b0 - 4), offset: f(0.3), easing: 'cubic-bezier(.55,0,1,.45)' },
+      { transform: at(d * sc), clipPath: clip(b0 + d), offset: f(0.85) },
+      { transform: at(d * sc), clipPath: clip(b0 + d), offset: 1 }],
+      { duration: all, delay, fill: 'both' });
+    /* The slot, where the cards come to rest: under them, so they fall past its near rim. */
+    const cx = (left + right) / 2, w = (right - left) * sc, h = Math.max(8, w * 0.1);
+    const sx = cx + ox + (cx - (r.left + r.right) / 2) * (sc - 1), sy = (r.top + r.bottom) / 2 + oy + (bottom - (r.top + r.bottom) / 2) * sc;
     const slot = document.createElement('div');
     Object.assign(slot.style, { borderRadius: '50%', background: 'radial-gradient(ellipse at center, rgba(0,0,0,.75) 35%, rgba(0,0,0,0) 72%)' });
-    place({ el: slot, r: { left: left - w * 0.05, top: bottom - h / 2, width: w * 1.1, height: h }, vars: {} });
-    el.before(slot);                         // under the pile: the cards fall past the slot's near rim
+    place({ el: slot, r: { left: sx - w * 0.55, top: sy - h / 2, width: w * 1.1, height: h }, vars: {} });
+    let host = el; while (host.parentElement && host.parentElement.id !== 'fx') host = host.parentElement;
+    host.before(slot);
     const open = slot.animate([
-      { transform: 'scaleX(0)', opacity: 0 }, { transform: 'scaleX(1)', opacity: 1, offset: 0.2 },
-      { transform: 'scaleX(1)', opacity: 1, offset: 0.85 }, { transform: 'scaleX(0)', opacity: 0 }],
-      { duration: t * 1.3, delay, easing: 'ease-in-out', fill: 'both' });
+      { transform: 'scaleX(0)', opacity: 0, offset: 0 }, { transform: 'scaleX(0)', opacity: 0, offset: Math.max(0, f(0) - 0.05) },
+      { transform: 'scaleX(1)', opacity: 1, offset: f(0.2) }, { transform: 'scaleX(1)', opacity: 1, offset: f(0.85) },
+      { transform: 'scaleX(0)', opacity: 0, offset: 1 }],
+      { duration: all, delay, easing: 'ease-in-out', fill: 'both' });
     done(slot, [open]);
     return fall;
   }
   const done = (el, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => el.remove());
-  const outsideCell = () => qa('#info .cell').find(c => /Outside/i.test(c.textContent)) || q('#info');
   const seatOf = p => p === 0 ? (q('#hand') || q('#seat0')) : q('#seat' + p);
   const dealWait = key => handDeal.key === key ? Math.max(0, handDeal.end - performance.now()) : 0;
 
@@ -3902,13 +3914,13 @@ const Fx = (() => {
         } else g.remove();
       }
     }
-    // Bid won. Round 1: the turned card goes to the receiver, the 2 face-down cards to the outside pile.
-    // Round 2: the 2 face-down cards go to the receiver, the turned card to the outside pile.
+    // Bid won. Round 1: the turned card goes to the receiver, the 2 face-down cards drop through the table.
+    // Round 2: the 2 face-down cards go to the receiver, the turned card drops through the table.
     if (o.kpile && !q('#center .kpile') && v.trump && v.receiver !== null) {
       const g = place(o.kpile), cards = qa('.card', g), top = cards[cards.length - 1], r1 = v.exchangeCount === 1;
-      const recv = seatOf(v.receiver), oc = outsideCell();
+      const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
-      done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : fly(c, oc, t, t * 0.5 + i * 80)));
+      done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : sink(c, t, t * 0.5 + i * 80)));
     }
     // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
     // the pile did not show yet land first (a bot's as backs from its seat), then the pile drops through the table,
@@ -3947,17 +3959,18 @@ const Fx = (() => {
       expect('pile' + v.handNumber + '|0', { kind: 'out', n: 3, until: mineLand.t0 + t });
       holdMyLayer(v, performance.now());
     }
-    // Exchange and Showdown discards fly to the Outside cell: your cards themselves, a bot's as backs from its seat.
+    // Exchange and Showdown discards go to the middle of the table and drop through it: your cards themselves, a bot's
+    // as backs from its seat.
     // A Showdown discard made during the deal waits for the deal to end; its cards stay in the hand backs until then.
     if (before.phase === P.EXCHANGE || before.phase === P.SHOWDOWN_DISCARD) {
-      const oc = outsideCell(), sd = v.showdown && v.showdown.active, hold = dealWait(v.handNumber + (sd ? 'sd' : ''));
+      const mid = q('#center'), sd = v.showdown && v.showdown.active, hold = dealWait(v.handNumber + (sd ? 'sd' : ''));
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - v.handCounts[p]; if (k <= 0) continue;
-        expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 1.3 + 80 * k });
-        if (p === 0) { for (const x of o.hand.filter(x => !ids.has(x.id))) { const g = place(x.k); g.classList.remove('selected'); done(g, [fly(g, oc, t, hold)]); } continue; }
+        expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 2 + 80 * k });
+        if (p === 0) { o.hand.filter(x => !ids.has(x.id)).forEach((x, i) => { const g = place(x.k); g.classList.remove('selected'); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]); }); continue; }
         if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
         for (let i = 0; i < k; i++) {
-          const g = backAt(p, i, 10); done(g, [fly(g, oc, t, hold + i * 80)]);
+          const g = backAt(p, i, 10); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]);
           if (hold) g.animate([{ opacity: 0 }, { opacity: 0 }], { duration: hold });   // not on screen until it leaves
         }
       }
