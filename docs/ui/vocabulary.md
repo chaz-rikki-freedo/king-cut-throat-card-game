@@ -67,7 +67,8 @@ Area: `#center`. The middle of the table.
 | Trick label | Trick title | `.trick-label` | S | "Trick 3 of 7", or "Showdown trick 2 of 5", with "Led: ♥". |
 | Trick slot | Play spot | `.slot.slot-0` … `.slot-2` | — | One spot for each seat's card. `.win` marks the winning slot. |
 | Slot caption | Who | `.who`, `.lead-mark` | L, S | The player's name, "(lead)", "— wins", or "· mediator". |
-| Empty slot | — | `.empty` | — | A spot for a card that has not been played yet. |
+| Empty slot | — | `.empty` | — | A spot for a card that has not been played yet. The Advanced UI draws it with no outline. |
+| Move label | Your move | `.yourmove` | I | Advanced UI only: what you do now, in a few words ("Discard 3.", "Play a card."), just above the action buttons. Shown only while it is your move. |
 | Hand summary | Result box | `.summary` | S, R | The box that replaces the trick area at the end of a hand. Variants: [2.5](#25-hand-summary-variants). |
 | Call line | Meta line | `.meta` | R | "Trump ♠ Spades · named by West (round 2) · Dealer East". |
 | Stats table | Hand table | `table.stats` in `.stats-wrap` | R | Tricks, SD tricks, hand points, King points and score for each player. |

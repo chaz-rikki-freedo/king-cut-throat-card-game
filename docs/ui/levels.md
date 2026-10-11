@@ -35,7 +35,7 @@ Each part in the [vocabulary](vocabulary.md) has a text kind. A level shows or h
 | Control | All. | All. | All. | All, compact. |
 | Label | All, in words. | All, in words. | All, in words. | Short: symbols and numbers where they are clear. |
 | Descriptor | All: tooltips, setting hints, menu subtitles, profile texts, Rules. | Tooltips and the Rules dialog only. | The Rules dialog only. | The Rules dialog only. |
-| Instruction | Prompt and hint. | Prompt and hint. | Prompt only, in short form. | None. The hand and the buttons show what you can do. |
+| Instruction | Prompt and hint. | Prompt and hint. | Prompt only, in short form. | A few words while it is your move, such as "Play a card." (the move label). The hand and the buttons show the rest. |
 | Status | Status line, bubbles, discard notes, all toasts. | As Guided. | Status line, bubbles, discard notes. Toasts for points only. | Bubbles, turn highlight and points only. |
 | Record | Log, last-trick strip, stats tables. | As Guided. | As Guided. | As Guided. The log can be closed. |
 
@@ -43,7 +43,7 @@ Each part in the [vocabulary](vocabulary.md) has a text kind. A level shows or h
 
 | Part | Guided | Full instructions | Minimum instructions | Advanced |
 |---|---|---|---|---|
-| Prompt | "Accept ♠ Spades as trump?" | "Accept ♠ Spades as trump?" | "Accept ♠?" | — |
+| Prompt | "Accept ♠ Spades as trump?" | "Accept ♠ Spades as trump?" | "Accept ♠?" | "Accept or pass." |
 | Hint | The effect, and what *trump* and *kitty* mean. | "If you accept, the 9♠ goes to West (your left), who then discards 1. The other 2 kitty cards go to the outside pile." | — | — |
 | Buttons | **Accept ♠**, **Pass** | **Accept ♠**, **Pass** | **Accept ♠**, **Pass** | **♠**, **Pass** |
 | Status line | "Round 1 · Your call on Spades." | As Guided. | "Round 1 · Your call." | — |

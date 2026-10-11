@@ -438,7 +438,7 @@ body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.5)
 body.adv .trick .slot{position:relative}
 body.adv .trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
 body.adv .trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
-body.adv .trick .slot .empty{background:none;border-color:#8fa79a}
+body.adv .trick .slot .empty{background:none;border-color:transparent}
 body.adv .trick .slot-1 .empty,body.adv .trick .slot-2 .empty{visibility:hidden}
 body.adv .trick{min-height:0!important}
 body.adv .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(30px);box-shadow:-10px 18px 22px rgba(0,0,0,.5)}
@@ -482,6 +482,8 @@ body.adv .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:cal
 body.adv .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
 body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9;z-index:3}
 body.adv .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
+/* Your move in a few words: one spot in every phase, just above the action buttons (or where they would be). */
+body.adv .center > .yourmove{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);z-index:9;font-size:15px;font-weight:700;line-height:18px;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:8px}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
 body.adv .center > .pile-act.seats{flex-direction:row}
@@ -490,6 +492,7 @@ body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
 body.adv .table.showdown > .seat,body.adv .table.showdown > .me{background:linear-gradient(var(--panel),var(--panel)),var(--felt-showdown-edge)!important}
 body.adv .table > .center{z-index:1}
+body.adv .table > .center.lift{z-index:6}
 body.adv .outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
 body.adv .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
 @keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
@@ -3636,12 +3639,31 @@ const Render = (() => {
     return html ? '<div class="pile-act">' + html + '</div>' : '';
   }
 
+  /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). The screen
+     reader hears the full status line instead. */
+  function advMoveText(v, ui) {
+    const you = v.seat;
+    if (v.gameOver || ui.autoplay || !isTurn(v, you)) return '';
+    switch (v.phase) {
+      case P.DISCARD: return 'Discard ' + Engine.C.INITIAL_DISCARD + '.';
+      case P.BID1: return 'Accept or pass.';
+      case P.BID2: return 'Name trump.';
+      case P.EXCHANGE: return 'Discard ' + v.exchangeCount + '.';
+      case P.SHOWDOWN_DISCARD: return 'Discard ' + Engine.C.SHOWDOWN_DISCARD + '.';
+      case P.SHOWDOWN_LEAD: return 'Pick the leader.';
+      case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.trick.plays.length ? 'Play a card.' : 'Lead a card.';
+      default: return '';
+    }
+  }
+
   function advCenterHTML(v, ui, ctx, order) {
     const summary = summaryText(v, ui);
     const trick = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
     let html = '';
     if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order);
     html += summary || (trick ? advTrickHTML(v, ctx) : '');
+    const move = summary ? '' : advMoveText(v, ui);
+    if (move) html += '<div class="yourmove" aria-hidden="true">' + move + '</div>';
     return html + advButtonsHTML(v, ui, ctx);
   }
 
@@ -3759,6 +3781,12 @@ const Fx = (() => {
       @type {{ x: number, y: number, t0: number, hold: number, hand: number } | null} */
   let kittySlide = null;
   const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
+  /* Your hand's cards before a redraw, by card (window rects); and where each of your trick cards left the hand. */
+  /** @type {Map<string, DOMRect> | null} */
+  let handAt = null;
+  /** @type {Record<string, DOMRect>} */
+  const slotFrom = {};
+  let liftTimer = 0;
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
   function discardOrder(v) {
@@ -3783,6 +3811,7 @@ const Fx = (() => {
     if (kt && last) { kt.hand = last.handNumber; kt.sd = !!(last.showdown && last.showdown.active); }
     out = { trick: kt, kpile: keep(q('#center .kpile')), outpile: keep(q('#center .outpile')),
       hand: qa('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })) };
+    handAt = new Map(out.hand.flatMap(x => x.k ? [[x.id, x.k.r]] : []));
   }
   /* A kept element goes into the effects layer exactly where it was, with the variables it had. */
   function place(k) {
@@ -4100,28 +4129,49 @@ const Fx = (() => {
   /* Trick cards slide in from their player's seat; at a trick's end the winner lifts once the last card has landed. */
   function animateTrick(v, now) {
     const key = v.handNumber + '|' + (v.showdown && v.showdown.active ? 'sd' : '') + '|' + v.trickNumber, t = ms();
-    if (key !== trickKey) { trickKey = key; for (const k in slotStart) delete slotStart[k]; for (const k in winStart) delete winStart[k]; }
+    if (key !== trickKey) { trickKey = key; for (const o of [slotStart, winStart, slotFrom]) for (const k in o) delete o[k]; }
     for (const slot of qa('#center .trick .slot')) {
       const card = q('.card[data-card]', slot), m = slot.className.match(/slot-(\d)/);
       if (!card || !m) continue;
       const p = m[1], id = p + card.dataset.card;
-      if (slotStart[id] == null) slotStart[id] = now;
+      if (slotStart[id] == null) { slotStart[id] = now; if (p === '0' && handAt && handAt.has(card.dataset.card)) slotFrom[id] = handAt.get(card.dataset.card); }
       const e = now - slotStart[id], seat = q('#seat' + p), isWin = slot.classList.contains('win');
       // The resting poses first, before any motion applies: without the winner's lift, and with it.
       if (isWin) slot.classList.remove('win');
       const base = getComputedStyle(card).transform;
       if (isWin) slot.classList.add('win');
       const lifted = getComputedStyle(card).transform, rest = base === 'none' ? '' : base;
-      if (t && e < t && seat) {
-        const [sx, sy] = center(seat), [cx, cy] = center(card);
-        card.animate([{ transform: ('translate(' + (sx - cx) + 'px,' + (sy - cy) + 'px) ' + rest).trim(), opacity: 0.4 }, { transform: rest || 'none', opacity: 1 }],
+      /* Your card leaves your hand from where it was, at the hand's size; a bot's card comes from its seat. */
+      const from = slotFrom[id];
+      if (t && e < t && (seat || from)) {
+        const [cx, cy] = center(card);
+        const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / (card.offsetWidth || 1)).toFixed(3) + ') '
+          : 'translate(' + (center(seat)[0] - cx) + 'px,' + (center(seat)[1] - cy) + 'px) ';
+        card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: rest || 'none', opacity: 1 }],
           { duration: t, easing: 'ease-out', fill: 'backwards' }).currentTime = e;
+        /* The table's middle lies under the seats; it rises over your seat while your card crosses it. */
+        if (from) { const c = q('#center'); c.classList.add('lift'); clearTimeout(liftTimer); liftTimer = setTimeout(() => c.classList.remove('lift'), t - e); }
       }
       if (isWin) {
         if (winStart[p] == null) winStart[p] = now;
         const delay = Math.max(0, slotStart[id] + t - winStart[p]), w = now - winStart[p];
         if (t && w < delay + t) card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }).currentTime = w;
       }
+    }
+  }
+
+  /* Your hand closes up when a card leaves it, or makes room when one arrives: each card that stays slides from
+     where it was. A redraw that only selects cards moves nothing here. */
+  function slideHand(t) {
+    const was = handAt;
+    if (!t || !was) return;
+    const cards = qa('#hand .card[data-card]');
+    if (cards.length === was.size && cards.every(c => was.has(c.dataset.card))) return;
+    for (const c of cards) {
+      const r0 = was.get(c.dataset.card); if (!r0) continue;
+      const r = c.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      c.animate([{ translate: dx + 'px ' + dy + 'px' }, { translate: '0 0' }], { duration: t * 0.6, easing: 'ease-out' });
     }
   }
 
@@ -4135,6 +4185,8 @@ const Fx = (() => {
     holdTrickPip(v);
     kittyDeal(v, now);
     animateTrick(v, now);
+    slideHand(ms());
+    handAt = null;
     dealHand(v, now);
     /* The empty outside pile's outline shows once the deal, the kitty's packet with it, has landed. */
     const ep = q('#center .outpile.empty'), wait = handDeal.key === String(v.handNumber) ? handDeal.end - now : 0;
@@ -4159,10 +4211,11 @@ const Fx = (() => {
   /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
+    clearTimeout(liftTimer); const c = q('#center'); if (c) c.classList.remove('lift');
     pending.clear(); clearTimeout(countTimer);
-    prev = out = last = mineLand = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
+    prev = out = last = mineLand = handAt = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
-    for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
+    for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
 
   return Object.freeze({ discardOrder, capture, after, reset, busyFor });
