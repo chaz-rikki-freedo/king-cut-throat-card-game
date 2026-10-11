@@ -4136,9 +4136,25 @@ const Fx = (() => {
     kittyDeal(v, now);
     animateTrick(v, now);
     dealHand(v, now);
+    /* The empty outside pile's outline shows once the deal, the kitty's packet with it, has landed. */
+    const ep = q('#center .outpile.empty'), wait = handDeal.key === String(v.handNumber) ? handDeal.end - now : 0;
+    if (ep && ms() && wait > 0) ep.animate([{ opacity: 0 }, { opacity: 0, offset: wait / (wait + 200) }, { opacity: 1 }], { duration: wait + 200 });
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
     refreshCounts();
+  }
+  /* The time until the table's motion ends (ms): the longest running or waiting animation on the table or in the
+     effects layer. The controller waits for it before the next step shows. An endless animation does not count. */
+  function busyFor() {
+    if (!ms() || !document.body.classList.contains('adv')) return 0;
+    let w = 0;
+    for (const a of document.getAnimations()) {
+      const el = a.effect && /** @type {KeyframeEffect} */ (a.effect).target;
+      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table')) continue;
+      const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
+      if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
+    }
+    return Math.min(w, 4000);
   }
   /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
   function reset() {
@@ -4149,7 +4165,7 @@ const Fx = (() => {
     for (const o of [slotStart, winStart, heldBacks]) for (const k in o) delete o[k];
   }
 
-  return Object.freeze({ discardOrder, capture, after, reset });
+  return Object.freeze({ discardOrder, capture, after, reset, busyFor });
 })();
 
 
@@ -4747,11 +4763,14 @@ const App = (() => {
     if (app.timer) clearTimeout(app.timer);
     app.timer = null; app.timerFn = null;
   }
+  /* A timed step waits its delay, then for the table's motion to end (and a held redraw to show): every motion
+     completes before the next step shows. Skip goes at once. */
   function later(ms, fn) {
     clearTimer();
     const version = app.state.version;
     app.timerFn = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
-    app.timer = setTimeout(app.timerFn, ms);
+    const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else app.timerFn(); };
+    app.timer = setTimeout(tick, ms);
   }
   function skip() { if (app.timerFn) { const f = app.timerFn; clearTimeout(app.timer); f(); } }
 
@@ -4803,7 +4822,18 @@ const App = (() => {
 
   function selectionKey(v) { return v.phase + ':' + v.handNumber + ':' + (v.showdown ? 'sd' : '') + ':' + v.receiver; }
 
+  /* A move made while the table is still moving (yours, during the kitty's split, say) shows once the motion ends;
+     the game state is already ahead. Redraws in the meantime wait with it. */
+  let heldDraw = 0, heldEvents = [], drawnVersion = -1;
   function draw(events) {
+    const fresh = !app.state || app.state.version < drawnVersion || !app.ui.advanced;   // a new game, or no motion
+    if (heldDraw && !fresh) { heldEvents.push(...events); return; }
+    if (heldDraw) { clearTimeout(heldDraw); heldDraw = 0; heldEvents = []; }
+    if (!fresh && app.state.version > drawnVersion && drawnVersion >= 0) {
+      const w = Fx.busyFor();
+      if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
+    }
+    drawnVersion = app.state ? app.state.version : -1;
     const v = buildView(app.state, HUMAN);
     v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
