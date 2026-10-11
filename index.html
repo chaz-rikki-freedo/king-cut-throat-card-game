@@ -484,6 +484,7 @@ body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;
 body.adv .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 /* Your move in a few words: one spot in every phase, just above the action buttons (or where they would be). */
 body.adv .center > .yourmove{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);z-index:9;font-size:15px;font-weight:700;line-height:18px;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+body.adv .center > .yourmove.wait{visibility:hidden}
 body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:8px}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
 body.adv .center > .pile-act.seats{flex-direction:row}
@@ -3781,7 +3782,7 @@ const Fx = (() => {
   let handAt = null;
   /** @type {Record<string, DOMRect>} */
   const slotFrom = {};
-  let liftTimer = 0;
+  let liftTimer = 0, moveTimer = 0;
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
   function discardOrder(v) {
@@ -4189,6 +4190,15 @@ const Fx = (() => {
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
     refreshCounts();
+    /* Last, once every motion has started. Your move's label waits until the table is still (a trick sweeping to its
+       winner, a card landing, then the circle it fills), so nothing in flight crosses it. */
+    clearTimeout(moveTimer);
+    const mv = q('#center .yourmove'), still = () => Math.max(busyFor(), ...[...pending.values()].map(x => x.until - performance.now() + 160));
+    if (mv && still() > 0) {
+      mv.classList.add('wait');
+      const show = () => { const w = still(); if (w > 0) moveTimer = setTimeout(show, w + 16); else mv.classList.remove('wait'); };
+      show();
+    }
   }
   /* The time until the table's motion ends (ms): the longest running or waiting animation on the table or in the
      effects layer. The controller waits for it before the next step shows. An endless animation does not count. */
@@ -4206,7 +4216,7 @@ const Fx = (() => {
   /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
-    clearTimeout(liftTimer); const c = q('#center'); if (c) c.classList.remove('lift');
+    clearTimeout(liftTimer); clearTimeout(moveTimer); const c = q('#center'); if (c) c.classList.remove('lift');
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
