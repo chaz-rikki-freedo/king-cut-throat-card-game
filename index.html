@@ -3639,18 +3639,13 @@ const Render = (() => {
     return html ? '<div class="pile-act">' + html + '</div>' : '';
   }
 
-  /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). The screen
-     reader hears the full status line instead. */
+  /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). A step whose
+     buttons already say it (Discard 3, Accept ♠ or Pass, "Mei leads") has none; round 2's buttons are bare suit
+     symbols. The screen reader hears the full status line instead. */
   function advMoveText(v, ui) {
-    const you = v.seat;
-    if (v.gameOver || ui.autoplay || !isTurn(v, you)) return '';
+    if (v.gameOver || ui.autoplay || !isTurn(v, v.seat)) return '';
     switch (v.phase) {
-      case P.DISCARD: return 'Discard ' + Engine.C.INITIAL_DISCARD + '.';
-      case P.BID1: return 'Accept or pass.';
       case P.BID2: return 'Name trump.';
-      case P.EXCHANGE: return 'Discard ' + v.exchangeCount + '.';
-      case P.SHOWDOWN_DISCARD: return 'Discard ' + Engine.C.SHOWDOWN_DISCARD + '.';
-      case P.SHOWDOWN_LEAD: return 'Pick the leader.';
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.trick.plays.length ? 'Play a card.' : 'Lead a card.';
       default: return '';
     }
