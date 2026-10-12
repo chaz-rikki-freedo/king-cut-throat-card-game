@@ -21,16 +21,15 @@ figcaption{font-size:12px;color:var(--muted)}
 .small{--w:46px}.tiny{--w:30px}.tiny .c-joker{display:none}.tiny .c-tl{font-size:9px}.tiny .c-mid{font-size:15px}
 .zoom{--w:260px}
 
-/* Proposed: the assigned suit sits up and to the left of the center star, like a card index. */
-.c-mid .c-star{position:relative;line-height:1}
+/* Proposed: the assigned suit sits directly under the corner star, like a card index. */
 /* Drawn suits share one width, so no suit looks larger than another. */
-.c-suit{position:absolute;right:84%;bottom:74%;width:.22em;height:auto;display:block;fill:currentColor}
+.c-tl .c-suit{display:block;width:.62em;height:auto;margin:.12em auto 0;fill:currentColor}
 .c-suit.red{color:var(--red)}.c-suit.black{color:var(--black)}
 </style>
 </head>
 <body>
 <h1>Joker suit pip</h1>
-<p>Proposal for the flipped-Joker house rule. The center star and JOKER text stay. When the Joker carries a suit, that suit sits up and to the left of the center star, like a card index. All four suits are drawn the same width. The corner star is unchanged. No stroke. With the default re-deal rule, the Joker is unchanged.</p>
+<p>Proposal for the flipped-Joker house rule. The center star and JOKER text stay. When the Joker carries a suit, that suit sits directly under the corner star, like a card index. All four suits are drawn the same width. No stroke. With the default re-deal rule, the Joker is unchanged.</p>
 
 <h2>Enlarged (detail only)</h2>
 <div class="row" id="zoom"></div>
@@ -55,9 +54,7 @@ const SUIT_SVG={
   C:['0 0 100 110','<circle cx="50" cy="24" r="23"/><circle cx="23" cy="62" r="23"/><circle cx="77" cy="62" r="23"/><path d="M42 36H58V64H42ZM46.5 60C46.5 82 42 98 32 110H68C58 98 53.5 82 53.5 60Z"/>']
 };
 const suitSVG=s=>'<svg class="c-suit '+COL[s]+'" viewBox="'+SUIT_SVG[s][0]+'" aria-hidden="true">'+SUIT_SVG[s][1]+'</svg>',COL={S:'black',C:'black',H:'red',D:'red'};
-const joker=s=>'<span class="c-tl">★</span><span class="c-mid">'+(s
-  ?'<span class="c-star">'+suitSVG(s)+'★</span>'
-  :'★')+'</span><span class="c-joker">JOKER</span>';
+const joker=s=>'<span class="c-tl">★'+(s?suitSVG(s):'')+'</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>';
 for(const [id,cls] of [['zoom','zoom'],['hand',''],['small','small'],['tiny','tiny']]){
   document.getElementById(id).innerHTML=SUITS.filter(([s])=>id!=='zoom'||s).map(([s,l])=>
     '<figure><div class="card joker '+cls+'">'+joker(s)+'</div><figcaption>'+l+'</figcaption></figure>').join('');
