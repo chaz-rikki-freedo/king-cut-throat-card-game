@@ -105,7 +105,7 @@ Class `.tag` in a seat head or your head.
 | Term | Code anchor | Text | When it shows |
 |---|---|---|---|
 | Player-type tag | `.tag.you`, `.tag.ai` | Human, AI | Always. Your seat shows AI while the AI plays it. |
-| Dealer tag | `.tag.dealer` | Dealer | The dealer of this hand. |
+| Dealer tag | `.tag.dealer` | Dealer | The dealer of this hand. During a Showdown: the mediator, who deals it. |
 | Namer tag | `.tag.caller` | Namer | The player who accepted or named trump. Code name: caller. |
 | Kitty tag | `.tag.receiver` | Kitty | The player left of the namer, who got the kitty cards. Code name: receiver. |
 | Mediator tag | `.tag.mediator` | Mediator | The 1-trick player in a Showdown. |
