@@ -3718,14 +3718,16 @@ const Render = (() => {
     return html ? '<div class="pile-act">' + html + '</div>' : '';
   }
 
-  /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). A step whose
-     buttons already say it (Discard 3, Accept ♠ or Pass, "Mei leads") has none; round 2's buttons are bare suit
-     symbols, and the kitty's Discard 1 or 2 does not say why. The screen reader hears the full status line instead. */
+  /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). Every discard
+     names the goal, one card per trick to come ("Reduce to 7.", in a Showdown "Reduce to 5."), and its button says
+     how many cards that takes (Discard 3, 2 or 1). The bid steps' buttons already say the move (Accept ♠ or Pass,
+     "Mei leads"); round 2's are bare suit symbols. The screen reader hears the full status line instead. */
   function advMoveText(v, ui) {
     if (v.gameOver || ui.autoplay || !isTurn(v, v.seat)) return '';
     switch (v.phase) {
       case P.BID2: return 'Name trump.';
-      case P.EXCHANGE: return 'Reduce to 7.';
+      case P.DISCARD: case P.EXCHANGE: return 'Reduce to ' + Engine.C.MAIN_TRICKS + '.';
+      case P.SHOWDOWN_DISCARD: return 'Reduce to ' + Engine.C.SHOWDOWN_TRICKS + '.';
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.trick.plays.length ? 'Play a card.' : 'Lead a card.';
       default: return '';
     }
