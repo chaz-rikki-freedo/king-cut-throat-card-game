@@ -41,11 +41,12 @@ function randomAction(s, p, rnd) {
     case P.BID2: { const bl = R.card(s.flippedId).suit; return { type: 'NAME', player: p, suit: rnd() < 0.35 ? pick(rnd, R.SUITS.filter(x => x !== bl)) : null }; }
     case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: sample(rnd, h, s.exchangeCount) };
     case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: pick(rnd, h) };
+    case P.SHOWDOWN_LEAD: return { type: 'SHOWDOWN_LEAD', player: p, leader: pick(rnd, s.showdown.participants) };
     default: return { type: 'PLAY', player: p, card: pick(rnd, O.legal(h, s.trick.leadSuit, s.trump)) };
   }
 }
-const TYPE_FOR = { [P.DISCARD]: 'DISCARD', [P.BID1]: 'BID', [P.BID2]: 'NAME', [P.EXCHANGE]: 'EXCHANGE', [P.TRICK_PLAY]: 'PLAY', [P.SHOWDOWN_PLAY]: 'PLAY', [P.SHOWDOWN_DISCARD]: 'SHOWDOWN_DISCARD' };
-const ALL_TYPES = ['START_GAME', 'DEAL', 'DISCARD', 'FLIP', 'BID', 'NAME', 'EXCHANGE', 'PLAY', 'SHOWDOWN_DISCARD', 'ADVANCE', 'BOGUS', 'constructor', '__proto__', 'toString', 'hasOwnProperty'];
+const TYPE_FOR = { [P.DISCARD]: 'DISCARD', [P.BID1]: 'BID', [P.BID2]: 'NAME', [P.EXCHANGE]: 'EXCHANGE', [P.TRICK_PLAY]: 'PLAY', [P.SHOWDOWN_PLAY]: 'PLAY', [P.SHOWDOWN_DISCARD]: 'SHOWDOWN_DISCARD', [P.SHOWDOWN_LEAD]: 'SHOWDOWN_LEAD' };
+const ALL_TYPES = ['START_GAME', 'DEAL', 'DISCARD', 'FLIP', 'BID', 'NAME', 'EXCHANGE', 'PLAY', 'SHOWDOWN_DISCARD', 'SHOWDOWN_LEAD', 'ADVANCE', 'BOGUS', 'constructor', '__proto__', 'toString', 'hasOwnProperty'];
 /* Actions that are invalid by construction: a wrong type for the phase, or one broken field of a valid action. */
 function invalidActions(s, valid, rnd) {
   const out = [null, undefined, {}, { type: 5 }, { type: 'PLAY' }, 'PLAY', 42];
@@ -68,6 +69,7 @@ function invalidActions(s, valid, rnd) {
     if (a.type === 'PLAY') { const ill = s.hands[p].filter(id => !O.legal(s.hands[p], s.trick.leadSuit, s.trump).includes(id)); if (ill.length) out.push(Object.assign({}, a, { card: pick(rnd, ill) })); }
   }
   if (a.type === 'BID') for (const v of ['yes', 1, 0, undefined, null]) out.push(Object.assign({}, a, { accept: v }));
+  if (a.type === 'SHOWDOWN_LEAD') for (const v of [s.showdown.mediator, 3, -1, undefined, null, '0']) out.push(Object.assign({}, a, { leader: v }));
   if (a.type === 'NAME') for (const v of [R.card(s.flippedId).suit, 'X', undefined, 1, '', 'JK', 'SS']) out.push(Object.assign({}, a, { suit: v }));
   return out;
 }
@@ -102,7 +104,8 @@ function invariants(s, info) {
 
 /* One game. policy: 'fast' | 'random' | 'mix'. Returns stats and snapshots for later checks. */
 function playGame(seed, policy, rnd, opts) {
-  const s = E.createGame(seed);
+  /* Half the games use the house rule: the mediator picks the Showdown leader. */
+  const s = E.createGame(seed, null, E.RULES_VERSION, { mediatorLead: seed % 2 === 0 });
   const st = { steps: 0, decisions: 0, rejectsTried: 0, hands: 0, showdowns: 0, abandoned: 0, jokerVoids: 0, sweeps2: 0, sweeps3: 0, kings: 0, sdKings: 0, floorHits: 0, sdLosses: 0, legalityChecks: 0 };
   const snaps = [];
   let sys = 0, nondet = 0;
@@ -114,7 +117,13 @@ function playGame(seed, policy, rnd, opts) {
     else {
       const usePolicy = policy === 'fast' || (policy === 'mix' && rnd() < 0.5);
       a = usePolicy ? AIx.fastAction(s, p) : randomAction(s, p, rnd);
-      // Turn order from the README: bidding starts left of the dealer and goes left.
+      // Turn order from the README: the discards go in turn from the dealer's left (a Showdown: the mediator's left),
+      // and only the mediator picks the Showdown leader.
+      const turnFrom = (from, pending) => [1, 2, 3].map(k => (from + k) % 3).find(q => pending[q]);
+      if (s.phase === P.DISCARD && p !== turnFrom(s.dealer, s.pendingDiscard)) fail('discard-turn', { seed, p, dealer: s.dealer });
+      if (s.phase === P.SHOWDOWN_DISCARD && p !== turnFrom(s.showdown.mediator, s.showdown.pendingDiscard)) fail('sd-discard-turn', { seed, p });
+      if (s.phase === P.SHOWDOWN_LEAD && p !== s.showdown.mediator) fail('sd-lead-turn', { seed, p });
+      // Bidding starts left of the dealer and goes left.
       if (s.phase === P.BID1 || s.phase === P.BID2) {
         const n = s.bidLog.filter(b => b.round === (s.phase === P.BID1 ? 1 : 2)).length;
         if (p !== (s.dealer + 1 + n) % 3) fail('bid-turn', { seed, p, dealer: s.dealer, n });
@@ -163,8 +172,9 @@ function playGame(seed, policy, rnd, opts) {
       }
       if (e.type === 'SHOWDOWN_LEAD') {
         const parts = s.showdown.participants; let exp = null;
-        for (let i = s.trickWinners.length - 1; i >= 0; i--) if (parts.includes(s.trickWinners[i])) { exp = s.trickWinners[i]; break; }
-        if (exp !== e.player) fail('showdown-lead', { seed, exp, got: e.player });
+        if (s.mediatorLead) exp = a.type === 'SHOWDOWN_LEAD' && a.player === s.showdown.mediator ? a.leader : null;
+        else for (let i = s.trickWinners.length - 1; i >= 0; i--) if (parts.includes(s.trickWinners[i])) { exp = s.trickWinners[i]; break; }
+        if (exp !== e.player || !parts.includes(e.player) || (e.by != null) !== !!s.mediatorLead) fail('showdown-lead', { seed, exp, got: e.player, by: e.by });
       }
       if (e.type === 'SHOWDOWN_SCORED') {
         const t = e.tricks, [x, y] = s.showdown.participants;

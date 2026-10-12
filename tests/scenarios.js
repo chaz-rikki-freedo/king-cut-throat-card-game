@@ -21,8 +21,16 @@ function expect(name, ok, detail) {
     let r = await step(`
       const out = { launch: q('#overlay h2') && q('#overlay h2').textContent };
       speed('fast'); click('[data-action="new-free"]'); await sleep(50);
-      out.bots = app.ui.personas.slice(1);
       while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-back"]'); await sleep(20);
+      out.back = { menu: !!q('#overlay .menu'), mode: app.mode, saved: !!A.slots.get('free') };
+      click('[data-action="new-free"]'); await sleep(50);
+      while (!q('#overlay .swap')) await sleep(10);
+      const first = app.ui.personas.slice(1);
+      click('[data-action="swap-new"]'); await sleep(20);
+      out.bots = app.ui.personas.slice(1);
+      out.newOpponents = !!q('#overlay .swap') && !out.bots.some(x => first.includes(x));
+      out.atSwap = { hand: app.state.handNumber, cards: app.state.hands[0].length, dealer: app.state.dealer, prompt: q('.prompt') && q('.prompt').textContent };
       click('[data-action="swap-preview"]'); await sleep(20);
       out.colors = Array.from(q('#gameLog li').querySelectorAll('span[class^="p"]')).every(x => app.state.players[Number(x.className.slice(1))].name === x.textContent);
       click('[data-action="swap-done"]');
@@ -32,6 +40,10 @@ function expect(name, ok, detail) {
       out.log = Array.from(document.querySelectorAll('#gameLog li')).map(li => li.outerHTML);
       return out;`);
     expect('launch menu shows', r.launch === 'King Cut-Throat', r.launch);
+    expect('Back from the seat dialog opens the menu with no game and nothing saved', r.back.menu && r.back.mode === null && !r.back.saved, r.back);
+    expect('New opponents seats two other opponents', r.newOpponents, r);
+    expect('the seat dialog shows before the dealer is drawn: no dealer, no cards', r.atSwap.hand === 0 && r.atSwap.cards === 0 && r.atSwap.dealer === null, r.atSwap);
+    expect('behind the seat dialog, the table says Choosing seats', r.atSwap.prompt === 'Choosing seats.', r.atSwap);
     expect('seat swap changes the seats', r.botsAfter[0] === r.bots[1] && r.botsAfter[1] === r.bots[0], r);
     expect('after a swap, each name in the log has its seat color', r.colors);
     expect('play reaches hand 2', r.stop === 'stop', r.stop);
@@ -140,7 +152,7 @@ function expect(name, ok, detail) {
       StorageGate.locked = true;
       localStorage.setItem('kct.slots', JSON.stringify({ free: { format: SAVE_FORMAT, mode: 'free', state: s, personas: [null, 'kit', 'tex'], wave: { n: null } }, waves: null, last: 'free' }));`);
     await reload();
-    r = await step(`return { note: q('#overlay .wave-note') && q('#overlay .wave-note').textContent, resume: !!q('[data-action="resume-free"]') };`);
+    r = await step(`return { note: q('#overlay .wave-note') && q('#overlay .wave-note').textContent, resume: !!q('[data-action="resume-free"]:not([disabled])') };`);
     expect('the menu says once that the game could not be loaded', /could not be loaded/.test(r.note || '') && !r.resume, r);
     await reload();
     r = await step(`return !!q('#overlay .wave-note');`);
@@ -159,27 +171,29 @@ function expect(name, ok, detail) {
       return out;`);
     expect('KCT.App.newGame from the console plays (the menu state closes)', r.menu && !r.menuNow && r.moved >= 10, r);
 
-    console.log('Settings: Enter and Space open the sections, and do not move the game');
+    console.log('Settings: Enter and Space work on the focused tab, and do not move the game');
     await step(`KCT.App.newGame(4343); speed('slow');
       while (!q('#overlay .swap')) await sleep(10);
       click('[data-action="swap-done"]');
       click('[data-action="toggle-settings"]'); await sleep(20);`);
     const keys = [];
-    for (const [id, key] of [['setAdvanced', 'Enter'], ['setSeat', ' ']]) {
-      await page.focus('#' + id + ' > summary');
+    for (const [id, key] of [['setTabBots', 'Enter'], ['setTabExpert', ' ']]) {
+      await page.focus('#' + id);
       /* A spy in place of the game timer: a skip calls it, and no real move can happen meanwhile. */
       await step(`clearTimeout(app.timer); app.timer = 1; window.__skipped = false; app.timerFn = () => { window.__skipped = true; };`);
       await page.keyboard.press(key === ' ' ? 'Space' : key);
       await page.waitForTimeout(50);
-      keys.push(await step(`return { open: q('#${id}').open, moved: window.__skipped };`));
+      keys.push(await step(`return { open: q('#${id}').getAttribute('aria-selected') === 'true', moved: window.__skipped };`));
     }
-    expect('Enter and Space on a Settings heading open its section', keys.every(k => k.open), keys);
+    expect('Enter and Space on a Settings tab open that tab', keys.every(k => k.open), keys);
     expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
     await step(`click('[data-action="toggle-settings"]');`);
 
     console.log('AI errors: a bot that fails falls back to a legal move, and the game goes on');
     r = await step(`
-      KCT.App.newGame(5151); speed('fast'); app.ui.autoplay = true;
+      KCT.App.newGame(5151); speed('fast');
+      while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-done"]'); app.ui.autoplay = true;
       /* Broken bot settings: the planner and the fallback move both throw (personalities off, Free play). */
       const keep = app.ai; app.usePersonas = false; app.ai = {};
       const v = app.state.version, t0 = Date.now();

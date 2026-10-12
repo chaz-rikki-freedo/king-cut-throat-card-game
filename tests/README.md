@@ -17,13 +17,13 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | Script | What it checks | Time |
 |---|---|---|
 | `node typecheck.js` | The TypeScript checker on the game script in `index.html`, so the JSDoc types are checked. No browser. | about 3 s |
-| `node selftest.js` | The in-page self-tests (the same as **Run self-tests** in Settings). | about 2 s |
+| `node selftest.js` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
 | `node scenarios.js` | Two full games through the real controls (Free play, then Waves wave 1): seat swap and log colors, reload and resume, the questions the app asks, end buttons, results, wave progress, replay codes, the Skip button in a Showdown between the two bots, an old save, and the Your seat setting (the AI seat never carries over). | 2–5 min |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
 | `node soak.js 4 5` | 4 pages × 5 full games at Instant speed. Random mode, sometimes the AI plays your seat, reloads at random points. | 5–30 min |
 
-`npm test` runs `typecheck.js`, `selftest.js`, `scenarios.js` and `stress.js all 4`. GitHub Actions runs `npm test` on each pull request and each push to main (`.github/workflows/test.yml`).
+`npm test` runs `typecheck.js`, `selftest.js`, `scenarios.js` and `stress.js all 4`. GitHub Actions runs `npm test` only when a major release tag is pushed (`1.0.0`, `2.0.0`, `v3.0.0` and so on), or when you start it with **Run workflow** on the Actions tab (`.github/workflows/test.yml`).
 
 ## Stress sections
 
