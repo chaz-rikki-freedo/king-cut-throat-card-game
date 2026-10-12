@@ -85,10 +85,10 @@ Both settings are kept after a reload. **Defaults** (Bots tab) does not change t
 | Setting | What it does |
 |---|---|
 | **Mediator picks the Showdown lead** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
-
+| **Turned-up Joker** | **Redeal** by default: when the dealer turns up the Joker, the hand is void and the same dealer deals again. Set a suit (**Spades**, **Diamonds**, **Clubs** or **Hearts**) or **Random**, to save a deal: the Joker then offers that suit for trump, as if a card of that suit was turned up. **Random** draws the suit when the Joker is turned up. Bidding goes on as usual: accept that suit in round 1 (the Joker goes to the player left of the caller), or pass, and the suit is blocked in round 2. Only in that hand, the Joker shows its suit under its corner star; it is still the Best Bower in every suit. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
 | **Polite Play** | On by default. In the Advanced UI, a click on a player's trick circles shows the tricks they won this hand. Off: the circles only count, and you keep track of the tricks yourself. This is table manners, not a game rule, so a change applies at once. |
 
-Both settings are kept after a reload. A change to **Mediator picks the Showdown lead** applies from your next game: a game keeps the rules it started with, so its replay code gives the same game. **Polite Play** is not part of a game or its replay code.
+All three settings are kept after a reload. A change to **Mediator picks the Showdown lead** or **Turned-up Joker** applies from your next game: a game keeps the rules it started with, so its replay code gives the same game. **Polite Play** is not part of a game or its replay code.
 
 ### Game: Your seat
 

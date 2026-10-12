@@ -344,7 +344,8 @@ The card is a part that many areas use. Code: `Render.cardHTML`.
 | Term | Also called | Code anchor | What it is |
 |---|---|---|---|
 | Card face | Card | `.card` with `.red`, `.black`, `.joker` | A face-up card. `.trump` marks a trump card. |
-| Corner index | Index | `.c-tl` (top left), `.c-br` (bottom right) | The rank and suit in the corners. |
+| Corner index | Index | `.c-tl` (top left), `.c-br` (bottom right) | The rank and suit in the corners. The Joker has a star at top left only. |
+| Joker suit | — | `.c-suit` in `.c-tl` | House rule **Turned-up Joker**: the suit a turned-up Joker took, drawn under its corner star. Only in that hand. Every suit is drawn at the same width. |
 | Center pip | Pip | `.c-mid` | The large suit symbol (★ for the Joker). |
 | Joker label | — | `.c-joker` | "JOKER". |
 | Role tag | Bower tag | `.c-tag` | "BEST" (Joker), "RIGHT" (Right Bower), "LEFT ♠" (Left Bower). Shows only when trump is set. |

@@ -38,7 +38,7 @@ function randomAction(s, p, rnd) {
   switch (s.phase) {
     case P.DISCARD: return { type: 'DISCARD', player: p, cards: sample(rnd, h, 3) };
     case P.BID1: return { type: 'BID', player: p, accept: rnd() < 0.25 };
-    case P.BID2: { const bl = R.card(s.flippedId).suit; return { type: 'NAME', player: p, suit: rnd() < 0.35 ? pick(rnd, R.SUITS.filter(x => x !== bl)) : null }; }
+    case P.BID2: { const bl = R.turnedSuit(s.flippedId, s.jokerSuit); return { type: 'NAME', player: p, suit: rnd() < 0.35 ? pick(rnd, R.SUITS.filter(x => x !== bl)) : null }; }
     case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: sample(rnd, h, s.exchangeCount) };
     case P.SHOWDOWN_DISCARD: return { type: 'SHOWDOWN_DISCARD', player: p, card: pick(rnd, h) };
     case P.SHOWDOWN_LEAD: return { type: 'SHOWDOWN_LEAD', player: p, leader: pick(rnd, s.showdown.participants) };
@@ -70,7 +70,7 @@ function invalidActions(s, valid, rnd) {
   }
   if (a.type === 'BID') for (const v of ['yes', 1, 0, undefined, null]) out.push(Object.assign({}, a, { accept: v }));
   if (a.type === 'SHOWDOWN_LEAD') for (const v of [s.showdown.mediator, 3, -1, undefined, null, '0']) out.push(Object.assign({}, a, { leader: v }));
-  if (a.type === 'NAME') for (const v of [R.card(s.flippedId).suit, 'X', undefined, 1, '', 'JK', 'SS']) out.push(Object.assign({}, a, { suit: v }));
+  if (a.type === 'NAME') for (const v of [R.turnedSuit(s.flippedId, s.jokerSuit), 'X', undefined, 1, '', 'JK', 'SS']) out.push(Object.assign({}, a, { suit: v }));
   return out;
 }
 
@@ -104,9 +104,11 @@ function invariants(s, info) {
 
 /* One game. policy: 'fast' | 'random' | 'mix'. Returns stats and snapshots for later checks. */
 function playGame(seed, policy, rnd, opts) {
-  /* Half the games use the house rule: the mediator picks the Showdown leader. */
-  const s = E.createGame(seed, null, E.RULES_VERSION, { mediatorLead: seed % 2 === 0 });
-  const st = { steps: 0, decisions: 0, rejectsTried: 0, hands: 0, showdowns: 0, abandoned: 0, jokerVoids: 0, sweeps2: 0, sweeps3: 0, kings: 0, sdKings: 0, floorHits: 0, sdLosses: 0, legalityChecks: 0 };
+  /* Half the games use the house rule: the mediator picks the Showdown leader. The house rule jokerFlip takes
+     each of its values in turn (off: a turned-up Joker voids the hand). */
+  const jokerFlip = [undefined, ...E.JOKER_FLIPS][Math.floor(seed / 2) % (E.JOKER_FLIPS.length + 1)];
+  const s = E.createGame(seed, null, E.RULES_VERSION, { mediatorLead: seed % 2 === 0, jokerFlip });
+  const st = { steps: 0, decisions: 0, rejectsTried: 0, hands: 0, showdowns: 0, abandoned: 0, jokerVoids: 0, jokerSuits: 0, sweeps2: 0, sweeps3: 0, kings: 0, sdKings: 0, floorHits: 0, sdLosses: 0, legalityChecks: 0 };
   const snaps = [];
   let sys = 0, nondet = 0;
   for (let guard = 0; guard < 20000 && !s.gameOver; guard++) {
@@ -188,7 +190,15 @@ function playGame(seed, policy, rnd, opts) {
         if (e.reason === 'KING' || e.reason === 'SHOWDOWN_KING') { if (e.requested !== 1) fail('king-points', { seed, e }); }
       }
       if (e.type === 'HAND_ABANDONED') st.abandoned++;
-      if (e.type === 'HAND_VOID') st.jokerVoids++;
+      if (e.type === 'HAND_VOID') { st.jokerVoids++; if (jokerFlip) fail('joker-void-with-rule', { seed, jokerFlip }); }
+      // A turned-up Joker with the house rule offers its suit: the set one, or any suit for 'random'.
+      if (e.type === 'KITTY_FLIPPED' && e.card === 'JK') {
+        const ok = !jokerFlip ? e.jokerSuit === undefined : jokerFlip === 'random' ? ['S', 'H', 'D', 'C'].includes(e.jokerSuit) : e.jokerSuit === jokerFlip;
+        if (!ok) fail('joker-suit', { seed, jokerFlip, got: e.jokerSuit });
+        if (e.jokerSuit) st.jokerSuits++;
+      }
+      if (e.type === 'KITTY_FLIPPED' && e.card !== 'JK' && e.jokerSuit !== undefined) fail('joker-suit-on-card', { seed, card: e.card });
+      if (e.type === 'BIDDING_ROUND' && e.round === 1 && e.suit !== (s.flippedId === 'JK' ? s.jokerSuit : s.flippedId.slice(-1))) fail('turned-suit', { seed, card: s.flippedId, suit: e.suit });
       if (e.type === 'BIDDING_ROUND' && e.round === 1 && s.bidTurn !== (s.dealer + 1) % 3) fail('first-bidder', { seed });
       if (e.type === 'TRICK_STARTED' && !e.showdown && e.number === 1 && e.leader !== (s.dealer + 1) % 3) fail('first-leader', { seed });
       if (e.type === 'DEALER_ROTATED' && e.dealer !== (pre.dealer + 1) % 3) fail('dealer-rotate', { seed });
