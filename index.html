@@ -171,6 +171,15 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .c-br{bottom:5%;right:7%;transform:rotate(180deg)}
 .c-mid{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--w)*.5)}
 .c-joker{position:absolute;bottom:9%;left:0;right:0;text-align:center;font-size:calc(var(--w)*.15);letter-spacing:.08em}
+/* Card suits are drawn (SUIT_SVG), every suit at the same width, so a heart is no larger than a spade. The corner
+   suit sits under the rank, or for a turned-up Joker that took a suit (house rule), under the star. */
+.card .c-suit{display:block;width:.69em;height:auto;fill:currentColor}
+.c-tl .c-suit,.c-br .c-suit{margin:.12em auto 0}
+.c-suit.red{color:var(--red)}.c-suit.black{color:var(--black)}
+/* A suit symbol in text (SuitText): drawn at one width for every suit, the symbol hidden under it. */
+.t-suit{position:relative;display:inline-block;width:.66em;line-height:1;vertical-align:-.08em}
+.t-svg{display:block;width:100%;height:auto;fill:currentColor}
+.t-char{position:absolute;inset:0;opacity:0;overflow:hidden;line-height:1;text-align:center;pointer-events:none}
 .c-tag{position:absolute;top:44%;left:50%;transform:translate(-50%,60%);font-size:calc(var(--w)*.13);background:var(--gold);color:var(--gold-ink);padding:1px 4px;border-radius:3px;letter-spacing:.03em;white-space:nowrap}
 .c-new{position:absolute;top:3%;right:4%;font-size:calc(var(--w)*.12);background:var(--accent);color:#07233a;padding:0 3px;border-radius:3px}
 .card.back{background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9}
@@ -216,6 +225,8 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .card-tag .rank{color:#6b6b6b}
 .gamelog .pip-red{color:#d32f2f}
 .gamelog .pip-black{color:#000}
+/* A micro card's suit is drawn like a card's (SUIT_SVG), at one width for every suit. */
+.micro .m-suit{display:inline-block;width:.7em;height:auto;vertical-align:-.08em;fill:currentColor}
 .toasts{position:fixed;top:calc(var(--header-h,56px) + 8px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
@@ -710,6 +721,9 @@ body.adv .tag .short{display:none}
       <div class="set-card" id="setHouseRules">
         <label class="set-row"><span class="set-text"><span class="set-name">Mediator picks the Showdown lead</span><span class="set-desc">Off: the latest main-trick winner leads. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setMediatorLead"></label>
         <p class="k-hint rule-note set-note" id="setMediatorNow" hidden></p>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setJokerFlip">Turned-up Joker</label><span class="set-desc">Redeal: the hand is void. A suit: the Joker offers that suit for trump, to save a deal. Applies from your next game.</span></span>
+          <select id="setJokerFlip"><option value="">Redeal</option><option value="S">Spades</option><option value="D">Diamonds</option><option value="C">Clubs</option><option value="H">Hearts</option><option value="random">Random</option></select></div>
+        <p class="k-hint rule-note set-note" id="setJokerNow" hidden></p>
         <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Advanced UI: a click on trick circles shows the tricks won. Off: you remember them. Applies at once.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
       </div>
       <h3 class="set-head">Your seat</h3>
@@ -790,7 +804,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '56a3ca9', date: '2026-10-12' });
+const BUILD = Object.freeze({ commit: '7ce6161', date: '2026-10-12' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -887,6 +901,11 @@ const Rules = (() => {
     if (isTrump(id, trump)) return 'trump';
     return null;
   }
+  /* The suit a turned card offers for trump: its own suit, or for the Joker the suit the house rule gave it. */
+  function turnedSuit(id, jokerSuit) {
+    const c = card(id);
+    return c.isJoker ? jokerSuit || null : c.suit;
+  }
   function shortName(id) {
     const c = card(id);
     return c.isJoker ? 'Joker' : c.rank + SYMBOL[c.suit];
@@ -924,7 +943,7 @@ const Rules = (() => {
     SUITS, SYMBOL, SUIT_NAME, COLOR, SAME_COLOR, RANKS, RANK_VALUE, RANK_NAME, JOKER, ALL_IDS,
     card, isRightBower, isLeftBower, getEffectiveSuit, isTrump, trumpRank, getCardStrength,
     trickPower, compareCards, getLeadSuit, getTrickWinner, legalCards, canPlayCard, isKing,
-    cardRole, shortName, displayName, describeCard, sortHand, suitOrder
+    cardRole, turnedSuit, shortName, displayName, describeCard, sortHand, suitOrder
   });
 })();
 
@@ -1012,7 +1031,7 @@ const Logger = (() => {
  *   suit?: string | null, leader?: number }} Decision
  * @typedef {{ name: string, human: boolean }} PlayerInfo
  * @typedef {{
- *   version: number, seed: number, rules?: number, mediatorLead?: boolean,
+ *   version: number, seed: number, rules?: number, mediatorLead?: boolean, jokerFlip?: string, jokerSuit?: string,
  *   rng: { s: number }, playRng?: { s: number }, decisions?: Decision[],
  *   players: PlayerInfo[], scores: number[], dealer: number | null, handNumber: number,
  *   redeals?: number, redeal?: boolean, phase: string, gameOver: boolean, winner: number | null,
@@ -1027,7 +1046,7 @@ const Logger = (() => {
  *   showdown: Showdown | null, played: string[], playLog: Play[], voids: string[][],
  *   memory: { out: string[] }[], handSummary: HandSummary | null, handStats?: HandStats,
  *   planSeat?: number, plan?: string
- * }} GameState  rules, mediatorLead: see createGame. playRng, planSeat, plan: AI play-out states only.
+ * }} GameState  rules, mediatorLead, jokerFlip: see createGame. jokerSuit: see FLIP. playRng, planSeat, plan: AI play-out states only.
  *   decisions, redeals, redeal, handStats: real games only.
  */
 /* ---------------------------------------------------------------------
@@ -1051,10 +1070,17 @@ const Engine = (() => {
   const ADVANCE_PHASES = Object.freeze([P.TRICK_DONE, P.SHOWDOWN_TRICK_DONE, P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID]);
   /** @type {readonly string[]} */
   const PLAY_PHASES = Object.freeze([P.TRICK_PLAY, P.SHOWDOWN_PLAY]);
+  /* The values of the house rule jokerFlip (see createGame). Without it, a turned-up Joker voids the hand. */
+  /** @type {readonly string[]} */
+  const JOKER_FLIPS = Object.freeze(['S', 'H', 'D', 'C', 'random']);
+  /** @param {GameState} state @returns {string} the suit that the turned card offers */
+  const turnedSuit = state => /** @type {string} */ (R.turnedSuit(state.flippedId, state.jokerSuit));
 
   /* rules: the rules version of the game (RULES_VERSION for a new game; a save or a replay keeps its own). A game
      of version 1 has no rules field, so a version-1 save rebuilds to the same state.
-     options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on. */
+     options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on.
+     options.jokerFlip (house rule, from version 4): a Joker turned up from the kitty takes a suit instead of a redeal:
+     'S', 'H', 'D', 'C', or 'random' (drawn from the game's RNG at the turn). Kept only when on. */
   function createGame(seed, names, rules = RULES_VERSION, options) {
     const n = names || ['You', 'West', 'East'];
     /* The per-hand fields come from resetHand below. */
@@ -1083,6 +1109,7 @@ const Engine = (() => {
     });
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
+    if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
     resetHand(state);
     return state;
   }
@@ -1097,6 +1124,9 @@ const Engine = (() => {
     state.flippedId = null;
     state.flippedBlocked = false;
     state.flippedOut = false;
+    /* jokerSuit: the suit a turned-up Joker plays as in this hand's bidding (house rule jokerFlip). FLIP sets it
+       only then, so a state without the rule is the same as before it (older saves still check equal). */
+    delete state.jokerSuit;
     state.round = null;
     state.bidTurn = null;
     state.passes = 0;
@@ -1212,9 +1242,9 @@ const Engine = (() => {
   /* Raise RULES_VERSION when a change makes the same seed and decisions give a different game
      (a rule, the deal or the RNG). Replay codes and saves carry it: a replay plays by its own version and refuses
      a newer one. Version 2: the discards go in turn (see discardTurn). Version 3: the house rule mediatorLead
-     (createGame) can be on. */
+     (createGame) can be on. Version 4: the house rule jokerFlip (createGame) can be on. */
   /** @type {number} */
-  const RULES_VERSION = 3;
+  const RULES_VERSION = 4;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
   function decisionOf(a) {
@@ -1250,7 +1280,7 @@ const Engine = (() => {
         if (a.player !== state.bidTurn) return 'not this player\'s turn to bid';
         if (a.suit === null) return null;
         if (!R.SUITS.includes(a.suit)) return 'unknown suit';
-        return a.suit === R.card(state.flippedId).suit ? 'the turned suit is blocked' : null;
+        return a.suit === turnedSuit(state) ? 'the turned suit is blocked' : null;
       case 'EXCHANGE':
         if (ph !== P.EXCHANGE) return 'not in the exchange phase';
         if (a.player !== state.receiver) return 'only the receiving player discards now';
@@ -1498,8 +1528,12 @@ const Engine = (() => {
     },
     FLIP(state, a, events) {
       state.flippedId = state.kitty[0];
-      events.push({ type: 'KITTY_FLIPPED', card: state.flippedId });
-      if (R.card(state.flippedId).isJoker) {
+      if (R.card(state.flippedId).isJoker && state.jokerFlip) {
+        /* House rule: the Joker takes a suit instead of a redeal. Only 'random' draws from the RNG. */
+        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(state.rng, R.SUITS.length)] : state.jokerFlip;
+      }
+      events.push(state.jokerSuit ? { type: 'KITTY_FLIPPED', card: state.flippedId, jokerSuit: state.jokerSuit } : { type: 'KITTY_FLIPPED', card: state.flippedId });
+      if (R.card(state.flippedId).isJoker && !state.jokerSuit) {
         state.phase = P.JOKER_VOID;
         events.push({ type: 'HAND_VOID', reason: 'JOKER_TURNED' });
         return;
@@ -1508,11 +1542,11 @@ const Engine = (() => {
       state.passes = 0;
       state.bidTurn = seatAfter(state.dealer);
       state.phase = P.BID1;
-      events.push({ type: 'BIDDING_ROUND', round: 1, suit: R.card(state.flippedId).suit });
+      events.push({ type: 'BIDDING_ROUND', round: 1, suit: turnedSuit(state) });
     },
     BID(state, a, events) {
       state.bidLog.push({ player: a.player, round: 1, action: a.accept ? 'accept' : 'pass' });
-      if (a.accept) { callTrump(state, a.player, R.card(state.flippedId).suit, 1, events); return; }
+      if (a.accept) { callTrump(state, a.player, turnedSuit(state), 1, events); return; }
       state.passes++;
       events.push({ type: 'BID_PASS', player: a.player, round: 1 });
       if (state.passes === C.PLAYERS) {
@@ -1521,7 +1555,7 @@ const Engine = (() => {
         state.flippedBlocked = true;
         state.bidTurn = seatAfter(state.dealer);
         state.phase = P.BID2;
-        events.push({ type: 'BIDDING_ROUND', round: 2, blocked: R.card(state.flippedId).suit });
+        events.push({ type: 'BIDDING_ROUND', round: 2, blocked: turnedSuit(state) });
       } else {
         state.bidTurn = seatAfter(state.bidTurn);
       }
@@ -1620,7 +1654,7 @@ const Engine = (() => {
     return errors;
   }
 
-  return Object.freeze({ P, C, RULES_VERSION, createGame, dispatch, validate, actors, discardTurn, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
+  return Object.freeze({ P, C, RULES_VERSION, JOKER_FLIPS, createGame, dispatch, validate, actors, discardTurn, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
 })();
 
 /* ---------------------------------------------------------------------
@@ -1670,8 +1704,11 @@ const Replay = (() => {
      add a new mode at the end and never change the order. This is not the global MODES list. */
   const REPLAY_MODES = Object.freeze(['free', 'waves']);
   const FLAG = Object.freeze({ assisted: 1 });
-  /* House rules, a bit field at the end of GAME (rules version 3 and up). */
+  /* House rules, a bit field at the end of GAME (rules version 3 and up). Bits 1-3 (rules version 4 and up) hold
+     jokerFlip as a number: 0 = off (redeal), then JOKER_FLIP_CODES. The order is part of the format. */
   const OPTION = Object.freeze({ mediatorLead: 1 });
+  const JOKER_FLIP_SHIFT = 1, JOKER_FLIP_MASK = 7;
+  const JOKER_FLIP_CODES = Object.freeze(['S', 'D', 'C', 'H', 'random']);
   const META_TYPE = Object.freeze({ INT: 0, TEXT: 1, BYTES: 2, BOOL: 3 });
 
   /* ---- byte writer and reader: unsigned LEB128 varints and UTF-8 text ---- */
@@ -1720,7 +1757,7 @@ const Replay = (() => {
   /* An empty record: every field that a code can carry. */
   function blank() {
     return {
-      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, seed: 0, mode: null, wave: null,
+      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, jokerFlip: null, seed: 0, mode: null, wave: null,
       seats: [null, null, null], decisions: [],
       result: null, flags: { assisted: false }, endedAt: null, meta: {}, unknown: []
     };
@@ -1734,6 +1771,7 @@ const Replay = (() => {
     const rec = blank();
     rec.rules = state.rules || 1;
     rec.mediatorLead = !!state.mediatorLead;
+    rec.jokerFlip = state.jokerFlip || null;
     rec.seed = state.seed >>> 0;
     rec.mode = m.mode || null;
     rec.wave = m.wave || null;
@@ -1828,7 +1866,11 @@ const Replay = (() => {
     const modeNo = !rec.mode ? 0 : REPLAY_MODES.includes(rec.mode) ? REPLAY_MODES.indexOf(rec.mode) + 1 : future ? Number(future[1]) : -1;
     if (modeNo < 0) throw new Error('unknown mode ' + rec.mode);
     const game = writer().uint(rec.rules || 1).uint(rec.seed >>> 0).uint(modeNo).uint(rec.wave || 0);
-    if ((rec.rules || 1) >= 3) game.uint(rec.mediatorLead ? OPTION.mediatorLead : 0);
+    if ((rec.rules || 1) >= 3) {
+      const joker = (rec.rules || 1) >= 4 && rec.jokerFlip ? JOKER_FLIP_CODES.indexOf(rec.jokerFlip) + 1 : 0;
+      if (joker === 0 && (rec.rules || 1) >= 4 && rec.jokerFlip) throw new Error('unknown Joker rule ' + rec.jokerFlip);
+      game.uint((rec.mediatorLead ? OPTION.mediatorLead : 0) | (joker << JOKER_FLIP_SHIFT));
+    }
     put(TAG.GAME, game);
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
     put(TAG.DECISIONS, encodeDecisions(rec.decisions));
@@ -1891,7 +1933,11 @@ const Replay = (() => {
           rec.rules = s.uint(); rec.seed = s.uint() >>> 0;
           const mode = s.uint(); rec.mode = mode ? (REPLAY_MODES[mode - 1] || 'mode' + mode) : null;
           rec.wave = s.uint() || null; sawGame = true;
-          rec.mediatorLead = s.more() ? !!(s.uint() & OPTION.mediatorLead) : false;
+          const options = s.more() ? s.uint() : 0;
+          rec.mediatorLead = !!(options & OPTION.mediatorLead);
+          const joker = (options >> JOKER_FLIP_SHIFT) & JOKER_FLIP_MASK;
+          if (joker > JOKER_FLIP_CODES.length) throw new Error('unknown Joker rule ' + joker + ' in replay code');
+          rec.jokerFlip = joker ? JOKER_FLIP_CODES[joker - 1] : null;
           break;
         }
         case TAG.SEATS: rec.seats = [s.text() || null, s.text() || null, s.text() || null]; break;
@@ -1932,7 +1978,7 @@ const Replay = (() => {
     const rules = rec.rules || 1;
     if (!Number.isInteger(rules) || rules < 1 || rules > Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
-    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead }); next = 0; steps = 0; }
+    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || undefined }); next = 0; steps = 0; }
     const isMark = d => !!d && d.type === 'MARK';
     function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
@@ -2009,6 +2055,9 @@ function buildView(state, seat) {
     handCounts: state.hands.map(h => h.length),
     kittyCount: state.kitty.length,
     flipped: state.flippedId,
+    /* The suit the turned card offers; jokerSuit is set only when the house rule gave a turned-up Joker a suit. */
+    flippedSuit: state.flippedId ? R.turnedSuit(state.flippedId, state.jokerSuit) : null,
+    jokerSuit: state.jokerSuit || null, jokerFlip: state.jokerFlip || null,
     flippedBlocked: state.flippedBlocked,
     flippedOut: state.flippedOut,
     outsideCount: state.outside.length,
@@ -2821,8 +2870,8 @@ const AI = (() => {
     }).sort((a, b) => b.v - a.v).map(x => x.combo);
   }
   const sigmoid = x => 1 / (1 + Math.exp(-x));
-  function round1Value(hand, flipped) {
-    const s = R.card(flipped).suit;
+  /* s: the suit the turned card offers (see Rules.turnedSuit). */
+  function round1Value(hand, flipped, s) {
     return handValue(hand, s) - 0.85 * TRUMP_VAL[R.trumpRank(flipped, s)];
   }
 
@@ -2932,9 +2981,9 @@ const AI = (() => {
     const c = cfg || DEFAULT_CONFIG;
     switch (s.phase) {
       case P.DISCARD: return { type: 'DISCARD', player: p, cards: c.style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
-      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId) >= bidLimit(c, 'ROUND1') };
+      case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId, R.turnedSuit(s.flippedId, s.jokerSuit)) >= bidLimit(c, 'ROUND1') };
       case P.BID2: {
-        const b = bestSuit(s.hands[p], R.card(s.flippedId).suit);
+        const b = bestSuit(s.hands[p], R.turnedSuit(s.flippedId, s.jokerSuit));
         return { type: 'NAME', player: p, suit: b.value >= bidLimit(c, p === s.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
       }
       case P.EXCHANGE: return { type: 'EXCHANGE', player: p, cards: dropLowest(s.hands[p], s.exchangeCount, s.trump) };
@@ -3050,10 +3099,10 @@ const AI = (() => {
       }
       let f;
       if (b.round === 1) {
-        const pa = sigmoid((round1Value(hand, view.flipped) - bidLimit(cfg, 'ROUND1')) / T);
+        const pa = sigmoid((round1Value(hand, view.flipped, view.flippedSuit) - bidLimit(cfg, 'ROUND1')) / T);
         f = b.action === 'accept' ? pa : 1 - pa;
       } else {
-        const blocked = R.card(view.flipped).suit;
+        const blocked = view.flippedSuit;
         const best = bestSuit(hand, blocked);
         const pc = sigmoid((best.value - bidLimit(cfg, o === view.dealer ? 'ROUND2_LAST' : 'ROUND2')) / T);
         if (b.action === 'pass') f = 1 - pc;
@@ -3103,6 +3152,7 @@ const AI = (() => {
       gameOver: false, winner: null, endEvent: null,
       deck: [], hands: w.hands.map(h => h.slice()), kitty: w.kitty.slice(), outside: w.outside.slice(),
       flippedId: view.flipped, flippedBlocked: view.flippedBlocked, flippedOut: view.flippedOut,
+      jokerFlip: view.jokerFlip || undefined, jokerSuit: view.jokerSuit || undefined,
       round: view.round, bidTurn: view.bidTurn, passes, bidLog: view.bidLog.slice(),
       trump: view.trump, caller: view.caller, receiver: view.receiver, exchangeCount: view.exchangeCount,
       received: view.received.slice(), pendingDiscard: view.pendingDiscard.slice(), activePlayers: view.activePlayers.slice(),
@@ -3160,14 +3210,14 @@ const AI = (() => {
         return { type: 'DISCARD', player: me, cards: plan(view, cfg, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
       }
       case P.BID1: {
-        const h = round1Value(view.hand, view.flipped) >= bidLimit(cfg, 'ROUND1');
+        const h = round1Value(view.hand, view.flipped, view.flippedSuit) >= bidLimit(cfg, 'ROUND1');
         if (style.realTable) return { type: 'BID', player: me, accept: h };
         const bias = COURAGE[style.courage].bias;
         const accept = plan(view, cfg, [h, !h], a => ({ type: 'BID', player: me, accept: a }), SAMPLES.bid, a => (a ? bias : 0));
         return { type: 'BID', player: me, accept };
       }
       case P.BID2: {
-        const blocked = R.card(view.flipped).suit;
+        const blocked = view.flippedSuit;
         if (style.realTable) {
           const b = bestSuit(view.hand, blocked);
           return { type: 'NAME', player: me, suit: b.value >= bidLimit(cfg, me === view.dealer ? 'ROUND2_LAST' : 'ROUND2') ? b.suit : null };
@@ -3208,7 +3258,7 @@ const AI = (() => {
     const hands = [[], [], []];
     hands[view.seat] = view.hand.slice();
     const s = /** @type {GameState} */ ({
-      phase: view.phase, hands, flippedId: view.flipped, dealer: view.dealer, exchangeCount: view.exchangeCount, trump: view.trump,
+      phase: view.phase, hands, flippedId: view.flipped, jokerSuit: view.jokerSuit || undefined, dealer: view.dealer, exchangeCount: view.exchangeCount, trump: view.trump,
       trick: view.trick, activePlayers: view.activePlayers.slice(), tricksWon: view.tricksWon.slice(), showdown: view.showdown,
       scores: view.scores, trickWinners: view.trickWinners
     });
@@ -3219,6 +3269,64 @@ const AI = (() => {
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
     THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
   });
+})();
+
+/* ---------------------------------------------------------------------
+   6c. SUIT ART — the four suits as drawn shapes, each 100 units wide (its height from its own shape), so every
+   suit shows at the same width wherever it appears. Render draws them on cards; SuitText draws the suit symbols
+   in all other text of the page.
+   --------------------------------------------------------------------- */
+const SUIT_SVG = Object.freeze({
+  S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
+  H: ['0 0 100 92', '<path d="M50 92C20 66 0 50 0 27C0 11 12 0 27 0C38 0 46 6 50 15C54 6 62 0 73 0C88 0 100 11 100 27C100 50 80 66 50 92Z"/>'],
+  D: ['0 0 100 125', '<path d="M50 0Q70 35 100 62.5Q70 90 50 125Q30 90 0 62.5Q30 35 50 0Z"/>'],
+  C: ['0 0 100 110', '<circle cx="50" cy="24" r="23"/><circle cx="23" cy="62" r="23"/><circle cx="77" cy="62" r="23"/><path d="M42 36H58V64H42ZM46.5 60C46.5 82 42 98 32 110H68C58 98 53.5 82 53.5 60Z"/>']
+});
+/* cls: the classes, such as 'c-suit' on a card face. A suit takes the color of its text unless cls says red or black. */
+const suitSVG = (/** @type {string} */ s, /** @type {string} */ cls) => '<svg class="' + cls + '" viewBox="' + SUIT_SVG[s][0] + '" aria-hidden="true">' + SUIT_SVG[s][1] + '</svg>';
+/* Every ♠♥♦♣ in the page's text shows as its drawn suit. The symbol stays in the text, hidden under the drawing,
+   so screen readers, copy and textContent still read it. Form controls (a <select> option holds only text) keep
+   the symbol. watch() also draws the suits of everything added to the page later. */
+const SuitText = (() => {
+  /** @type {Record<string, string>} */
+  const CHAR = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
+  const ANY = /[♠♥♦♣]/, SPLIT = /([♠♥♦♣])/;
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'TITLE', 'OPTION', 'SELECT', 'TEXTAREA', 'INPUT', 'svg']);
+  /** @param {Node} n */
+  const skip = n => { for (let e = n.parentElement; e; e = e.parentElement) if (SKIP.has(e.tagName) || e.classList.contains('t-suit')) return true; return false; };
+  /** @param {Text} t */
+  function drawText(t) {
+    if (!ANY.test(t.data) || !t.parentNode || skip(t)) return;
+    const frag = document.createDocumentFragment();
+    for (const part of t.data.split(SPLIT)) {
+      if (!part) continue;
+      if (!CHAR[part]) { frag.appendChild(document.createTextNode(part)); continue; }
+      const span = document.createElement('span');
+      span.className = 't-suit';
+      span.innerHTML = suitSVG(CHAR[part], 't-svg') + '<span class="t-char">' + part + '</span>';
+      frag.appendChild(span);
+    }
+    t.parentNode.replaceChild(frag, t);
+  }
+  /** Draws the suits in the text under root. @param {Node} root */
+  function draw(root) {
+    if (root.nodeType === Node.TEXT_NODE) { drawText(/** @type {Text} */ (root)); return; }
+    if (root.nodeType !== Node.ELEMENT_NODE || !ANY.test(root.textContent || '')) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (ANY.test(/** @type {Text} */ (n).data)) list.push(/** @type {Text} */ (n));
+    for (const t of list) drawText(t);
+  }
+  /** Draws root now and every text added under it later. @param {Node} root */
+  function watch(root) {
+    draw(root);
+    new MutationObserver(recs => {
+      for (const r of recs) {
+        if (r.type === 'characterData') draw(r.target);
+        else for (const n of r.addedNodes) draw(n);
+      }
+    }).observe(root, { childList: true, subtree: true, characterData: true });
+  }
+  return Object.freeze({ draw, watch });
 })();
 
 /* ---------------------------------------------------------------------
@@ -3237,6 +3345,10 @@ const Render = (() => {
   const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
 
+
+  /* The turned card by name; a Joker that took a suit (house rule) adds it: "Joker ♠". */
+  const turnedName = v => R.shortName(v.flipped) + (v.jokerSuit ? ' ' + R.SYMBOL[v.jokerSuit] : '');
+
   function cardHTML(id, trump, opts) {
     const o = opts || {};
     const c = R.card(id);
@@ -3246,11 +3358,13 @@ const Render = (() => {
     if (o.cls) cls.push(...o.cls);
     const role = R.cardRole(id, trump);
     const tag = role === 'best' && trump ? 'BEST' : role === 'right' ? 'RIGHT' : role === 'left' ? 'LEFT ' + R.SYMBOL[trump] : '';
-    const name = R.displayName(id, trump);
-    const sym = c.isJoker ? '★' : R.SYMBOL[c.suit];
+    /* A suit on the Joker only in a hand where the house rule gave the turned-up Joker one (see render). */
+    const js = c.isJoker ? jokerSuit : null;
+    const name = R.displayName(id, trump) + (js ? ', turned as ' + R.SUIT_NAME[js] : '');
+    const sym = c.isJoker ? '' : suitSVG(c.suit, 'c-suit');
     const inner = c.isJoker
-      ? '<span class="c-tl">★</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
-      : '<span class="c-tl">' + c.rank + '<br>' + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + '<br>' + sym + '</span>';
+      ? '<span class="c-tl">★' + (js ? suitSVG(js, 'c-suit ' + R.COLOR[js]) : '') + '</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
+      : '<span class="c-tl">' + c.rank + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + sym + '</span>';
     /* The Advanced UI tags every King, the card that scores when it wins a trick. */
     const king = adv && !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
     const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
@@ -3357,7 +3471,7 @@ const Render = (() => {
         if (v.flippedBlocked) cards += '<div class="tucked" style="position:relative">' + cardHTML(v.flipped, null) + '<span class="blocked-x">✕</span></div>';
         else cards = cardHTML(v.flipped, null, { cls: ['enter'] }) + cards;
       }
-      const label = showFlip ? (v.flippedBlocked ? 'Kitty · ' + R.SUIT_NAME[R.card(v.flipped).suit] + ' blocked' : 'Kitty · turned ' + R.shortName(v.flipped)) : 'Kitty (' + v.kittyCount + ')';
+      const label = showFlip ? (v.flippedBlocked ? 'Kitty · ' + R.SUIT_NAME[v.flippedSuit] + ' blocked' : 'Kitty · turned ' + turnedName(v)) : 'Kitty (' + v.kittyCount + ')';
       parts.push('<div class="pile"><div class="pile-cards">' + cards + '</div><div>' + label + '</div></div>');
     }
     if (v.outsideCount > 0) {
@@ -3367,7 +3481,7 @@ const Render = (() => {
       parts.push('<div class="trump-big"><span class="sym' + (R.COLOR[v.trump] === 'red' ? ' red' : '') + '">' + R.SYMBOL[v.trump] + '</span><div>Trump: ' + R.SUIT_NAME[v.trump] + '</div></div>');
     }
     if (v.flipped && v.phase !== P.BID1 && v.phase !== P.BID2 && v.phase !== P.JOKER_VOID && !(v.showdown && v.showdown.active)) {
-      parts.push('<div class="pile"><div>Turned card: <b>' + R.shortName(v.flipped) + '</b></div></div>');
+      parts.push('<div class="pile"><div>Turned card: <b>' + turnedName(v) + '</b></div></div>');
     }
     return parts.length ? '<div class="piles">' + parts.join('') + '</div>' : '';
   }
@@ -3504,8 +3618,8 @@ const Render = (() => {
       case P.HAND_START: return handLabel(v) + ' · ' + n(v.dealer) + ' deals.';
       case P.DISCARD: return v.discardTurn == null ? 'Everyone discards 3 cards face-down to the outside pile.' : (v.discardTurn === you ? 'Your turn to discard' : n(v.discardTurn) + ' is discarding') + ' 3 cards face-down to the outside pile.';
       case P.REVEAL: return n(v.dealer) + ' turns up the top kitty card…';
-      case P.BID1: return 'Round 1 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + ' on ' + R.SUIT_NAME[R.card(v.flipped).suit] + '.';
-      case P.BID2: return 'Round 2 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + '. ' + R.SUIT_NAME[R.card(v.flipped).suit] + ' is blocked.';
+      case P.BID1: return 'Round 1 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + ' on ' + R.SUIT_NAME[v.flippedSuit] + '.';
+      case P.BID2: return 'Round 2 · ' + (v.bidTurn === you ? 'Your call' : n(v.bidTurn) + ' is deciding') + '. ' + R.SUIT_NAME[v.flippedSuit] + ' is blocked.';
       case P.EXCHANGE: return n(v.receiver) + ' (left of the namer) takes the kitty card' + (v.exchangeCount > 1 ? 's' : '') + ' and discards ' + v.exchangeCount + '.';
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return (v.currentPlayer === you ? 'Your turn.' : n(v.currentPlayer) + ' is playing…');
       case P.TRICK_DONE: case P.SHOWDOWN_TRICK_DONE: return n(v.lastTrick.winner) + ' wins the trick with ' + R.shortName(v.lastTrick.card) + (v.lastTrick.king ? ' — +1 King point!' : '.');
@@ -3539,13 +3653,13 @@ const Render = (() => {
         break;
       case P.BID1:
         if (v.bidTurn === you) {
-          const s = R.card(v.flipped).suit;
+          const s = v.flippedSuit;
           return '<div class="prompt">Accept ' + suitLabel(s) + ' as trump?</div><div class="hint">If you accept, the ' + R.shortName(v.flipped) + ' goes to ' + n(L) + ' (your left), who then discards 1. The other 2 kitty cards go to the outside pile.</div><button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>';
         }
         break;
       case P.BID2:
         if (v.bidTurn === you) {
-          const blocked = R.card(v.flipped).suit;
+          const blocked = v.flippedSuit;
           const btns = R.SUITS.map(s => '<button class="btn suit ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '"' + (s === blocked ? ' disabled title="Blocked: this suit was turned down"' : '') + '>' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + '</button>').join('');
           const lastNote = v.dealer === you ? ' If you pass too, the hand is abandoned.' : '';
           return '<div class="prompt">Round 2: name a trump suit or pass.</div><div class="hint">If you name a suit, the 2 face-down kitty cards go to ' + n(L) + ' (your left), who then discards 2.' + lastNote + '</div>' + btns + '<button class="btn" type="button" data-action="name-pass">Pass</button>';
@@ -3621,13 +3735,14 @@ const Render = (() => {
      and circles; the information strip (#info, in the header) holds what every player shares; the action buttons sit at the
      bottom of the play area; Skip moves to the top bar. Motion is Fx's (section 7b). ---- */
   let adv = false;   // true while render() draws the Advanced UI (cardHTML adds the KING tag then)
+  let jokerSuit = /** @type {string | null} */ (null);   // the hand's turned-up Joker suit, set by render() for cardHTML
   const advKey = { seats: '', info: '' };
 
   /* A text-sized card: rank and suit on white, as in the log. */
   function microHTML(id, joker) {
     const c = R.card(id);
     if (c.isJoker) return '<span class="micro" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
-    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '">' + R.SYMBOL[c.suit] + '</span></span>';
+    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
@@ -3697,7 +3812,7 @@ const Render = (() => {
     before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
-      html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped), 'turned');
+      html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped, v.jokerSuit ? 'Joker ' + R.SYMBOL[v.jokerSuit] : undefined), 'turned');
     }
     if (sd) {
       const n = v.showdown.active ? v.showdown.discardCount : 0;
@@ -3773,9 +3888,9 @@ const Render = (() => {
     else if (!(ui.autoplay && isTurn(v, you))) {
       switch (v.phase) {
         case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 3</button>'); break;
-        case P.BID1: if (v.bidTurn === you) { const s = R.card(v.flipped).suit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
+        case P.BID1: if (v.bidTurn === you) { const s = v.flippedSuit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
         case P.BID2: if (v.bidTurn === you) {
-          const blocked = R.card(v.flipped).suit;
+          const blocked = v.flippedSuit;
           /* The blocked suit's button stays clickable: it says why the suit cannot be named. */
           b.push(R.SUITS.map(s => s === blocked
             ? '<button class="btn suit sym-btn blocked ' + R.COLOR[s] + '" type="button" data-action="adv-info" data-kind="blocked" data-suit="' + s + '" aria-label="' + R.SUIT_NAME[s] + ' is blocked">' + R.SYMBOL[s] + '</button>'
@@ -3862,6 +3977,7 @@ const Render = (() => {
 
   function render(v, ui, ctx) {
     adv = !!ui.advanced;
+    jokerSuit = v.jokerSuit || null;
     if (adv) return renderAdvanced(v, ui, ctx);
     if (advKey.seats) leaveAdvanced();
     const table = $('table');
@@ -4419,10 +4535,13 @@ const App = (() => {
     instant: { ai: 0, trick: 0, sys: 0 }
   };
   const HUMAN = 0;
+  /* Settings → Game → Turned-up Joker, by value: what the rule notes call each choice. */
+  const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', D: 'Diamonds', C: 'Clubs', H: 'Hearts', random: 'Random' });
   /* House rules (Settings → Game), for new games: a game keeps the rules it started with. Render reads
      them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
-     Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code. */
-  const HOUSE = { mediatorLead: true, politePlay: true };
+     Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code.
+     jokerFlip: '' (redeal) or the suit a turned-up Joker takes (Engine.JOKER_FLIPS). */
+  const HOUSE = { mediatorLead: true, politePlay: true, jokerFlip: '' };
   /* The interfaces of Settings → Game → Interface, each with the table it draws. Normal and Guided are not built
      yet (their options are disabled); Flat draws the classic table for now. */
   const UI_MODES = { advanced: { advanced: true }, normal: { advanced: true }, flat: { advanced: false }, guided: { advanced: true } };
@@ -4891,7 +5010,7 @@ const App = (() => {
         return [title, body];
       }
       case 'kitty': {
-        const left = n((v.seat + 1) % 3), s = v.flipped ? R.card(v.flipped).suit : null;
+        const left = n((v.seat + 1) % 3), s = v.flippedSuit;
         let body;
         if (v.phase === P.BID1 && s) {
           body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; ' + left + ' takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go outside.') +
@@ -4915,7 +5034,7 @@ const App = (() => {
       case 'name-card': {
         const s = /** @type {Suit | null} */ (R.card(anchor.getAttribute('data-card') || '').suit);
         if (!s) return ['The Joker has no suit', p1('To name a suit, click its button.')];
-        if (v.flipped && s === R.card(v.flipped).suit) return blockedText(s);
+        if (v.flipped && s === v.flippedSuit) return blockedText(s);
         return ['To name ' + suit(s), p1('Click the ' + R.SYMBOL[s] + ' button.')];
       }
       case 'trump': {
@@ -4952,7 +5071,7 @@ const App = (() => {
       }
       case 'turned': {
         const blocked = v.phase === P.BID2 && v.flippedBlocked;
-        let body = blocked ? p1(suit(R.card(v.flipped).suit) + ' was turned down in round 1, so it cannot be named in round 2.')
+        let body = blocked ? p1(suit(v.flippedSuit) + ' was turned down in round 1, so it cannot be named in round 2.')
           : p1('The dealer turned up the top kitty card. In round 1, a player who accepts makes its suit trump, and this card goes to the player left of them.');
         if (v.flippedOut) body += p1('Round 2 named another suit, so this card went to the outside pile.');
         if (memory) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
@@ -5260,6 +5379,9 @@ const App = (() => {
     const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
     now.hidden = !differs;
     if (differs) now.textContent = 'This game started with this rule ' + (st.mediatorLead ? 'on' : 'off') + '. Your change applies from your next game.';
+    const jNow = $('setJokerNow'), jDiffers = !!app.mode && !st.gameOver && (st.jokerFlip || '') !== app.houseRules.jokerFlip;
+    jNow.hidden = !jDiffers;
+    if (jDiffers) jNow.textContent = 'This game started with ' + (JOKER_FLIP_TEXT[st.jokerFlip || ''] || 'Redeal') + '. Your change applies from your next game.';
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
@@ -5463,7 +5585,10 @@ const App = (() => {
     switch (e.type) {
       case 'DEAL': addLog(handLabel(st) + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
-      case 'KITTY_FLIPPED': addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind'); break;
+      case 'KITTY_FLIPPED':
+        if (e.jokerSuit) { addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h'); toast('Joker turned — ' + R.SYMBOL[e.jokerSuit] + ' ' + R.SUIT_NAME[e.jokerSuit], 'info'); }
+        else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind');
+        break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
@@ -5803,7 +5928,7 @@ const App = (() => {
       '<li>Trump order: Joker, Right Bower (Jack of trump), Left Bower (other Jack of the same color, counts as trump), A, K, Q, 10, 9, 8, 7.</li>' +
       '<li><b>Bower</b> comes from the German <i>Bauer</i>, “farmer”. The Jacks are the farmers.</li>' +
       '<li>Before bidding, each player discards 3 face-down to the outside pile (7 cards left), in turn from the dealer\'s left, the dealer last.</li>' +
-      '<li>Round 1: the dealer turns the top kitty card (a Joker voids the hand). Accept its suit or pass. If accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1.</li>' +
+      '<li>Round 1: the dealer turns the top kitty card (a Joker voids the hand; with the house rule Turned-up Joker, it offers the suit set in Settings instead, and shows that suit under its corner star for this hand). Accept its suit or pass. If accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1.</li>' +
       '<li>Round 2: name another suit or pass. If named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned.</li>' +
       '<li>7 tricks. The player left of the dealer leads. Follow suit if you can.</li>' +
       '<li><b>King points:</b> +1 at once when a King wins a trick. A losing King scores nothing.</li>' +
@@ -6076,7 +6201,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -6095,9 +6220,11 @@ const App = (() => {
     if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
+    if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
   }
 
   function init() {
+    SuitText.watch(document.body);
     $('setBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
@@ -6152,6 +6279,8 @@ const App = (() => {
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); draw([]); });
+    $('setJokerFlip').value = app.houseRules.jokerFlip;
+    $('setJokerFlip').addEventListener('change', () => { app.houseRules.jokerFlip = $('setJokerFlip').value; saveSettings(); draw([]); });
     $('setPolitePlay').checked = app.houseRules.politePlay;
     $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; closePanel(); saveSettings(); if (app.state) draw([]); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
@@ -6411,6 +6540,28 @@ const SelfTest = (() => {
       eq('a Joker redeal keeps its hand number for players', [handLabel(s), s.redeals], ['Hand ' + before + ' (redeal)', 1]);
       D(s, { type: 'DEAL' });
       eq('the redealt hand is labeled as a redeal of the same hand', [s.handNumber, handLabel(s)], [before + 1, 'Hand ' + before + ' (redeal)']);
+
+      /* House rule jokerFlip: a turned-up Joker offers a suit instead of a redeal, for that hand only. */
+      eq('jokerFlip needs rules version 4 and a known value', [Engine.createGame(1, null, 3, { jokerFlip: 'S' }).jokerFlip, Engine.createGame(1, null, Engine.RULES_VERSION, { jokerFlip: 'X' }).jokerFlip, Engine.createGame(1, null, Engine.RULES_VERSION, { jokerFlip: 'H' }).jokerFlip], [undefined, undefined, 'H']);
+      s = revealState(9, 1, 'JK'); s.jokerFlip = 'S';
+      const jf = D(s, { type: 'FLIP' });
+      eq('Joker turned with jokerFlip: round 1 on its suit, no void', [s.phase, s.jokerSuit, s.bidTurn, jf.events.map(e => e.type)], [P.BID1, 'S', 2, ['KITTY_FLIPPED', 'BIDDING_ROUND']]);
+      eq('the events carry the suit', [jf.events[0].jokerSuit, jf.events[1].suit], ['S', 'S']);
+      const jv = buildView(s, 0);
+      eq('the view shows the suit the Joker offers', [jv.flipped, jv.flippedSuit, jv.jokerSuit, jv.jokerFlip], ['JK', 'S', 'S', 'S']);
+      for (const p of [2, 0, 1]) D(s, { type: 'BID', player: p, accept: false });
+      check('round 2 blocks the Joker\'s suit', !D(s, { type: 'NAME', player: 2, suit: 'S' }).ok && D(s, { type: 'NAME', player: 2, suit: null }).ok);
+      for (const p of [0, 1]) D(s, { type: 'NAME', player: p, suit: null });
+      D(s, { type: 'ADVANCE' });
+      eq('the next hand has no Joker suit', [s.phase, 'jokerSuit' in s, s.jokerFlip], [P.HAND_START, false, 'S']);
+      s = revealState(9, 1, 'JK'); s.jokerFlip = 'D';
+      D(s, { type: 'FLIP' }); D(s, { type: 'BID', player: 2, accept: true });
+      eq('accepting the Joker\'s suit: trump, and the Joker goes left of the caller', [s.trump, s.receiver, s.received], ['D', 0, ['JK']]);
+      const rand = () => { const r = revealState(9, 1, 'JK'); r.jokerFlip = 'random'; D(r, { type: 'FLIP' }); return r.jokerSuit; };
+      check('random: a suit, the same for the same seed', /** @type {readonly string[]} */ (Rules.SUITS).includes(rand()) && rand() === rand());
+      s = revealState(9, 1, '9H'); s.jokerFlip = 'C';
+      D(s, { type: 'FLIP' });
+      eq('another turned card is not changed by jokerFlip', ['jokerSuit' in s, buildView(s, 0).flippedSuit], [false, 'H']);
     });
 
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
@@ -6733,6 +6884,24 @@ const SelfTest = (() => {
       check('MARK entries are kept and skipped', rm.ok && JSON.stringify(rm.state.scores) === JSON.stringify(s.scores) && Replay.decode(Replay.encode(marked)).decisions[5].kind === 9, rm.error);
       const ext = JSON.parse(JSON.stringify(rec)); ext.decisions.splice(5, 0, { type: 'EXT', player: 1, kind: 2, data: [] });
       check('an EXT decision stops the replay', /kind 2/.test(Replay.run(Replay.encode(ext)).error || ''));
+      /* House rule jokerFlip: a game in which the Joker was turned replays to the same state, for every choice. */
+      for (const flip of Engine.JOKER_FLIPS) {
+        let g = Engine.createGame(0), turned = null, voids = 0;
+        for (let seed = 1; seed < 80 && !turned; seed++) {
+          g = Engine.createGame(seed, null, Engine.RULES_VERSION, { jokerFlip: flip }); voids = 0;
+          for (let k = 0; k < 5000 && !g.gameOver; k++) {
+            const ac = Engine.actors(g), res = D(g, ac.length ? AI.fastAction(g, ac[0]) : Engine.systemAction(g));
+            for (const e of res.events) { if (e.type === 'KITTY_FLIPPED' && e.jokerSuit) turned = e.jokerSuit; if (e.type === 'HAND_VOID') voids++; }
+          }
+        }
+        check('jokerFlip ' + flip + ': the Joker took ' + (flip === 'random' ? 'a suit' : 'its suit') + ' and voided no hand', !!turned && (flip === 'random' ? /** @type {readonly string[]} */ (Rules.SUITS).includes(/** @type {string} */ (turned)) : turned === flip) && voids === 0, String(turned));
+        const jcode = Replay.encode(Replay.fromState(g)), jr = Replay.run(jcode);
+        eq('jokerFlip ' + flip + ': the code keeps the rule and replays the same game', [Replay.decode(jcode).jokerFlip, jr.ok, JSON.stringify(jr.state) === JSON.stringify(g)], [flip, true, true]);
+      }
+      const noJoker = JSON.parse(JSON.stringify(rec)); noJoker.rules = 3; noJoker.jokerFlip = 'S';
+      eq('rules version 3 writes no Joker rule', Replay.decode(Replay.encode(noJoker)).jokerFlip, null);
+      const badJoker = JSON.parse(JSON.stringify(rec)); badJoker.jokerFlip = 'X';
+      check('an unknown Joker rule is not encoded', (() => { try { Replay.encode(badJoker); return false; } catch (e) { return /Joker rule/.test(String(e)); } })());
       const otherRules = JSON.parse(JSON.stringify(rec)); otherRules.rules = Engine.RULES_VERSION + 1;
       check('another rules version is refused', /rules version/.test(Replay.run(Replay.encode(otherRules)).error || ''));
       const wrongEnd = JSON.parse(JSON.stringify(rec)); wrongEnd.result.scores = [0, 0, 0];
@@ -7051,6 +7220,18 @@ const SelfTest = (() => {
     /* --- Interface: the Settings panel's structure, and every information popup across real games. Reads the page and
        the settings; changes nothing (Table memory is switched for the check and put back). --- */
     safeRun('interface', () => {
+      /* Suit symbols in text show drawn, every suit at one width; the text keeps the symbols. */
+      if (typeof document !== 'undefined') {
+        const box = document.createElement('div');
+        box.innerHTML = '<p>Accept ♠ or Q♥, 10♦ and ♣</p><select><option>♠ Spades</option></select>';
+        SuitText.draw(box);
+        eq('suit symbols in text are drawn, and the text keeps them', [box.querySelectorAll('p .t-suit svg').length, box.querySelector('p').textContent], [4, 'Accept ♠ or Q♥, 10♦ and ♣']);
+        check('a select option keeps its text symbol', box.querySelectorAll('option .t-suit').length === 0 && box.querySelector('option').textContent === '♠ Spades');
+        SuitText.draw(box);
+        eq('drawing again adds nothing', box.querySelectorAll('.t-suit').length, 4);
+        const cd = document.createElement('div'); cd.innerHTML = Render.cardHTML('QH', null) + Render.microHTML('QH');
+        check('cards and micro cards draw the suit, not the symbol', cd.querySelectorAll('svg').length === 4 && !/[♠♥♦♣]/.test(cd.textContent));
+      }
       const panel = typeof document !== 'undefined' && document.getElementById('settingsPanel');
       if (panel) {
         const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
@@ -7242,7 +7423,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
