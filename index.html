@@ -177,7 +177,8 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 button.card{cursor:pointer}
 .hand .card.legal:hover,.hand .card.selectable:hover{transform:translateY(-8px)}
 .hand .card.selected{transform:translateY(-14px);box-shadow:0 0 0 3px var(--accent),0 6px 14px rgba(0,0,0,.5)}
-.hand .card:disabled{opacity:.38;filter:grayscale(.55);cursor:not-allowed}
+.hand .card:disabled,.hand .card[aria-disabled="true"]{opacity:.38;filter:grayscale(.55);cursor:not-allowed}
+body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .hand .card.bidding:disabled{opacity:1;filter:none;cursor:default}
 .hand .card.legal{box-shadow:0 0 0 2px var(--accent),0 2px 6px rgba(0,0,0,.45)}
 .hand .card.legal.trump{box-shadow:inset 0 0 0 2px var(--gold),0 0 0 2px var(--accent),0 2px 6px rgba(0,0,0,.45)}
@@ -592,6 +593,8 @@ body.adv .info .cell.tappable:hover{background:rgba(255,255,255,.08)}
 body.adv .info .cell.tappable:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 body.adv .info .cell.tappable.open{box-shadow:0 0 0 2px var(--gold)!important}
 body.adv .tpips.tappable.open{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+body.adv #center .slot.tappable,body.adv #center .kpile.tappable,body.adv #center .outpile.tappable{cursor:help}
+body.adv #center .tappable:focus-visible,body.adv #center .tappable.open{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
 body.adv .panel{position:absolute;z-index:30;min-width:180px;max-width:300px;background:#0b2a1a;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;box-shadow:0 10px 26px rgba(0,0,0,.55);font-size:13px}
 body.adv .panel .ptitle{display:block;margin-bottom:6px;font-size:13px;letter-spacing:.04em}
 body.adv .panel .prow{display:flex;align-items:center;gap:4px;margin:4px 0}
@@ -787,7 +790,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '4e46bed', date: '2026-10-12' });
+const BUILD = Object.freeze({ commit: '497cb33', date: '2026-10-12' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -3252,7 +3255,7 @@ const Render = (() => {
     const king = adv && !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
     const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
     if (o.button) {
-      return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
+      return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + (o.inert ? ' aria-disabled="true"' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
     }
     return '<div class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '" role="img" aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</div>';
   }
@@ -3591,6 +3594,8 @@ const Render = (() => {
       if (mode === 'select') return cardHTML(id, v.trump, { button: true, cls: ['selectable'].concat(ui.selected.has(id) ? ['selected'] : []), isNew });
       if (mode === 'play') {
         const legal = v.legal.includes(id);
+        /* In the Advanced UI an unplayable card stays clickable: the click says why it cannot be played. */
+        if (!legal && adv) return cardHTML(id, v.trump, { button: true, inert: true, cls: ['illegal'] });
         return cardHTML(id, v.trump, { button: true, disabled: !legal, cls: legal ? ['legal'] : ['illegal'] });
       }
       /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
@@ -3704,19 +3709,28 @@ const Render = (() => {
     return [before, html];
   }
 
+  /* While it is your move and you have not picked a card, the play area explains itself: a click on a trick slot,
+     the kitty or the outside pile in the middle opens what it is now (adv-info). At other times these only show. */
+  const explains = (v, ui) => !!ui && !v.gameOver && !ui.autoplay && isTurn(v, v.seat) && !ui.selected.size;
+  /* Closes an open class attribute and makes the element an adv-info control. */
+  const infoAttrs = (kind, label, seat) => ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '"' +
+    (seat === undefined ? '' : ' data-seat="' + seat + '"') + ' aria-label="' + label + '"';
+
   /* The trick in 3D, cards stacked in play order: each card lies above the cards played before it (also at the
      trick's end), and your empty space, while you still have to play, lies above them all. */
   function advTrickHTML(v, ctx) {
     const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
+    const tap = !done && explains(v, ctx.ui);
     let html = '<div class="trick">';
     for (const p of [1, 2, 0]) {
       const at = plays.findIndex(x => x.player === p), z = at >= 0 ? at + 1 : plays.length + 1;
       if (!v.activePlayers.includes(p)) { html += '<div class="slot slot-' + p + '" style="z-index:' + z + '"></div>'; continue; }
       const play = plays[at];
       const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
-      html += '<div class="slot slot-' + p + (winner === p ? ' win' : '') + '" style="z-index:' + z + '">' + card + '</div>';
+      const about = p === v.seat ? 'About your card' : 'About ' + nameOf(v, p) + '\'s card';
+      html += '<div class="slot slot-' + p + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
     }
     return html + '</div>';
   }
@@ -3724,15 +3738,18 @@ const Render = (() => {
   /* Before the first trick the kitty lies in the play area, spread so its cards can be counted: face down, the top
      card face up from the turn-up (in round 2, tucked under as the leftmost card: see advKittyHTML). During the discard the same
      spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
-  function advKittyHTML(v, order) {
+  function advKittyHTML(v, order, ui) {
+    const tap = explains(v, ui);
+    const kpile = '<div class="kpile' + (tap ? infoAttrs('kitty', 'Kitty: ' + v.kittyCount + ' cards. About the kitty') : '" aria-label="Kitty: ' + v.kittyCount + ' cards"') + '>';
     const backs = (/** @type {number} */ n) => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * var(--kstep))"></div>'; return h; };
     if (v.phase === P.DISCARD) {
       const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
       const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
         [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>').join('');
       /* The kitty, dealt as the fourth packet, lies beside the outside pile until the discards are done. */
-      return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + backs(v.kittyCount) + '</div>' +
-        '<div class="outpile' + (order.length ? '' : ' empty') + '" aria-label="Outside pile: ' + v.outsideCount + ' cards">' + layers + '</div></div></div>';
+      const outLabel = 'Outside pile: ' + v.outsideCount + ' cards';
+      return '<div class="kitty-spot"><div class="piles-row">' + kpile + backs(v.kittyCount) + '</div>' +
+        '<div class="outpile' + (order.length ? '' : ' empty') + (tap ? infoAttrs('outside', outLabel + '. About the outside pile') : '" aria-label="' + outLabel + '"') + '>' + layers + '</div></div></div>';
     }
     /* The turned card lies on top, face up. In round 2 its suit is blocked: as at a real table, it is tucked
        under the kitty instead, the leftmost card, partly shown. */
@@ -3744,7 +3761,7 @@ const Render = (() => {
       if (i === at) cards += cardHTML(v.flipped, null, { cls: at === 0 && v.kittyCount > 1 ? ['tuck'] : [] }).replace('<div class="', '<div style="' + left + '" class="');
       else cards += '<div class="card back" aria-hidden="true" style="' + left + '"></div>';
     }
-    return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + cards + '</div></div></div>';
+    return '<div class="kitty-spot"><div class="piles-row">' + kpile + cards + '</div></div></div>';
   }
 
   /* Every action button, in the play area; the primary action outermost. Round 2's suits are symbols. */
@@ -3794,7 +3811,7 @@ const Render = (() => {
     const summary = summaryText(v, ui);
     const trick = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
     let html = '';
-    if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order);
+    if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order, ui);
     html += summary || (trick ? advTrickHTML(v, ctx) : '');
     const move = summary ? '' : advMoveText(v, ui);
     if (move) html += '<div class="yourmove" aria-hidden="true">' + move + '</div>';
@@ -4788,6 +4805,9 @@ const App = (() => {
     closePanel();
     if (wasOpen || !app.state) return;
     const v = buildView(app.state, HUMAN), mini = id => Render.microHTML(id, 'Jkr');
+    /* The play area explains itself only on your move, before you pick a card (Render's explains). While your
+       card flies, the old table stays on screen a moment: a click on it then does nothing. */
+    if (anchor.closest('#center, #hand') && !(Render.isTurn(v, HUMAN) && !app.ui.autoplay && !app.ui.selected.size)) return;
     let title, body;
     if (kind === 'outside') {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
@@ -4847,6 +4867,50 @@ const App = (() => {
     const off = memory ? '' : '<p class="pnote">Settings → Table memory adds what has been played.</p>';
     const blockedText = (/** @type {Suit} */ x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
     switch (kind) {
+      /* The play area, on your move (Render explains): a trick slot, the kitty, an unplayable card. */
+      case 'slot': {
+        const plays = v.trick.plays, play = plays.find(x => x.player === seat), lead = v.trick.leadSuit;
+        const title = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + ' of ' + v.totalTricks;
+        const best = plays.length ? R.getTrickWinner(plays, T) : null, sym = lead ? R.SYMBOL[lead] : '';
+        let body;
+        if (play && best) {
+          const led = play === plays[0], follows = R.getEffectiveSuit(play.card, T) === lead;
+          body = p1(n(seat) + (led ? ' led ' : ' played ') + mini(play.card) + '.' + (led ? ' Follow ' + sym + ' if you can.'
+            : follows ? '' : R.isTrump(play.card, T) ? ' No ' + sym + ': trumped.' : ' No ' + sym + ': can\'t win.')) +
+            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + n(best.player) + '\'s ' + mini(best.card) + '.');
+        } else if (seat === v.seat && best) {
+          const haveTrump = v.hand.some(id => R.isTrump(id, T));
+          body = p1(v.legal.length < v.hand.length ? 'Must follow ' + sym + '.' : 'No ' + sym + ': any card. ' + (lead !== T && haveTrump ? 'A trump can win.' : 'It can\'t win.')) +
+            p1('Beat ' + n(best.player) + '\'s ' + mini(best.card) + '.');
+        } else if (seat === v.seat) {
+          body = p1('You lead: any card.');
+        } else {
+          body = p1('Plays after you.');
+        }
+        if (plays.some(x => R.isKing(x.card)) || v.hand.some(id => R.isKing(id))) body += p1('A winning King scores +1.');
+        return [title, body];
+      }
+      case 'kitty': {
+        const left = n((v.seat + 1) % 3), s = v.flipped ? R.card(v.flipped).suit : null;
+        let body;
+        if (v.phase === P.BID1 && s) {
+          body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; ' + left + ' takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go outside.') +
+            p1('All pass: round 2, ' + R.SYMBOL[s] + ' blocked.');
+        } else if (v.phase === P.BID2 && s) {
+          body = p1(R.SYMBOL[s] + ' is blocked. Name a suit: ' + left + ' takes the 2 face-down cards and discards 2.') +
+            p1('All pass: the hand is thrown in.');
+        } else {
+          body = p1('After the discards, the top card is turned up; its suit is offered as trump. The player left of the namer gets the kitty.');
+        }
+        return ['Kitty · ' + v.kittyCount + (v.kittyCount === 1 ? ' card' : ' cards'), body];
+      }
+      case 'illegal': {
+        const id = anchor.getAttribute('data-card') || '', lead = v.trick.leadSuit;
+        const follow = v.hand.filter(x => R.getEffectiveSuit(x, T) === lead);
+        let body = p1('Must follow ' + R.SYMBOL[lead] + ': ' + follow.map(mini).join(' ') + '.');
+        if (R.card(id).suit === lead && R.getEffectiveSuit(id, T) !== lead) body += p1('Left Bower: it counts as ' + R.SYMBOL[T] + '.');
+        return ['You can\'t play ' + R.shortName(id), body];
+      }
       case 'blocked': return blockedText(/** @type {Suit} */ (anchor.getAttribute('data-suit')));
       case 'name-card': {
         const s = /** @type {Suit | null} */ (R.card(anchor.getAttribute('data-card') || '').suit);
@@ -5793,6 +5857,7 @@ const App = (() => {
     const v = buildView(app.state, HUMAN);
     if (app.ui.autoplay) return;
     if (el && el.classList.contains('namehint')) { showPanel('name-card', null, el); return; }
+    if (el && el.getAttribute('aria-disabled') === 'true') { showPanel('illegal', null, el); return; }
     const sel = app.ui.selected;
     let limit = 0;
     if (v.phase === P.DISCARD && v.pendingDiscard[HUMAN]) limit = 3;
@@ -6043,7 +6108,7 @@ const App = (() => {
         else if (name === 'stale-quit') quitStale();
         return;
       }
-      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"], .namehint')) closePanel();
+      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"], .namehint, #hand [aria-disabled="true"]')) closePanel();
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card'), cardEl); return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
@@ -6999,9 +7064,14 @@ const SelfTest = (() => {
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
       let built = 0;
-      const anchor = tag => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); return a; };
-      const tryPanel = (v, kind, seat, tag) => {
-        try { const [t, b] = App.infoPanel(v, kind, seat, anchor(tag)); if (typeof t !== 'string' || typeof b !== 'string') throw new Error('no text'); built++; }
+      const anchor = (tag, card) => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); if (card) a.setAttribute('data-card', card); return a; };
+      const tryPanel = (v, kind, seat, tag, card) => {
+        try {
+          const [t, b] = App.infoPanel(v, kind, seat, anchor(tag, card));
+          if (typeof t !== 'string' || typeof b !== 'string') throw new Error('no text');
+          if (/\b(undefined|null|NaN)\b/.test(t + b)) throw new Error('bad text: ' + t);
+          built++;
+        }
         catch (e) { if (fails.length < 3) fails.push(kind + (tag ? ':' + tag : '') + ' seat ' + seat + ' in ' + v.phase + ': ' + String(e && e.message || e)); }
       };
       try {
@@ -7025,6 +7095,12 @@ const SelfTest = (() => {
               if (Engine.actors(s).includes(p)) tryPanel(v, 'tag', p, 'turn');
               if (v.trick.plays.length && v.trick.plays[0].player === p) tryPanel(v, 'tag', p, 'led');
               if (v.showdown) tryPanel(v, 'tag', p, v.showdown.mediator === p ? 'mediator' : 'duelist');
+            }
+            /* The play area on your move: the trick slots, the kitty and each card you cannot play. */
+            if (Engine.actors(s).includes(0)) {
+              if (Engine.PLAY_PHASES.includes(v.phase)) for (const p of v.activePlayers) tryPanel(v, 'slot', p);
+              if (v.kittyCount > 0) tryPanel(v, 'kitty', null);
+              if (Engine.PLAY_PHASES.includes(v.phase)) for (const id of v.hand.filter(x => !v.legal.includes(x))) tryPanel(v, 'illegal', null, null, id);
             }
             const actors = Engine.actors(s);
             const res = D(s, actors.length ? AI.fastAction(s, actors[0]) : Engine.systemAction(s));
