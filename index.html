@@ -4871,48 +4871,44 @@ const App = (() => {
       case 'slot': {
         const plays = v.trick.plays, play = plays.find(x => x.player === seat), lead = v.trick.leadSuit;
         const title = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + ' of ' + v.totalTricks;
-        const best = plays.length ? R.getTrickWinner(plays, T) : null;
-        let body = '';
+        const best = plays.length ? R.getTrickWinner(plays, T) : null, sym = lead ? R.SYMBOL[lead] : '';
+        let body;
         if (play && best) {
           const led = play === plays[0], follows = R.getEffectiveSuit(play.card, T) === lead;
-          body = p1(n(seat) + (led ? ' led ' : ' played ') + mini(play.card) + '.' + (led ? ' Everyone must follow ' + suit(lead) + ' if they can.'
-            : follows ? '' : ' ' + n(seat) + ' had no ' + suit(lead) + (R.isTrump(play.card, T) ? ' and trumped.' : ', so this card cannot win.'))) +
-            p1(best.player === seat ? 'It is winning the trick so far.' : n(best.player) + '\'s ' + mini(best.card) + ' is winning so far.');
+          body = p1(n(seat) + (led ? ' led ' : ' played ') + mini(play.card) + '.' + (led ? ' Follow ' + sym + ' if you can.'
+            : follows ? '' : R.isTrump(play.card, T) ? ' No ' + sym + ': trumped.' : ' No ' + sym + ': can\'t win.')) +
+            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + n(best.player) + '\'s ' + mini(best.card) + '.');
         } else if (seat === v.seat && best) {
           const haveTrump = v.hand.some(id => R.isTrump(id, T));
-          body = v.legal.length < v.hand.length ? p1('Your card goes here. You hold ' + suit(lead) + ', so you must follow suit.')
-            : p1('Your card goes here. You have no ' + suit(lead) + ', so any card is allowed. ' + (lead !== T && haveTrump ? 'A trump can win the trick.' : 'Your card cannot win this trick.'));
-          body += p1('To win, beat ' + n(best.player) + '\'s ' + mini(best.card) + '.');
+          body = p1(v.legal.length < v.hand.length ? 'Must follow ' + sym + '.' : 'No ' + sym + ': any card. ' + (lead !== T && haveTrump ? 'A trump can win.' : 'It can\'t win.')) +
+            p1('Beat ' + n(best.player) + '\'s ' + mini(best.card) + '.');
         } else if (seat === v.seat) {
-          body = p1('You lead this trick: play any card. The others must follow its suit if they can. The highest trump wins; with no trump, the highest card of the suit led.');
+          body = p1('You lead: any card.');
         } else {
-          body = p1(n(seat) + ' plays after you.');
+          body = p1('Plays after you.');
         }
-        if (plays.some(x => R.isKing(x.card)) || v.hand.some(id => R.isKing(id))) body += p1('A King that wins the trick scores +1 at once.');
+        if (plays.some(x => R.isKing(x.card)) || v.hand.some(id => R.isKing(id))) body += p1('A winning King scores +1.');
         return [title, body];
       }
       case 'kitty': {
         const left = n((v.seat + 1) % 3), s = v.flipped ? R.card(v.flipped).suit : null;
         let body;
         if (v.phase === P.BID1 && s) {
-          body = p1(n(v.dealer) + ' turned up ' + mini(v.flipped) + '. If you accept, ' + suit(s) + ' is trump, and ' + left + ', on your left, takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go to the outside pile.') +
-            p1('If everyone passes, round 2 starts and ' + suit(s) + ' is blocked.');
+          body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; ' + left + ' takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go outside.') +
+            p1('All pass: round 2, ' + R.SYMBOL[s] + ' blocked.');
         } else if (v.phase === P.BID2 && s) {
-          body = p1(suit(s) + ' was passed in round 1, so it is blocked.') +
-            p1('If you name a suit, ' + left + ', on your left, takes the 2 face-down cards and discards 2. The turned card goes to the outside pile.') +
-            p1('If everyone passes, the hand is thrown in: no trump, no points.');
+          body = p1(R.SYMBOL[s] + ' is blocked. Name a suit: ' + left + ' takes the 2 face-down cards and discards 2.') +
+            p1('All pass: the hand is thrown in.');
         } else {
-          body = p1('3 cards dealt face down, apart from the hands. After the discards, the dealer turns up the top card: its suit is offered as trump in round 1.') +
-            p1('The player who makes trump does not get the kitty: the player on their left does.');
+          body = p1('After the discards, the top card is turned up; its suit is offered as trump. The player left of the namer gets the kitty.');
         }
         return ['Kitty · ' + v.kittyCount + (v.kittyCount === 1 ? ' card' : ' cards'), body];
       }
       case 'illegal': {
         const id = anchor.getAttribute('data-card') || '', lead = v.trick.leadSuit;
         const follow = v.hand.filter(x => R.getEffectiveSuit(x, T) === lead);
-        let body = p1('You must follow ' + suit(lead) + ': you hold ' + follow.map(mini).join(' ') + '.');
-        const c = R.card(id);
-        if (c.suit === lead && R.getEffectiveSuit(id, T) !== lead) body += p1(mini(id) + ' is the Left Bower: it counts as ' + suit(T) + ', not ' + suit(lead) + '.');
+        let body = p1('Must follow ' + R.SYMBOL[lead] + ': ' + follow.map(mini).join(' ') + '.');
+        if (R.card(id).suit === lead && R.getEffectiveSuit(id, T) !== lead) body += p1('Left Bower: it counts as ' + R.SYMBOL[T] + '.');
         return ['You can\'t play ' + R.shortName(id), body];
       }
       case 'blocked': return blockedText(/** @type {Suit} */ (anchor.getAttribute('data-suit')));
