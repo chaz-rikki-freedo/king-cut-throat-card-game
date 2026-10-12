@@ -68,7 +68,7 @@ Area: `#center`. The middle of the table.
 | Trick slot | Play spot | `.slot.slot-0` … `.slot-2` | — | One spot for each seat's card. `.win` marks the winning slot. |
 | Slot caption | Who | `.who`, `.lead-mark` | L, S | The player's name, "(lead)", "— wins", or "· mediator". |
 | Empty slot | — | `.empty` | — | A spot for a card that has not been played yet. The Advanced UI draws it with no outline. |
-| Move label | Your move | `.yourmove` | I | Advanced UI only: what you do now, in a few words ("Name trump.", "Lead a card.", "Play a card."), just above the action buttons. Shown only while it is your move, and only when no button already says it. |
+| Move label | Your move | `.yourmove` | I | Advanced UI only: what you do now, in a few words ("Name trump.", "Reduce to 7.", "Lead a card.", "Play a card."), just above the action buttons. Shown only while it is your move, and only when no button already says it. |
 | Hand summary | Result box | `.summary` | S, R | The box that replaces the trick area at the end of a hand. Variants: [2.5](#25-hand-summary-variants). |
 | Call line | Meta line | `.meta` | R | "Trump ♠ Spades · named by West (round 2) · Dealer East". |
 | Stats table | Hand table | `table.stats` in `.stats-wrap` | R | Tricks, SD tricks, hand points, King points and score for each player. |
@@ -132,7 +132,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Bid buttons | — | `data-action="bid-accept"`, `"bid-pass"` | C | Round 1: "Accept ♠" and "Pass". |
 | Suit buttons | Name buttons | `.btn.suit`, `data-action="name-suit"`, `"name-pass"` | C | Round 2: one button for each suit, and "Pass". The blocked suit is disabled. |
 | Lead button | Showdown lead pick | `sd-lead` (`data-seat`) | C | "Mei leads": the mediator's pick of the Showdown leader (house rule). |
-| Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3" (opening), "Reduce to 7" (kitty exchange) or "Discard 1" (Showdown). Enabled when you picked enough cards and, for the opening and Showdown discards, it is your turn. |
+| Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3", "Discard 1" or "Discard 2". Enabled when you picked enough cards and, for the opening and Showdown discards, it is your turn. |
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |

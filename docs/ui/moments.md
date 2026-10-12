@@ -14,7 +14,7 @@ A *game moment* is one step of a hand, as the player sees it. Each moment has a 
 | Turn-up | `reveal` | "East turns up the top kitty card…" | Nothing. |
 | Round 1 bid | `bid1` | "Round 1 · Your call on Spades." | **Accept ♠** or **Pass**. |
 | Round 2 bid | `bid2` | "Round 2 · Your call. Spades is blocked." | A suit button or **Pass**. |
-| Kitty exchange | `exchange` | "West (left of the namer) takes the kitty card and discards 1." | If you are the Kitty player: pick 1 or 2 cards, then **Reduce to 7**. |
+| Kitty exchange | `exchange` | "West (left of the namer) takes the kitty card and discards 1." | If you are the Kitty player: pick 1 or 2 cards, then **Discard 1** or **Discard 2**. |
 | Trick play | `trickPlay` | "Your turn." or "West is playing…" | Lead or play a playable card. |
 | Trick end | `trickDone` | "West wins the trick with K♠ — +1 King point!" | Nothing, or tap the center to skip the wait. |
 | Hand result | `handScore` | — | **Next hand**. |
