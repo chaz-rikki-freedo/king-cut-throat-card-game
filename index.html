@@ -256,6 +256,7 @@ body.set-open{overflow:hidden}
 .settings .set-body{flex:1;overflow:auto;overscroll-behavior:contain}
 .settings .set-pane{max-width:720px;margin:0 auto;padding:var(--s5) var(--s4) 48px;display:flex;flex-direction:column;gap:var(--s3)}
 .settings .set-pane[hidden]{display:none}
+.settings .set-build{margin:0;padding:var(--s2) var(--s4);border-top:1px solid var(--set-line);color:var(--set-hint);font-size:12px;text-align:center}
 .settings .set-head{margin:var(--s3) 0 0;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
 .settings .set-head:first-child{margin-top:0}
 .settings .set-card{background:var(--set-card);border:1px solid var(--set-line);border-radius:12px;padding:0 var(--s4)}
@@ -768,6 +769,7 @@ body.adv .tag .short{display:none}
       </div>
     </section>
   </div>
+  <p class="set-build" id="setBuild">Build dev</p>
 </div>
 
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
@@ -781,6 +783,11 @@ body.adv .tag .short{display:none}
    The Engine state object is the only source of truth. The DOM is a
    rendering target only.
    ===================================================================== */
+
+/* The published build. tools/publish.sh writes the main commit and the date here when it copies
+   this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
+   replay-code VERSION. */
+const BUILD = Object.freeze({ commit: '4e46bed', date: '2026-10-12' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -6026,6 +6033,7 @@ const App = (() => {
   }
 
   function init() {
+    $('setBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
       if (TabLock.stale) {
@@ -6985,6 +6993,8 @@ const SelfTest = (() => {
         eq('six AI knowledge switches', panel.querySelectorAll('input[data-knowledge]').length, 6);
         const tabs = [...panel.querySelectorAll('.set-tab')];
         check('four settings tabs, each with its pane', tabs.length === 4 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
+        const build = document.getElementById('setBuild');
+        check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
