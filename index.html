@@ -698,7 +698,8 @@ body.adv .tag .short{display:none}
     <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
       <h3 class="set-head">Table</h3>
       <div class="set-card" id="setInterface">
-        <label class="set-row"><span class="set-text"><span class="set-name">Advanced UI</span><span class="set-desc">A minimal table for players who know the rules.</span></span><input class="sw" type="checkbox" id="setAdvancedUI"></label>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setUIMode">Interface</label><span class="set-desc">Advanced: a minimal table for players who know the rules. Flat: the classic table.</span></span>
+          <select id="setUIMode"><option value="advanced">Advanced</option><option value="normal" disabled>Normal (coming soon)</option><option value="flat">Flat</option><option value="guided" disabled>Guided (coming soon)</option></select></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Table memory</span><span class="set-desc">Show what everyone has seen this hand: bids, voids, trumps and Kings played.</span></span><input class="sw" type="checkbox" id="setMemory"></label>
       </div>
       <h3 class="set-head">House rules</h3>
@@ -4398,13 +4399,17 @@ const App = (() => {
      them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
      Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code. */
   const HOUSE = { mediatorLead: true, politePlay: true };
+  /* The interfaces of Settings → Game → Interface, each with the table it draws. Normal and Guided are not built
+     yet (their options are disabled); Flat draws the classic table for now. */
+  const UI_MODES = { advanced: { advanced: true }, normal: { advanced: true }, flat: { advanced: false }, guided: { advanced: true } };
   const app = {
     state: null,
     /* mode: 'waves', 'free', or null when no game is running (the empty table). */
     mode: null,
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
-    /* advanced: the Advanced UI (Settings → Game). memory: Table memory, what every player has seen this hand. Both are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', advanced: false, memory: false, houseRules: HOUSE,
+    /* uiMode: Settings → Game → Interface (UI_MODES). advanced: true while that mode draws the Advanced UI.
+       memory: Table memory, what every player has seen this hand. All are kept. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', uiMode: 'advanced', advanced: true, memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -4726,10 +4731,15 @@ const App = (() => {
     sel.closest('.speed-pick').title = app.ui.advanced ? 'Speed: ' + sel.options[sel.selectedIndex].text : 'Game speed';
   }
 
-  /* ---- Interface (Settings): the Advanced UI and Table memory. ---- */
+  /* ---- Interface (Settings): the interface (UI_MODES) and Table memory. ---- */
+  function setUIMode(mode) {
+    if (!UI_MODES[mode]) mode = 'advanced';
+    app.ui.uiMode = mode;
+    $('setUIMode').value = mode;
+    setAdvanced(UI_MODES[mode].advanced);
+  }
   function setAdvanced(on) {
     app.ui.advanced = on;
-    $('setAdvancedUI').checked = on;
     document.body.classList.toggle('adv', on);
     placeLog();
     closePanel();
@@ -5994,7 +6004,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, advancedUI: app.ui.advanced, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -6004,7 +6014,10 @@ const App = (() => {
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
     if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
     if (x.logging === true) Logger.enabled = true;
-    if (typeof x.advancedUI === 'boolean') app.ui.advanced = x.advancedUI;
+    /* Settings → Game → Advanced UI (a switch, before the Interface dropdown) is now the Interface dropdown: off was the classic table, now Flat. */
+    if (typeof x.uiMode !== 'string' && typeof x.advancedUI === 'boolean') app.ui.uiMode = x.advancedUI ? 'advanced' : 'flat';
+    if (typeof x.uiMode === 'string' && UI_MODES[x.uiMode]) app.ui.uiMode = x.uiMode;
+    app.ui.advanced = UI_MODES[app.ui.uiMode].advanced;
     /* Profiles → Show this hand's bids and voids (up to 0.6.14) is now part of Table memory. */
     if (typeof x.memory !== 'boolean' && x.thisHand === true) app.ui.memory = true;
     if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
@@ -6060,8 +6073,8 @@ const App = (() => {
     loadSettings();
     document.body.classList.toggle('adv', app.ui.advanced);
     placeLog();
-    $('setAdvancedUI').checked = app.ui.advanced;
-    $('setAdvancedUI').addEventListener('change', () => setAdvanced($('setAdvancedUI').checked));
+    $('setUIMode').value = app.ui.uiMode;
+    $('setUIMode').addEventListener('change', () => setUIMode($('setUIMode').value));
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
