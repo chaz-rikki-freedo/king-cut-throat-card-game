@@ -59,7 +59,7 @@ Area: `#center`. The middle of the table.
 | Piles row | Piles | `.piles` | — | The kitty, the outside pile, the trump marker and the turned-card note. |
 | Kitty pile | Kitty, blind | `.pile` (first) | L, S | The kitty cards. "Kitty (3)". During bidding: "Kitty · turned 9♠", or "Kitty · Spades blocked". |
 | Turned card | Upcard, flip | `.card.enter` in the kitty pile | S | The top kitty card, face up, in bidding round 1. |
-| Blocked mark | Cross | `.tucked`, `.blocked-x` | S | The ✕ on the turned card in round 2: its suit cannot be named. |
+| Blocked mark | Cross | `.tucked`, `.blocked-x` | S | The ✕ on the turned card in round 2: its suit cannot be named. The Advanced UI has no ✕: the turned card lies tucked under the kitty (`.tuck`), the leftmost card. |
 | Outside pile | Discard pile | `.pile` (second) | L | "Outside pile (12)". The discards. Used again only in a Showdown. |
 | Trump marker | Big trump | `.trump-big` | S | The large trump symbol with "Trump: Spades". |
 | Turned-card note | — | `.pile` with "Turned card:" | R | "Turned card: 9♠", after the bidding. |
