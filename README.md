@@ -314,7 +314,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 | `sw.js` | Service worker: offline play and the update prompt. |
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
 
-**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. The check ignores changes that ad blockers make to the page, such as removed `<link>` tags, so turning one on or off is not a new version. Change `sw.js` only to change how caching works. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
+**Updates.** The app opens from its cache, then checks the network for a changed `index.html`. If it finds one, a note says **A new version is ready**. It shows only between games (or on the menu at launch). **Reload** loads the new version; **Later** asks again after the next game. A new version needs no version number: publish the changed `index.html`. To see which build is loaded, look at the line at the bottom of **Settings**, for example `Build edf93c8 · 2026-10-12`: the `main` commit and its date. A copy that was not published (a local file or a test run) shows `Build dev`. The check ignores changes that ad blockers make to the page, such as removed `<link>` tags, so turning one on or off is not a new version. Change `sw.js` only to change how caching works. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
 
 **Persistent storage.** At start-up (on HTTPS), the app asks the browser to keep its storage (`navigator.storage.persist()`), so that progress, results, saved games and replay codes are not cleared when the disk is low. It asks only while the storage is not persistent yet. Chrome and Safari decide without a prompt, and they usually agree for an installed app. Firefox asks you one time. **Settings → Install** shows the result. A Safari tab that is not installed can lose its storage after 7 days without a visit, so install the app on iPhone and iPad.
 
@@ -322,7 +322,14 @@ The service worker does not run from `file://`. The game still works there, with
 
 ## Publishing
 
-GitHub Pages serves the `gh-pages` branch. Copy all of these from `main` to it: `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll`.
+GitHub Pages serves the `gh-pages` branch. To publish, run `tools/publish.sh` from a clean checkout:
+
+```sh
+tools/publish.sh --dry-run "0.6.35: the build shows in Settings"   # check first; nothing is pushed
+tools/publish.sh "0.6.35: the build shows in Settings"
+```
+
+The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll` from `origin/main` to `gh-pages`. It writes the short `main` commit and that commit's date into the `BUILD` constant in the published `index.html`, commits as `Publish 0.6.35 (main edf93c8): the build shows in Settings` and pushes. Keep `BUILD` at `{ commit: 'dev', date: '' }` on `main`: the script stops if it does not find that line. `BUILD` is not related to `RULES_VERSION` or the replay-code `VERSION`.
 
 ## Tests
 
