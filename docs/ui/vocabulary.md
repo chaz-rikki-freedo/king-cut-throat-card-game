@@ -57,7 +57,7 @@ Area: `#center`. The middle of the table.
 |---|---|---|---|---|
 | Showdown banner | — | `.banner` | S | "SHOWDOWN", with "*A* vs *B* · mediator: *C*". |
 | Piles row | Piles | `.piles` | — | The kitty, the outside pile, the trump marker and the turned-card note. |
-| Kitty pile | Kitty, blind | `.pile` (first) | L, S | The kitty cards. "Kitty (3)". During bidding: "Kitty · turned 9♠", or "Kitty · Spades blocked". |
+| Kitty pile | Kitty, blind | `.pile` (first) | L, S | The kitty cards. "Kitty (3)". During bidding: "Kitty · turned 9♠", or "Kitty · Spades blocked". In the Advanced UI (`.kpile`), on your discard or bid, a click opens what happens to the kitty (`adv-info`, kind `kitty`); the outside pile beside it (`.outpile`) opens your discards. |
 | Turned card | Upcard, flip | `.card.enter` in the kitty pile | S | The top kitty card, face up, in bidding round 1. |
 | Blocked mark | Cross | `.tucked`, `.blocked-x` | S | The ✕ on the turned card in round 2: its suit cannot be named. The Advanced UI has no ✕: the turned card lies tucked under the kitty (`.tuck`), the leftmost card. |
 | Outside pile | Discard pile | `.pile` (second) | L | "Outside pile (12)". The discards. Used again only in a Showdown. |
@@ -65,7 +65,7 @@ Area: `#center`. The middle of the table.
 | Turned-card note | — | `.pile` with "Turned card:" | R | "Turned card: 9♠", after the bidding. |
 | Trick area | Trick, table center | `.trick` | S | The cards of the current trick, or of the trick that just ended. |
 | Trick label | Trick title | `.trick-label` | S | "Trick 3 of 7", or "Showdown trick 2 of 5", with "Led: ♥". |
-| Trick slot | Play spot | `.slot.slot-0` … `.slot-2` | — | One spot for each seat's card. `.win` marks the winning slot. |
+| Trick slot | Play spot | `.slot.slot-0` … `.slot-2` | — | One spot for each seat's card. `.win` marks the winning slot. In the Advanced UI, on your play turn, a click opens what the slot means now (`adv-info`, kind `slot`): who led, what is winning so far, what you must follow. |
 | Slot caption | Who | `.who`, `.lead-mark` | L, S | The player's name, "(lead)", "— wins", or "· mediator". |
 | Empty slot | — | `.empty` | — | A spot for a card that has not been played yet. The Advanced UI draws it with no outline. |
 | Move label | Your move | `.yourmove` | I | Advanced UI only: what you do now, in a few words ("Name trump.", "Reduce to 7.", "Reduce to 5.", "Lead a card.", "Play a card."), just above the action buttons. Shown only while it is your move. Every discard shows its goal, one card per trick to come; its button says how many cards that takes. |
@@ -95,7 +95,7 @@ Card states in the hand:
 | Selectable card | `.selectable` | A card that you can pick for a discard. |
 | Selected card | `.selected` | A card that you picked. It lifts. |
 | Playable card | `.legal` | A card that you can play to the trick. |
-| Unplayable card | `.illegal`, `disabled` | A card that you cannot play (you must follow suit). It is dimmed. |
+| Unplayable card | `.illegal`, `disabled` | A card that you cannot play (you must follow suit). It is dimmed. In the Advanced UI it is `aria-disabled` instead, so a click opens why you can't play it (kind `illegal`); the click never plays it. |
 | Idle card | `.idle` | Any card when it is not your turn. |
 
 ### 2.4 Seat tags
