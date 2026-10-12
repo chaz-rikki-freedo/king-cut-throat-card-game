@@ -974,6 +974,42 @@ const Logger = (() => {
   return L;
 })();
 
+/**
+ * Game state types. A card is its id string, such as 'AS' or 'JK'. A seat is a player index 0..2.
+ * @typedef {{ player: number, card: string }} Play
+ * @typedef {{ leader: number | null, plays: Play[], leadSuit: string | null }} Trick
+ * @typedef {{ number: number, plays: Play[], winner: number, card: string, leadSuit: string | null,
+ *   showdown: boolean, king: boolean }} LastTrick
+ * @typedef {{ player: number, mainTrick: number | null, by?: number }} ShowdownLead
+ * @typedef {{ active: boolean, mediator: number, participants: number[], pendingDiscard: boolean[],
+ *   discards: string[], tricksWon: number[], trickWinners: number[], lead: ShowdownLead | null }} Showdown
+ * @typedef {{ tricks: number[], outcome: string, caller: number | null, winner?: number, points?: number,
+ *   mediator?: number, participants?: number[], showdown?: { tricks: number[], winner: number, loser: number } }} HandSummary
+ * @typedef {{ player: number, round: number, action: string, suit?: string | null }} BidEntry
+ * @typedef {{ player: number, reason: string, phase: string }} EndEvent
+ * @typedef {{ kings: string[][], sdKings: string[][], pts: { king: number, hand: number, showdown: number }[] }} HandStats
+ * @typedef {{ type: string, player?: number, card?: string, cards?: string[], accept?: boolean,
+ *   suit?: string | null, leader?: number }} Decision
+ * @typedef {{ name: string, human: boolean }} PlayerInfo
+ * @typedef {{
+ *   version: number, seed: number, rules?: number, mediatorLead?: boolean,
+ *   rng: { s: number }, playRng?: { s: number }, decisions?: Decision[],
+ *   players: PlayerInfo[], scores: number[], dealer: number | null, handNumber: number,
+ *   redeals?: number, redeal?: boolean, phase: string, gameOver: boolean, winner: number | null,
+ *   endEvent: EndEvent | null,
+ *   deck: string[], hands: string[][], kitty: string[], outside: string[],
+ *   flippedId: string | null, flippedBlocked: boolean, flippedOut: boolean,
+ *   round: number | null, bidTurn: number | null, passes: number, bidLog: BidEntry[],
+ *   trump: string | null, caller: number | null, receiver: number | null, exchangeCount: number,
+ *   received: string[], pendingDiscard: boolean[], activePlayers: number[],
+ *   trick: Trick | null, trickNumber: number, totalTricks: number, tricksWon: number[], trickWinners: number[],
+ *   wonPile: string[], lastTrick: LastTrick | null, leader: number | null, currentPlayer: number | null,
+ *   showdown: Showdown | null, played: string[], playLog: Play[], voids: string[][],
+ *   memory: { out: string[] }[], handSummary: HandSummary | null, handStats?: HandStats,
+ *   planSeat?: number, plan?: string
+ * }} GameState  rules, mediatorLead: see createGame. playRng, planSeat, plan: AI play-out states only.
+ *   decisions, redeals, redeal, handStats: real games only.
+ */
 /* ---------------------------------------------------------------------
    4. ENGINE — authoritative state + explicit, validated transitions.
    --------------------------------------------------------------------- */
@@ -1001,7 +1037,8 @@ const Engine = (() => {
      options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on. */
   function createGame(seed, names, rules = RULES_VERSION, options) {
     const n = names || ['You', 'West', 'East'];
-    const state = {
+    /* The per-hand fields come from resetHand below. */
+    const state = /** @type {GameState} */ ({
       version: 0,
       seed: seed >>> 0,
       rng: { s: seed >>> 0 },
@@ -1023,7 +1060,7 @@ const Engine = (() => {
       gameOver: false,
       winner: null,
       endEvent: null
-    };
+    });
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     resetHand(state);
@@ -1031,6 +1068,7 @@ const Engine = (() => {
   }
 
   /* Collect every card back to the deck and clear all per-hand fields. */
+  /** @param {GameState} state */
   function resetHand(state) {
     state.deck = R.ALL_IDS.slice();
     state.hands = [[], [], []];
@@ -1073,6 +1111,7 @@ const Engine = (() => {
   }
 
   const seatAfter = p => (p + 1) % C.PLAYERS;
+  /** @param {GameState} state */
   function nextActive(state, p) {
     for (let k = 1; k <= C.PLAYERS; k++) {
       const q = (p + k) % C.PLAYERS;
@@ -1116,6 +1155,7 @@ const Engine = (() => {
   /* Whose turn it is to discard, or null. From rules version 2 the discards go in turn, as the cards were dealt:
      the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
      Version 1 had no order: every player with a discard pending could discard. */
+  /** @param {GameState} state */
   function discardTurn(state) {
     const from = state.phase === P.DISCARD ? state.dealer : state.phase === P.SHOWDOWN_DISCARD ? state.showdown.mediator : null;
     if (from === null || (state.rules || 1) < 2) return null;
@@ -1125,6 +1165,7 @@ const Engine = (() => {
   }
 
   /* Who must act now. An empty list means the next step is a system step. */
+  /** @param {GameState} state */
   function actors(state) {
     const turn = discardTurn(state);
     if (turn !== null) return [turn];
@@ -1138,6 +1179,7 @@ const Engine = (() => {
       default: return [];
     }
   }
+  /** @param {GameState} state */
   function systemAction(state) {
     switch (state.phase) {
       case P.SETUP: return { type: 'START_GAME' };
@@ -1165,6 +1207,7 @@ const Engine = (() => {
     }
   }
 
+  /** @param {GameState} state */
   function validate(state, a) {
     if (!a || typeof a.type !== 'string') return 'malformed action';
     if (state.gameOver) return 'the game is over';
@@ -1211,6 +1254,7 @@ const Engine = (() => {
     }
   }
 
+  /** @param {GameState} state */
   function dispatch(state, action) {
     const error = validate(state, action);
     if (error) {
@@ -1232,6 +1276,7 @@ const Engine = (() => {
   });
 
   /* The only way scores change. Victory is checked immediately. */
+  /** @param {GameState} state */
   function addScore(state, player, delta, reason, events) {
     const old = state.scores[player];
     const next = Math.max(0, old + delta);
@@ -1248,6 +1293,7 @@ const Engine = (() => {
     }
   }
 
+  /** @param {GameState} state */
   function callTrump(state, p, suit, round, events) {
     state.trump = suit;
     state.caller = p;
@@ -1272,6 +1318,7 @@ const Engine = (() => {
     events.push({ type: 'KITTY_TRANSFER', to: state.receiver, count: moved.length, round, publicCard: round === 1 ? moved[0] : null });
   }
 
+  /** @param {GameState} state */
   function startTrick(state, events) {
     state.trick = { leader: state.leader, plays: [], leadSuit: null };
     state.currentPlayer = state.leader;
@@ -1279,6 +1326,7 @@ const Engine = (() => {
   }
   const isShowdownActive = state => !!(state.showdown && state.showdown.active);
 
+  /** @param {GameState} state */
   function resolveTrick(state, events) {
     const sd = isShowdownActive(state);
     const w = R.getTrickWinner(state.trick.plays, state.trump);
@@ -1300,6 +1348,7 @@ const Engine = (() => {
     }
   }
 
+  /** @param {GameState} state */
   function scoreHand(state, events) {
     const t = state.tricksWon.slice();
     const sorted = t.slice().sort((a, b) => b - a);
@@ -1331,6 +1380,7 @@ const Engine = (() => {
     addScore(state, w, points, outcome, events);
   }
 
+  /** @param {GameState} state */
   function showdownLeader(state) {
     const parts = state.showdown.participants;
     for (let i = state.trickWinners.length - 1; i >= 0; i--) {
@@ -1340,6 +1390,7 @@ const Engine = (() => {
   }
 
   /* lead: { player, mainTrick } by the rule, or { player, mainTrick: null, by: mediator } when the mediator picked. */
+  /** @param {GameState} state */
   function startShowdownPlay(state, lead, events) {
     state.showdown.lead = lead;
     state.trickNumber = 1;
@@ -1349,6 +1400,7 @@ const Engine = (() => {
     startTrick(state, events);
   }
 
+  /** @param {GameState} state */
   function dealShowdown(state, events) {
     const sd = state.showdown;
     const pool = state.outside.splice(0);
@@ -1373,6 +1425,7 @@ const Engine = (() => {
     events.push({ type: 'SHOWDOWN_DEAL', mediator: sd.mediator, participants: sd.participants.slice(), poolSize: pool.length, each: C.SHOWDOWN_DEAL });
   }
 
+  /** @param {GameState} state */
   function scoreShowdown(state, events) {
     const sd = state.showdown;
     const [a, b] = sd.participants;
@@ -1385,6 +1438,7 @@ const Engine = (() => {
     if (!state.gameOver) addScore(state, loser, -1, 'SHOWDOWN_LOSS', events);
   }
 
+  /** @param {GameState} state */
   function nextHand(state, rotate, events) {
     resetHand(state);
     if (rotate) state.dealer = seatAfter(state.dealer);
@@ -1531,6 +1585,7 @@ const Engine = (() => {
   };
 
   /* Card conservation: every one of the 33 cards is in exactly one place. */
+  /** @param {GameState} state */
   function audit(state) {
     const all = [].concat(
       state.deck, state.hands[0], state.hands[1], state.hands[2], state.kitty, state.outside,
@@ -1918,6 +1973,7 @@ const Replay = (() => {
 function handNo(x) { return x.handNumber + (x.phase === Engine.P.HAND_START ? 1 : 0) - (x.redeals || 0); }
 /** @param {{ handNumber: number, phase: string, redeals?: number, redeal?: boolean }} x a state or a view @returns {string} */
 function handLabel(x) { return 'Hand ' + handNo(x) + (x.redeal ? ' (redeal)' : ''); }
+/** @param {GameState} state */
 function buildView(state, seat) {
   const R = Rules, P = Engine.P;
   const sd = state.showdown;
@@ -2452,6 +2508,7 @@ const AI = (() => {
        otherwise the card is a random legal card. Lower values make the AI judge moves less well. */
   const THINKING_DEFAULTS = Object.freeze({ worlds: 10, playoutSkill: 0.7 });
   const THINKING_FULL = Object.freeze({ worlds: SAMPLES.play, playoutSkill: 1 });
+  /** @type {Set<string>} */
   const TERMINAL = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
   /* Knowledge switches. Off means the AI acts as if it did not have that knowledge.
      The defaults give a friendlier table: only score watching is on. */
@@ -2613,6 +2670,7 @@ const AI = (() => {
     if (!(cfg || DEFAULT_CONFIG).knowledge.scoreAware) return 0;
     return Math.min(1, Math.max(0, (Math.max(base[0], base[1], base[2]) - 5) / 4));
   }
+  /** @param {GameState} s */
   function outcome(s, me, base, cfg) {
     const w = scoreWatch(base, cfg);
     const neutral = s.scores.map((x, i) => Math.min(WIN - 1, Math.max(0, NEUTRAL_BASE + x - base[i])));
@@ -2711,6 +2769,7 @@ const AI = (() => {
   /* ---- Play-out policy: fast, uses the full deal of one sampled world ---- */
   /* Seat p's view of the trick in one play-out world: its legal cards, the best play so far
      (null on a lead), the seats still to play, and a sort by card strength, weakest first. */
+  /** @param {GameState} s */
   function trickSpot(s, p) {
     const trump = s.trump, plays = s.trick.plays;
     const acted = new Set(plays.map(x => x.player));
@@ -2722,11 +2781,13 @@ const AI = (() => {
     };
   }
   /* True when card c beats the trick so far and no seat still to play can beat it (the world's hands are known). */
+  /** @param {GameState} s */
   function winsForSure(s, c, spot) {
     const trump = s.trump, ls = s.trick.leadSuit || R.getEffectiveSuit(c, trump);
     if (spot.best && R.compareCards(c, spot.best.card, ls, trump) <= 0) return false;
     return spot.rem.every(r => !R.legalCards(s.hands[r], ls, trump).some(x => R.compareCards(x, c, ls, trump) > 0));
   }
+  /** @param {GameState} s */
   function fastPlay(s, p) {
     const trump = s.trump, plays = s.trick.plays;
     const spot = trickSpot(s, p), { legal, byStrength } = spot;
@@ -2745,6 +2806,7 @@ const AI = (() => {
   }
   /* Duck plan for the planning seat: avoid tricks, but take a trick that a King surely wins.
      A seat with a poor hand can then aim for 1 trick and a 3-3-1 Showdown between the others. */
+  /** @param {GameState} s */
   function duckPlay(s, p) {
     const trump = s.trump, lead = s.trick.leadSuit;
     const spot = trickSpot(s, p), { legal, best, byStrength } = spot;
@@ -2756,13 +2818,14 @@ const AI = (() => {
     return losers.length ? losers[losers.length - 1] : legal.slice().sort(byStrength)[0];
   }
   /* The later players play greedy. */
+  /** @param {GameState} state */
   function trickWinnerAfter(state, player, cardId) {
     const plays = state.trick.plays.concat([{ player, card: cardId }]);
     const lead = state.trick.leadSuit || R.getEffectiveSuit(cardId, state.trump);
     const acted = new Set(plays.map(x => x.player));
     for (const r of state.activePlayers) {
       if (acted.has(r)) continue;
-      const t = { leadSuit: lead, plays: plays.slice() };
+      const t = { leader: state.trick.leader, leadSuit: lead, plays: plays.slice() };
       const saved = state.trick;
       state.trick = t;
       const x = fastPlay(state, r);
@@ -2773,6 +2836,7 @@ const AI = (() => {
   }
   /* Balance plan (main hand only): take one trick, then give each trick to the opponent with
      fewer tricks, to make a 3-3-1 split with this seat as mediator. */
+  /** @param {GameState} s */
   function balancePlay(s, p) {
     if (s.tricksWon[p] < 1) return fastPlay(s, p);
     const legal = R.legalCards(s.hands[p], s.trick.leadSuit, s.trump);
@@ -2784,6 +2848,7 @@ const AI = (() => {
     return ranked.find(c => trickWinnerAfter(s, p, c) === behind) || ranked.find(c => trickWinnerAfter(s, p, c) !== p) || duckPlay(s, p);
   }
   /* The plan seat follows its plan; every other seat plays greedy. */
+  /** @param {GameState} s */
   function planPlay(s, p) {
     if (s.planSeat !== p || s.plan === 'greedy') return fastPlay(s, p);
     if (s.plan === 'duck') return duckPlay(s, p);
@@ -2802,7 +2867,7 @@ const AI = (() => {
     return fair;
   }
 
-  /** The fast rule-based action (play-outs and a real-table bot). @param {AIConfig} [cfg] */
+  /** The fast rule-based action (play-outs and a real-table bot). @param {GameState} s @param {AIConfig} [cfg] */
   function fastAction(s, p, cfg) {
     const c = cfg || DEFAULT_CONFIG;
     switch (s.phase) {
@@ -2827,6 +2892,7 @@ const AI = (() => {
       default: throw new Error('No play-out action for phase ' + s.phase);
     }
   }
+  /** @param {GameState} s */
   function playOut(s, cfg) {
     for (let guard = 0; guard < 400; guard++) {
       if (s.gameOver || TERMINAL.has(s.phase)) return;
@@ -2966,6 +3032,7 @@ const AI = (() => {
     return out;
   }
   /* An Engine state for one world: public facts from the view, hidden cards from the world. */
+  /** @returns {GameState} */
   function worldState(view, w, seed) {
     const passes = view.round ? view.bidLog.filter(b => b.round === view.round && b.action === 'pass').length : 0;
     const sd = view.showdown;
@@ -3028,7 +3095,7 @@ const AI = (() => {
     const me = view.seat, trump = view.trump, style = cfg.style;
     switch (view.phase) {
       case P.DISCARD: {
-        if (style.realTable) return fastAction({ phase: P.DISCARD, hands: { [me]: view.hand } }, me, cfg);
+        if (style.realTable) return fastAction(/** @type {GameState} */ (/** @type {unknown} */ ({ phase: P.DISCARD, hands: { [me]: view.hand } })), me, cfg);
         const cands = rankedDiscards(view.hand, 3, flexibleValue, null).slice(0, CANDIDATES.discard);
         return { type: 'DISCARD', player: me, cards: plan(view, cfg, cands, c => ({ type: 'DISCARD', player: me, cards: c }), SAMPLES.discard) };
       }
@@ -3080,11 +3147,11 @@ const AI = (() => {
   function fallbackAction(view, cfg) {
     const hands = [[], [], []];
     hands[view.seat] = view.hand.slice();
-    const s = {
+    const s = /** @type {GameState} */ ({
       phase: view.phase, hands, flippedId: view.flipped, dealer: view.dealer, exchangeCount: view.exchangeCount, trump: view.trump,
       trick: view.trick, activePlayers: view.activePlayers.slice(), tricksWon: view.tricksWon.slice(), showdown: view.showdown,
       scores: view.scores, trickWinners: view.trickWinners
-    };
+    });
     return fastAction(s, view.seat, cfg);
   }
   return Object.freeze({
@@ -3653,11 +3720,12 @@ const Render = (() => {
 
   /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). A step whose
      buttons already say it (Discard 3, Accept ♠ or Pass, "Mei leads") has none; round 2's buttons are bare suit
-     symbols. The screen reader hears the full status line instead. */
+     symbols, and the kitty's Discard 1 or 2 does not say why. The screen reader hears the full status line instead. */
   function advMoveText(v, ui) {
     if (v.gameOver || ui.autoplay || !isTurn(v, v.seat)) return '';
     switch (v.phase) {
       case P.BID2: return 'Name trump.';
+      case P.EXCHANGE: return 'Reduce to 7.';
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.trick.plays.length ? 'Play a card.' : 'Lead a card.';
       default: return '';
     }
