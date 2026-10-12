@@ -178,6 +178,7 @@ button.card{cursor:pointer}
 .hand .card.legal:hover,.hand .card.selectable:hover{transform:translateY(-8px)}
 .hand .card.selected{transform:translateY(-14px);box-shadow:0 0 0 3px var(--accent),0 6px 14px rgba(0,0,0,.5)}
 .hand .card:disabled{opacity:.38;filter:grayscale(.55);cursor:not-allowed}
+.hand .card.bidding:disabled{opacity:1;filter:none;cursor:default}
 .hand .card.legal{box-shadow:0 0 0 2px var(--accent),0 2px 6px rgba(0,0,0,.45)}
 .hand .card.legal.trump{box-shadow:inset 0 0 0 2px var(--gold),0 0 0 2px var(--accent),0 2px 6px rgba(0,0,0,.45)}
 .card.enter{animation:enter .28s ease-out}
@@ -570,8 +571,6 @@ body.adv .seat .backrow .mini-back{margin-right:-6px!important}
 body.adv .seat .tpips{order:4}
 body.adv .tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;padding:0 3px!important}
 body.adv .me .tagbox .tag{flex-basis:72px!important}
-body.adv .kpile .card.blocked{filter:grayscale(.6) brightness(.8)}
-body.adv .kpile .card .kx{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--kw)*.7);font-weight:900;color:rgba(198,40,40,.8);z-index:3}
 body.adv .info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:2px}
 body.adv .pile-act .btn.sym-btn{min-width:46px;padding:8px 12px;font-size:20px;line-height:1}
 @media (max-width:720px){
@@ -3466,7 +3465,9 @@ const Render = (() => {
         const legal = v.legal.includes(id);
         return cardHTML(id, v.trump, { button: true, disabled: !legal, cls: legal ? ['legal'] : ['illegal'] });
       }
-      return cardHTML(id, v.trump, { button: true, disabled: true, cls: ['idle'], isNew });
+      /* While the bidding runs you study your hand: it stays bright, though no card can be picked. */
+      const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2;
+      return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
     return '<div class="hand" id="hand">' + cards + '</div>';
   }
@@ -3591,7 +3592,7 @@ const Render = (() => {
   }
 
   /* Before the first trick the kitty lies in the play area, spread so its cards can be counted: face down, the top
-     card face up from the turn-up (dimmed and crossed out when blocked in round 2). During the discard the same
+     card face up from the turn-up (in round 2, tucked under as the leftmost card: see advKittyHTML). During the discard the same
      spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
   function advKittyHTML(v, order) {
     const backs = n => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * .45)"></div>'; return h; };
@@ -3603,14 +3604,15 @@ const Render = (() => {
       return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + backs(v.kittyCount) + '</div>' +
         '<div class="outpile' + (order.length ? '' : ' empty') + '" aria-label="Outside pile: ' + v.outsideCount + ' cards">' + layers + '</div></div></div>';
     }
+    /* The turned card lies on top, face up. In round 2 its suit is blocked: as at a real table, it is tucked
+       under the kitty instead, the leftmost card, partly shown. */
     const face = v.flipped && (v.phase === P.BID1 || v.phase === P.BID2 || v.phase === P.JOKER_VOID);
+    const at = face ? (v.phase === P.BID2 && v.flippedBlocked ? 0 : v.kittyCount - 1) : -1;
     let cards = '';
     for (let i = 0; i < v.kittyCount; i++) {
       const left = 'left:calc(' + i + ' * var(--kw) * .45)';
-      if (face && i === v.kittyCount - 1) {
-        const blocked = v.phase === P.BID2 && v.flippedBlocked;
-        cards += cardHTML(v.flipped, null, { cls: blocked ? ['blocked'] : [] }).replace('<div class="', '<div style="' + left + '" class="').replace(/<\/div>$/, (blocked ? '<span class="kx">✕</span>' : '') + '</div>');
-      } else cards += '<div class="card back" aria-hidden="true" style="' + left + '"></div>';
+      if (i === at) cards += cardHTML(v.flipped, null, { cls: at === 0 && v.kittyCount > 1 ? ['tuck'] : [] }).replace('<div class="', '<div style="' + left + '" class="');
+      else cards += '<div class="card back" aria-hidden="true" style="' + left + '"></div>';
     }
     return '<div class="kitty-spot"><div class="piles-row"><div class="kpile" aria-label="Kitty: ' + v.kittyCount + ' cards">' + cards + '</div></div></div>';
   }
@@ -3783,6 +3785,7 @@ const Fx = (() => {
   /** @type {Record<string, DOMRect>} */
   const slotFrom = {};
   let liftTimer = 0, moveTimer = 0;
+  let tuckStart = { hand: -1, t0: 0 };
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
   function discardOrder(v) {
@@ -3942,10 +3945,11 @@ const Fx = (() => {
     // Bid won. Round 1: the turned card goes to the receiver, the 2 face-down cards drop through the table.
     // Round 2: the 2 face-down cards go to the receiver, the turned card drops through the table.
     if (o.kpile && !q('#center .kpile') && v.trump && v.receiver !== null) {
-      const g = place(o.kpile), cards = qa('.card', g), top = cards[cards.length - 1], r1 = v.exchangeCount === 1;
+      /* The turned card: on top in round 1, tucked at the bottom in round 2. */
+      const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = v.exchangeCount === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
-      done(g, cards.map((c, i) => (c === top) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : sink(c, t, t * 0.5 + i * 80)));
+      done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : sink(c, t, t * 0.5 + i * 80)));
     }
     // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
     // the pile did not show yet land first (a bot's as backs from its seat), then the pile drops through the table,
@@ -4097,6 +4101,22 @@ const Fx = (() => {
     }
   }
 
+  /* Round 2 begins: the turned card slides out to the left of the kitty, then back under it, tucked (the leftmost
+     card, partly shown). Kept by hand, so a redraw part way through resumes it. */
+  function tuckTurned(v, now) {
+    const card = q('#center .kpile .card.tuck'), t = ms();
+    if (!card) return;
+    if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
+    const e = now - tuckStart.t0, dur = t * 1.6;
+    if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
+    const w = card.offsetWidth, from = 'translateX(' + (v.kittyCount - 1) * w * 0.45 + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
+    card.animate([
+      { transform: from, zIndex: 5, offset: 0, easing: 'ease-in-out' },
+      { transform: out, zIndex: 5, offset: 0.5 },
+      { transform: out, zIndex: 0, offset: 0.55, easing: 'ease-in-out' },
+      { transform: 'none', zIndex: 0, offset: 1 }], { duration: dur }).currentTime = e;
+  }
+
   /* A new hand: the cards go out from the dealer in packets (see PACKETS), round the table from the dealer's left:
      your cards and the opponents' hand backs alike, each packet onto the next places of the hand from the left.
      The Showdown deal: the mediator deals one card at a time, alternately, as the Engine does (dealShowdown). */
@@ -4180,6 +4200,7 @@ const Fx = (() => {
     transitions(v, out, prev); out = null;
     holdTrickPip(v);
     kittyDeal(v, now);
+    tuckTurned(v, now);
     animateTrick(v, now);
     slideHand(ms());
     handAt = null;
@@ -4218,7 +4239,7 @@ const Fx = (() => {
     const layer = q('#fx'); if (layer) layer.remove();
     clearTimeout(liftTimer); clearTimeout(moveTimer); const c = q('#center'); if (c) c.classList.remove('lift');
     pending.clear(); clearTimeout(countTimer);
-    prev = out = last = mineLand = handAt = null; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
+    prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
     for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
