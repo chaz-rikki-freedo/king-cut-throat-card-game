@@ -27,9 +27,11 @@ function launch() {
   return chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 }
 
-/** A new page in its own context (own storage), with page errors collected. The service worker is blocked. */
-async function openPage(browser, url) {
+/** A new page in its own context (own storage), with page errors collected. The service worker is blocked.
+    settings: kct.settings to start with, written before the page's first load (later loads keep what the page saved). */
+async function openPage(browser, url, settings) {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  if (settings) await ctx.addInitScript(s => { if (!localStorage.getItem('kct.settings')) localStorage.setItem('kct.settings', s); }, JSON.stringify(settings));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));

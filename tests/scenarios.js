@@ -13,7 +13,8 @@ function expect(name, ok, detail) {
 
 (async () => {
   const srv = await serve(), browser = await launch();
-  const { page, errors } = await openPage(browser, srv.url);
+  /* The scenarios drive the classic table: Settings → Game → Interface → Flat. */
+  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   const reload = () => page.reload();
   try {
