@@ -3425,7 +3425,7 @@ const Render = (() => {
         }
         break;
       case P.EXCHANGE:
-        if (v.receiver === you) return '<div class="prompt">' + n(v.caller) + ' named ' + suitLabel(v.trump) + '. You receive ' + v.received.map(R.shortName).join(', ') + '. Discard ' + v.exchangeCount + ' (' + sel + '/' + v.exchangeCount + ').</div><button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>';
+        if (v.receiver === you) return '<div class="prompt">' + n(v.caller) + ' named ' + suitLabel(v.trump) + '. You receive ' + v.received.map(R.shortName).join(', ') + '. Discard ' + v.exchangeCount + ' (' + sel + '/' + v.exchangeCount + ').</div><button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Reduce to 7</button>';
         break;
       case P.SHOWDOWN_DISCARD:
         if (v.showdown.pendingDiscard[you]) {
@@ -3640,7 +3640,7 @@ const Render = (() => {
             ? '<button class="btn suit sym-btn blocked ' + R.COLOR[s] + '" type="button" data-action="adv-info" data-kind="blocked" data-suit="' + s + '" aria-label="' + R.SUIT_NAME[s] + ' is blocked">' + R.SYMBOL[s] + '</button>'
             : '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + '" aria-label="Name ' + R.SUIT_NAME[s] + '">' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
         } break;
-        case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
+        case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Reduce to 7</button>'); break;
         case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
         case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) return '<div class="pile-act seats">' + leadButtonsHTML(v) + '</div>'; break;
         default: break;
