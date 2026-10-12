@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Joker Suit Pip</title>
+<style>
+/* Card rules copied from index.html so the pip renders at true size. */
+:root{--page:#0a2a19;--ink:#f5f2e9;--muted:#bccbbf;--card:#fffdf6;--card-edge:#d6cfbd;--red:#c62828;--black:#1c1c1e;--gold:#f2c14e}
+body{margin:0;padding:24px 16px;background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 8px;color:var(--muted);font-weight:600}
+p{margin:0 0 6px;color:var(--muted);max-width:60ch}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+figcaption{font-size:12px;color:var(--muted)}
+.card{--w:82px;width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.09);background:var(--card);color:var(--black);position:relative;box-shadow:0 1px 3px rgba(0,0,0,.45);border:1px solid var(--card-edge);font-weight:800;flex:none;overflow:hidden}
+.card.joker{color:#5b2a86;background:linear-gradient(160deg,#fffdf6 0%,#f3e9ff 100%)}
+.c-tl{position:absolute;font-size:calc(var(--w)*.22);line-height:.95;text-align:center;top:5%;left:7%}
+.c-mid{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--w)*.5)}
+.c-joker{position:absolute;bottom:9%;left:0;right:0;text-align:center;font-size:calc(var(--w)*.15);letter-spacing:.08em}
+.small{--w:46px}.tiny{--w:30px}.tiny .c-joker{display:none}.tiny .c-tl{font-size:9px}.tiny .c-mid{font-size:15px}
+.zoom{--w:260px}
+
+/* Proposed: the corner star carries the assigned suit, centered on top, with a thin white stroke. */
+.c-tl.suited{display:grid;place-items:center}
+.c-tl.suited > *{grid-area:1/1}
+.c-suit{font-size:.62em;line-height:1;-webkit-text-stroke:.09em #fff;paint-order:stroke fill;transform:translateY(.04em)}
+.c-suit.red{color:var(--red)}.c-suit.black{color:var(--black)}
+</style>
+</head>
+<body>
+<h1>Joker suit pip</h1>
+<p>Proposal for the flipped-Joker house rule. The center star and JOKER text stay. When the Joker carries a suit, the corner star gets that suit on top, thinly stroked white. With the default re-deal rule, the Joker is unchanged.</p>
+
+<h2>Enlarged (detail only)</h2>
+<div class="row" id="zoom"></div>
+
+<h2>Hand size (82 px, desktop maximum)</h2>
+<div class="row" id="hand"></div>
+
+<h2>Phone hand size (46 px)</h2>
+<div class="row" id="small"></div>
+
+<h2>Last-trick strip (30 px)</h2>
+<div class="row" id="tiny"></div>
+
+<script>
+const SUITS=[['','No suit (re-deal)'],['S','♠ Spades'],['H','♥ Hearts'],['D','♦ Diamonds'],['C','♣ Clubs']];
+const SYM={S:'♠',H:'♥',D:'♦',C:'♣'},COL={S:'black',C:'black',H:'red',D:'red'};
+const joker=s=>s
+  ?'<span class="c-tl suited"><span>★</span><span class="c-suit '+COL[s]+'">'+SYM[s]+'</span></span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
+  :'<span class="c-tl">★</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>';
+for(const [id,cls] of [['zoom','zoom'],['hand',''],['small','small'],['tiny','tiny']]){
+  document.getElementById(id).innerHTML=SUITS.filter(([s])=>id!=='zoom'||s).map(([s,l])=>
+    '<figure><div class="card joker '+cls+'">'+joker(s)+'</div><figcaption>'+l+'</figcaption></figure>').join('');
+}
+</script>
+</body>
+</html>
