@@ -777,7 +777,9 @@ body.adv .tag .short{display:none}
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
    --------------------------------------------------------------------- */
+/** @typedef {'S' | 'H' | 'D' | 'C'} Suit */
 const Rules = (() => {
+  /** @type {readonly Suit[]} */
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
   const SUIT_NAME = Object.freeze({ S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs' });
@@ -3599,7 +3601,7 @@ const Render = (() => {
      card face up from the turn-up (in round 2, tucked under as the leftmost card: see advKittyHTML). During the discard the same
      spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
   function advKittyHTML(v, order) {
-    const backs = n => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * var(--kstep))"></div>'; return h; };
+    const backs = (/** @type {number} */ n) => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * var(--kstep))"></div>'; return h; };
     if (v.phase === P.DISCARD) {
       const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
       const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
@@ -3779,7 +3781,9 @@ const Fx = (() => {
   const TILT = { 0: 0, 1: -30, 2: 30 };
   const REST = { 1: -7, 2: 6, 0: 1 };   // each player's discard layer keeps a slight turn toward its seat
 
-  let prev = null, out = null, last = null;
+  /** @type {{ hand: number, phase: string, counts: number[] } | null} */
+  let prev = null;
+  let out = null, last = null;
   let handDeal = { key: '', t0: 0, end: 0 }, dealHold = 0, kittyHold = 0, mineLand = null;
   let discardHand = -1, discarders = [], dealKey = '', dealStart = 0, turnStart = 0, trickKey = '';
   /** The kitty's slide from beside the outside pile to the middle, after the discard (see transitions).
@@ -3956,7 +3960,7 @@ const Fx = (() => {
       const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = v.exchangeCount === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
-      done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[v.receiver]) : sink(c, t, t * 0.5 + i * 80)));
+      done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[/** @type {0 | 1 | 2} */ (v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
     }
     // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
     // the pile did not show yet land first (a bot's as backs from its seat), then the pile drops through the table,
@@ -4110,6 +4114,7 @@ const Fx = (() => {
 
   /* Round 2 begins: the turned card slides out to the left of the kitty, then back under it, tucked (the leftmost
      card, partly shown). Kept by hand, so a redraw part way through resumes it. */
+  /** @param {{ handNumber: number, kittyCount: number }} v @param {number} now */
   function tuckTurned(v, now) {
     const card = q('#center .kpile .card.tuck'), t = ms();
     if (!card) return;
@@ -4684,11 +4689,11 @@ const App = (() => {
       return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
     const off = memory ? '' : '<p class="pnote">Settings → Table memory adds what has been played.</p>';
-    const blockedText = x => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
+    const blockedText = (/** @type {Suit} */ x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
     switch (kind) {
-      case 'blocked': return blockedText(anchor.getAttribute('data-suit') || '');
+      case 'blocked': return blockedText(/** @type {Suit} */ (anchor.getAttribute('data-suit')));
       case 'name-card': {
-        const s = R.card(anchor.getAttribute('data-card') || '').suit;
+        const s = /** @type {Suit | null} */ (R.card(anchor.getAttribute('data-card') || '').suit);
         if (!s) return ['The Joker has no suit', p1('To name a suit, click its button.')];
         if (v.flipped && s === R.card(v.flipped).suit) return blockedText(s);
         return ['To name ' + suit(s), p1('Click the ' + R.SYMBOL[s] + ' button.')];
@@ -5561,6 +5566,7 @@ const App = (() => {
   }
 
   /* ---- Human input. Engine.validate is the final guard for every action. ---- */
+  /** @param {string | null} id @param {Element} [el] */
   function onCard(id, el) {
     const v = buildView(app.state, HUMAN);
     if (app.ui.autoplay) return;
