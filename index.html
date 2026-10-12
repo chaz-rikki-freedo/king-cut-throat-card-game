@@ -957,7 +957,9 @@ const Logger = (() => {
   const L = {
     enabled: false,
     t0: now(),
+    /** @type {string[]} */
     lines: [],
+    /** @type {((line: string) => void)[]} */
     listeners: [],
     log(type, data) {
       if (!this.enabled) return;
@@ -1594,7 +1596,7 @@ const Engine = (() => {
   /* Card conservation: every one of the 33 cards is in exactly one place. */
   /** @param {GameState} state */
   function audit(state) {
-    const all = [].concat(
+    const all = /** @type {string[]} */ ([]).concat(
       state.deck, state.hands[0], state.hands[1], state.hands[2], state.kitty, state.outside,
       state.trick ? state.trick.plays.map(x => x.card) : [], state.wonPile,
       state.showdown ? state.showdown.discards : []
@@ -1630,7 +1632,7 @@ const Base64url = Object.freeze({
   }
 });
 /** @param {unknown} t @returns {string} the text, safe inside HTML and inside a quoted attribute */
-const escHTML = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const escHTML = t => String(t).replace(/[&<>"']/g, c => /** @type {Record<string, string>} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /* ---------------------------------------------------------------------
    4b. REPLAY — rebuilds a game from its seed and its decision list.
@@ -2174,7 +2176,12 @@ TabLock.claim();
 /* Saves that the browser refuses (full or blocked storage). failedKey is the first such key, also
    before the App starts (wave progress is read and migrated at load). The App sets onFail and
    tells the player once. A write skipped while StorageGate is locked is not a failure. */
-const SaveWatch = { /** @type {string | null} */ failedKey: null, /** @type {((key: string) => void) | null} */ onFail: null };
+const SaveWatch = {
+  /** @type {string | null} */
+  failedKey: null,
+  /** @type {((key: string) => void) | null} */
+  onFail: null
+};
 /** @param {string} key @returns {{ get(): string | null, set(text: string): void }} */
 function localStore(key) {
   return {
@@ -3156,7 +3163,7 @@ const AI = (() => {
         }
         const suits = R.SUITS.filter(s => s !== blocked).sort((a, b) => handValue(view.hand, b) - handValue(view.hand, a));
         const bias = COURAGE[style.courage].bias;
-        const suit = plan(view, cfg, suits.concat([null]), x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid, x => (x ? bias : 0));
+        const suit = plan(view, cfg, [...suits, null], x => ({ type: 'NAME', player: me, suit: x }), SAMPLES.bid, x => (x ? bias : 0));
         return { type: 'NAME', player: me, suit };
       }
       case P.EXCHANGE: {
@@ -4413,7 +4420,10 @@ const App = (() => {
     /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
     ai: AI.DEFAULT_CONFIG,
     updateReady: false, menuOpen: false, menuLaunch: false,
-    timer: null, timerFn: null,
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    timer: null,
+    /** @type {(() => void) | null} */
+    timerFn: null,
     /* The AI settings that the bots used in this game (see trackBotSettings). */
     botSettings: blankBotSettings()
   };
@@ -4997,8 +5007,9 @@ const App = (() => {
   function later(ms, fn) {
     clearTimer();
     const version = app.state.version;
-    app.timerFn = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
-    const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else app.timerFn(); };
+    const done = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
+    app.timerFn = done;
+    const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
     app.timer = setTimeout(tick, ms);
   }
   function skip() { if (app.timerFn) { const f = app.timerFn; clearTimeout(app.timer); f(); } }
@@ -6330,7 +6341,7 @@ const SelfTest = (() => {
       let ws = worldsOf(s, 0);
       check('round 1 accept: every world puts the turned card in the receiver hand', ws.every(w => w.hands[2].includes('9H')));
       check('worlds keep the true hand sizes', ws.every(w => w.hands[1].length === 7 && w.hands[2].length === 7 && w.outside.length === 12 && w.kitty.length === 0));
-      check('worlds hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
+      check('worlds hold all 33 cards once', ws.every(w => new Set(/** @type {string[]} */ ([]).concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
       check('worlds keep own discards in the outside pile', ws.every(w => s.memory[0].out.every(id => w.outside.includes(id))));
       check('worlds keep the seat\'s own hand', ws.every(w => JSON.stringify(w.hands[0]) === JSON.stringify(s.hands[0])));
       const v = Object.assign(buildView(s, 0), { voids: [[], [], ['H']] });
@@ -6372,7 +6383,7 @@ const SelfTest = (() => {
         check('turned-card switch off: some worlds put the turned card elsewhere', worldsOf(s, 0, 40, without({ turnedCard: false })).some(w => !w.hands[2].includes('9H')));
         ws = worldsOf(s, 0, 40, without({ ownDiscards: false }));
         check('own-discards switch off: some worlds move own discards out of the outside pile', ws.some(w => !s.memory[0].out.every(id => w.outside.includes(id))));
-        check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set([].concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
+        check('own-discards switch off: worlds still hold all 33 cards once', ws.every(w => new Set(/** @type {string[]} */ ([]).concat(w.hands[0], w.hands[1], w.hands[2], w.outside, s.played)).size === 33));
         check('voids switch off: some worlds break a known void', AI.sampleWorlds(v2, 40, { s: 6 }, without({ voids: false })).some(w => w.hands[1].some(id => Rules.getEffectiveSuit(id, 'H') === 'S')));
         for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) {
           const cfg = without({ [key]: false });
