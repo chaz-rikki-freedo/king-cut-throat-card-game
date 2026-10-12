@@ -24,7 +24,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+body{background:var(--page);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh;min-height:100dvh}
 button{font:inherit;color:inherit}
 /* The header stays at the top of the window; the page scrolls under it. On narrow screens
    the trump and hand chips go to a second row. --header-h (set by the controller) places the toasts below it. */
@@ -470,6 +470,9 @@ body.adv }
 .me{justify-content:flex-start}
 body.adv .me .hand{flex-wrap:wrap;gap:6px;padding-top:10px}
 body.adv .me .hand .card{flex:none}
+/* The hand keeps room for its largest size (--hand-rows, set by Fit), so the table keeps one height for the whole hand. */
+body.adv .me .hand{min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 6px + 14px)!important}
+body.adv .layout{padding-bottom:12px}
 body.adv .center{position:relative}
 body.adv .center{position:relative;padding-top:58px!important;padding-bottom:6px;min-height:calc(var(--cw)*2.85 + 84px)}
 body.adv .trick{padding-bottom:52px!important}
@@ -5089,7 +5092,55 @@ const App = (() => {
     }
     if (Render.render(v, app.ui, ctx)) closePanel();
     syncModeUI();
+    Fit.update();
   }
+
+  /* In the Advanced UI the cards also fit the window's height: --cw (the card width, set by the window's width)
+     gets smaller, down to Fit.MIN, until the table fits under the header, so a phone needs no scrolling.
+     If the table does not fit even then, the page scrolls. The hand keeps room for 10 cards. While the window
+     and the header stay the same, the cards can only get smaller (a row of tags that wraps), never larger,
+     so they do not change size back and forth during a game. */
+  const Fit = (() => {
+    const MIN = 40, MOST = Engine.C.MAIN_TRICKS + Engine.C.INITIAL_DISCARD, GAP = 6, PAD = 8;
+    let key = '', cw = 0;
+    /** @type {HTMLElement | null} */
+    let probe = null;
+    /** The rows that the most cards take in the hand, with cards w wide. @type {(hand: HTMLElement, w: number) => number} */
+    const rows = (hand, w) => Math.ceil(MOST / Math.max(1, Math.floor((hand.clientWidth - PAD + GAP) / (w + GAP))));
+    function update() {
+      const root = document.documentElement, hand = $('hand'), drop = $('logDrop');
+      const on = app.ui.advanced && !!hand && !!$('seat1').firstElementChild;
+      /* The open Latest Scroll pushes the table down for a while: it does not count. */
+      const headH = () => $('topbar').offsetHeight - (drop.hidden ? 0 : drop.offsetHeight);
+      const keyNow = () => [on, innerWidth, innerHeight, headH(), on && hand.clientWidth].join();
+      const layout = /** @type {HTMLElement} */ (document.querySelector('.layout')), room = innerHeight - headH();
+      let top = Infinity;
+      if (keyNow() === key) {
+        if (!on || cw <= MIN || layout.offsetHeight <= room) return;
+        top = cw - 1;
+      }
+      root.style.removeProperty('--cw');
+      root.style.removeProperty('--hand-rows');
+      cw = 0;
+      if (on) {
+        if (!probe) { probe = document.createElement('i'); probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--cw);height:0'; document.body.appendChild(probe); }
+        const wide = probe.getBoundingClientRect().width, most = Math.min(wide, top);
+        /** @param {number} w */
+        const fits = w => { root.style.setProperty('--cw', w + 'px'); root.style.setProperty('--hand-rows', String(rows(hand, w))); return layout.offsetHeight <= room; };
+        cw = MIN;
+        if (fits(most)) cw = most;
+        else {
+          /* The table's height only grows with the card width: find the widest card that fits. */
+          let lo = MIN, hi = Math.ceil(most) - 1;
+          while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(mid)) { cw = mid; lo = mid + 1; } else hi = mid - 1; }
+        }
+        if (cw === wide) root.style.removeProperty('--cw'); else root.style.setProperty('--cw', cw + 'px');
+        root.style.setProperty('--hand-rows', String(rows(hand, cw)));
+      }
+      key = keyNow();
+    }
+    return { update, MIN };
+  })();
 
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed:
      a wave always uses its personalities. The switch keeps its value for Free play. */
@@ -6010,10 +6061,11 @@ const App = (() => {
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
     /* The header can wrap to two rows; the toasts sit just below it. */
-    const setHeaderH = () => document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px');
+    const setHeaderH = () => { document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px'); Fit.update(); };
     setHeaderH();
     if (window.ResizeObserver) new ResizeObserver(setHeaderH).observe($('topbar'));
     else window.addEventListener('resize', setHeaderH);
+    window.addEventListener('resize', () => Fit.update());
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     syncSpeedTitle();
