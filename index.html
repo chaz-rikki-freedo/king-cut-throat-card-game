@@ -3720,11 +3720,12 @@ const Render = (() => {
 
   /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). A step whose
      buttons already say it (Discard 3, Accept ♠ or Pass, "Mei leads") has none; round 2's buttons are bare suit
-     symbols. The screen reader hears the full status line instead. */
+     symbols, and the kitty's Discard 1 or 2 does not say why. The screen reader hears the full status line instead. */
   function advMoveText(v, ui) {
     if (v.gameOver || ui.autoplay || !isTurn(v, v.seat)) return '';
     switch (v.phase) {
       case P.BID2: return 'Name trump.';
+      case P.EXCHANGE: return 'Reduce to 7.';
       case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.trick.plays.length ? 'Play a card.' : 'Lead a card.';
       default: return '';
     }
