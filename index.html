@@ -479,7 +479,8 @@ body.adv .center:not(:has(.trick)){padding-bottom:58px!important}
 body.adv .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:calc(var(--cw)*2.85)}
 body.adv .kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
 body.adv .kitty-spot{--kw:var(--cw)}
-body.adv .kpile{position:relative;width:calc(var(--kw)*(1 + 2 * .45));height:calc(var(--kw)*1.4)}
+/* --kstep: how far each kitty card lies right of the one under it, in card widths. */
+body.adv .kpile{--kstep:.2925;position:relative;width:calc(var(--kw)*(1 + 2 * var(--kstep)));height:calc(var(--kw)*1.4)}
 body.adv .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 2px 5px rgba(0,0,0,.45);transform-origin:50% 90%}
 body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 6px,#93303d 6px 12px);border:2px solid #f5f2e9;z-index:3}
 body.adv .center > .pile-act{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
@@ -573,6 +574,7 @@ body.adv .tagbox .tag{font-size:9.5px!important;letter-spacing:0!important;paddi
 body.adv .me .tagbox .tag{flex-basis:72px!important}
 body.adv .info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:2px}
 body.adv .pile-act .btn.sym-btn{min-width:46px;padding:8px 12px;font-size:20px;line-height:1}
+body.adv .pile-act .btn.sym-btn.blocked{opacity:.4}
 @media (max-width:720px){
   body.adv .pile-act{gap:6px}
   body.adv .pile-act .btn{padding:8px 12px}
@@ -3465,8 +3467,10 @@ const Render = (() => {
         const legal = v.legal.includes(id);
         return cardHTML(id, v.trump, { button: true, disabled: !legal, cls: legal ? ['legal'] : ['illegal'] });
       }
-      /* While the bidding runs you study your hand: it stays bright, though no card can be picked. */
+      /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
+         UI's round 2, on your call, a card you click says which button names its suit. */
       const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2;
+      if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
       return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
     return '<div class="hand" id="hand">' + cards + '</div>';
@@ -3595,7 +3599,7 @@ const Render = (() => {
      card face up from the turn-up (in round 2, tucked under as the leftmost card: see advKittyHTML). During the discard the same
      spot holds the outside pile, one layer per player who has discarded (Fx sets their motion). */
   function advKittyHTML(v, order) {
-    const backs = n => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * .45)"></div>'; return h; };
+    const backs = n => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * var(--kstep))"></div>'; return h; };
     if (v.phase === P.DISCARD) {
       const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
       const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
@@ -3610,7 +3614,7 @@ const Render = (() => {
     const at = face ? (v.phase === P.BID2 && v.flippedBlocked ? 0 : v.kittyCount - 1) : -1;
     let cards = '';
     for (let i = 0; i < v.kittyCount; i++) {
-      const left = 'left:calc(' + i + ' * var(--kw) * .45)';
+      const left = 'left:calc(' + i + ' * var(--kw) * var(--kstep))';
       if (i === at) cards += cardHTML(v.flipped, null, { cls: at === 0 && v.kittyCount > 1 ? ['tuck'] : [] }).replace('<div class="', '<div style="' + left + '" class="');
       else cards += '<div class="card back" aria-hidden="true" style="' + left + '"></div>';
     }
@@ -3629,7 +3633,10 @@ const Render = (() => {
         case P.BID1: if (v.bidTurn === you) { const s = R.card(v.flipped).suit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
         case P.BID2: if (v.bidTurn === you) {
           const blocked = R.card(v.flipped).suit;
-          b.push(R.SUITS.map(s => '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + (s === blocked ? ' (blocked)' : '') + '" aria-label="Name ' + R.SUIT_NAME[s] + '"' + (s === blocked ? ' disabled' : '') + '>' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
+          /* The blocked suit's button stays clickable: it says why the suit cannot be named. */
+          b.push(R.SUITS.map(s => s === blocked
+            ? '<button class="btn suit sym-btn blocked ' + R.COLOR[s] + '" type="button" data-action="adv-info" data-kind="blocked" data-suit="' + s + '" aria-label="' + R.SUIT_NAME[s] + ' is blocked">' + R.SYMBOL[s] + '</button>'
+            : '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + '" aria-label="Name ' + R.SUIT_NAME[s] + '">' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
         } break;
         case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
         case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
@@ -4109,7 +4116,8 @@ const Fx = (() => {
     if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
     const e = now - tuckStart.t0, dur = t * 1.6;
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
-    const w = card.offsetWidth, from = 'translateX(' + (v.kittyCount - 1) * w * 0.45 + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
+    const cards = qa('.card', card.parentElement), w = card.offsetWidth;
+    const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
     card.animate([
       { transform: from, zIndex: 5, offset: 0, easing: 'ease-in-out' },
       { transform: out, zIndex: 5, offset: 0.5 },
@@ -4676,7 +4684,15 @@ const App = (() => {
       return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
     const off = memory ? '' : '<p class="pnote">Settings → Table memory adds what has been played.</p>';
+    const blockedText = x => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
     switch (kind) {
+      case 'blocked': return blockedText(anchor.getAttribute('data-suit') || '');
+      case 'name-card': {
+        const s = R.card(anchor.getAttribute('data-card') || '').suit;
+        if (!s) return ['The Joker has no suit', p1('To name a suit, click its button.')];
+        if (v.flipped && s === R.card(v.flipped).suit) return blockedText(s);
+        return ['To name ' + suit(s), p1('Click the ' + R.SYMBOL[s] + ' button.')];
+      }
       case 'trump': {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
         let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
@@ -5545,9 +5561,10 @@ const App = (() => {
   }
 
   /* ---- Human input. Engine.validate is the final guard for every action. ---- */
-  function onCard(id) {
+  function onCard(id, el) {
     const v = buildView(app.state, HUMAN);
     if (app.ui.autoplay) return;
+    if (el && el.classList.contains('namehint')) { showPanel('name-card', null, el); return; }
     const sel = app.ui.selected;
     let limit = 0;
     if (v.phase === P.DISCARD && v.pendingDiscard[HUMAN]) limit = 3;
@@ -5787,9 +5804,9 @@ const App = (() => {
   function init() {
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
-      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"]')) closePanel();
+      if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"], .namehint')) closePanel();
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
-      if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card')); return; }
+      if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card'), cardEl); return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
       if (ev.target.id === 'askLayer') { answerAsk(false); return; }
