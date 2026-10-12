@@ -22,6 +22,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
 | `node soak.js 4 5` | 4 pages × 5 full games at Instant speed. Random mode, sometimes the AI plays your seat, reloads at random points. | 5–30 min |
+| `node roundrobin.js 4 4` | Not a check. Every table of three personalities plays 4 games (480 in all), with the seat orders rotating. Prints each bot's win rate, overall and per seat, as JSON. Results: [docs/banter.md](../docs/banter.md). | about 6 min |
 
 `npm test` runs `typecheck.js`, `selftest.js`, `scenarios.js` and `stress.js all 4`. GitHub Actions runs `npm test` only when a major release tag is pushed (`1.0.0`, `2.0.0`, `v3.0.0` and so on), or when you start it with **Run workflow** on the Actions tab (`.github/workflows/test.yml`).
 
