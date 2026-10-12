@@ -255,6 +255,45 @@ function expect(name, ok, detail) {
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
 
+    console.log('Advanced: the play area explains itself on your move');
+    r = await step(`
+      const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
+      const title = () => q('#table > .panel .ptitle') && q('#table > .panel .ptitle').textContent;
+      const mine = () => KCT.Engine.actors(app.state).includes(0);
+      mode('advanced'); speed('fast');
+      KCT.App.newGame(4242);
+      const out = {};
+      out.discard = await drive(() => app.state.phase === P.DISCARD && mine());
+      out.kitty = !!q('#center .kpile[data-action="adv-info"]') && !!q('#center .outpile[data-action="adv-info"]');
+      click('#center .kpile'); out.kittyTitle = title();
+      click('#center .outpile'); out.outsideTitle = title();
+      const first = q('#hand button[data-card]').getAttribute('data-card');
+      click('#hand button[data-card="' + first + '"]');
+      out.picked = !q('#center [data-action="adv-info"]');
+      click('#hand button[data-card="' + first + '"]');
+      out.unpicked = !!q('#center .kpile[data-action="adv-info"]');
+      out.play = await drive(() => app.state.phase === P.TRICK_PLAY && mine() && app.state.trick.plays.length > 0 && app.state.hands[0].some(id => !KCT.Rules.canPlayCard(id, app.state.hands[0], KCT.Rules.getLeadSuit(app.state.trick.plays, app.state.trump), app.state.trump)));
+      if (out.play === 'stop') {
+        const v = app.state.version, bad = q('#hand button[data-card][aria-disabled="true"]');
+        bad.click(); out.illegalTitle = title(); out.illegalKept = app.state.version === v && app.state.hands[0].includes(bad.getAttribute('data-card'));
+        click('#center .slot-0'); out.slotTitle = title();
+        out.slots = document.querySelectorAll('#center .slot[data-action="adv-info"]').length;
+        click('#hand button[data-card]:not([aria-disabled])');
+        /* Your card flies first; the table is redrawn when it lands. A click on the old table opens nothing. */
+        const slots = () => document.querySelectorAll('#center .slot[data-action="adv-info"]').length;
+        const stale = q('#center .slot[data-action="adv-info"]');
+        if (stale) { stale.click(); out.staleTitle = title(); }
+        const t0 = Date.now(); while (slots() && Date.now() - t0 < 5000) await sleep(20);
+        out.afterPlay = slots();
+      }
+      mode('flat');
+      return out;`);
+    expect('your discard: the kitty and the outside pile open what they are', r.discard === 'stop' && r.kitty && /^Kitty/.test(r.kittyTitle) && /^Outside pile/.test(r.outsideTitle), r);
+    expect('a picked card turns the explanations off; unpicking it turns them on', r.picked && r.unpicked, r);
+    expect('your play: an unplayable card says why and stays in your hand', r.play === 'stop' && /^You can.t play/.test(r.illegalTitle) && r.illegalKept, r);
+    expect('your play: the trick slots open what they are', /^Trick \d+ of 7$/.test(r.slotTitle) && r.slots === 3, r);
+    expect('after you play, the trick slots only show', r.afterPlay === 0 && !r.staleTitle, r);
+
     console.log('One tab: a newer tab stops the older one');
     r = await step(`
       KCT.App.newGame(777, 1); speed('fast'); app.ui.autoplay = true;
