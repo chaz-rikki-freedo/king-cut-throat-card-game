@@ -67,7 +67,9 @@ GAME fields:
   - 1: the first rules. The opening discard and the Showdown discard have no order.
   - 2: the discards go in turn: the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
   - 3: house rules can be on (see **options**). With no house rule on, the game is the same as in version 2.
+  - 4: the house rule `jokerFlip` can be on (see **options**). With it off, the game is the same as in version 3.
 - **options** (rules version 3 and up): a bit field of house rules. Bit 0 (value 1), `mediatorLead`: after the Showdown discards, the mediator picks the leader with a SHOWDOWN_LEAD decision. Without it, the Showdown player who won the latest main trick leads. A record keeps it as `mediatorLead` (true or false).
+  - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the game RNG when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave.
@@ -187,8 +189,9 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 ```js
 {
   v: 3,                       // format version of the code (2 or 1 for an older code)
-  rules: 3,                   // the game's rules version (Engine.RULES_VERSION for a new game)
+  rules: 4,                   // the game's rules version (Engine.RULES_VERSION for a new game)
   mediatorLead: true,         // house rule: the mediator picks the Showdown leader
+  jokerFlip: null,            // house rule: the suit a turned-up Joker takes ('S', 'D', 'C', 'H', 'random'), or null
   seed: 4242,
   mode: 'waves',              // 'free', 'waves', null, or 'mode<n>'
   wave: 3,                    // or null
@@ -214,7 +217,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 
 1. Decode the code. Refuse it if the version is newer, a required section is unknown, or the bytes stop early.
 2. Refuse it if `rules` is newer than `Engine.RULES_VERSION`.
-3. `state = Engine.createGame(seed, names, rules, { mediatorLead })`.
+3. `state = Engine.createGame(seed, names, rules, { mediatorLead, jokerFlip })`.
 4. Repeat until the game ends:
    - If `Engine.systemAction(state)` gives an action, dispatch it.
    - If not, skip MARK entries and dispatch the next decision. If there is no next decision, stop (an unfinished game). If the next entry is EXT, stop with an error.
