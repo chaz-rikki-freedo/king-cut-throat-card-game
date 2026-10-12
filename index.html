@@ -171,9 +171,10 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .c-br{bottom:5%;right:7%;transform:rotate(180deg)}
 .c-mid{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--w)*.5)}
 .c-joker{position:absolute;bottom:9%;left:0;right:0;text-align:center;font-size:calc(var(--w)*.15);letter-spacing:.08em}
-/* House rule: a turned-up Joker that took a suit shows it under the corner star, like a card index. Every suit is
-   drawn at the same width (see JOKER_SUIT_SVG). */
-.c-tl .c-suit{display:block;width:.69em;height:auto;margin:.12em auto 0;fill:currentColor}
+/* Card suits are drawn (SUIT_SVG), every suit at the same width, so a heart is no larger than a spade. The corner
+   suit sits under the rank, or for a turned-up Joker that took a suit (house rule), under the star. */
+.card .c-suit{display:block;width:.69em;height:auto;fill:currentColor}
+.c-tl .c-suit,.c-br .c-suit{margin:.12em auto 0}
 .c-suit.red{color:var(--red)}.c-suit.black{color:var(--black)}
 .c-tag{position:absolute;top:44%;left:50%;transform:translate(-50%,60%);font-size:calc(var(--w)*.13);background:var(--gold);color:var(--gold-ink);padding:1px 4px;border-radius:3px;letter-spacing:.03em;white-space:nowrap}
 .c-new{position:absolute;top:3%;right:4%;font-size:calc(var(--w)*.12);background:var(--accent);color:#07233a;padding:0 3px;border-radius:3px}
@@ -220,6 +221,8 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .card-tag .rank{color:#6b6b6b}
 .gamelog .pip-red{color:#d32f2f}
 .gamelog .pip-black{color:#000}
+/* A micro card's suit is drawn like a card's (SUIT_SVG), at one width for every suit. */
+.micro .m-suit{display:inline-block;width:.7em;height:auto;vertical-align:-.08em;fill:currentColor}
 .toasts{position:fixed;top:calc(var(--header-h,56px) + 8px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:40;pointer-events:none;width:min(92vw,420px)}
 .toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:10px;padding:8px 14px;box-shadow:0 6px 18px rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
 .toast.neg{background:#ffcdd2;color:#5b0d0d}
@@ -3280,14 +3283,15 @@ const Render = (() => {
   const youText = t => t.replace(/\bYou( \([^)]*\))? ([a-z]+)([^.!?<]*)/g, (m, paren, w, rest) =>
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
 
-  /* The suits for a turned-up Joker's index: each 100 units wide, its height from its own shape. */
-  const JOKER_SUIT_SVG = Object.freeze({
+  /* The suits as drawn on cards: each 100 units wide, its height from its own shape. */
+  const SUIT_SVG = Object.freeze({
     S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
     H: ['0 0 100 92', '<path d="M50 92C20 66 0 50 0 27C0 11 12 0 27 0C38 0 46 6 50 15C54 6 62 0 73 0C88 0 100 11 100 27C100 50 80 66 50 92Z"/>'],
     D: ['0 0 100 125', '<path d="M50 0Q70 35 100 62.5Q70 90 50 125Q30 90 0 62.5Q30 35 50 0Z"/>'],
     C: ['0 0 100 110', '<circle cx="50" cy="24" r="23"/><circle cx="23" cy="62" r="23"/><circle cx="77" cy="62" r="23"/><path d="M42 36H58V64H42ZM46.5 60C46.5 82 42 98 32 110H68C58 98 53.5 82 53.5 60Z"/>']
   });
-  const jokerSuitHTML = s => '<svg class="c-suit ' + R.COLOR[s] + '" viewBox="' + JOKER_SUIT_SVG[s][0] + '" aria-hidden="true">' + JOKER_SUIT_SVG[s][1] + '</svg>';
+  /* cls: the classes, such as 'c-suit' on a card face. A suit takes the color of its card unless cls says red or black. */
+  const suitSVG = (s, cls) => '<svg class="' + cls + '" viewBox="' + SUIT_SVG[s][0] + '" aria-hidden="true">' + SUIT_SVG[s][1] + '</svg>';
 
   /* The turned card by name; a Joker that took a suit (house rule) adds it: "Joker ♠". */
   const turnedName = v => R.shortName(v.flipped) + (v.jokerSuit ? ' ' + R.SYMBOL[v.jokerSuit] : '');
@@ -3304,10 +3308,10 @@ const Render = (() => {
     /* A suit on the Joker only in a hand where the house rule gave the turned-up Joker one (see render). */
     const js = c.isJoker ? jokerSuit : null;
     const name = R.displayName(id, trump) + (js ? ', turned as ' + R.SUIT_NAME[js] : '');
-    const sym = c.isJoker ? '★' : R.SYMBOL[c.suit];
+    const sym = c.isJoker ? '' : suitSVG(c.suit, 'c-suit');
     const inner = c.isJoker
-      ? '<span class="c-tl">★' + (js ? jokerSuitHTML(js) : '') + '</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
-      : '<span class="c-tl">' + c.rank + '<br>' + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + '<br>' + sym + '</span>';
+      ? '<span class="c-tl">★' + (js ? suitSVG(js, 'c-suit ' + R.COLOR[js]) : '') + '</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
+      : '<span class="c-tl">' + c.rank + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + sym + '</span>';
     /* The Advanced UI tags every King, the card that scores when it wins a trick. */
     const king = adv && !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
     const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
@@ -3685,7 +3689,7 @@ const Render = (() => {
   function microHTML(id, joker) {
     const c = R.card(id);
     if (c.isJoker) return '<span class="micro" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
-    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '">' + R.SYMBOL[c.suit] + '</span></span>';
+    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
