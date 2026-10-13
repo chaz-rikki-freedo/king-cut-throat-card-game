@@ -809,7 +809,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'd18a035', date: '2026-10-12' });
+const BUILD = Object.freeze({ commit: '3935aa0', date: '2026-10-12' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -1210,10 +1210,11 @@ const Engine = (() => {
   /* Whose turn it is to discard, or null. From rules version 2 the discards go in turn, as the cards were dealt:
      the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
      Version 1 had no order: every player with a discard pending could discard. */
+  const discardsInTurn = (/** @type {number | undefined} */ rules) => (rules || 1) >= 2;
   /** @param {GameState} state */
   function discardTurn(state) {
     const from = state.phase === P.DISCARD ? state.dealer : state.phase === P.SHOWDOWN_DISCARD ? state.showdown.mediator : null;
-    if (from === null || (state.rules || 1) < 2) return null;
+    if (from === null || !discardsInTurn(state.rules)) return null;
     const pending = state.phase === P.DISCARD ? state.pendingDiscard : state.showdown.pendingDiscard;
     for (let k = 1; k <= C.PLAYERS; k++) if (pending[(from + k) % C.PLAYERS]) return (from + k) % C.PLAYERS;
     return null;
@@ -1435,13 +1436,17 @@ const Engine = (() => {
     addScore(state, w, points, outcome, events);
   }
 
+  /* The Showdown lead by the rule: the Showdown player who won the latest main trick. Also for the view's texts.
+     @param {number[]} trickWinners @param {number[]} participants @returns {{ player: number, mainTrick: number } | null} */
+  function ruleLeader(trickWinners, participants) {
+    for (let i = trickWinners.length - 1; i >= 0; i--) if (participants.includes(trickWinners[i])) return { player: trickWinners[i], mainTrick: i + 1 };
+    return null;
+  }
   /** @param {GameState} state */
   function showdownLeader(state) {
-    const parts = state.showdown.participants;
-    for (let i = state.trickWinners.length - 1; i >= 0; i--) {
-      if (parts.includes(state.trickWinners[i])) return { player: state.trickWinners[i], mainTrick: i + 1 };
-    }
-    throw new Error('No showdown participant won a main trick');
+    const lead = ruleLeader(state.trickWinners, state.showdown.participants);
+    if (!lead) throw new Error('No showdown participant won a main trick');
+    return lead;
   }
 
   /* lead: { player, mainTrick } by the rule, or { player, mainTrick: null, by: mediator } when the mediator picked. */
@@ -1659,7 +1664,7 @@ const Engine = (() => {
     return errors;
   }
 
-  return Object.freeze({ P, C, RULES_VERSION, JOKER_FLIPS, createGame, dispatch, validate, actors, discardTurn, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
+  return Object.freeze({ P, C, RULES_VERSION, JOKER_FLIPS, createGame, dispatch, validate, actors, discardTurn, discardsInTurn, ruleLeader, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2069,7 +2074,7 @@ function buildView(state, seat) {
     round: state.round, bidTurn: state.bidTurn, bidLog: state.bidLog.map(b => Object.assign({}, b)),
     trump: state.trump, caller: state.caller, receiver: state.receiver, exchangeCount: state.exchangeCount,
     received: seat === state.receiver ? state.received.slice() : [],
-    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead,
+    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), actors: Engine.actors(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead,
     activePlayers: state.activePlayers.slice(),
     currentPlayer: state.currentPlayer, leader: state.leader,
     trickNumber: state.trickNumber, totalTricks: state.totalTricks,
@@ -3401,18 +3406,8 @@ const Render = (() => {
   const leadButtonsHTML = v => v.showdown.participants.slice().sort((a, b) => a - b).map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
   /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
   const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
-  function isTurn(v, p) {
-    if (v.gameOver) return false;
-    switch (v.phase) {
-      case P.DISCARD: return canDiscard(v, p, v.pendingDiscard[p]);
-      case P.BID1: case P.BID2: return v.bidTurn === p;
-      case P.EXCHANGE: return v.receiver === p;
-      case P.TRICK_PLAY: case P.SHOWDOWN_PLAY: return v.currentPlayer === p;
-      case P.SHOWDOWN_DISCARD: return canDiscard(v, p, v.showdown.pendingDiscard[p]);
-      case P.SHOWDOWN_LEAD: return v.showdown.mediator === p;
-      default: return false;
-    }
-  }
+  /* Whose move it is: the Engine's actors, carried in the view. */
+  const isTurn = (v, p) => !v.gameOver && v.actors.includes(p);
 
   function bidBubble(v, p) {
     if (![P.BID1, P.BID2, P.EXCHANGE].includes(v.phase)) return '';
@@ -3461,7 +3456,7 @@ const Render = (() => {
     if (v.phase === P.DISCARD) note = '<div class="discard-note">' + pend(v.pendingDiscard[p], 3) + '</div>';
     if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = '<div class="discard-note">' + pend(v.showdown.pendingDiscard[p], 1) + '</div>';
     return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + badges(v, p) + '</div>' +
-      '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p] - held(ctx, p)) + '<small> / 10</small></span></div>' +
+      '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p] - held(ctx, p)) + '<small> / ' + WIN + '</small></span></div>' +
       tricksLine(v, p) +
       '<div class="backs" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + note + bidBubble(v, p);
   }
@@ -3590,7 +3585,7 @@ const Render = (() => {
         const [a, b] = hs.participants;
         return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play 5 tricks' + (v.mediatorLead ? '' : ', led by the one who won the latest main trick') + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
+          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play 5 tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
@@ -3603,6 +3598,11 @@ const Render = (() => {
   const summaryText = (v, ui) => youText(summaryHTML(v, ui));
   /* The Showdown lead house rule of the running game, when Settings now says otherwise: a game keeps the rules it
      started with, so the change waits for the next game. */
+  /* Without the mediator's pick: who leads the Showdown, by the Engine's rule. */
+  function sdLeadText(v) {
+    const lead = Engine.ruleLeader(v.trickWinners, v.showdown.participants);
+    return lead ? ', led by ' + nameOf(v, lead.player) + ', who won main trick ' + lead.mainTrick : '';
+  }
   function leadRuleNote(v, ui) {
     if (!ui || !ui.houseRules || ui.houseRules.mediatorLead === !!v.mediatorLead) return '';
     return '<p class="rule-note">This game started with the house rule “The mediator picks who leads” ' + (v.mediatorLead ? 'on' : 'off') + '. Your change in Settings applies from your next game.</p>';
@@ -3647,9 +3647,8 @@ const Render = (() => {
     if (v.phase === P.SETUP) return '<div class="prompt">No game is running.</div><button class="btn primary" type="button" data-action="menu">Choose a game</button>';
     /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. With the AI in your
        seat, that also covers your pick of the leader as the mediator (house rule). */
-    const botShowdown = v.showdown && v.showdown.active && !v.showdown.participants.includes(you);
     const skipHTML = () => '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
-    if (ui.autoplay && isTurn(v, you)) return ctx.waiting && botShowdown ? skipHTML() : '';
+    if (ui.autoplay && isTurn(v, you)) return ctx.waiting && botShowdown(v) ? skipHTML() : '';
     switch (v.phase) {
       case P.DISCARD:
         if (v.pendingDiscard[you]) {
@@ -3693,7 +3692,7 @@ const Render = (() => {
       default: break;
     }
     if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>';
-    if (ctx.waiting && botShowdown) return skipHTML();
+    if (ctx.waiting && botShowdown(v)) return skipHTML();
     return '<div class="hint">' + statusText(v) + '</div>';
   }
 
@@ -3752,6 +3751,8 @@ const Render = (() => {
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
+  /* A Showdown between the two bots: the viewer only watches (Skip shows while the game waits). */
+  const botShowdown = v => !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat));
 
   /* Tags: one shape, in one fixed order as they come up: Human or AI, Dealer, Namer, Kitty, Turn, Led, then
      Mediator or Showdown (SD). On phones Mediator reads MED. */
@@ -3773,7 +3774,7 @@ const Render = (() => {
      the tricks that player won this hand, unless the house rule Polite Play is off: then the circles only count. */
   function advCircles(v, p, ui) {
     const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(p);
-    const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? 5 : 7;
+    const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? Engine.C.SHOWDOWN_TRICKS : Engine.C.MAIN_TRICKS;
     let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
     const label = n + ' of ' + of + ' tricks won';
     if (ui && ui.houseRules && ui.houseRules.politePlay === false) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
@@ -3952,8 +3953,7 @@ const Render = (() => {
     const order = Fx.discardOrder(v);
     const parts = /** @type {[HTMLElement, string][]} */ ([[$('seat1'), advSeatHTML(v, 1, ctx)], [$('seat2'), advSeatHTML(v, 2, ctx)], [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat0'), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
-    const botSd = v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat);
-    const skip = ctx.waiting && botSd && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
+    const skip = ctx.waiting && botShowdown(v) && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
     if (key === advKey.seats) return false;
     advKey.seats = key;
@@ -3987,7 +3987,7 @@ const Render = (() => {
     if (adv) return renderAdvanced(v, ui, ctx);
     if (advKey.seats) leaveAdvanced();
     const table = $('table');
-    table.classList.toggle('showdown', !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP)));
+    table.classList.toggle('showdown', sdShown(v));
     $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
     $('handChip').textContent = handChipText(v);
     ctx.ui = ui;
@@ -3998,7 +3998,7 @@ const Render = (() => {
       el.classList.toggle('out', !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(p)));
     }
     let center = '';
-    if (v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP)) {
+    if (sdShown(v)) {
       const parts = v.showdown.participants.map(p => nameOf(v, p)).join(' vs ');
       center += '<div class="banner">SHOWDOWN<small>' + parts + ' · mediator: ' + nameOf(v, v.showdown.mediator) + '</small></div>';
     }
@@ -4017,12 +4017,12 @@ const Render = (() => {
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const meName = (mine ? faceButtonHTML(mine) : '') + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
     me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay, ui.allowSeatAI) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
-      '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / 10</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
+      '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / ' + WIN + '</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
+  return Object.freeze({ render, advInfoHTML, explains, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4720,7 +4720,7 @@ const App = (() => {
   function finishGame() {
     const won = app.state.winner === HUMAN;
     if (app.wave.n) {
-      const counts = app.wave.wasOpenAtStart && !app.humanSeatWasAutoplayed;
+      const counts = waveCounts();
       app.wave.result = counts ? Waves.record(app.wave.n, won) : Waves.progress();
       Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
     }
@@ -4734,7 +4734,7 @@ const App = (() => {
   function endButtonsHTML() {
     const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
     const menu = b('menu', 'Menu');
-    if (app.mode !== 'waves') return b('new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
+    if (!inWaves()) return b('new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
     const n = app.wave.n, won = app.state.winner === HUMAN;
     if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + b('replay-seed', 'Replay Seed') + menu;
     if (won) return b('replay-seed', 'Replay Seed') + b('menu', 'Menu', true);
@@ -4934,7 +4934,7 @@ const App = (() => {
     const v = buildView(app.state, HUMAN), mini = id => Render.microHTML(id, 'Jkr');
     /* The play area explains itself only on your move, before you pick a card (Render's explains). While your
        card flies, the old table stays on screen a moment: a click on it then does nothing. */
-    if (anchor.closest('#center, #hand') && !(Render.isTurn(v, HUMAN) && !app.ui.autoplay && !app.ui.selected.size)) return;
+    if (anchor.closest('#center, #hand') && !Render.explains(v, app.ui)) return;
     let title, body;
     if (kind === 'outside') {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
@@ -5063,7 +5063,7 @@ const App = (() => {
       case 'hand': {
         const sd = v.showdown && v.showdown.active;
         const STAGE_HELP = {
-          [P.DISCARD]: 'Each player discards 3 face down, in turn from the dealer\'s left.',
+          [P.DISCARD]: 'Each player discards 3 face down' + (Engine.discardsInTurn(v.rules) ? ', in turn from the dealer\'s left.' : '.'),
           [P.REVEAL]: 'The dealer turns up the top kitty card.', [P.BID1]: 'Round 1: accept the turned card\'s suit as trump, or pass.',
           [P.BID2]: 'Round 2: name another suit, or pass.', [P.EXCHANGE]: 'The player left of the namer takes the kitty card(s) and discards as many.',
           [P.HAND_SCORE]: 'The hand is over.', [P.ABANDONED]: 'Everyone passed: no trump, no points. The deal passes left.', [P.JOKER_VOID]: 'The Joker was turned up: the same dealer deals again.'
@@ -5086,8 +5086,8 @@ const App = (() => {
         return [blocked ? 'Blocked suit' : 'Turned-up card', body + off];
       }
       case 'score': {
-        const st = v.handStats && v.handStats.pts[seat], need = Math.max(0, 10 - v.scores[seat]);
-        let body = p1(n(seat) + ' has ' + v.scores[seat] + (v.scores[seat] === 1 ? ' point' : ' points') + (need ? ' and needs ' + need + ' more to win.' : '.') + ' The first player to 10 wins at once.');
+        const st = v.handStats && v.handStats.pts[seat], win = Engine.C.WIN_SCORE, need = Math.max(0, win - v.scores[seat]);
+        let body = p1(n(seat) + ' has ' + v.scores[seat] + (v.scores[seat] === 1 ? ' point' : ' points') + (need ? ' and needs ' + need + ' more to win.' : '.') + ' The first player to ' + win + ' wins at once.');
         if (st) {
           const parts = [['Kings', st.king], ['hand', st.hand], ['Showdown', st.showdown]].filter(([, x]) => x).map(([k, x]) => (x > 0 ? '+' : '−') + Math.abs(x) + ' ' + k);
           body += sub('This hand') + p1(parts.length ? parts.join(' · ') : 'No points yet.');
@@ -5110,7 +5110,7 @@ const App = (() => {
           ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
           dealer: () => [who + ' · Dealer', v.showdown
-            ? who + ' mediates the Showdown, so ' + who + ' deals it: the discards go in turn from ' + who + '\'s left. ' + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
+            ? who + ' mediates the Showdown, so ' + who + ' deals it' + (Engine.discardsInTurn(v.rules) ? ': the discards go in turn from ' + who + '\'s left. ' : '. ') + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
             : who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
           caller: () => [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
           receiver: () => [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
@@ -5166,7 +5166,7 @@ const App = (() => {
   async function toggleAutoplay() {
     if (!app.mode || askDone || !app.ui.allowSeatAI) return;
     /* Waves: the first hand-over in a game that could still clear its wave asks first. */
-    if (!app.ui.autoplay && app.mode === 'waves' && app.wave.wasOpenAtStart && !app.humanSeatWasAutoplayed && !app.state.gameOver &&
+    if (!app.ui.autoplay && waveCounts() && gameOn() &&
       !await ask({
         title: 'Let the AI play your seat?',
         text: '<p>A win in this game will then not clear wave ' + app.wave.n + '.</p><p>This stays true if you take your seat back.</p>',
@@ -5362,12 +5362,35 @@ const App = (() => {
     return { update, MIN };
   })();
 
+  /* House rules that a game fixes at its start: [note id, the game's value, the setting's value, the value in words]. */
+  const HOUSE_NOTES = /** @type {[string, (s: any) => any, (h: any) => any, (x: any) => string][]} */ ([
+    ['setMediatorNow', st => !!st.mediatorLead, h => h.mediatorLead, x => 'this rule ' + (x ? 'on' : 'off')],
+    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal']
+  ]);
+  /* Whether the game is a wave (newGame, resumeGame and enterIdle set the mode and the wave together). */
+  const inWaves = (a = app) => !!a.wave.n;
+  /* Whether a win in this game clears its wave: the wave was open at the start and the AI never played your seat. */
+  const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.humanSeatWasAutoplayed;
+  /* Whether a game is being played: a mode is set and its game is not over. a: the app (a stand-in in the self-test). */
+  const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
   /* Whether the bots play their personalities: always in a wave (they set its difficulty), else as the switch says. */
-  const personasOn = () => app.usePersonas || !!app.wave.n;
+  const personasOn = (a = app) => a.usePersonas || inWaves(a);
+  /* The Settings notes for the running game's house rules: note id -> its text, or '' when the setting matches. */
+  function houseNotes(a = app) {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const [id, game, setting, text] of HOUSE_NOTES) {
+      const was = gameOn(a) ? game(a.state) : null;
+      out[id] = was !== null && was !== setting(a.houseRules) ? 'This game started with ' + text(was) + '. Your change applies from your next game.' : '';
+    }
+    return out;
+  }
+  /* Free play's goal on the menu: how many bots you have won a Free play game against (the results' modeOpponents). */
+  const beatenCount = (/** @type {any} */ results) => { const won = (results.modeOpponents || {}).free || {}; return PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length; };
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
      shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
   function syncModeUI() {
-    const waves = app.mode === 'waves';
+    const waves = inWaves();
     const chip = $('modeChip');
     chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode === 'free' ? 'Free play' : '';
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
@@ -5383,17 +5406,12 @@ const App = (() => {
     off('setAdvanced', personasOn());
     /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
        has fixed it (it stays for the game). */
-    const fixed = app.mode && !app.state.gameOver && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
+    const fixed = gameOn() && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
     off('setSeatPersonaRow', seatOff);
     $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
       : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
-    /* The running game keeps its house rule: say so when the setting now differs. */
-    const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
-    now.hidden = !differs;
-    if (differs) now.textContent = 'This game started with this rule ' + (st.mediatorLead ? 'on' : 'off') + '. Your change applies from your next game.';
-    const jNow = $('setJokerNow'), jDiffers = !!app.mode && !st.gameOver && (st.jokerFlip || '') !== app.houseRules.jokerFlip;
-    jNow.hidden = !jDiffers;
-    if (jDiffers) jNow.textContent = 'This game started with ' + (JOKER_FLIP_TEXT[st.jokerFlip || ''] || 'Redeal') + '. Your change applies from your next game.';
+    /* The running game keeps its house rules: say so under each setting that now differs. */
+    for (const [id, text] of Object.entries(houseNotes())) { const note = $(id); note.hidden = !text; note.textContent = text; }
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
@@ -5701,7 +5719,7 @@ const App = (() => {
   function showMenu(launch) {
     clearTimer();
     const p = Waves.progress();
-    const playing = app.mode && !app.state.gameOver;
+    const playing = gameOn();
     const lost = slots.dropped();
     const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
       '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
@@ -5720,10 +5738,9 @@ const App = (() => {
         (extra || '') + '<div class="mbtns">' + resume + buttons + '</div></section>';
     };
     let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
-    if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + (lost[0] === 'waves' ? 'Waves' : 'Free play') + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
+    if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
     /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
-    const freeWins = stats.get().modeOpponents.free || {}, beaten = PERSONAS.filter(x => freeWins[x.id] && freeWins[x.id].won > 0).length;
-    html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beaten + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
+    html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
     html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
       '<span class="mtail">' + p.cleared.length + ' of ' + p.total + ' cleared</span>', menuButton('play-wave', 'Play wave'));
     html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
@@ -5741,7 +5758,7 @@ const App = (() => {
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
   /* A mode's unfinished game: the one being played, or the saved one. null: none. */
   function unfinished(mode) {
-    return app.mode === mode && !app.state.gameOver ? app.state : (slots.get(mode) || { state: null }).state;
+    return app.mode === mode && gameOn() ? app.state : (slots.get(mode) || { state: null }).state;
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : 'Free play';
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
@@ -6386,7 +6403,7 @@ const App = (() => {
     if (TabLock.stale) showStale(); else TabLock.check();
   }
 
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup, infoPanel };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -7344,6 +7361,49 @@ const SelfTest = (() => {
       check('Polite Play off: trick circles only count', !circles(false).includes('data-action') && circles(false).includes('tricks won'));
     });
 
+    /* --- App logic kept in one place: tested with stand-in apps, so the running game is not touched. --- */
+    safeRun('app logic', () => {
+      const A = App, mk = (/** @type {any} */ x) => Object.assign({ mode: null, state: null, usePersonas: true, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
+      const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
+      eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
+      eq('personasOn: the switch in Free play, always in a wave', [A.personasOn(mk({ usePersonas: false })), A.personasOn(mk({ usePersonas: true })), A.personasOn(mk({ usePersonas: false, wave: { n: 3 } }))], [false, true, true]);
+      eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '' }, { setMediatorNow: '', setJokerNow: '' }]);
+      const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S' }, houseRules: { mediatorLead: true, jokerFlip: 'random' } }));
+      eq('house notes: each setting that differs from the game names the game\'s value', notes, {
+        setMediatorNow: 'This game started with this rule off. Your change applies from your next game.',
+        setJokerNow: 'This game started with Spades. Your change applies from your next game.' });
+      eq('house notes: none once the game is over', A.houseNotes(mk({ mode: 'free', state: { gameOver: true }, houseRules: { mediatorLead: true, jokerFlip: 'H' } })), { setMediatorNow: '', setJokerNow: '' });
+      const w = (/** @type {any} */ x) => mk(Object.assign({ mode: 'waves', state: live, wave: { n: 2, wasOpenAtStart: true }, humanSeatWasAutoplayed: false }, x));
+      eq('inWaves and waveCounts: a win counts only in an open wave the AI never played your seat in',
+        [A.inWaves(mk({ mode: 'free', state: live })), A.inWaves(w({})), A.waveCounts(w({})), A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: false } })), A.waveCounts(w({ humanSeatWasAutoplayed: true })), A.waveCounts(mk({ mode: 'free', state: live }))],
+        [false, true, true, false, false, false]);
+      eq('Showdown lead by the rule: the Showdown player who won the latest main trick, not the mediator',
+        [Engine.ruleLeader([1, 2, 0, 1, 2, 0, 2], [0, 1]), Engine.ruleLeader([0, 0, 0, 1, 1, 1, 2], [0, 1]), Engine.ruleLeader([2, 2], [0, 1])],
+        [{ player: 0, mainTrick: 6 }, { player: 1, mainTrick: 6 }, null]);
+      eq('the discards go in turn from rules version 2', [Engine.discardsInTurn(undefined), Engine.discardsInTurn(1), Engine.discardsInTurn(2), Engine.discardsInTurn(Engine.RULES_VERSION)], [false, false, true, true]);
+      eq('opponents beaten: Free play wins only, each bot once', [A.beatenCount({}), A.beatenCount({ modeOpponents: { free: { vex: { played: 3, won: 2 }, doc: { played: 2, won: 0 }, gus: { played: 1, won: 1 } }, waves: { mei: { played: 1, won: 1 } } } })], [0, 2]);
+      /* The Outside cell: a count (data-count, which the animation updates) before a Showdown; your Showdown discards
+         as mini cards in it, never marked as a count, so a mini card's bare rank is not taken for one. */
+      let sd = null, main = null;
+      /** @type {string[]} */
+      const turnBad = [];
+      for (let seed = 1; seed < 200 && !sd; seed++) {
+        const x = Engine.createGame(seed); D(x, { type: 'START_GAME' });
+        for (let g = 0; g < 3000 && !x.gameOver && !sd; g++) {
+          const ac = Engine.actors(x); D(x, ac.length ? AI.fastAction(x, ac[0]) : Engine.systemAction(x));
+          const turn = [0, 1, 2].filter(p => Render.isTurn(buildView(x, p), p)), want = x.gameOver ? [] : Engine.actors(x);
+          if (JSON.stringify(turn) !== JSON.stringify(want) && turnBad.length < 3) turnBad.push(x.phase + ': ' + JSON.stringify(turn) + ' vs ' + JSON.stringify(want));
+          if (!main && x.phase === P.TRICK_PLAY) main = buildView(x, 0);
+          const s2 = x.showdown;
+          if (s2 && s2.active && s2.participants.includes(0) && !s2.pendingDiscard[0]) sd = buildView(x, 0);
+        }
+      }
+      eq('whose turn on screen is the Engine\'s actors, at every step', turnBad, []);
+      const cellOf = (/** @type {any} */ v) => { const d = document.createElement('div'); d.innerHTML = Render.advInfoHTML(v).join(''); return [...d.querySelectorAll('.cell')].find(c => c.getAttribute('data-action') === 'adv-outside') || null; };
+      const mc = main && cellOf(main), sc = sd && cellOf(sd);
+      check('the Outside cell holds a marked count in the main hand', !!mc && !!mc.querySelector('.val[data-count]') && mc.querySelector('.val[data-count]').textContent === '12', mc ? mc.outerHTML : 'no main-hand view');
+      check('in your Showdown it holds your discard as a mini card, with no count mark', !!sc && sc.querySelectorAll('.micro').length === 1 && !sc.querySelector('[data-count]'), sc ? sc.outerHTML : 'no Showdown found');
+    });
     safeRun('restart', () => {
       const s = Engine.createGame(77);
       eq('new game is clean', [s.phase, s.scores, s.handNumber, s.gameOver, Engine.audit(s)], [P.SETUP, [0, 0, 0], 0, false, []]);
