@@ -60,6 +60,11 @@ function expect(name, ok, detail) {
       out.ask = askOpen() && q('#askTitle').textContent;
       click('[data-action="ask-cancel"]'); await sleep(50);
       out.keptGame = app.mode === 'free' && app.state.version === out.version && !!q('#overlay .menu');
+      out.icons = Array.from(document.querySelectorAll('#overlay .mdel')).map(x => x.getAttribute('data-action'));
+      click('[data-action="discard-free"]'); await sleep(50);
+      out.discardAsk = askOpen() && q('#askTitle').textContent;
+      click('[data-action="ask-cancel"]'); await sleep(50);
+      out.discardKept = app.mode === 'free' && app.state.version === out.version && !!A.slots.get('free') && !!q('#overlay .menu');
       click('[data-action="close-menu"]'); await sleep(20);
       out.stop = await drive();
       const st = app.state, rep = A.replays.list()[0], run = KCT.Replay.run(rep.code);
@@ -73,6 +78,8 @@ function expect(name, ok, detail) {
     expect('the resumed game is at the saved move', r.version === mid.version, [r.version, mid.version]);
     expect('the resumed log is the same', JSON.stringify(r.log.slice(0, mid.log.length)) === JSON.stringify(mid.log) && r.log.length === mid.log.length + 1);
     expect('a new game asks first; Keep it keeps the game', r.ask === 'Start a new Free play game?' && r.keptGame, r);
+    expect('Discard game shows only on the card with a game', JSON.stringify(r.icons) === JSON.stringify(['discard-free']), r.icons);
+    expect('Discard game asks first; Keep it keeps the game', r.discardAsk === 'Discard your Free play game?' && r.discardKept, r);
     expect('the game ends', r.stop === 'game-over', r.stop);
     expect('the end buttons for Free play', JSON.stringify(r.buttons) === JSON.stringify(['View table', 'New Game', 'Replay Seed', 'Menu']), r.buttons);
     expect('the save slot is cleared', r.slotCleared);
@@ -80,6 +87,24 @@ function expect(name, ok, detail) {
     expect('the result is recorded', r.stats && r.stats.played === 1 && r.stats.won === (r.winner === 0 ? 1 : 0), r.stats);
     expect('the mode chip opens Free play wins', r.popup === 'Free play wins', r.popup);
     expect('Skip never shows outside a bot Showdown', r.skip.shownElsewhere === 0, r.skip);
+
+    console.log('Discard game');
+    r = await step(`
+      const out = { stats: JSON.stringify(A.stats.get()), replays: A.replays.list().length };
+      click('[data-action="menu"]'); await sleep(20);
+      click('[data-action="new-free"]'); await sleep(50);
+      while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-done"]'); await sleep(50);
+      await drive(() => app.state.phase === P.TRICK_PLAY);
+      click('[data-action="menu"]'); await sleep(20);
+      click('[data-action="discard-free"]'); await sleep(50);
+      click('[data-action="ask-ok"]'); await sleep(50);
+      Object.assign(out, { mode: app.mode, slot: !!A.slots.get('free'), menu: !!q('#overlay .menu'), icons: document.querySelectorAll('#overlay .mdel').length,
+        resume: q('[data-action="resume-free"]') && q('[data-action="resume-free"]').disabled, statsSame: JSON.stringify(A.stats.get()) === out.stats, replaysSame: A.replays.list().length === out.replays });
+      return out;`);
+    expect('Discard ends the game: no mode, no slot, the menu stays open', r.mode === null && !r.slot && r.menu, r);
+    expect('after Discard the card has no icon and Resume is off', r.icons === 0 && r.resume === true, r);
+    expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
