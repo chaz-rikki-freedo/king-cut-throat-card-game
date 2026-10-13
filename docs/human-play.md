@@ -134,7 +134,7 @@ Dynamic is a proposed third mode, next to Free play and Waves. The bots ease off
 - **It only ever makes the game easier.** The bots never play harder than normal, and never punish a new player.
 - **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game.
 - **It eases mainly by lowering hunches,** following an easing ladder that was measured row by row, down to a floor at about Novice strength with 1 hunch. Style never changes, so each personality still plays like itself.
-- **It spots gross mistakes within a game,** using the fast signals above, and judges finer skill across games, using the slow ones.
+- **It spots gross mistakes within a game,** using the fast signals above. It judges finer skill with the slow ones, from the player's record across games plus the hands of the current game.
 - **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
 - **The game's own hand value stays as it is.** Dynamic's reads and review use the fitted estimate instead.
 
