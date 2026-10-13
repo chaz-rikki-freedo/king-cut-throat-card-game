@@ -1,8 +1,8 @@
 # Human play and the bots
 
-A design note, not a spec. It records what we see at real tables, what we think causes it, and what we could measure or build. None of it is in the app yet. Each part says whether it is an observation, a hypothesis or a proposal, so we can check it later.
+A design note, not a spec. It records what we see at real tables, what we think causes it, what we measured, and what we could build. Each part says whether it is an observation, a hypothesis, a measurement or a proposal, so we can check it later.
 
-Started 2026-10-13.
+Started 2026-10-13. Updated 2026-10-13 with the measurements behind Dynamic mode. The Dynamic design itself is on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). None of it is in the app yet.
 
 ## Observation
 
@@ -68,9 +68,55 @@ Courage and Real table move that threshold up or down (`bidLimit`):
 | Bold | −0.4 |
 | Real table | another +0.5 (not for personalities) |
 
-So a Normal bot calls in round 2 at about 3 expected tricks. A Real table bot waits for about 3.5. Bots that plan their bids, which is most bots when Real table is off, use hand value only to rank their choices. They decide by playing the hand out in sampled deals.
+So a Normal bot calls in round 2 at about 3 expected tricks. A Real table bot waits for about 3.5.
+
+Hand value is used by every bot, not only the ones that bid by rule. It drives:
+
+- the rule-based bids,
+- the moves of the other seats when a bot plays a hand out in its head,
+- how a bot reads the other seats' bids,
+- which discards a bot considers.
 
 The values above match `index.html` on 2026-10-13. If the code changes, the code wins.
+
+**Where the values came from (measurement):** the weights and thresholds are in the first commit of the repository's history, with no recorded source and no recorded check.
+
+## Measurements (2026-10-13)
+
+These come from bot-only simulations. The scripts are in `tests/` (see [tests/README.md](../tests/README.md)), so each one can be run again. Bots stand in for people here, so check each result against real players' replay codes once there are some.
+
+### Hand value predicts too many tricks, but ranks hands well
+
+From `tests/handvalue.js`: 600 Shark games, 5,055 hands.
+
+- **Too many tricks:** the three seats' predictions add up to about **9 tricks per hand**, but a hand has 7. That's about 0.66 too many per seat, and the error is largest in the range where bids are decided.
+- **The right order:** the correlation between predicted and actual tricks is **0.80**, so the order of hands is mostly right and the level is off.
+- **The wrong proportions:** trump length matters far more than the formula says. In the fit, each trump past the second is worth about 0.70 tricks instead of 0.20. Low trumps are worth almost nothing as single cards. Off-suit Queens, and a King behind its own Ace, are worth about nothing.
+- **The fitted weights:** they cut the average trick error from 1.01 to 0.74, and are saved in `tests/data/handvalue-fit.json`.
+- **The bid thresholds call on weak hands:** a caller at a hand value of 3.0 to 3.5 won the hand only 22% of the time. It reached 50% only at about 4.0 to 4.5.
+
+### What makes a bot stronger
+
+From `tests/levers.js`: 300 to 400 games per setting, a test bot against two fixed opponents. Each result is accurate to about ±5 points.
+
+| Setting | Effect on strength |
+|---|---|
+| **Hunches** | The main dial. Against two Casual bots, a Shark wins 46% at 40 hunches and 17% at 1, and every step lowers it. |
+| **Knowledge switches, one at a time** | No single switch makes a measurable difference. The README ranks them "by measured effect", but these numbers don't support that ranking. |
+| **Knowledge switches, as a group** | Matter only at low hunches: no effect at 10 hunches, about 4 points at 5, about 7 at 3. |
+| **Brain farts** | No effect from 0% to 60% at 40 hunches. They matter only at low hunches, or at 90%. |
+| **Fitted hand-value weights** | No measurable change in strength, for Sharks or for Real table bidders. |
+| **Bid thresholds, raised by up to 1.0** | No measurable change in strength. |
+
+So recalibrating hand value would make it more accurate without making the bots play better. Changing it would also change how every bot plays in every mode, and the Waves "Your win" numbers would need measuring again.
+
+### What separates a weak player from a strong one
+
+From `tests/review.js`: 150 games per setting. A "player" seat played at several strengths against two Casual bots, and once as a new player who throws away its best cards.
+
+- **Gross mistakes show up fast.** A player who throws away their best cards is obvious within **2 hands**, from the cards they discard or from how weak their hand is at bid time. Every bot strength discards about equally well, so these measures say nothing about finer skill.
+- **Finer skill shows up slowly.** Points per hand, failed calls and the hand value at a call all fall steadily with skill. But telling a Novice-strength player from a Shark-strength one takes about **170 hands**, roughly 17 games. A floor-strength player takes about **100 hands**.
+- **Matching a bot's card choices isn't a skill measure.** Card plays agreed with a Club bot 76% of the time for a Shark, and 67% for the weakest setting. The new player scored 73%.
 
 ## Gap: Real table doesn't bluff
 
@@ -79,9 +125,22 @@ The values above match `index.html` on 2026-10-13. If the code changes, the code
 1. **The "Your win" column in Waves may be off.** It comes from a Casual, Real table bot in your seat, which is a cautious player. A player who bluffs too often has a different win rate and a different curve across the 18 waves.
 2. **The bots' model of the other seats is wrong for people.** When the bots read bids and play hands out in their heads, they expect the other seats to play the same way they do. So a bot never thinks "this person calls on garbage." It doesn't punish bluffs the way a sharp human would, and it doesn't fall for them the way a weak human would.
 
+The measurements don't close this gap. The hand-value results show how the thresholds relate to real outcomes. They don't show how real people bid.
+
+## Dynamic mode
+
+Dynamic is a proposed third mode, next to Free play and Waves. The bots ease off for players who are clearly new, and tighten back to normal as the players improve. It grew out of this note. The decisions, and the measurements behind them, are in the decision record on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). In short:
+
+- **It only ever makes the game easier.** The bots never play harder than normal, and never punish a new player.
+- **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game.
+- **It eases mainly by lowering hunches,** following an easing ladder that was measured row by row, down to a floor at about Novice strength with 1 hunch. Style never changes, so each personality still plays like itself.
+- **It spots gross mistakes within a game,** using the fast signals above, and judges finer skill across games, using the slow ones.
+- **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
+- **The game's own hand value stays as it is.** Dynamic's reads and review use the fitted estimate instead.
+
 ## Proposals
 
-None of these is planned yet. Each one gives us something we can check.
+Each one gives us something we can check. The status of each is as of 2026-10-13.
 
 1. **Turn comebacks into numbers.** Track these for every game:
    - How often the player who trailed by 3 or more wins.
@@ -89,12 +148,22 @@ None of these is planned yet. Each one gives us something we can check.
    - How often a call fails, and what the hand's value was when the caller called.
 
    Compare bot tables with human replays on the same numbers. `tests/roundrobin.js` is the natural place for the bot side.
-2. **Fit a human error profile from replay codes.** Each code holds every bid and the hand behind it. Score each human bid with `handValue`, then plot how often people call at each hand value, split by whether the caller was ahead or behind. A call well below 2.95 is a bluff in numbers. A lower curve for players who were behind is score-driven bluffing, measured instead of guessed.
+
+   *Status: open. Failed calls and the hand value at a call are now measured for bots (`tests/review.js`). The comeback numbers are not.*
+2. **Fit a human error profile from replay codes.** Each code holds every bid and the hand behind it. Score each human bid, then plot how often people call at each hand value, split by whether the caller was ahead or behind. A call well below the thresholds is a bluff in numbers. A lower curve for players who were behind is score-driven bluffing, measured instead of guessed.
+
+   *Status: open, waiting on real replay codes. Score the bids with the fitted estimate in `tests/data/handvalue-fit.json`, not with the game's hand value, which predicts too many tricks.*
 3. **Add a bluffing style next to Real table.** It calls at a lower hand value when behind, and it doesn't count cards. The courage offset already lowers the hand value needed to call. What's missing is making it depend on the score. Measure Waves against this style as well as against Real table.
+
+   *Status: open.*
 4. **Decide what the bots do with a bluffer.** There are two valid options, and they make different games:
    - **Bots that exploit it** (most likely the top Sharks: Vex, Doc, Mei): they remember who got caught bluffing and defend harder against that player. People learn the bluff doesn't pay.
    - **Bots that bluff too** (Gus, Tex): this brings back the swingy game people know and enjoy. That's good for the early waves and for Free play.
+
+   *Status: decided for Dynamic. No bot adapts to a player's bluffing, so the bots don't exploit it. Whether some personalities should bluff more themselves is still open.*
 5. **Treat swinginess as a design choice.** Comebacks keep weak players engaged. A bot-only table that never swings can feel settled by hand 3. Set a target comeback rate for each wave tier, and tune personalities toward it.
+
+   *Status: open.*
 
 ## Summary
 
@@ -102,10 +171,11 @@ None of these is planned yet. Each one gives us something we can check.
 - **Difficulty:** tune against a human model that has been checked with real replay codes.
 - **Fun:** tune with comeback numbers.
 
-Right now the Rules lens is solid. The human model, Real table, captures caution but not the reckless bluffing we see.
+Right now the Rules lens is solid. The human model, Real table, captures caution but not the reckless bluffing we see. For bot strength, hunches is the setting that counts. The game's hand value ranks hands well, but its numbers run high.
 
 ## Open questions
 
-- How many human replay codes do we need before the call-rate curve is worth trusting?
+- How many human replay codes do we need before the call-rate curve is worth trusting? In bot data, telling skill levels apart from results takes about 100 to 170 hands.
 - Should the bluffing style replace Real table for the "Your win" column, or sit beside it?
 - Do we want comebacks to feel the same in every wave, or fade as the waves get harder?
+- Do the bot-based thresholds for spotting gross mistakes hold for real new players?
