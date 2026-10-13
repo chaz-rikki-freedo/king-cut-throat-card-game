@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /* Type check: runs the TypeScript checker on the game script in index.html, so the JSDoc types
-   are checked. No browser is needed. Errors name the line in index.html. Exit code 1 on an error. */
+   are checked. No browser is needed. Errors name the line in index.html. Exit code 1 on an error.
+   It runs the tsc command, not the TypeScript API: TypeScript 7 has no stable JavaScript API. */
 'use strict';
-const fs = require('fs'), path = require('path'), ts = require('typescript');
+const fs = require('fs'), os = require('os'), path = require('path'), { spawnSync } = require('child_process');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const m = /<script>([\s\S]*?)<\/script>/.exec(html);
@@ -10,20 +11,29 @@ if (!m) { console.error('no <script> in index.html'); process.exit(1); }
 /* Lines in the script plus this offset are lines in index.html. */
 const offset = html.slice(0, m.index + '<script>'.length).split('\n').length - 1;
 
-const FILE = path.join(__dirname, 'game.js');  /* a virtual file: nothing is written to disk */
-/* strict is set off by name: TypeScript 6 turns it on by default, which the JSDoc types do not aim for. */
-const options = { allowJs: true, checkJs: true, strict: false, noEmit: true, target: ts.ScriptTarget.ES2022, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts'], skipLibCheck: true };
-const host = ts.createCompilerHost(options);
-const readFile = host.readFile, fileExists = host.fileExists;
-host.readFile = f => (path.resolve(f) === FILE ? m[1] : readFile(f));
-host.fileExists = f => path.resolve(f) === FILE || fileExists(f);
-
-const diags = ts.getPreEmitDiagnostics(ts.createProgram([FILE], options, host));
-for (const d of diags) {
-  const text = ts.flattenDiagnosticMessageText(d.messageText, '\n');
-  if (!d.file) { console.log('error TS' + d.code + ': ' + text); continue; }
-  const { line, character } = d.file.getLineAndCharacterOfPosition(d.start || 0);
-  console.log('index.html:' + (line + 1 + offset) + ':' + (character + 1) + ' error TS' + d.code + ': ' + text);
+/* strict is set off by name: TypeScript 6 and later turn it on by default, which the JSDoc types do not aim for. */
+const compilerOptions = { allowJs: true, checkJs: true, strict: false, noEmit: true, target: 'ES2022', lib: ['ES2022', 'DOM', 'DOM.Iterable'], skipLibCheck: true, types: [] };
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kct-typecheck-'));
+let out;
+try {
+  fs.writeFileSync(path.join(dir, 'game.js'), m[1]);
+  fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions, files: ['game.js'] }));
+  const tsc = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
+  const run = spawnSync(process.execPath, [tsc, '-p', dir, '--pretty', 'false'], { encoding: 'utf8' });
+  if (run.error) throw run.error;
+  out = (run.stdout || '') + (run.stderr || '');
+  if (run.status !== 0 && !/error TS\d+/.test(out)) { console.error(out.trim() || 'tsc failed with exit code ' + run.status); process.exit(1); }
+} finally {
+  fs.rmSync(dir, { recursive: true, force: true });
 }
-console.log(diags.length ? diags.length + ' type error(s)' : 'No type errors.');
-process.exit(diags.length ? 1 : 0);
+
+/* tsc prints game.js(line,col): error TSxxxx: text, and more lines for a long message. */
+let errors = 0;
+for (const line of out.split(/\r?\n/)) {
+  if (!line.trim()) continue;
+  const e = /^(?:.*[\\/])?game\.js\((\d+),(\d+)\): (error TS\d+: .*)$/.exec(line);
+  if (e) { errors++; console.log('index.html:' + (Number(e[1]) + offset) + ':' + e[2] + ' ' + e[3]); }
+  else { if (/error TS\d+/.test(line)) errors++; console.log(line); }
+}
+console.log(errors ? errors + ' type error(s)' : 'No type errors.');
+process.exit(errors ? 1 : 0);

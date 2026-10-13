@@ -12,7 +12,7 @@
     "test": "node typecheck.js && node selftest.js && node sw.js && node scenarios.js && node stress.js all 4"
   },
   "devDependencies": {
-    "playwright": "^1.56.1",
+    "playwright": "^1.64.0",
     "typescript": "^5.9.3"
   }
 }

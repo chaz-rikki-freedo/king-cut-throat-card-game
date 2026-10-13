@@ -287,15 +287,15 @@ c.seek(40); c.state                         // go to step 40 (forward or back) a
 
 ## Console
 
-The panel controls do not update after these calls.
+The bot settings below are the same as the **Bots** and **Expert** tabs: the panel follows them, and they are kept after a reload. Like the panel, they apply to the bots only in Free play with **Personalities** off.
 
 ```js
 KCT.SelfTest.run({ games: 500 })            // tests, with 500 simulated games (default 40)
-KCT.AI.setSkillTier('shark')                // novice, casual, club or shark
-KCT.AI.setStyle({ courage: 'bold' })        // timid, cautious, normal or bold
-KCT.AI.setStyle({ realTable: true })        // real-table bots
-KCT.AI.setThinking({ worlds: 10, playoutSkill: 0.5 })
-KCT.AI.setKnowledge({ bids: false })
+KCT.App.setSkillTier('shark')               // novice, casual, club or shark
+KCT.App.setStyle({ courage: 'bold' })       // timid, cautious, normal or bold
+KCT.App.setStyle({ realTable: true })       // real-table bots
+KCT.App.setThinking({ worlds: 10, playoutSkill: 0.5 })
+KCT.App.setKnowledge({ bids: false })
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
 KCT.App.backup.download()                   // save all app data (also a game in progress) as a .json file

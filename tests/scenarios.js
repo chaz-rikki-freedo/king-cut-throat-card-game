@@ -3,7 +3,8 @@
    the questions the app asks, the Skip button, the seat-swap log colors, an old save and the Your seat setting.
    Your seat is played by the fast AI, by clicks. Exit code 1 on a failed check. */
 'use strict';
-const { serve, launch, openPage, run } = require('./lib/browser');
+const fs = require('fs'), path = require('path');
+const { serve, launch, openPage, run, ROOT } = require('./lib/browser');
 
 let failed = 0;
 function expect(name, ok, detail) {
@@ -247,6 +248,20 @@ function expect(name, ok, detail) {
     expect('Enter and Space on a Settings tab open that tab', keys.every(k => k.open), keys);
     expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
     await step(`click('[data-action="toggle-settings"]');`);
+
+    console.log('Console: every KCT command in the README and docs exists, and the bot setters move the panel');
+    const docText = ['README.md', ...fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)]
+      .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const refs = [...new Set(docText.match(/KCT(?:\.[A-Za-z_]+)+/g) || [])];
+    r = await step(`return arg.filter(ref => { let o = window; for (const k of ref.split('.')) { if (o == null || !(k in Object(o))) return true; o = o[k]; } return false; });`, refs);
+    expect('every KCT command named in the docs exists (' + refs.length + ')', refs.length > 20 && r.length === 0, r);
+    r = await step(`
+      const keep = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, courage: app.ai.style.courage };
+      A.setSkillTier('shark'); const tier = q('#setTier').value;
+      A.setStyle({ courage: 'bold' }); const courage = q('#setCourage').value;
+      A.setThinking(keep.thinking); A.setKnowledge(keep.knowledge); A.setStyle({ courage: keep.courage });
+      return { tier, courage };`);
+    expect('KCT.App.setSkillTier and setStyle move the panel controls', r.tier === 'shark' && r.courage === 'bold', r);
 
     console.log('Backup: the Settings tab is kept as JSON, so a backup works after Settings has opened');
     r = await step(`
