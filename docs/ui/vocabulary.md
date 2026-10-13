@@ -81,7 +81,8 @@ Area: `#seat0` (`.me`). The bottom of the table.
 
 | Term | Also called | Code anchor | Kind | What it is |
 |---|---|---|---|---|
-| Your head | My row | `.me-head` | — | The row with your name, tags, score, tricks line and bid bubble. |
+| Your head | My row | `.me-head` | — | The row with your face, name, tags, score, tricks line and bid bubble. |
+| Your face | Your avatar | `.seat-face`, `data-action="me-profile"` | C | A silhouette on a white circle. Opens Your profile. While the AI plays your seat, the bot's face shows instead. |
 | Seat toggle | Human tag, AI tag | `.tag.seat-toggle`, `data-action="toggle-autoplay"` | C, L | The Human/AI tag of your seat. A control only when **AI can play your seat** is on. |
 | Playing-as note | — | `.playing-as` | S | "playing as Nora", with a face, while the AI plays your seat. |
 | Action bar | Prompt bar | `.actionbar` | I, C | What you can do now. See [2.6 Action bar](#26-action-bar). |
@@ -196,6 +197,19 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Play hint | `.p-hint` | D | How the personality plays. |
 | Dials | `.p-dials`, `.pips` | D | "Card sense" and "Nerve", 1 to 4 pips each. |
 | Habit badge | `.habit` | D | "Set in their ways", for a personality with human habits. |
+
+### 3.4a Your profile
+
+`.modal.profile`. Opens from your face. It shows your results in this browser. Games where the AI played your seat are not counted.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play or Waves. Scopes every part below it. |
+| Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
+| Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20, oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
+| Last games table | `.profile details` | S | The same games as a table. |
+| Opponent table | `data-table="opp"` | C, S | Games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
+| Table list | `.pf-tables` | C, S | Under All only, collapsed: the same columns for each West / East pair. |
 
 ### 3.5 Results dialog
 

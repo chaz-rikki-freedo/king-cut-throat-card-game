@@ -7,3 +7,7 @@ Sixteen candidate busts for the human seat, in the style of the opponents' figur
 - `gen.py` builds the drawings from interchangeable parts: hair, headwear, glasses, beard, clothing and expression.
 
 To rebuild the drawings, run `python3 gen.py <folder>`.
+
+## Chosen
+
+`silhouette.svg`: a black silhouette on a white circle. It is in the game as `YOU_ART` in `index.html`. The sixteen options above were not used.
