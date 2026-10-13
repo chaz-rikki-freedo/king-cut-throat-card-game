@@ -3825,7 +3825,7 @@ const Render = (() => {
       let minis = ''; for (let i = 0; i < n; i++) minis += i < v.myOut.length ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
       if (n) html += '<div class="cell muted out tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val"><span class="minis">' + minis + '</span></span></div>';
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
-      html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val">' + v.outsideCount + '</span></div>';
+      html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
     }
     return [before, html];
   }
@@ -4169,8 +4169,10 @@ const Fx = (() => {
   function refreshCounts() {
     const now = performance.now();
     for (const [k, x] of pending) if (x.until <= now) pending.delete(k);
-    const cell = qa('#info .cell').find(c => /Outside/i.test(c.textContent)), val = cell && q('.val', cell);
-    if (val && /^\d+$/.test(val.dataset.actual ?? val.textContent.trim())) {
+    /* Only the Outside count (data-count). In a Showdown the cell holds the discards as mini cards, whose text can be
+       a bare rank such as "7". */
+    const val = q('#info .val[data-count]');
+    if (val) {
       if (val.dataset.actual == null) val.dataset.actual = val.textContent.trim();
       let n = +val.dataset.actual; for (const x of pending.values()) if (x.kind === 'out') n -= x.n;
       val.textContent = String(Math.max(0, n));

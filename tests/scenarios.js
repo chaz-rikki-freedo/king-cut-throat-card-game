@@ -313,6 +313,24 @@ function expect(name, ok, detail) {
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
 
+    console.log('Advanced: in your Showdown, the Outside cell shows the discards as mini cards');
+    r = await step(`
+      const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
+      const want = () => { const sd = app.state.showdown; return !!sd && sd.active && sd.participants.includes(0) && !sd.pendingDiscard[0] && app.state.phase === P.SHOWDOWN_PLAY; };
+      speed('fast');
+      for (let seed = 1; seed < 40 && !want(); seed++) { KCT.App.newGame(seed); await drive(() => want() || app.state.gameOver, 60000); }
+      const out = { found: want() };
+      if (out.found) {
+        app.timerFn = null; mode('advanced'); await sleep(400);
+        const val = q('#info .out .val');
+        out.minis = val ? val.querySelectorAll('.micro, .mc').length : -1;
+        out.mine = val && val.querySelector('.micro') ? val.querySelector('.micro').getAttribute('aria-label') || val.querySelector('.micro [aria-label]').getAttribute('aria-label') : null;
+        out.count = !!q('#info .val[data-count]');
+        mode('flat');
+      }
+      return out;`);
+    expect('the Outside cell keeps the mini cards (not the rank as a count)', r.found && r.minis === 2 && !!r.mine && !r.count, r);
+
     console.log('Advanced: the play area explains itself on your move');
     r = await step(`
       const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
