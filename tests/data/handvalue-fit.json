@@ -1,0 +1,19 @@
+{
+  "about": "Hand estimate for Dynamic mode (issue #117): AI.handValue's features with weights fitted to simulated play. value = tricks + 0.9 * kings. Used by the reads of the player and the post-game review, not by the bots. Made by: node handvalue.js 600 4 11 --write.",
+  "fitted": "2026-10-13",
+  "games": 600,
+  "seed": 11,
+  "players": "three Shark bots",
+  "tricks": {
+    "tr18": 1.24, "tr17": 0.77, "tr16": 0.55, "tr14": 0.36, "tr13": 0.25, "tr12": 0.06, "tr10": 0.06, "tr9": 0.05, "tr8": 0.01, "tr7": 0.03,
+    "extraTrump": 0.7, "offA": 0.59, "offK_A": -0.12, "offK_2": 0.12, "offK_1": 0.04, "offQ_AK": -0.16, "offQ": 0.03, "offLow": -0.05,
+    "void_t2": 0.3, "single_t3": 0.02
+  },
+  "kings": { "kTrump": 0.82, "kOff_A": 0.26, "kOff": 0.15 },
+  "heldOut": { "tricksMae": 0.74, "tricksCorr": 0.84, "currentTricksMae": 1.01, "currentTricksCorr": 0.80 },
+  "toCurrentScale": {
+    "about": "fitted value ≈ a + b × AI.handValue, from the same hands. Maps the bid thresholds onto the fitted scale.",
+    "a": -1.1275, "b": 1.1353,
+    "thresholds": { "ROUND1": 2.34, "ROUND2": 2.22, "ROUND2_LAST": 1.94 }
+  }
+}

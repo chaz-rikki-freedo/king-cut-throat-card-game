@@ -24,6 +24,11 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
 | `node soak.js 4 5` | 4 pages × 5 full games at Instant speed. Random mode, sometimes the AI plays your seat, reloads at random points. | 5–30 min |
 | `node roundrobin.js 4 4` | Not a check. Every table of three personalities plays 4 games (480 in all), with the seat orders rotating. Prints each bot's win rate, overall and per seat, as JSON. Results: [docs/banter.md](../docs/banter.md). | about 6 min |
+| `node handvalue.js 600 4` | Not a check. Three Shark bots play 600 games. Prints how well `AI.handValue` predicts the tricks and King points each hand wins, and fits new weights for its features. With `--write`, the fit replaces `data/handvalue-fit.json`. | about 10 min |
+| `node levers.js <set> 300 4` | Not a check. Bot strength for a named set of settings: `dials` (each strength dial on its own), `ladder` (the rows of the Dynamic easing ladder) or `handvalue` (the fitted weights and the bid thresholds). Each setting plays 300 games in a rotating test seat. Prints win rate, 95% margin and score share. It serves a patched copy of `index.html` and does not change the file. | 5–25 min |
+| `node review.js 150 4` | Not a check. A player seat plays at rows of the easing ladder, and as a new player who throws away its best cards. Prints the time a post-game review takes, the review's signals per row, and how often the fast-path triggers fire. | about 5 min |
+
+The last three scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
 `npm test` runs `typecheck.js`, `selftest.js`, `sw.js`, `scenarios.js` and `stress.js all 4`.
 
@@ -49,3 +54,5 @@ The page code is `page/stress.js`. Each page is one shard, with its own seeds, s
 - `lib/browser.js`: the local server and the browser helpers.
 - `page/drive.js`: page helpers for the UI scripts. Your seat is played by the fast AI, by clicks.
 - `page/stress.js`: the stress sections and the rules oracle.
+- `page/handest.js`: the card features that `AI.handValue` weighs, and a hand estimate from any weights for them. `handvalue.js`, `levers.js` and `review.js` use it.
+- `data/handvalue-fit.json`: the fitted hand-estimate weights, made by `handvalue.js --write`. Dynamic mode's reads and post-game review use them. The bots keep `AI.handValue`.
