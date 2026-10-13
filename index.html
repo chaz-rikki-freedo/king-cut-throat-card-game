@@ -860,7 +860,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'f2dcc01', date: '2026-10-13' });
+const BUILD = Object.freeze({ commit: 'c73b3d8', date: '2026-10-13' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -5818,6 +5818,8 @@ const App = (() => {
   }
   const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' +
     (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
+  /* Said once, on the next menu: a ?seed= or ?wave= link that names no game. */
+  let linkNote = '';
   function showMenu(launch) {
     clearTimer();
     const p = Waves.progress();
@@ -5840,6 +5842,7 @@ const App = (() => {
         (extra || '') + '<div class="mbtns">' + resume + buttons + '</div></section>';
     };
     let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
+    if (linkNote) { html += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
     /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
     html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
@@ -6650,8 +6653,11 @@ const App = (() => {
     /* A ?seed= or ?wave= link starts that game. Otherwise every launch opens on the menu. */
     const seedParam = params.get('seed');
     const waveParam = params.get('wave');
-    const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined;
+    /* A seed is 32 bits. A larger number used to wrap around to another seed, so the link played another game. */
+    const seed = seedParam !== null && /^\d{1,10}$/.test(seedParam) && Number(seedParam) <= 0xFFFFFFFF ? Number(seedParam) : undefined;
     const wave = waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined;
+    const badLink = (seedParam !== null && seed === undefined) || (waveParam !== null && !Waves.get(wave));
+    if (badLink) linkNote = 'This link does not name a game: a seed is a whole number from 0 to 4294967295, and a wave is 1 to ' + WAVES.length + '.';
     /* The link is used once: a reload or a reopened tab resumes the game instead of starting it again. */
     if (seedParam !== null || waveParam !== null) {
       safe(() => {
@@ -6661,7 +6667,7 @@ const App = (() => {
       });
     }
     enterIdle();
-    if (seed !== undefined || Waves.get(wave)) {
+    if (!badLink && (seed !== undefined || Waves.get(wave))) {
       /* Like New game in the menu: a begun unfinished game of that mode is lost only if you agree. */
       confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave); else showMenu(true); });
     } else showMenu(true);
@@ -6669,7 +6675,11 @@ const App = (() => {
     if (TabLock.stale) showStale(); else TabLock.check();
   }
 
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats, replays, replayCode, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
+  /* Results live in two stores: the counts (stats) and the last games (replays), which Your profile and the seats
+     dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
+  function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
+  const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, replayCode, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
