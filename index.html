@@ -6352,9 +6352,21 @@ const App = (() => {
       $('setPane' + t).hidden = !on;
     }
     $('settingsPanel').querySelector('.set-body').scrollTop = 0;
-    try { localStorage.setItem('kct.setTab', tab); } catch (e) { /* not kept */ }
+    saveSetTab(tab);
     if (focus) $('setTab' + tab).focus();
   }
+  /* The tab is kept as JSON, like every 'kct.' key, so a backup can hold it. Older builds kept the plain
+     name: it still reads, and init writes it again as JSON. */
+  const SET_TAB_KEY = 'kct.setTab';
+  /** @returns {string | null} */
+  function loadSetTab() {
+    let t = null;
+    try { t = localStorage.getItem(SET_TAB_KEY); } catch (e) { return null; }
+    if (t === null) return null;
+    try { const v = JSON.parse(t); return typeof v === 'string' ? v : null; } catch (e) { return t; }
+  }
+  /** @param {string} tab */
+  function saveSetTab(tab) { try { localStorage.setItem(SET_TAB_KEY, JSON.stringify(tab)); } catch (e) { /* not kept */ } }
   function openSettings(open) {
     const d = $('settingsPanel');
     d.hidden = !open;
@@ -6362,9 +6374,7 @@ const App = (() => {
     /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). */
     for (const el of document.body.children) if (el !== d && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
-    let tab = 'Game';
-    try { tab = localStorage.getItem('kct.setTab') || tab; } catch (e) { /* default */ }
-    showSettingsTab(tab, true);
+    showSettingsTab(loadSetTab() || 'Game', true);
     checkInstall();
     /* Lines logged while the panel was closed are shown when it opens. */
     const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
@@ -6611,16 +6621,29 @@ const App = (() => {
       while (pre.childNodes.length > LOGGER_MAX) pre.removeChild(pre.firstChild);
       pre.scrollTop = pre.scrollHeight;
     });
+    const oldTab = loadSetTab();
+    if (oldTab !== null) saveSetTab(oldTab);
     const params = safe(() => new URLSearchParams(location.search)) || new URLSearchParams('');
     if (params.get('settings') === '1') { Logger.enabled = true; logBox.checked = true; openSettings(true); showSettingsTab('Tools'); }
     initUpdates();
-    /* A ?seed= or ?wave= link starts that game at once. Otherwise every launch opens on the menu. */
+    /* A ?seed= or ?wave= link starts that game. Otherwise every launch opens on the menu. */
     const seedParam = params.get('seed');
     const waveParam = params.get('wave');
     const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined;
     const wave = waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined;
-    if (seed !== undefined || Waves.get(wave)) newGame(seed, wave);
-    else { enterIdle(); showMenu(true); }
+    /* The link is used once: a reload or a reopened tab resumes the game instead of starting it again. */
+    if (seedParam !== null || waveParam !== null) {
+      safe(() => {
+        const url = new URL(location.href);
+        url.searchParams.delete('seed'); url.searchParams.delete('wave');
+        history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+      });
+    }
+    enterIdle();
+    if (seed !== undefined || Waves.get(wave)) {
+      /* Like New game in the menu: a begun unfinished game of that mode is lost only if you agree. */
+      confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave); else showMenu(true); });
+    } else showMenu(true);
     /* Another tab can take the mark while this one loads. */
     if (TabLock.stale) showStale(); else TabLock.check();
   }

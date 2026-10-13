@@ -248,6 +248,54 @@ function expect(name, ok, detail) {
     expect('a key in Settings does not continue or skip the game', keys.every(k => !k.moved), keys);
     await step(`click('[data-action="toggle-settings"]');`);
 
+    console.log('Backup: the Settings tab is kept as JSON, so a backup works after Settings has opened');
+    r = await step(`
+      const out = { tab: localStorage.getItem('kct.setTab') };
+      try { out.size = A.backup.toJSON().length; } catch (e) { out.err = e.message; }
+      /* The plain name that older builds kept. */
+      StorageGate.locked = true; localStorage.setItem('kct.setTab', 'Bots');
+      return out;`);
+    expect('the tab is kept as JSON and a backup works', r.tab === '"Expert"' && r.size > 0, r);
+    await reload();
+    r = await step(`
+      const out = { tab: localStorage.getItem('kct.setTab') };
+      try { out.size = A.backup.toJSON().length; } catch (e) { out.err = e.message; }
+      click('[data-action="toggle-settings"]'); await sleep(20);
+      out.open = q('#setTabBots').getAttribute('aria-selected') === 'true';
+      click('[data-action="toggle-settings"]');
+      return out;`);
+    expect('a plain tab name from an older build is rewritten as JSON at load, and still opens its tab', r.tab === '"Bots"' && r.size > 0 && r.open, r);
+
+    console.log('Links: ?wave= asks before it replaces a begun game, and is used once');
+    r = await step(`
+      const E = KCT.Engine, s = E.createGame(9090);
+      while (!s.gameOver && s.handNumber < 2) { const ac = E.actors(s); E.dispatch(s, ac.length ? KCT.AI.fastAction(s, ac[0]) : E.systemAction(s)); }
+      const w = KCT.Waves.get(1);
+      StorageGate.locked = true;
+      localStorage.setItem('kct.slots', JSON.stringify({ waves: { format: SAVE_FORMAT, mode: 'waves', state: s, personas: [null, w.west, w.east], wave: { n: 1, open: true }, swapDone: true, log: [['Link test.', 'h']] }, free: null, last: 'waves' }));
+      return s.version;`);
+    const savedVersion = r;
+    await page.goto(srv.url + '?wave=1');
+    r = await step(`
+      while (!askOpen()) await sleep(10);
+      const out = { title: q('#askTitle').textContent, search: location.search };
+      click('[data-action="ask-cancel"]'); await sleep(50);
+      const sl = A.slots.get('waves');
+      out.kept = !!sl && sl.state.version === arg; out.menu = !!q('#overlay .menu'); out.mode = app.mode;
+      return out;`, savedVersion);
+    expect('a ?wave= link asks before it replaces a begun Waves game', r.title === 'Start a new Waves game?', r);
+    expect('Keep it keeps the saved game and opens the menu', r.kept && r.menu && r.mode === null, r);
+    expect('the link is removed from the address', r.search === '', r);
+    await reload();
+    r = await step(`await sleep(50); return { ask: askOpen(), menu: !!q('#overlay .menu') };`);
+    expect('a reload after a link opens the menu and does not ask again', !r.ask && r.menu, r);
+    await page.goto(srv.url + '?wave=1');
+    r = await step(`
+      while (!askOpen()) await sleep(10);
+      click('[data-action="ask-ok"]'); await sleep(50);
+      return { mode: app.mode, wave: app.wave.n, hand: app.state.handNumber };`);
+    expect('Start new game starts the linked wave', r.mode === 'waves' && r.wave === 1 && r.hand <= 1, r);
+
     console.log('AI errors: a bot that fails falls back to a legal move, and the game goes on');
     r = await step(`
       KCT.App.newGame(5151); speed('fast');

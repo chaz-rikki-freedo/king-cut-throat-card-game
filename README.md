@@ -18,7 +18,7 @@ The menu has a card for each mode, **Free play** and **Waves**, and a row of too
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
 | **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
 
-A link with `?seed=` or `?wave=` starts that game at once, without the menu.
+A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed` and `wave` from the address, so a reload resumes the game instead of starting it again.
 
 ## Header
 
