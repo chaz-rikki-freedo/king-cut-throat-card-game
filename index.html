@@ -1069,8 +1069,12 @@ const Engine = (() => {
   });
   const C = Object.freeze({
     WIN_SCORE: 10, PLAYERS: 3, MAIN_TRICKS: 7, SHOWDOWN_TRICKS: 5,
-    INITIAL_DISCARD: 3, SHOWDOWN_DEAL: 6, SHOWDOWN_DISCARD: 1, OUTSIDE_SIZE: 12
+    INITIAL_DISCARD: 3, SHOWDOWN_DEAL: 6, SHOWDOWN_DISCARD: 1, OUTSIDE_SIZE: 12,
+    /* The deal: a packet to each player per round (3, then 4, then 3), the kitty's 3 after the first round. */
+    DEAL_PACKETS: Object.freeze([3, 4, 3]), KITTY_SIZE: 3, KITTY_AFTER: 1
   });
+  /* A finished trick on screen: after its last card, before the next trick or the score. */
+  const TRICK_DONE_PHASES = Object.freeze([P.TRICK_DONE, P.SHOWDOWN_TRICK_DONE]);
   /** @type {readonly string[]} */
   const ADVANCE_PHASES = Object.freeze([P.TRICK_DONE, P.SHOWDOWN_TRICK_DONE, P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID]);
   /** @type {readonly string[]} */
@@ -1181,11 +1185,10 @@ const Engine = (() => {
     const kitty = [];
     let i = 0;
     const order = [1, 2, 3].map(k => (dealer + k) % C.PLAYERS);
-    const batch = n => { for (const p of order) for (let j = 0; j < n; j++) hands[p].push(deck[i++]); };
-    batch(3);
-    for (let j = 0; j < 3; j++) kitty.push(deck[i++]);
-    batch(4);
-    batch(3);
+    C.DEAL_PACKETS.forEach((n, round) => {
+      if (round === C.KITTY_AFTER) for (let j = 0; j < C.KITTY_SIZE; j++) kitty.push(deck[i++]);
+      for (const p of order) for (let j = 0; j < n; j++) hands[p].push(deck[i++]);
+    });
     if (i !== deck.length) throw new Error('Deal did not use the full deck');
     return { hands, kitty };
   }
@@ -1442,6 +1445,15 @@ const Engine = (() => {
     for (let i = trickWinners.length - 1; i >= 0; i--) if (participants.includes(trickWinners[i])) return { player: trickWinners[i], mainTrick: i + 1 };
     return null;
   }
+  /* The bid that made trump this hand (the one accept or name), or null. @param {{ action: string }[]} bidLog */
+  const trumpCall = bidLog => bidLog.filter(b => b.action !== 'pass').pop() || null;
+  /* The finished tricks of the hand from the play log, in order: main tricks of 3 plays, then Showdown tricks of 2.
+     x: a state or a view (playLog, trickWinners, showdown). @returns {{ main: Play[][], showdown: Play[][] }} */
+  function tricksOf(/** @type {any} */ x) {
+    const cut = (from, size, count) => Array.from({ length: count }, (_, i) => x.playLog.slice(from + i * size, from + (i + 1) * size));
+    const main = cut(0, C.PLAYERS, x.trickWinners.length), sdDone = x.showdown ? x.showdown.trickWinners.length : 0;
+    return { main, showdown: cut(x.trickWinners.length * C.PLAYERS, C.PLAYERS - 1, sdDone) };
+  }
   /** @param {GameState} state */
   function showdownLeader(state) {
     const lead = ruleLeader(state.trickWinners, state.showdown.participants);
@@ -1664,7 +1676,7 @@ const Engine = (() => {
     return errors;
   }
 
-  return Object.freeze({ P, C, RULES_VERSION, JOKER_FLIPS, createGame, dispatch, validate, actors, discardTurn, discardsInTurn, ruleLeader, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, ADVANCE_PHASES });
+  return Object.freeze({ P, C, RULES_VERSION, JOKER_FLIPS, createGame, dispatch, validate, actors, discardTurn, discardsInTurn, ruleLeader, trumpCall, tricksOf, systemAction, dealCards, audit, nextActive, seatAfter, PLAY_PHASES, TRICK_DONE_PHASES, ADVANCE_PHASES });
 })();
 
 /* ---------------------------------------------------------------------
@@ -2990,7 +3002,7 @@ const AI = (() => {
   function fastAction(s, p, cfg) {
     const c = cfg || DEFAULT_CONFIG;
     switch (s.phase) {
-      case P.DISCARD: return { type: 'DISCARD', player: p, cards: c.style.realTable ? pitchLowest(s.hands[p], 3) : dropLowest(s.hands[p], 3, bestSuit(s.hands[p]).suit) };
+      case P.DISCARD: return { type: 'DISCARD', player: p, cards: c.style.realTable ? pitchLowest(s.hands[p], Engine.C.INITIAL_DISCARD) : dropLowest(s.hands[p], Engine.C.INITIAL_DISCARD, bestSuit(s.hands[p]).suit) };
       case P.BID1: return { type: 'BID', player: p, accept: round1Value(s.hands[p], s.flippedId, R.turnedSuit(s.flippedId, s.jokerSuit)) >= bidLimit(c, 'ROUND1') };
       case P.BID2: {
         const b = bestSuit(s.hands[p], R.turnedSuit(s.flippedId, s.jokerSuit));
@@ -3405,6 +3417,16 @@ const Render = (() => {
   /* The mediator's choice (house rule): one button for each Showdown player. */
   const leadButtonsHTML = v => v.showdown.participants.slice().sort((a, b) => a - b).map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
   /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
+  const D_OPEN = Engine.C.INITIAL_DISCARD, D_SD = Engine.C.SHOWDOWN_DISCARD;
+  /* How many cards p discards in this phase (0: none due), turn order aside (see canDiscard). */
+  function discardNeed(v, p) {
+    switch (v.phase) {
+      case P.DISCARD: return v.pendingDiscard[p] ? D_OPEN : 0;
+      case P.EXCHANGE: return v.receiver === p ? v.exchangeCount : 0;
+      case P.SHOWDOWN_DISCARD: return v.showdown.pendingDiscard[p] ? D_SD : 0;
+      default: return 0;
+    }
+  }
   const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
   /* Whose move it is: the Engine's actors, carried in the view. */
   const isTurn = (v, p) => !v.gameOver && v.actors.includes(p);
@@ -3453,8 +3475,8 @@ const Render = (() => {
     for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
     let note = '';
     const pend = (pending, k) => !pending ? 'Discarded ' + k + ' ✓' : canDiscard(v, p, pending) ? 'Choosing ' + k + ' discard' + (k > 1 ? 's' : '') + '…' : 'Waiting to discard…';
-    if (v.phase === P.DISCARD) note = '<div class="discard-note">' + pend(v.pendingDiscard[p], 3) + '</div>';
-    if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = '<div class="discard-note">' + pend(v.showdown.pendingDiscard[p], 1) + '</div>';
+    if (v.phase === P.DISCARD) note = '<div class="discard-note">' + pend(v.pendingDiscard[p], D_OPEN) + '</div>';
+    if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = '<div class="discard-note">' + pend(v.showdown.pendingDiscard[p], D_SD) + '</div>';
     return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + badges(v, p) + '</div>' +
       '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p] - held(ctx, p)) + '<small> / ' + WIN + '</small></span></div>' +
       tricksLine(v, p) +
@@ -3488,7 +3510,7 @@ const Render = (() => {
   }
 
   function trickHTML(v, ctx) {
-    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
+    const done = trickDone(v) || (finalTrick(v) && !v.trick.plays.length);
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
     const leader = plays.length ? plays[0].player : v.trick.leader;
@@ -3499,20 +3521,20 @@ const Render = (() => {
     let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
     for (const p of [1, 2, 0]) {
       if (!v.activePlayers.includes(p)) {
-        html += '<div class="slot slot-' + p + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
+        html += '<div data-seat="' + p + '" class="slot slot-' + p + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
         continue;
       }
       const play = plays.find(x => x.player === p);
       const win = winner === p;
       const who = nameOf(v, p) + (leader === p ? ' <span class="lead-mark">(lead)</span>' : '') + (win ? ' — wins' : '');
       const cardPart = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
-      html += '<div class="slot slot-' + p + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
+      html += '<div data-seat="' + p + '" class="slot slot-' + p + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
     }
     return html + '</div>';
   }
 
   function lastTrickHTML(v) {
-    if (!v.lastTrick || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || v.phase === P.GAME_OVER) return '';
+    if (!v.lastTrick || trickDone(v) || v.phase === P.GAME_OVER) return '';
     if (!Engine.PLAY_PHASES.includes(v.phase)) return '';
     const lt = v.lastTrick;
     const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
@@ -3534,7 +3556,7 @@ const Render = (() => {
 
   function trumpCallAndDealerHTML(v) {
     const n = p => nameOf(v, p);
-    const call = v.bidLog.filter(b => b.action !== 'pass').pop();
+    const call = Engine.trumpCall(v.bidLog);
     const parts = [];
     if (v.trump) parts.push('Trump ' + suitLabel(v.trump) + (call ? ' · ' + (call.action === 'accept' ? 'accepted' : 'named') + ' by ' + n(call.player) + ' (round ' + call.round + ')' : ''));
     if (v.dealer !== null) parts.push('Dealer ' + n(v.dealer));
@@ -3585,7 +3607,7 @@ const Render = (() => {
         const [a, b] = hs.participants;
         return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' will shuffle the 12 outside cards and deal 6 to each Showdown player. Each discards 1' + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play 5 tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
+          '<p>' + n(hs.mediator) + ' will shuffle the ' + Engine.C.OUTSIDE_SIZE + ' outside cards and deal ' + Engine.C.SHOWDOWN_DEAL + ' to each Showdown player. Each discards ' + Engine.C.SHOWDOWN_DISCARD + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play ' + Engine.C.SHOWDOWN_TRICKS + ' tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
@@ -3653,7 +3675,7 @@ const Render = (() => {
       case P.DISCARD:
         if (v.pendingDiscard[you]) {
           const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
-          return '<div class="prompt">Choose 3 cards to discard face-down to the outside pile (' + sel + '/3).' + wait + '</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && now ? '' : ' disabled') + '>Discard 3</button>';
+          return '<div class="prompt">Choose ' + D_OPEN + ' cards to discard face-down to the outside pile (' + sel + '/' + D_OPEN + ').' + wait + '</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === D_OPEN && now ? '' : ' disabled') + '>Discard ' + D_OPEN + '</button>';
         }
         break;
       case P.BID1:
@@ -3676,7 +3698,7 @@ const Render = (() => {
       case P.SHOWDOWN_DISCARD:
         if (v.showdown.pendingDiscard[you]) {
           const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
-          return '<div class="prompt">Showdown: discard 1 of your 6 cards (' + sel + '/1). Trump is ' + suitLabel(v.trump) + '.' + wait + '</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && now ? '' : ' disabled') + '>Discard 1</button>';
+          return '<div class="prompt">Showdown: discard ' + D_SD + ' of your ' + Engine.C.SHOWDOWN_DEAL + ' cards (' + sel + '/' + D_SD + '). Trump is ' + suitLabel(v.trump) + '.' + wait + '</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === D_SD && now ? '' : ' disabled') + '>Discard ' + D_SD + '</button>';
         }
         break;
       case P.SHOWDOWN_LEAD:
@@ -3702,9 +3724,7 @@ const Render = (() => {
     const ph = v.phase;
     let mode = 'none';
     if (!v.gameOver && !ui.autoplay) {
-      if (ph === P.DISCARD && v.pendingDiscard[you]) mode = 'select';
-      else if (ph === P.EXCHANGE && v.receiver === you) mode = 'select';
-      else if (ph === P.SHOWDOWN_DISCARD && v.showdown.pendingDiscard[you]) mode = 'select';
+      if (discardNeed(v, you)) mode = 'select';
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
     if (!sorted.length) return '<div class="hand"><div class="hint">' + (v.showdown && v.showdown.active && !v.showdown.participants.includes(you) ? 'You are the mediator. Watch the Showdown.' : 'No cards in hand.') + '</div></div>';
@@ -3730,7 +3750,7 @@ const Render = (() => {
   function handChipText(v) {
     if (!v.handNumber) return '';
     let t = handLabel(v);
-    if (v.trickNumber > 0 && v.trick && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE)) {
+    if (v.trickNumber > 0 && v.trick && trickInPlay(v)) {
       t += ' · ' + (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + '/' + v.totalTricks;
     }
     return t;
@@ -3751,6 +3771,11 @@ const Render = (() => {
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
+  /* Tricks on the table: trickDone after a trick's last card; trickInPlay while one is played or just done; finalTrick
+     when the game ended on a trick (the centre keeps it; the strip shows no trick number). */
+  const trickDone = v => Engine.TRICK_DONE_PHASES.includes(v.phase);
+  const trickInPlay = v => Engine.PLAY_PHASES.includes(v.phase) || trickDone(v);
+  const finalTrick = v => v.phase === P.GAME_OVER && !!v.lastTrick;
   /* A Showdown between the two bots: the viewer only watches (Skip shows while the game waits). */
   const botShowdown = v => !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat));
 
@@ -3800,22 +3825,31 @@ const Render = (() => {
   /* The information strip: Trump, Hand (and the trick), Latest (the newest line of the Latest Scroll), Turned up
      (Blocked in round 2), Outside. A cell with nothing to show is left out. */
   /* The Hand cell's value outside trick play: the stage of the hand. */
-  const STAGE = Object.freeze({
-    [P.DISCARD]: 'Discard', [P.REVEAL]: 'Bidding', [P.BID1]: 'Bidding', [P.BID2]: 'Bidding', [P.EXCHANGE]: 'Exchange',
-    [P.HAND_SCORE]: 'Result', [P.ABANDONED]: 'Thrown in', [P.JOKER_VOID]: 'Redeal',
-    [P.SHOWDOWN_SETUP]: 'Showdown', [P.SHOWDOWN_DISCARD]: 'Showdown', [P.SHOWDOWN_LEAD]: 'Showdown', [P.SHOWDOWN_SCORE]: 'Showdown',
-    [P.GAME_OVER]: 'Game over'
+  /* Each stage: [its label in the Hand cell, what it means (the Hand cell's popup), or '' for no help]. */
+  const STAGES = /** @type {Record<string, [string, string | ((v: any) => string)]>} */ ({
+    [P.DISCARD]: ['Discard', v => 'Each player discards ' + Engine.C.INITIAL_DISCARD + ' face down' + (Engine.discardsInTurn(v.rules) ? ', in turn from the dealer\'s left.' : '.')],
+    [P.REVEAL]: ['Bidding', 'The dealer turns up the top kitty card.'],
+    [P.BID1]: ['Bidding', 'Round 1: accept the turned card\'s suit as trump, or pass.'],
+    [P.BID2]: ['Bidding', 'Round 2: name another suit, or pass.'],
+    [P.EXCHANGE]: ['Exchange', 'The player left of the namer takes the kitty card(s) and discards as many.'],
+    [P.HAND_SCORE]: ['Result', 'The hand is over.'],
+    [P.ABANDONED]: ['Thrown in', 'Everyone passed: no trump, no points. The deal passes left.'],
+    [P.JOKER_VOID]: ['Redeal', 'The Joker was turned up: the same dealer deals again.'],
+    [P.SHOWDOWN_SETUP]: ['Showdown', ''], [P.SHOWDOWN_DISCARD]: ['Showdown', ''], [P.SHOWDOWN_LEAD]: ['Showdown', ''], [P.SHOWDOWN_SCORE]: ['Showdown', ''],
+    [P.GAME_OVER]: ['Game over', '']
   });
+  const stageLabel = v => (STAGES[v.phase] || [''])[0];
+  const stageHelp = v => { const h = (STAGES[v.phase] || ['', ''])[1]; return typeof h === 'function' ? h(v) : h; };
   /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
   function advInfoHTML(v) {
     const cell = (cls, lab, val, kind) => '<div class="cell ' + cls + (kind ? ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '" title="About ' + lab : '') + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
-    const sd = sdShown(v), tricks = Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
-    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE;
+    const sd = sdShown(v), tricks = trickInPlay(v);
+    const done = trickDone(v);
     const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
     const trick = tricks && v.trickNumber > 0 ? (v.showdown && v.showdown.active ? 'Showdown ' : 'Trick ') + number + '/' + v.totalTricks : '';
     let html = '', before = '';
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? '#ff6b6b' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>', 'trump');
-    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', handLabel(v), trick || STAGE[v.phase] || '', 'hand');
+    if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', handLabel(v), trick || stageLabel(v), 'hand');
     before = html; html = '';
     if (v.flipped && !sd && v.phase !== P.BID1) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
@@ -3841,18 +3875,18 @@ const Render = (() => {
   /* The trick in 3D, cards stacked in play order: each card lies above the cards played before it (also at the
      trick's end), and your empty space, while you still have to play, lies above them all. */
   function advTrickHTML(v, ctx) {
-    const done = v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick && !v.trick.plays.length);
+    const done = trickDone(v) || (finalTrick(v) && !v.trick.plays.length);
     const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
     const tap = !done && explains(v, ctx.ui);
     let html = '<div class="trick">';
     for (const p of [1, 2, 0]) {
       const at = plays.findIndex(x => x.player === p), z = at >= 0 ? at + 1 : plays.length + 1;
-      if (!v.activePlayers.includes(p)) { html += '<div class="slot slot-' + p + '" style="z-index:' + z + '"></div>'; continue; }
+      if (!v.activePlayers.includes(p)) { html += '<div data-seat="' + p + '" class="slot slot-' + p + '" style="z-index:' + z + '"></div>'; continue; }
       const play = plays[at];
       const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
       const about = p === v.seat ? 'About your card' : 'About ' + nameOf(v, p) + '\'s card';
-      html += '<div class="slot slot-' + p + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
+      html += '<div data-seat="' + p + '" class="slot slot-' + p + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
     }
     return html + '</div>';
   }
@@ -3894,7 +3928,7 @@ const Render = (() => {
     else if (v.phase === P.SETUP) { if (!v.seating) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>'); }
     else if (!(ui.autoplay && isTurn(v, you))) {
       switch (v.phase) {
-        case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === 3 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 3</button>'); break;
+        case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === D_OPEN && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard ' + D_OPEN + '</button>'); break;
         case P.BID1: if (v.bidTurn === you) { const s = v.flippedSuit; b.push('<button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>'); } break;
         case P.BID2: if (v.bidTurn === you) {
           const blocked = v.flippedSuit;
@@ -3904,7 +3938,7 @@ const Render = (() => {
             : '<button class="btn suit sym-btn ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '" title="' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + '" aria-label="Name ' + R.SUIT_NAME[s] + '">' + R.SYMBOL[s] + '</button>').join('') + '<button class="btn" type="button" data-action="name-pass">Pass</button>');
         } break;
         case P.EXCHANGE: if (v.receiver === you) b.push('<button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>'); break;
-        case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === 1 && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard 1</button>'); break;
+        case P.SHOWDOWN_DISCARD: if (v.showdown.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === D_SD && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard ' + D_SD + '</button>'); break;
         case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) return '<div class="pile-act seats">' + leadButtonsHTML(v) + '</div>'; break;
         default: break;
       }
@@ -3931,7 +3965,7 @@ const Render = (() => {
 
   function advCenterHTML(v, ui, ctx, order) {
     const summary = summaryText(v, ui);
-    const trick = !summary && (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick));
+    const trick = !summary && (trickInPlay(v) || finalTrick(v));
     let html = '';
     if (!trick && (v.kittyCount > 0 || v.phase === P.DISCARD)) html += advKittyHTML(v, order, ui);
     html += summary || (trick ? advTrickHTML(v, ctx) : '');
@@ -4005,7 +4039,7 @@ const Render = (() => {
     center += pilesHTML(v);
     const summary = summaryText(v, ui);
     if (summary) center += summary;
-    else if (Engine.PLAY_PHASES.includes(v.phase) || v.phase === P.TRICK_DONE || v.phase === P.SHOWDOWN_TRICK_DONE || (v.phase === P.GAME_OVER && v.lastTrick)) center += trickHTML(v, ctx);
+    else if (trickInPlay(v) || finalTrick(v)) center += trickHTML(v, ctx);
     center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
     $('center').innerHTML = center;
     /* Screen readers hear only the status line, from one stable live region. */
@@ -4022,7 +4056,7 @@ const Render = (() => {
     me.classList.toggle('turn', isTurn(v, v.seat));
   }
 
-  return Object.freeze({ render, advInfoHTML, explains, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
+  return Object.freeze({ render, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4190,9 +4224,9 @@ const Fx = (() => {
   /* A finished trick on the table: its winner's new circle stays empty until the sweep lands (with a fallback). When
      play stops on the trick (game over), the circle fills now. */
   function holdTrickPip(v) {
-    if (v.phase !== Engine.P.TRICK_DONE && v.phase !== Engine.P.SHOWDOWN_TRICK_DONE) { for (const [k, x] of pending) if (x.fallback) pending.delete(k); return; }
+    if (!Engine.TRICK_DONE_PHASES.includes(v.phase)) { for (const [k, x] of pending) if (x.fallback) pending.delete(k); return; }
     const tr = q('#center .trick'), w = tr && q('.slot.win', tr); if (!w || !ms()) return;
-    pending.set(pipKey(v.handNumber, v.showdown && v.showdown.active, cardIds(tr)), { kind: 'pip', p: +w.className.match(/slot-(\d)/)[1], until: performance.now() + 4000, fallback: true });
+    pending.set(pipKey(v.handNumber, v.showdown && v.showdown.active, cardIds(tr)), { kind: 'pip', p: +(w.dataset.seat || -1), until: performance.now() + 4000, fallback: true });
   }
 
   /* ---- What left the table, and where it went. ---- */
@@ -4213,7 +4247,7 @@ const Fx = (() => {
     if (o.trick) {
       const now = q('#center .trick'), stay = now && q('.slot.win', now) && cardIds(now) === cardIds(o.trick.el);
       if (!stay) {
-        const g = place(o.trick), w = q('.slot.win', g), p = w ? +w.className.match(/slot-(\d)/)[1] : -1;
+        const g = place(o.trick), w = q('.slot.win', g), p = w ? +(w.dataset.seat || -1) : -1;
         const to = p >= 0 && (q('#seat' + p + ' .tpips') || q('#seat' + p));
         if (to) {
           pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150 });
@@ -4225,7 +4259,7 @@ const Fx = (() => {
     // Round 2: the 2 face-down cards go to the receiver, the turned card drops through the table.
     if (o.kpile && !q('#center .kpile') && v.trump && v.receiver !== null) {
       /* The turned card: on top in round 1, tucked at the bottom in round 2. */
-      const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = v.exchangeCount === 1;
+      const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = (Engine.trumpCall(v.bidLog) || { round: 0 }).round === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
       done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[/** @type {0 | 1 | 2} */ (v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
@@ -4250,7 +4284,7 @@ const Fx = (() => {
       });
       missing.forEach(([p, layer], n) => {
         const at = n * gap;
-        pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: 3, until: now + at + t });
+        pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: now + at + t });
         if (layer) setTimeout(() => { layer.style.visibility = ''; }, at + t);
         if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
         for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, at + i * 70)]); }
@@ -4264,7 +4298,7 @@ const Fx = (() => {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
       mineLand = { hand: v.handNumber, idx: discarders.indexOf(0), t0: performance.now() + hold };
-      expect('pile' + v.handNumber + '|0', { kind: 'out', n: 3, until: mineLand.t0 + t });
+      expect('pile' + v.handNumber + '|0', { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: mineLand.t0 + t });
       holdMyLayer(v, performance.now());
     }
     // Exchange and Showdown discards go to the middle of the table and drop through it: your cards themselves, a bot's
@@ -4315,7 +4349,7 @@ const Fx = (() => {
       el.style.setProperty('--from', 'translate(' + Math.round(sr.left + sr.width / 2 - pr.left - pr.width / 2) + 'px,' + Math.round(sr.top + sr.height / 2 - pr.top - pr.height / 2) + 'px) rotate(' + REST[p] * 4 + 'deg)');
       if (layerStart[i] == null) layerStart[i] = Math.max(now, handDeal.key === String(v.handNumber) ? handDeal.end : 0, i ? (layerStart[i - 1] ?? 0) + t * 0.4 : 0);
       if (mineLand && mineLand.hand === v.handNumber && mineLand.idx === i) return;
-      expect('pile' + v.handNumber + '|' + discarders[i], { kind: 'out', n: 3, until: layerStart[i] + t });
+      expect('pile' + v.handNumber + '|' + discarders[i], { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: layerStart[i] + t });
       const e = now - layerStart[i];
       if (t && e < 0 && p) {
         const row = q('#seat' + p + ' .backrow');
@@ -4333,8 +4367,10 @@ const Fx = (() => {
      3 to each player, 3 to the kitty, 4 to each, then 3 to each. A packet's cards leave together, a little apart.
      PACKET_GAP and PACKET_CARD are parts of the card's flight time. */
   const PACKET_GAP = 0.25, PACKET_CARD = 0.05;
-  const KITTY_SLOT = 3;                      // the kitty's packet comes after the first round of three
-  const PACKETS = [[0, 3, 0], [3, 4, 4], [7, 3, 7]];   // [first card, cards, first slot] of each player's 3 packets
+  /* From the Engine's deal (C.DEAL_PACKETS): the packets go out in slots, one per player per round, and the kitty's
+     packet takes the slot after its round. PACKETS: [first card, cards, first slot] of each player's packets. */
+  const PL = Engine.C.PLAYERS, KITTY_SLOT = Engine.C.KITTY_AFTER * PL;
+  const PACKETS = Engine.C.DEAL_PACKETS.reduce((/** @type {number[][]} */ out, n, r) => { const card = out.length ? out[out.length - 1][0] + out[out.length - 1][1] : 0; out.push([card, n, r * PL + (r >= Engine.C.KITTY_AFTER ? 1 : 0)]); return out; }, []);
   /* The start of a hand's deal: after the outside pile has cleared and the hand backs are home. */
   function dealClock(key, now) {
     if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold), end: 0 };
@@ -4428,9 +4464,9 @@ const Fx = (() => {
     const key = v.handNumber + '|' + (v.showdown && v.showdown.active ? 'sd' : '') + '|' + v.trickNumber, t = ms();
     if (key !== trickKey) { trickKey = key; for (const o of [slotStart, winStart, slotFrom]) for (const k in o) delete o[k]; }
     for (const slot of qa('#center .trick .slot')) {
-      const card = q('.card[data-card]', slot), m = slot.className.match(/slot-(\d)/);
-      if (!card || !m) continue;
-      const p = m[1], id = p + card.dataset.card;
+      const card = q('.card[data-card]', slot), p = slot.dataset.seat;
+      if (!card || p == null) continue;
+      const id = p + card.dataset.card;
       if (slotStart[id] == null) { slotStart[id] = now; if (p === '0' && handAt && handAt.has(card.dataset.card)) slotFrom[id] = handAt.get(card.dataset.card); }
       const e = now - slotStart[id], seat = q('#seat' + p), isWin = slot.classList.contains('win');
       // The resting poses first, before any motion applies: without the winner's lift, and with it.
@@ -4946,12 +4982,12 @@ const App = (() => {
       /* One column per player, headed by their name: the trick winner first, then the others in table order. The card
          that led the trick is ringed. A Showdown player's circles count Showdown tricks, so their list does too. */
       const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(seat);
-      const winners = sd ? v.showdown.trickWinners : v.trickWinners, size = sd ? 2 : 3, from = sd ? v.trickWinners.length * 3 : 0;
+      const winners = sd ? v.showdown.trickWinners : v.trickWinners, done = Engine.tricksOf(v)[sd ? 'showdown' : 'main'];
       const cols = [seat].concat([1, 2, 0].filter(p => p !== seat && (!sd || v.showdown.participants.includes(p))));
       const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + mini(x.card) + '</span>' : '<span></span>'; };
       const rows = winners.map((w, i) => {
         if (w !== seat) return '';
-        const plays = v.playLog.slice(from + i * size, from + (i + 1) * size);
+        const plays = done[i] || [];
         return '<span class="tn">' + (i + 1) + '</span>' + cols.map(p => cell(plays, p)).join('');
       }).join('');
       title = Render.nameOf(v, seat) + ' · ' + (sd ? 'Showdown tricks' : 'tricks won');
@@ -4982,7 +5018,7 @@ const App = (() => {
     const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr'), minis = ids => '<div class="prow">' + ids.map(mini).join('') + '</div>';
     const memory = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
     const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
-    const callRound = () => { const b = v.bidLog.filter(x => x.player === v.caller && (x.action === 'accept' || x.action === 'name')).pop(); return b ? b.round : null; };
+    const callRound = () => { const b = Engine.trumpCall(v.bidLog); return b ? b.round : null; };
     const inHand = id => v.hand.includes(id);
     /* The turned card when it went to the receiver in round 1: public, so the receiver may still hold it. */
     const turnedTo = () => v.trump && v.flipped && !v.flippedOut && v.receiver !== null ? v.receiver : null;
@@ -5062,14 +5098,8 @@ const App = (() => {
       }
       case 'hand': {
         const sd = v.showdown && v.showdown.active;
-        const STAGE_HELP = {
-          [P.DISCARD]: 'Each player discards 3 face down' + (Engine.discardsInTurn(v.rules) ? ', in turn from the dealer\'s left.' : '.'),
-          [P.REVEAL]: 'The dealer turns up the top kitty card.', [P.BID1]: 'Round 1: accept the turned card\'s suit as trump, or pass.',
-          [P.BID2]: 'Round 2: name another suit, or pass.', [P.EXCHANGE]: 'The player left of the namer takes the kitty card(s) and discards as many.',
-          [P.HAND_SCORE]: 'The hand is over.', [P.ABANDONED]: 'Everyone passed: no trump, no points. The deal passes left.', [P.JOKER_VOID]: 'The Joker was turned up: the same dealer deals again.'
-        };
         let body = p1('Dealer: ' + n(v.dealer) + '. The player left of the dealer leads the first trick.');
-        if (STAGE_HELP[v.phase]) body += p1(STAGE_HELP[v.phase]);
+        if (Render.stageHelp(v)) body += p1(Render.stageHelp(v));
         if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
         if (memory && T) {
           const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
@@ -5267,7 +5297,7 @@ const App = (() => {
       if (!sys) return;
       const manual = !!Render.CONTINUE_LABEL[st.phase];
       if (manual && !app.ui.autoplay) return; /* wait for the Continue button */
-      const ms = (st.phase === P.TRICK_DONE || st.phase === P.SHOWDOWN_TRICK_DONE || manual) ? d.trick : d.sys;
+      const ms = (Engine.TRICK_DONE_PHASES.includes(st.phase) || manual) ? d.trick : d.sys;
       later(ms, () => act(sys));
     }
     draw(ev);
@@ -6037,10 +6067,7 @@ const App = (() => {
     if (el && el.classList.contains('namehint')) { showPanel('name-card', null, el); return; }
     if (el && el.getAttribute('aria-disabled') === 'true') { showPanel('illegal', null, el); return; }
     const sel = app.ui.selected;
-    let limit = 0;
-    if (v.phase === P.DISCARD && v.pendingDiscard[HUMAN]) limit = 3;
-    else if (v.phase === P.EXCHANGE && v.receiver === HUMAN) limit = v.exchangeCount;
-    else if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.pendingDiscard[HUMAN]) limit = 1;
+    const limit = Render.discardNeed(v, HUMAN);
     if (limit) {
       if (sel.has(id)) sel.delete(id);
       else if (limit === 1) { sel.clear(); sel.add(id); }
@@ -7386,12 +7413,17 @@ const SelfTest = (() => {
          as mini cards in it, never marked as a count, so a mini card's bare rank is not taken for one. */
       let sd = null, main = null;
       /** @type {string[]} */
-      const turnBad = [];
+      const turnBad = [], needBad = [], trickBad = [];
       for (let seed = 1; seed < 200 && !sd; seed++) {
         const x = Engine.createGame(seed); D(x, { type: 'START_GAME' });
         for (let g = 0; g < 3000 && !x.gameOver && !sd; g++) {
           const ac = Engine.actors(x); D(x, ac.length ? AI.fastAction(x, ac[0]) : Engine.systemAction(x));
           const turn = [0, 1, 2].filter(p => Render.isTurn(buildView(x, p), p)), want = x.gameOver ? [] : Engine.actors(x);
+          const need = { [P.DISCARD]: Engine.C.INITIAL_DISCARD, [P.EXCHANGE]: x.exchangeCount, [P.SHOWDOWN_DISCARD]: Engine.C.SHOWDOWN_DISCARD }[x.phase] || 0;
+          for (const p of want) { const got = Render.discardNeed(buildView(x, p), p); if (got !== need && needBad.length < 3) needBad.push(x.phase + ' seat ' + p + ': ' + got + ' vs ' + need); }
+          const tr = Engine.tricksOf(x), trickOk = tr.main.length === x.trickWinners.length && tr.main.every((t, i) => t.length === 3 && t.some(y => y.player === x.trickWinners[i]))
+            && (!x.showdown || tr.showdown.every((t, i) => t.length === 2 && t.some(y => y.player === x.showdown.trickWinners[i])));
+          if (!trickOk && trickBad.length < 3) trickBad.push(x.phase + ' hand ' + x.handNumber);
           if (JSON.stringify(turn) !== JSON.stringify(want) && turnBad.length < 3) turnBad.push(x.phase + ': ' + JSON.stringify(turn) + ' vs ' + JSON.stringify(want));
           if (!main && x.phase === P.TRICK_PLAY) main = buildView(x, 0);
           const s2 = x.showdown;
@@ -7399,10 +7431,49 @@ const SelfTest = (() => {
         }
       }
       eq('whose turn on screen is the Engine\'s actors, at every step', turnBad, []);
+      eq('the cards to pick on screen are the cards the Engine takes, at every discard', needBad, []);
+      eq('the finished tricks from the play log: 3 plays a main trick, 2 a Showdown trick, each with its winner', trickBad, []);
+      eq('the trump call: the one accept or name of the hand', [Engine.trumpCall([{ action: 'pass' }, { action: 'pass' }]), Engine.trumpCall([{ action: 'pass', round: 1 }, { action: 'accept', round: 1, player: 2 }])], [null, { action: 'accept', round: 1, player: 2 }]);
+      eq('the deal packets add up to the deck', Engine.C.DEAL_PACKETS.reduce((a, n) => a + n, 0) * Engine.C.PLAYERS + Engine.C.KITTY_SIZE, R.ALL_IDS.length);
+      const v1 = buildView(Engine.createGame(7, undefined, 1), 0), v4 = buildView(Engine.createGame(7), 0);
+      v1.phase = v4.phase = P.DISCARD;
+      eq('the discard help follows the rules version', [Render.stageHelp(v1), Render.stageHelp(v4)], ['Each player discards 3 face down.', 'Each player discards 3 face down, in turn from the dealer\'s left.']);
       const cellOf = (/** @type {any} */ v) => { const d = document.createElement('div'); d.innerHTML = Render.advInfoHTML(v).join(''); return [...d.querySelectorAll('.cell')].find(c => c.getAttribute('data-action') === 'adv-outside') || null; };
       const mc = main && cellOf(main), sc = sd && cellOf(sd);
       check('the Outside cell holds a marked count in the main hand', !!mc && !!mc.querySelector('.val[data-count]') && mc.querySelector('.val[data-count]').textContent === '12', mc ? mc.outerHTML : 'no main-hand view');
       check('in your Showdown it holds your discard as a mini card, with no count mark', !!sc && sc.querySelectorAll('.micro').length === 1 && !sc.querySelector('[data-count]'), sc ? sc.outerHTML : 'no Showdown found');
+    });
+    /* --- Truly random: fresh seeds and house rules on every run (RNG.freshSeed), so each run tries new deals. A failure
+       names its seed and rules: Engine.createGame(seed, undefined, Engine.RULES_VERSION, rules) plays it again. --- */
+    safeRun('random games', () => {
+      const n = o.randomGames || 6, flips = [undefined, ...Engine.JOKER_FLIPS];
+      /** @type {string[]} */
+      const bad = [];
+      let hands = 0;
+      for (let g = 0; g < n && bad.length < 3; g++) {
+        const seed = RNG.freshSeed(), pick = RNG.freshSeed();
+        const rules = { mediatorLead: !!(pick & 1), jokerFlip: flips[(pick >>> 1) % flips.length] };
+        const tag = 'seed ' + seed + ' ' + JSON.stringify(rules) + ': ';
+        const x = Engine.createGame(seed, undefined, Engine.RULES_VERSION, rules);
+        D(x, { type: 'START_GAME' });
+        for (let step = 0; step < 20000 && !x.gameOver; step++) {
+          const ac = Engine.actors(x);
+          if ([0, 1, 2].some(p => Render.isTurn(buildView(x, p), p) !== ac.includes(p))) { bad.push(tag + 'whose turn differs in ' + x.phase); break; }
+          const r = D(x, ac.length ? AI.fastAction(x, ac[0]) : Engine.systemAction(x));
+          if (!r.ok) { bad.push(tag + 'action refused in ' + x.phase + ': ' + r.error); break; }
+          if (r.events.some(e => e.type === 'DEAL')) hands++;
+          const au = Engine.audit(x);
+          if (au.length) { bad.push(tag + 'cards lost or doubled: ' + au.join(', ')); break; }
+          if (x.scores.some(sc => sc < 0)) { bad.push(tag + 'a negative score'); break; }
+          if (x.jokerSuit && !rules.jokerFlip) { bad.push(tag + 'the Joker took a suit with the rule off'); break; }
+        }
+        if (bad.length && bad[bad.length - 1].startsWith(tag)) continue;
+        if (!x.gameOver) { bad.push(tag + 'no end'); continue; }
+        if (x.scores[x.winner] < Engine.C.WIN_SCORE) bad.push(tag + 'the winner has ' + x.scores[x.winner] + ' points');
+        const run = Replay.run(Replay.encode(Replay.fromState(x)));
+        if (!run.ok || run.state.winner !== x.winner || JSON.stringify(run.state.scores) !== JSON.stringify(x.scores)) bad.push(tag + 'the replay code gives another end' + (run.error ? ': ' + run.error : ''));
+      }
+      eq(n + ' games from fresh random seeds and house rules (' + hands + ' hands): sound, and their replay codes rebuild them', bad, []);
     });
     safeRun('restart', () => {
       const s = Engine.createGame(77);
