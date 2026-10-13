@@ -5396,7 +5396,7 @@ const App = (() => {
       : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
     /* The running game keeps its house rules: say so under each setting that now differs. */
     for (const [id, game, setting, text] of HOUSE_NOTES) {
-      const note = $(id), was = game(app.state), differs = gameOn() && was !== setting(app.houseRules);
+      const note = $(id), was = gameOn() ? game(app.state) : null, differs = was !== null && was !== setting(app.houseRules);
       note.hidden = !differs;
       if (differs) note.textContent = 'This game started with ' + text(was) + '. Your change applies from your next game.';
     }
