@@ -18,7 +18,7 @@ The menu has a card for each mode, **Free play** and **Waves**, and a row of too
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
 | **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
 
-A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed` and `wave` from the address, so a reload resumes the game instead of starting it again.
+A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed` and `wave` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
 ## Header
 
@@ -251,6 +251,7 @@ KCT.Waves.reset()                  // back to wave 1
 KCT.WAVES                          // the table above, with a purpose line for each wave
 KCT.App.app.wave                   // { n, open, result } for the current game
 KCT.App.stats.get()                // results per mode, table and opponent
+KCT.App.stats.reset()              // clear all results and the last games (no undo)
 KCT.App.slots.get('free')          // the saved Free play game, or null
 ```
 

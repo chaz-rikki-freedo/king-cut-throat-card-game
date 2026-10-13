@@ -295,6 +295,26 @@ function expect(name, ok, detail) {
       click('[data-action="ask-ok"]'); await sleep(50);
       return { mode: app.mode, wave: app.wave.n, hand: app.state.handNumber };`);
     expect('Start new game starts the linked wave', r.mode === 'waves' && r.wave === 1 && r.hand <= 1, r);
+    /* 4294967297 is 2^32 + 1: it used to wrap around to seed 1. */
+    for (const bad of ['?seed=4294967297', '?seed=12abc', '?wave=99']) {
+      await page.goto(srv.url + bad);
+      r = await step(`await sleep(50); const n = q('#overlay .wave-note');
+        return { note: n && n.textContent, menu: !!q('#overlay .menu'), mode: app.mode, ask: askOpen(), search: location.search };`);
+      expect('a link that names no game (' + bad + ') opens the menu with a note, and starts nothing', /does not name a game/.test(r.note || '') && r.menu && r.mode === null && !r.ask && r.search === '', r);
+    }
+    await page.goto(srv.url + '?seed=4294967295');
+    r = await step(`
+      const t0 = Date.now();
+      while (!q('#overlay .swap') && Date.now() - t0 < 10000) { if (askOpen()) click('[data-action="ask-ok"]'); await sleep(10); }
+      return { seed: app.state.seed, mode: app.mode };`);
+    expect('the largest seed, 4294967295, still starts its game', r.seed === 4294967295 && r.mode === 'free', r);
+
+    console.log('Results: a reset clears the counts and the last games together');
+    r = await step(`
+      const before = { played: Object.values(A.stats.get().modes).reduce((a, m) => a + m.played, 0), games: A.replays.list().length };
+      A.stats.reset();
+      return { before, played: Object.keys(A.stats.get().modes).length, games: A.replays.list().length };`);
+    expect('a reset leaves no results and no last games', r.before.played > 0 && r.before.games > 0 && r.played === 0 && r.games === 0, r);
 
     console.log('AI errors: a bot that fails falls back to a legal move, and the game goes on');
     r = await step(`
