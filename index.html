@@ -5362,6 +5362,13 @@ const App = (() => {
     return { update, MIN };
   })();
 
+  /* House rules that a game fixes at its start: [note id, the game's value, the setting's value, the value in words]. */
+  const HOUSE_NOTES = /** @type {[string, (s: any) => any, (h: any) => any, (x: any) => string][]} */ ([
+    ['setMediatorNow', st => !!st.mediatorLead, h => h.mediatorLead, x => 'this rule ' + (x ? 'on' : 'off')],
+    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal']
+  ]);
+  /* Whether a game is being played: a mode is set and its game is not over. */
+  const gameOn = () => !!app.mode && !app.state.gameOver;
   /* Whether the bots play their personalities: always in a wave (they set its difficulty), else as the switch says. */
   const personasOn = () => app.usePersonas || !!app.wave.n;
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
@@ -5383,17 +5390,16 @@ const App = (() => {
     off('setAdvanced', personasOn());
     /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
        has fixed it (it stays for the game). */
-    const fixed = app.mode && !app.state.gameOver && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
+    const fixed = gameOn() && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
     off('setSeatPersonaRow', seatOff);
     $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
       : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
-    /* The running game keeps its house rule: say so when the setting now differs. */
-    const st = app.state, now = $('setMediatorNow'), differs = !!app.mode && !st.gameOver && !!st.mediatorLead !== app.houseRules.mediatorLead;
-    now.hidden = !differs;
-    if (differs) now.textContent = 'This game started with this rule ' + (st.mediatorLead ? 'on' : 'off') + '. Your change applies from your next game.';
-    const jNow = $('setJokerNow'), jDiffers = !!app.mode && !st.gameOver && (st.jokerFlip || '') !== app.houseRules.jokerFlip;
-    jNow.hidden = !jDiffers;
-    if (jDiffers) jNow.textContent = 'This game started with ' + (JOKER_FLIP_TEXT[st.jokerFlip || ''] || 'Redeal') + '. Your change applies from your next game.';
+    /* The running game keeps its house rules: say so under each setting that now differs. */
+    for (const [id, game, setting, text] of HOUSE_NOTES) {
+      const note = $(id), was = game(app.state), differs = gameOn() && was !== setting(app.houseRules);
+      note.hidden = !differs;
+      if (differs) note.textContent = 'This game started with ' + text(was) + '. Your change applies from your next game.';
+    }
   }
 
   /* ---- Narration: public events -> human-readable log + toasts ---- */
@@ -5701,7 +5707,7 @@ const App = (() => {
   function showMenu(launch) {
     clearTimer();
     const p = Waves.progress();
-    const playing = app.mode && !app.state.gameOver;
+    const playing = gameOn();
     const lost = slots.dropped();
     const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
       '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
@@ -5741,7 +5747,7 @@ const App = (() => {
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
   /* A mode's unfinished game: the one being played, or the saved one. null: none. */
   function unfinished(mode) {
-    return app.mode === mode && !app.state.gameOver ? app.state : (slots.get(mode) || { state: null }).state;
+    return app.mode === mode && gameOn() ? app.state : (slots.get(mode) || { state: null }).state;
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : 'Free play';
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
