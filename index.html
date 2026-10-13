@@ -4850,6 +4850,21 @@ const App = (() => {
     Logger.log('SAVE_FAILED', { key });
     note('This browser is not saving your games, progress or settings. If you close the page, they are lost.', 'neg');
   }
+  /* An error that nothing caught, in this page's own script (not an extension's). A drawing error inside a game
+     timer would otherwise stop the game without a word. Each one goes to the event log (when it is on); the player
+     is told once per page load. */
+  let pageErrorReported = false;
+  /** @param {unknown} err */
+  function reportPageError(err) {
+    Logger.log('PAGE_ERROR', { error: String(err instanceof Error ? err.message : err) });
+    if (pageErrorReported || TabLock.stale) return;
+    pageErrorReported = true;
+    ask({
+      title: 'Something went wrong',
+      text: '<p>The game hit an error. Your game is saved after each move, so a reload continues it.</p>',
+      ok: 'Reload', cancel: 'Keep playing'
+    }).then(yes => { if (yes) location.reload(); });
+  }
   /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
   const backup = Object.freeze({
     /** The full client state now. The running game is saved first, so mid-game progress is in it.
@@ -6572,6 +6587,12 @@ const App = (() => {
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
+    /* A muted error from another origin has no Error object; a file other than this page is an extension's. */
+    window.addEventListener('error', ev => {
+      const file = (ev.filename || '').split('#')[0];
+      if (ev.error instanceof Error && (!file || file === location.href.split('#')[0])) reportPageError(ev.error);
+    });
+    window.addEventListener('unhandledrejection', ev => { if (ev.reason instanceof Error) reportPageError(ev.reason); });
     /* The header can wrap to two rows; the toasts sit just below it. */
     const setHeaderH = () => { document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px'); Fit.update(); };
     setHeaderH();

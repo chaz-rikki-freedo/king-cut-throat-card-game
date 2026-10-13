@@ -310,6 +310,21 @@ function expect(name, ok, detail) {
       return out;`);
     expect('the game plays on past AI errors, with legal moves', r.hand >= 2 && r.audit.length === 0, r);
 
+    console.log('Page errors: an uncaught error is logged, and the player is told once');
+    r = await step(`
+      /* From an inline script, as the game's own code would throw: an error from elsewhere (an extension) is ignored. */
+      const boom = () => { const el = document.createElement('script'); el.textContent = "setTimeout(() => { throw new Error('scenario page error'); });"; document.body.appendChild(el); el.remove(); };
+      boom(); await sleep(50);
+      const out = { ask: askOpen(), title: q('#askTitle') && q('#askTitle').textContent };
+      click('[data-action="ask-cancel"]'); await sleep(20);
+      boom(); await sleep(50);
+      out.again = askOpen();
+      out.logged = KCT.Logger.lines.filter(l => l.includes('PAGE_ERROR')).length;
+      return out;`);
+    errors.splice(0, errors.length, ...errors.filter(e => !e.includes('scenario page error')));
+    expect('an uncaught error asks the player to reload', r.ask && r.title === 'Something went wrong', r);
+    expect('a second error is logged but does not ask again', !r.again && r.logged === 2, r);
+
     console.log('Your seat: the Human/AI tag works only with the switch on, for one game');
     await reload();
     r = await step(`
