@@ -804,7 +804,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '7ce6161', date: '2026-10-12' });
+const BUILD = Object.freeze({ commit: 'a657415', date: '2026-10-12' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -3381,7 +3381,8 @@ const Render = (() => {
     if (v.players[p].human && canToggle) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
     else if (v.players[p].human) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + '">' + (auto ? 'AI' : 'Human') + '</span>');
     else b.push('<span class="tag ai">AI</span>');
-    if (v.dealer === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
+    /* In a Showdown the Dealer tag moves to the mediator, who deals it. */
+    if ((v.showdown ? v.showdown.mediator : v.dealer) === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
     if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) b.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
     if (v.showdown) {
@@ -3755,7 +3756,7 @@ const Render = (() => {
     const tag = (kind, label, inner) => '<span class="tag ' + kind + ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="tag" data-tag="' + kind + '" data-seat="' + p + '" title="About ' + label + '">' + (inner || label) + '</span>';
     if (human && ui.allowSeatAI) t.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
     else t.push(human && !auto ? tag('you', 'Human') : tag('ai', 'AI'));
-    if (v.dealer === p) t.push(tag('dealer', 'Dealer'));
+    if ((v.showdown ? v.showdown.mediator : v.dealer) === p) t.push(tag('dealer', 'Dealer'));
     if (v.caller === p && v.trump) t.push(tag('caller', 'Namer'));
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push(tag('receiver', 'Kitty'));
     if (turnSeat(v) === p) t.push(tag('turn', 'Turn'));
@@ -5101,7 +5102,9 @@ const App = (() => {
         const TEXT = {
           ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
-          dealer: () => [who + ' · Dealer', who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
+          dealer: () => [who + ' · Dealer', v.showdown
+            ? who + ' mediates the Showdown, so ' + who + ' deals it: the discards go in turn from ' + who + '\'s left. ' + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
+            : who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
           caller: () => [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
           receiver: () => [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
           turn: () => [who + ' · Turn', Render.statusText(v)],
