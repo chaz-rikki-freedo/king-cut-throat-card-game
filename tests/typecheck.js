@@ -11,7 +11,8 @@ if (!m) { console.error('no <script> in index.html'); process.exit(1); }
 const offset = html.slice(0, m.index + '<script>'.length).split('\n').length - 1;
 
 const FILE = path.join(__dirname, 'game.js');  /* a virtual file: nothing is written to disk */
-const options = { allowJs: true, checkJs: true, noEmit: true, target: ts.ScriptTarget.ES2022, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts'], skipLibCheck: true };
+/* strict is set off by name: TypeScript 6 turns it on by default, which the JSDoc types do not aim for. */
+const options = { allowJs: true, checkJs: true, strict: false, noEmit: true, target: ts.ScriptTarget.ES2022, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts'], skipLibCheck: true };
 const host = ts.createCompilerHost(options);
 const readFile = host.readFile, fileExists = host.fileExists;
 host.readFile = f => (path.resolve(f) === FILE ? m[1] : readFile(f));
