@@ -60,7 +60,7 @@ async function cachedPage(req) {
   const hit = await (await caches.open(SHELL)).match(PAGE);
   if (hit) return hit;
   const res = await fetch(req);
-  if (res.ok) (await caches.open(SHELL)).put(PAGE, res.clone());
+  if (res.ok && isGame(await res.clone().text())) (await caches.open(SHELL)).put(PAGE, res.clone());
   return res;
 }
 
@@ -69,9 +69,10 @@ async function checkPage() {
   let res;
   try { res = await fetch(PAGE, { cache: 'no-store' }); } catch (e) { return; }
   if (!res.ok) return;
+  const text = await res.clone().text();
+  if (!isGame(text)) return;
   const shell = await caches.open(SHELL);
   const current = await shell.match(PAGE);
-  const text = await res.clone().text();
   if (!current) { await shell.put(PAGE, res); return; }
   if (core(text) === core(await current.text())) { await caches.delete(PENDING); return; }
   const pending = await caches.open(PENDING);
@@ -79,6 +80,10 @@ async function checkPage() {
   if (!waiting || core(text) !== core(await waiting.text())) await pending.put(PAGE, res);
   await tell({ type: 'update-ready' });
 }
+/* A page that loads but is not the game (a network sign-in page, a host's error page) must never replace it:
+   the game would be gone from the cache, and with it the note that offers the next update. The game page
+   always holds its BUILD line (tools/publish.sh stamps it). */
+const isGame = html => /^const BUILD = Object\.freeze\(\{ commit: '/m.test(html);
 /* The part of the page that counts as a new version. Ad blockers such as AdGuard change the page
    as it downloads: they remove <link> tags and add tags of their own. Turning one on or off must not
    look like a new version, so <link> tags, <script> and <style> tags with attributes (the game's own

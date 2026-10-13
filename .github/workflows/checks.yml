@@ -1,5 +1,6 @@
 # Runs the fast checks (tests/README.md) on each pull request and each push to main:
-# the type check, the in-page self-tests and the stress sections at small sizes. About a minute in all.
+# the type check, the in-page self-tests, the service worker check and the stress sections at small sizes.
+# About a minute in all.
 # The UI scenarios and the soak are slow: they run in the Tests workflow (test.yml) instead.
 name: Checks
 on:
@@ -28,4 +29,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node typecheck.js
       - run: node selftest.js
+      - run: node sw.js
       - run: node stress.js all 4

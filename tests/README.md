@@ -18,17 +18,18 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 |---|---|---|
 | `node typecheck.js` | The TypeScript checker on the game script in `index.html`, so the JSDoc types are checked. No browser. | about 3 s |
 | `node selftest.js` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
+| `node sw.js` | The service worker, with the worker running: a page that loads but is not the game (a network sign-in page) is not offered as an update, and a real new version is. | about 6 s |
 | `node scenarios.js` | Two full games through the real controls (Free play, then Waves wave 1): seat swap and log colors, reload and resume, the questions the app asks, end buttons, results, wave progress, replay codes, the Skip button in a Showdown between the two bots, an old save, and the Your seat setting (the AI seat never carries over). | 2–5 min |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
 | `node soak.js 4 5` | 4 pages × 5 full games at Instant speed. Random mode, sometimes the AI plays your seat, reloads at random points. | 5–30 min |
 | `node roundrobin.js 4 4` | Not a check. Every table of three personalities plays 4 games (480 in all), with the seat orders rotating. Prints each bot's win rate, overall and per seat, as JSON. Results: [docs/banter.md](../docs/banter.md). | about 6 min |
 
-`npm test` runs `typecheck.js`, `selftest.js`, `scenarios.js` and `stress.js all 4`.
+`npm test` runs `typecheck.js`, `selftest.js`, `sw.js`, `scenarios.js` and `stress.js all 4`.
 
 GitHub Actions has two workflows:
 
-- **Checks** (`.github/workflows/checks.yml`) runs the fast checks, `typecheck.js`, `selftest.js` and `stress.js all 4`, on each pull request and each push to `main`. It takes about a minute.
+- **Checks** (`.github/workflows/checks.yml`) runs the fast checks, `typecheck.js`, `selftest.js`, `sw.js` and `stress.js all 4`, on each pull request and each push to `main`. It takes about a minute.
 - **Tests** (`.github/workflows/test.yml`) runs `npm test` when a major release tag is pushed (`1.0.0`, `2.0.0`, `v3.0.0` and so on), or when you start it with **Run workflow** on the Actions tab.
 
 ## Stress sections

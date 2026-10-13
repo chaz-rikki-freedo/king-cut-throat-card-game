@@ -29,7 +29,7 @@ KCT<version>-<payload>
 
 - `<version>` is the format version in decimal. This spec is version `3`. Version 2 has the same layout, without decision type 8 and the GAME options field; a reader of version 3 reads it too.
 - `<payload>` is base64url (RFC 4648, section 5) with no `=` padding.
-- Example (version 2): `KCT2-AgEFAZIhAgMCCQADdmV4A2RvYwPTAgAYCAM…` (seed 4242, wave 3, Vex and Doc)
+- Example (version 3): `KCT3-AwEGBJIhAgMAAgkAA3plbgN0ZXgD0wICGRoKABg…` (seed 4242, wave 3, Zen and Tex)
 
 ## 4. Byte layout
 
@@ -229,7 +229,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 
 ## 9. Version 1 codes
 
-The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes, big-endian), wave (1 byte), West and East ids (1 length byte + ASCII each), then decision entries with no section around them (EXCHANGE has a 1-byte count). A version 1 code has rules version 1, `mode` from the wave, and no result, flags, time or meta. The app writes only version 2 codes.
+The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes, big-endian), wave (1 byte), West and East ids (1 length byte + ASCII each), then decision entries with no section around them (EXCHANGE has a 1-byte count). A version 1 code has rules version 1, `mode` from the wave, and no result, flags, time or meta. The app writes only version 3 codes.
 
 ## 10. How to add data in a later version
 
@@ -241,7 +241,7 @@ The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes
 | A note at a point in the game | A MARK kind. No version change. |
 | A new kind of player decision | An EXT kind now, or a new type (8–63) with a new format version. |
 | A rule change that changes the game for the same decisions | Raise `Engine.RULES_VERSION`. |
-| A change to the layout of section 4 itself | Raise the format version (`KCT3-`). Keep a reader for the old versions. |
+| A change to the layout of section 4 itself | Raise the format version (`KCT4-`). Keep a reader for the old versions. |
 
 ## 11. Size and limits
 
