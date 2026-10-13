@@ -155,6 +155,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Menu item | `.menu-item` | C | A button with a title (`b`) and a subtitle (`small`). |
 | Menu subtitle | `.menu-item small` | D | The line under the title, for example the saved game or "Coming soon". |
 | Resume item | `resume-waves`, `resume-free` | C | "Resume Waves" or "Resume Free play", with the saved game line. |
+| Opponents beaten | `.mtail` on the Free play card | S | "Beaten 6 of 10": the bots you have won a Free play game against (the results' per-opponent Free play wins), out of all bots. Free play's counterpart to the Waves "x of y cleared". |
 | Discard game icon | `.mdel`, `discard-waves`, `discard-free` | C | A faint trash icon beside the status lines, only on a card with an unfinished game. Asks first, then clears that mode's saved game without starting another; a game being played leaves the table empty. Not a result: no loss, and wave progress stays. |
 | Wave picker | `.menu-wave`, `#waveSel` | C | The list of open waves, with each wave's West / East names. ✓ marks a cleared wave. |
 | Play wave item | `play-wave` | C | Starts the picked wave. |

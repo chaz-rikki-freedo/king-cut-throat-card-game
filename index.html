@@ -3825,7 +3825,7 @@ const Render = (() => {
       let minis = ''; for (let i = 0; i < n; i++) minis += i < v.myOut.length ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
       if (n) html += '<div class="cell muted out tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val"><span class="minis">' + minis + '</span></span></div>';
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
-      html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val">' + v.outsideCount + '</span></div>';
+      html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
     }
     return [before, html];
   }
@@ -4169,8 +4169,10 @@ const Fx = (() => {
   function refreshCounts() {
     const now = performance.now();
     for (const [k, x] of pending) if (x.until <= now) pending.delete(k);
-    const cell = qa('#info .cell').find(c => /Outside/i.test(c.textContent)), val = cell && q('.val', cell);
-    if (val && /^\d+$/.test(val.dataset.actual ?? val.textContent.trim())) {
+    /* Only the Outside count (data-count). In a Showdown the cell holds the discards as mini cards, whose text can be
+       a bare rank such as "7". */
+    const val = q('#info .val[data-count]');
+    if (val) {
       if (val.dataset.actual == null) val.dataset.actual = val.textContent.trim();
       let n = +val.dataset.actual; for (const x of pending.values()) if (x.kind === 'out') n -= x.n;
       val.textContent = String(Math.max(0, n));
@@ -5100,7 +5102,7 @@ const App = (() => {
       }
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
-        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && (app.usePersonas || app.wave.n) ? PERSONA_BY_ID[id] : null;
+        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && personasOn() ? PERSONA_BY_ID[id] : null;
         const r = callRound();
         /* Each tag's [title, text], built only for the tag clicked: some read state that is not always there (the
            turned card is gone in a Showdown and before the reveal). */
@@ -5242,9 +5244,8 @@ const App = (() => {
     const ai = actors.filter(p => !st.players[p].human || (app.ui.autoplay && p === HUMAN));
     if (ai.length) {
       const p = ai[0];
-      /* A wave always uses its personalities: they set its difficulty. */
       later(d.ai, () => {
-        const persona = app.usePersonas || app.wave.n ? PERSONA_BY_ID[app.ui.personas[p]] : null;
+        const persona = personasOn() ? PERSONA_BY_ID[app.ui.personas[p]] : null;
         const cfg = persona ? AI.personaConfig(persona) : app.ai;
         if (p !== HUMAN) trackBotSettings(!!persona);
         const view = buildView(app.state, p);
@@ -5361,8 +5362,10 @@ const App = (() => {
     return { update, MIN };
   })();
 
-  /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed:
-     a wave always uses its personalities. The switch keeps its value for Free play. */
+  /* Whether the bots play their personalities: always in a wave (they set its difficulty), else as the switch says. */
+  const personasOn = () => app.usePersonas || !!app.wave.n;
+  /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
+     shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
   function syncModeUI() {
     const waves = app.mode === 'waves';
     const chip = $('modeChip');
@@ -5373,10 +5376,11 @@ const App = (() => {
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setPersonas').disabled = waves;
+    $('setPersonas').checked = personasOn();
     off('setPersonaRow', waves);
     $('setWaveNote').hidden = !waves;
-    off('setBotFields', waves || app.usePersonas);
-    off('setAdvanced', waves || app.usePersonas);
+    off('setBotFields', personasOn());
+    off('setAdvanced', personasOn());
     /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
        has fixed it (it stays for the game). */
     const fixed = app.mode && !app.state.gameOver && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
@@ -5717,7 +5721,9 @@ const App = (() => {
     };
     let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + (lost[0] === 'waves' ? 'Waves' : 'Free play') + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
-    html += card('free', 'Free play', '', '', menuButton('new-free', 'New game'));
+    /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
+    const freeWins = stats.get().modeOpponents.free || {}, beaten = PERSONAS.filter(x => freeWins[x.id] && freeWins[x.id].won > 0).length;
+    html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beaten + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
     html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
       '<span class="mtail">' + p.cleared.length + ' of ' + p.total + ' cleared</span>', menuButton('play-wave', 'Play wave'));
     html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
@@ -7454,7 +7460,7 @@ const PERSONA_ART = Object.freeze({
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

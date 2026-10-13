@@ -99,12 +99,15 @@ function expect(name, ok, detail) {
       click('[data-action="menu"]'); await sleep(20);
       click('[data-action="discard-free"]'); await sleep(50);
       click('[data-action="ask-ok"]'); await sleep(50);
+      const won = A.stats.get().modeOpponents.free || {};
+      out.beaten = [q('#overlay .mcard .mtail').textContent, 'Beaten ' + KCT.PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length + ' of ' + KCT.PERSONAS.length];
       Object.assign(out, { mode: app.mode, slot: !!A.slots.get('free'), menu: !!q('#overlay .menu'), icons: document.querySelectorAll('#overlay .mdel').length,
         resume: q('[data-action="resume-free"]') && q('[data-action="resume-free"]').disabled, statsSame: JSON.stringify(A.stats.get()) === out.stats, replaysSame: A.replays.list().length === out.replays });
       return out;`);
     expect('Discard ends the game: no mode, no slot, the menu stays open', r.mode === null && !r.slot && r.menu, r);
     expect('after Discard the card has no icon and Resume is off', r.icons === 0 && r.resume === true, r);
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
+    expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
@@ -142,6 +145,36 @@ function expect(name, ok, detail) {
     expect('the result is recorded', r.stats && r.stats.played === 1, r.stats);
     expect('the mode chip opens Wave tries', r.popup === 'Wave tries', r.popup);
     expect('Skip never shows outside a bot Showdown', r.skip.shownElsewhere === 0, r.skip);
+
+    console.log('Personalities: a wave always uses them, and the switch says so');
+    r = await step(`
+      const out = {}, sw = q('#setPersonas');
+      click('[data-action="menu"]'); await sleep(20);
+      click('[data-action="new-free"]'); await sleep(50);
+      while (!q('#overlay .swap')) await sleep(10);
+      click('[data-action="swap-done"]'); await sleep(50);
+      await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
+      sw.checked = false; sw.dispatchEvent(new Event('change')); await sleep(20);
+      out.free = [sw.checked, sw.disabled, app.usePersonas];
+      click('[data-action="menu"]'); await sleep(20);
+      q('#waveSel').value = '1'; click('[data-action="play-wave"]'); await sleep(50);
+      if (askOpen()) { click('[data-action="ask-ok"]'); await sleep(50); }
+      out.wave = [sw.checked, sw.disabled, app.usePersonas, q('#setBotFields').classList.contains('set-off')];
+      await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
+      out.bots = !!app.botSettings.personas && !app.botSettings.panel;
+      click('[data-action="menu"]'); await sleep(20);
+      click('[data-action="discard-waves"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
+      click('[data-action="resume-free"]'); await sleep(50);
+      out.after = [sw.checked, sw.disabled, app.usePersonas];
+      click('[data-action="menu"]'); await sleep(20);
+      sw.checked = true; sw.dispatchEvent(new Event('change')); await sleep(20);
+      click('[data-action="discard-free"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
+      click('[data-action="close-menu"]'); await sleep(20);
+      return out;`);
+    expect('Free play: the switch turns off', JSON.stringify(r.free) === '[false,false,false]', r.free);
+    expect('in a wave the switch shows on, locked, with the bot settings dimmed; Free play keeps its off', JSON.stringify(r.wave) === '[true,true,false,true]', r.wave);
+    expect('the wave bots play their personalities', r.bots === true, r.bots);
+    expect('back in Free play the switch shows its off again', JSON.stringify(r.after) === '[false,false,false]', r.after);
 
     console.log('Skip: a Showdown between the two bots');
     r = await step(`
@@ -279,6 +312,24 @@ function expect(name, ok, detail) {
     await reload();
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
+
+    console.log('Advanced: in your Showdown, the Outside cell shows the discards as mini cards');
+    r = await step(`
+      const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
+      const want = () => { const sd = app.state.showdown; return !!sd && sd.active && sd.participants.includes(0) && !sd.pendingDiscard[0] && app.state.phase === P.SHOWDOWN_PLAY; };
+      speed('fast');
+      for (let seed = 1; seed < 40 && !want(); seed++) { KCT.App.newGame(seed); await drive(() => want() || app.state.gameOver, 60000); }
+      const out = { found: want() };
+      if (out.found) {
+        app.timerFn = null; mode('advanced'); await sleep(400);
+        const val = q('#info .out .val');
+        out.minis = val ? val.querySelectorAll('.micro, .mc').length : -1;
+        out.mine = val && val.querySelector('.micro') ? val.querySelector('.micro').getAttribute('aria-label') || val.querySelector('.micro [aria-label]').getAttribute('aria-label') : null;
+        out.count = !!q('#info .val[data-count]');
+        mode('flat');
+      }
+      return out;`);
+    expect('the Outside cell keeps the mini cards (not the rank as a count)', r.found && r.minis === 2 && !!r.mine && !r.count, r);
 
     console.log('Advanced: the play area explains itself on your move');
     r = await step(`
