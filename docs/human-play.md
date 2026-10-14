@@ -2,7 +2,7 @@
 
 A design note, not a spec. It records what we see at real tables, what we think causes it, what we measured, and what we could build. Each part says whether it is an observation, a hypothesis, a measurement or a proposal, so we can check it later.
 
-Started 2026-10-13. Updated 2026-10-13 with the measurements behind Dynamic mode. The Dynamic design itself is on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). None of it is in the app yet.
+Started 2026-10-13. Updated 2026-10-13 with the measurements behind Dynamic mode. The Dynamic design itself is on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). Updated 2026-10-14: Dynamic mode is in the app (see **Dynamic** in the README).
 
 ## Observation
 
@@ -129,7 +129,7 @@ The measurements don't close this gap. The hand-value results show how the thres
 
 ## Dynamic mode
 
-Dynamic is a proposed third mode, next to Free play and Waves. The bots ease off for players who are clearly new, and tighten back to normal as the players improve. It grew out of this note. The decisions, and the measurements behind them, are in the decision record on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). In short:
+Dynamic is a third mode, next to Free play and Waves, in the app since 2026-10-14. The bots ease off for players who are clearly new, and tighten back to normal as the players improve. It grew out of this note. The decisions, and the measurements behind them, are in the decision record on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). In short:
 
 - **It only ever makes the game easier.** The bots never play harder than normal, and never punish a new player.
 - **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game.
@@ -137,6 +137,19 @@ Dynamic is a proposed third mode, next to Free play and Waves. The bots ease off
 - **It spots gross mistakes within a game,** using the fast signals above. It judges finer skill with the slow ones, from the player's record across games plus the hands of the current game.
 - **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
 - **The game's own hand value stays as it is.** Dynamic's reads and review use the fitted estimate instead.
+
+The record left only tuning open. The first build uses these defaults, all in `Dynamic.TUNE` in `index.html`. Playtests should set them:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| Smoothing | 0.99 per sample | The profile follows about the last 100 calls, bids and Dynamic hands. |
+| Small-sample priors | 10 points, 5 calls, 10 bids | Pull a short record toward normal play: an even score share, 45% failed calls, no bid errors. |
+| Failed calls | +0.25 at most | Added to the slow target from 45% failed calls, in full at 80%. |
+| Bid errors | +0.25 at most | Added to the slow target, in full at 25% of bids. |
+| Bid-error cut-offs | below 1.2, at 4.2 or more | A call on a fitted hand value below 1.2, or a pass on one of 4.2 or more. |
+| Read pace | Shark 2, Club 3, Casual 4, Novice 6 | Weak visible hands a bot sees before its read line (see [banter.md](banter.md)). |
+
+`node tests/dynamic.js rates 80 4` measured the fast path in the build: it caught a new player who throws away their best cards within 3 visible hands in 90.9% of games, and fired on at most 1.4% of 3-hand windows for ladder rows 4, 6 and 8.
 
 ## Proposals
 

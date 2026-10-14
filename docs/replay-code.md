@@ -71,7 +71,7 @@ GAME fields:
 - **options** (rules version 3 and up): a bit field of house rules. Bit 0 (value 1), `mediatorLead`: after the Showdown discards, the mediator picks the leader with a SHOWDOWN_LEAD decision. Without it, the Showdown player who won the latest main trick leads. A record keeps it as `mediatorLead` (true or false).
   - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the game RNG when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
 - **seed**: the 32-bit game seed.
-- **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
+- **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`), 3 = Dynamic (`dynamic`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave.
 
 RESULT: a replay must reach the same winner and the same scores. If it does not, the replay fails.
@@ -126,6 +126,9 @@ Keys that the app writes now:
 | `ai.know.showdownPlans` | BOOL | Knowledge switch: plans showdowns. |
 | `ai.personas` | BOOL | At least one bot move used the bot's personality. Its settings follow from its id in SEATS. |
 | `ai.changed` | BOOL | The bots used more than one set of Settings-panel values in this game. |
+| `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Replay Seed** needs it to run the bots again; a replay of the code does not. |
+| `dyn.e0` | INT | Dynamic only: the easing at the start, in thousandths (0 = normal, 1000 = the floor). |
+| `dyn.ease` | INT | Dynamic only: the easing when the code was made, in thousandths. |
 
 The `ai.tier` to `ai.know.*` keys hold the Settings-panel values that a bot used, so you can see the settings also when `ai.tier` is `custom`. They are written only when a bot played with the panel values (Personalities off, in Free play). If the values changed during the game, the code holds the last values that a bot used, and `ai.changed` is true. A game in which every bot played as its personality has only `ai.personas`. The app writes a key only when it is true or has a value.
 
@@ -193,7 +196,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
   mediatorLead: true,         // house rule: the mediator picks the Showdown leader
   jokerFlip: null,            // house rule: the suit a turned-up Joker takes ('S', 'D', 'C', 'H', 'random'), or null
   seed: 4242,
-  mode: 'waves',              // 'free', 'waves', null, or 'mode<n>'
+  mode: 'waves',              // 'free', 'waves', 'dynamic', null, or 'mode<n>'
   wave: 3,                    // or null
   seats: [null, 'vex', 'doc'],
   decisions: [

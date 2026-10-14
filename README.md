@@ -6,12 +6,13 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
 
-The menu has a card for each mode, **Free play** and **Waves**, and a row of tools. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game**. Every button stays in the same place whatever is saved or running.
+The menu has a card for each mode, **Free play**, **Dynamic** and **Waves**, and a row of tools. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game**. Every button stays in the same place whatever is saved or running.
 
 | Item | What it does |
 |---|---|
 | **Resume** (in each card) | Continues that mode's game: the one you are playing (the menu closes), or the saved one. Disabled when there is none. At launch, the last game played is the main button. |
 | **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
+| **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. |
 | **Rules** | The quick rules. **Back** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
@@ -25,18 +26,18 @@ A link with `?seed=` or `?wave=` starts that game without the menu. If that mode
 The header stays at the top of the window, and the page scrolls under it. From left to right:
 
 - **☰** opens the menu (games and Rules).
-- The title (hidden on narrow phones) and the mode: **Wave N of 18** or **Free play**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
+- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
 - **Settings** (the sliders icon).
 
-### Free play: choose seats
+### Free play and Dynamic: choose seats
 
-In Free play only, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
+In Free play and Dynamic, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
 
 - **New opponents** seats two other random opponents (a new seed), neither of the two shown.
-- **Back** (or **Esc**) does not start the game: the table empties and the menu opens. Your saved Free play game, if any, stays as it was, because a game is saved only once **Play** is pressed.
-- When you have finished a Free play game, a line shows how the latest one ended: the winner and the three scores.
+- **Back** (or **Esc**) does not start the game: the table empties and the menu opens. Your saved game of that mode, if any, stays as it was, because a game is saved only once **Play** is pressed.
+- When you have finished a game of that mode, a line shows how the latest one ended: the winner and the three scores.
 
 ## Saved games, settings and results
 
@@ -48,6 +49,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
+- **Dynamic profile** (`kct.profile`): your bidding and discards across games, which set where a Dynamic game starts (see **Dynamic**). A game where the AI played your seat adds nothing. Resetting results (`KCT.App.stats.reset()`) does not clear it.
 
 If the browser refuses to save any of these (storage full or blocked), a note says so once per page load. The data then lasts until the page closes.
 
@@ -65,6 +67,7 @@ Click the mode in the header.
 
 - **Waves: Wave tries.** Newest wave first. Each wave, its two opponents and your tries. A try is a game that counts for the wave (see **Waves**). For a cleared wave (✓), the tries are the games it took to clear it, and the number does not change after that. For the open wave that is not cleared, the tries are the games so far. Locked waves are not listed, so their opponents stay a surprise: a line says how many more waves there are. The current wave is highlighted.
 - **Free play: Free play wins.** For each of the ten bots: the Free play games you won and played with that bot at the table. Waves games do not count here.
+- **Dynamic: Dynamic wins.** The same table, for Dynamic games.
 - Progress saved before tries were kept gets a random number of tries, 1 to 4, for each cleared wave. Free play wins count from this version on.
 
 ## Settings panel
@@ -98,7 +101,7 @@ All three settings are kept after a reload. A change to **Mediator picks the Sho
 
 ### Bots
 
-All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities. The switch keeps its value for Free play.
+All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves or Dynamic game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities, and Dynamic eases each bot from its personality. The switch keeps its value for Free play.
 
 | Setting | What it does |
 |---|---|
@@ -129,7 +132,7 @@ On, the bots are weaker.
 
 ### Expert: AI thinking and knowledge
 
-These fine-tune **Skill** for every bot. With **Personalities** on, or in a Waves game, they are dimmed and do not apply.
+These fine-tune **Skill** for every bot. With **Personalities** on, or in a Waves or Dynamic game, they are dimmed and do not apply.
 
 **AI thinking.** Both settings change how long the bots think.
 
@@ -179,7 +182,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
-- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play and Waves filter everything below them. The results stay in this browser, and games where the AI played your seat are not counted.
+- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
 - **Personalities** (Settings → Bots, on by default): each bot plays its own skill tier, bid courage, Real table setting and Showdown pick. Off: every bot plays with the Bots and Advanced settings. For a personality, bid courage alone sets how loose it bids; Real table does not add its extra 0.5.
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
@@ -252,8 +255,23 @@ KCT.WAVES                          // the table above, with a purpose line for e
 KCT.App.app.wave                   // { n, open, result } for the current game
 KCT.App.stats.get()                // results per mode, table and opponent
 KCT.App.stats.reset()              // clear all results and the last games (no undo)
-KCT.App.slots.get('free')          // the saved Free play game, or null
+KCT.App.slots.get('free')          // the saved Free play game ('dynamic', 'waves'), or null
+KCT.App.newGame(undefined, undefined, { mode: 'dynamic' })   // a new Dynamic game
+KCT.App.profile.get()              // the Dynamic profile
+KCT.App.app.dyn.e                  // the easing of the running Dynamic game: 0 (normal) to 1 (the floor)
 ```
+
+## Dynamic
+
+A mode for new players: the bots ease off while you learn, and tighten back to normal as you improve. They never play harder than their own personalities. The design and the measurements behind it are on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117) and in [docs/human-play.md](docs/human-play.md).
+
+- **Opponents:** two random bots, as in Free play, with the same seat dialog.
+- **What eases:** strength only. Mainly fewer hunches; then the knowledge switches go off together; near the floor, more brain farts. A bot's style (bid courage, Real table, Showdown pick) never changes, so each bot still plays like itself. Both bots use the same easing amount. At most, each bot eases to the floor: 1 hunch, no knowledge, 60% brain farts.
+- **What the bots read during a game:** only what the table saw. After each hand, a hand where you were neither caller nor receiver shows all 7 cards you kept, because you played them. Weak hands there (2 of the last 3) ease the bots off fast. Your score share and your failed calls ease them slowly. A bot may say so, in its own words, once a game.
+- **Bluffing stays a real tactic.** The bots read your bids as they always do, in every mode.
+- **After a game:** the app reviews your discards and bids with the whole deal, and updates your profile (`kct.profile`). The next Dynamic game starts from it. The review runs after the end-of-game box shows, never during play, and no bot reads it. Games from every mode feed it; your score share counts only from Dynamic games. Games where the AI played your seat never count.
+- **Replay Seed** plays the same game again from the profile that the game started from. The replay code keeps that starting point in its META (see [docs/replay-code.md](docs/replay-code.md), 4.4).
+- **Results:** Dynamic has its own results. Dynamic wins never clear or open waves.
 
 ## AI plays your seat
 
@@ -267,7 +285,7 @@ The hand-over is for that game only. The next game starts with you in your seat,
 
 The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
 
-The seed is one 32-bit number. It sets the bots (Free play), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
+The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 
 The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). The format holds at least 20 hands with a showdown in each hand (about 2,850 characters). Codes from the first release (`KCT1-`) still read.
 

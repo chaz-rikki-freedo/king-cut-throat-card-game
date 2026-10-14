@@ -49,3 +49,22 @@ The **Your win** column in the README shows how hard each bot is on a human-styl
 | Lou | "Pass. Sorry." · "Oh no. Trump." · "Wait, I won?" |
 | Kit | "Is that good?" · "Which one's trump?" · "My turn? Oh!" |
 | Tex | "Deal 'em again." · "Called it. Lost it." · "Pass? Never heard of it." |
+
+## Read lines (Dynamic)
+
+In Dynamic mode, each bot has one line about what it read at the table (issue #117, decisions 3 and 10). It shows in the Latest Scroll, once a game, while the fast path holds: the bot has seen its **read pace** of weak hands, played out where the whole table could see them. A line is only about what the table saw. It never admits that a bot eases off, and never mentions a discard.
+
+Read pace follows the tier: Sharks notice soonest, Novices barely notice. The lines and paces are a first draft for playtests (`readPace` and `readLine` in `PERSONAS`).
+
+| Bot | Read pace (weak hands) | Line |
+|---|---|---|
+| Vex | 2 | "Thin hand again. I see it." |
+| Doc | 2 | "Light cards, two hands running. Noted." |
+| Mei | 2 | "Not much trump in those seven. I counted." |
+| Ace | 3 | "Cards not falling your way, huh?" |
+| Viv | 3 | "Slim pickings on your side." |
+| Gus | 4 | "Rough deal, pal. Happens to me all the time!" |
+| Zen | 4 | "Lean hands. The cards will turn." |
+| Lou | 6 | "Your cards look like mine. Oh no." |
+| Kit | 6 | "Are your cards bad too?" |
+| Tex | 6 | "Bad cards? Call anyway, that's my motto." |
