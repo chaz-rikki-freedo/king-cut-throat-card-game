@@ -52,6 +52,7 @@ button{font:inherit;color:inherit}
 .mode-chip{font-size:0.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:0.1875rem 0.625rem;border-radius:62.4375rem;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
 .mode-chip.waves{background:var(--gold);color:var(--gold-ink)}
 .mode-chip.free{background:var(--accent);color:#07233a}
+.mode-chip.dynamic{background:#b9a3ff;color:#1c1240}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
 button.mode-chip:hover{filter:brightness(1.1)}
 button.mode-chip:focus-visible{outline:0.125rem solid var(--ink);outline-offset:0.125rem}
@@ -792,7 +793,7 @@ body.adv .tag .short{display:none}
       <div class="set-card" id="setPersonaRow">
         <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
       </div>
-      <p class="k-hint set-note" id="setWaveNote" hidden>Waves always use their personalities. These settings apply to Free play.</p>
+      <p class="k-hint set-note" id="setWaveNote" hidden>Waves and Dynamic always use their personalities. These settings apply to Free play.</p>
       <h3 class="set-head">Every bot</h3>
       <div class="set-card" id="setBotFields">
         <div class="set-row"><span class="set-text"><label class="set-name" for="setTier">Skill</label><span class="set-desc">How well the bots play. Stronger bots think longer.</span></span>
@@ -860,7 +861,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'a0b8284', date: '2026-10-13' });
+const BUILD = Object.freeze({ commit: 'e556ecf', date: '2026-10-13' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -1773,9 +1774,9 @@ const Replay = (() => {
      An even tag is optional: a reader that does not know it skips it (and keeps it on re-encode). */
   const TAG = Object.freeze({ GAME: 1, DECISIONS: 3, SEATS: 2, RESULT: 4, FLAGS: 6, TIME: 8, META: 10 });
   const KNOWN_TAGS = new Set(Object.values(TAG));
-  /* Mode numbers in a code: 1 = free, 2 = waves (docs/replay-code.md). The order is part of the format:
+  /* Mode numbers in a code: 1 = free, 2 = waves, 3 = dynamic (docs/replay-code.md). The order is part of the format:
      add a new mode at the end and never change the order. This is not the global MODES list. */
-  const REPLAY_MODES = Object.freeze(['free', 'waves']);
+  const REPLAY_MODES = Object.freeze(['free', 'waves', 'dynamic']);
   const FLAG = Object.freeze({ assisted: 1 });
   /* House rules, a bit field at the end of GAME (rules version 3 and up). Bits 1-3 (rules version 4 and up) hold
      jokerFlip as a number: 0 = off (redeal), then JOKER_FLIP_CODES. The order is part of the format. */
@@ -2164,18 +2165,23 @@ function buildView(state, seat) {
    5b. PERSONALITIES — ten named bots. Each one is a skill tier, a bid
    courage and the Real table switch. The color marks the name on the board
    and in the log. Art is in PERSONA_ART near the end of the script.
+   Dynamic mode (issue #117, decisions 3 and 10): readPace is how many weak
+   hands a bot must see at the table before it says readLine, its line about
+   what it read. Sharks notice quickly; Novices barely notice. It sets only
+   when the line shows, never the easing. A line is only about what the table
+   saw, and never admits that a bot eases off.
    --------------------------------------------------------------------- */
 const PERSONAS = Object.freeze([
-  { id: 'vex', name: 'Vex', color: '#ff7a7a', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "You won't read me.", hint: 'Calls on less than you think.' },
-  { id: 'doc', name: 'Doc', color: '#9db0ff', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.' },
-  { id: 'ace', name: 'Ace', color: '#5fdc8f', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', quote: 'Feeling lucky?', hint: 'Likes to push the bidding.' },
-  { id: 'mei', name: 'Mei', color: '#ff9fd0', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.' },
-  { id: 'gus', name: 'Gus', color: '#5cb8ff', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.' },
-  { id: 'lou', name: 'Lou', color: '#ffad5c', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.' },
-  { id: 'viv', name: 'Viv', color: '#c99bff', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.' },
-  { id: 'tex', name: 'Tex', color: '#d9a874', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.' },
-  { id: 'kit', name: 'Kit', color: '#d8e45a', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', quote: 'Is it my turn?', hint: 'Still learning the table.' },
-  { id: 'zen', name: 'Zen', color: '#cfd8dc', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.' }
+  { id: 'vex', name: 'Vex', color: '#ff7a7a', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
+  { id: 'doc', name: 'Doc', color: '#9db0ff', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
+  { id: 'ace', name: 'Ace', color: '#5fdc8f', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
+  { id: 'mei', name: 'Mei', color: '#ff9fd0', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
+  { id: 'gus', name: 'Gus', color: '#5cb8ff', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
+  { id: 'lou', name: 'Lou', color: '#ffad5c', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
+  { id: 'viv', name: 'Viv', color: '#c99bff', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
+  { id: 'tex', name: 'Tex', color: '#d9a874', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
+  { id: 'kit', name: 'Kit', color: '#d8e45a', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
+  { id: 'zen', name: 'Zen', color: '#cfd8dc', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
@@ -2268,7 +2274,7 @@ function createWaveProgress(store, rand) {
    --------------------------------------------------------------------- */
 /* Change SAVE_FORMAT when a saved Engine state from an older version can no longer be resumed. */
 const SAVE_FORMAT = 1;
-const MODES = Object.freeze(['waves', 'free']);
+const MODES = Object.freeze(['waves', 'free', 'dynamic']);
 /* While StorageGate.locked is true, the app writes nothing to localStorage. A backup import
    locks it, so a timer or a save cannot overwrite the imported data before the page reloads. */
 const StorageGate = { locked: false };
@@ -2350,6 +2356,8 @@ const LOG_SAVE_MAX = 1500;
      A Waves game must seat that wave's West and East, and it counts for the wave only if the
      wave is open now (an open wave never locks again, so a save cannot open a locked wave).
    - The bot settings are read through AI.config, which keeps only valid values.
+   - A Dynamic game must hold the profile snapshot it started from (see DYNAMIC), and that snapshot must replay the
+     game to its saved point; its easing is then worked out again from the game's moves, never read from the save.
    - The log is kept as text lines: [text, classes]. An older save kept it as HTML; its text
      is read with DOMParser, which runs no scripts, and the HTML itself is not kept. */
 function cleanSlot(mode, s) {
@@ -2376,8 +2384,11 @@ function cleanSlot(mode, s) {
   if (mode === 'waves' && (personas[1] !== WAVES[waveN - 1].west || personas[2] !== WAVES[waveN - 1].east)) return null;
   const b = s.ai && typeof s.ai === 'object' ? s.ai : {};
   const panel = b.panel && typeof b.panel === 'object' ? AI.config(AI.DEFAULT_CONFIG, b.panel) : null;
+  const dynamic = mode === 'dynamic' ? Dynamic.cleanSnapshot(s.dynamic) : null;
+  if (mode === 'dynamic' && !dynamic) return null;
+  if (dynamic) { try { Dynamic.trace(dynamic, state); } catch (e) { return null; } }
   return {
-    format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas,
+    format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas, dynamic,
     wave: { n: waveN, open: w.open === true && Waves.isUnlocked(waveN) }, assisted: s.assisted === true, autoplay: s.autoplay === true,
     swapDone: s.swapDone !== false, log: cleanLog(s.log),
     ai: { personas: b.personas === true, panel: panel && { thinking: panel.thinking, knowledge: panel.knowledge, style: panel.style }, changed: b.changed === true }
@@ -2404,7 +2415,7 @@ function cleanLog(log) {
 function createSlots(store) {
   const js = jsonStore(store);
   const raw = js.load();
-  const slots = { waves: null, free: null };
+  const slots = { waves: null, free: null, dynamic: null };
   const lost = [];
   if (raw && typeof raw === 'object') {
     for (const m of MODES) {
@@ -2415,7 +2426,7 @@ function createSlots(store) {
     }
   }
   let last = raw && MODES.includes(raw.last) && slots[raw.last] ? raw.last : null;
-  const write = () => js.save({ waves: slots.waves, free: slots.free, last });
+  const write = () => js.save({ waves: slots.waves, free: slots.free, dynamic: slots.dynamic, last });
   if (lost.length) write();
   return Object.freeze({
     get: m => slots[m] || null,
@@ -3342,6 +3353,343 @@ const AI = (() => {
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
     THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
   });
+})();
+
+/* ---------------------------------------------------------------------
+   6b. DYNAMIC — the mode whose bots ease off for a new player (issue #117,
+   decision record of 2026-10-13). It only ever makes the game easier:
+   - The easing e runs from 0 (each bot plays as its own personality) to
+     1 (the floor: 1 hunch, no knowledge, 60% brain farts). A bot never
+     plays stronger than its own personality on any dial, and its style
+     (courage, Real table, Showdown pick) never changes.
+   - A game starts from a snapshot of the profile (kct.profile). After each
+     hand, the read of the player (what the table could see) sets a target,
+     and e closes 50% of the gap when easing off, 15% when tightening back.
+     The game's own moves and the snapshot set e, so Replay Seed with the
+     same snapshot plays the same game.
+   - After a game, a review with the whole deal updates the profile. It
+     never runs during play, and no bot reads it.
+   The bots keep AI.handValue. The reads and the review use the fitted
+   estimate (tests/data/handvalue-fit.json), which predicts tricks better.
+   --------------------------------------------------------------------- */
+/**
+ * @typedef {{ me: number, all: number }} DynShare
+ * @typedef {{ n: number, failed: number }} DynCalls
+ * @typedef {{ n: number, errors: number }} DynBids
+ * @typedef {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, mark: boolean }} DynSnapshot
+ */
+const Dynamic = (() => {
+  const R = Rules, P = Engine.P, C = Engine.C;
+  /* The fitted hand estimate: AI.handValue's features, with the weights from tests/data/handvalue-fit.json.
+     tests/dynamic.js checks it against that file. */
+  const FIT = Object.freeze({
+    trump: Object.freeze({ 18: 1.24, 17: 0.77, 16: 0.55, 14: 0.36, 13: 0.25, 12: 0.06, 10: 0.06, 9: 0.05, 8: 0.01, 7: 0.03 }),
+    extraTrump: 0.7, offA: 0.59, offK_A: -0.12, offK_2: 0.12, offK_1: 0.04, offQ_AK: -0.16, offQ: 0.03, offLow: -0.05,
+    void_t2: 0.3, single_t3: 0.02, kTrump: 0.82, kOff_A: 0.26, kOff: 0.15
+  });
+  /* The easing ladder (measured against two Casual bots): [hunches, knowledge on, brain farts %]. Row 8 is the floor. */
+  const LADDER = Object.freeze([[40, true, 0], [20, true, 0], [10, true, 0], [5, true, 0], [5, false, 0], [3, false, 0], [3, false, 60], [2, false, 60], [1, false, 60]]);
+  const FLOOR = LADDER.length - 1, KNOW_ROW = 4, FARTS_ROW = 6, FLOOR_SKILL = 0.4;
+  /* The row that matches each tier's measured strength. */
+  const START_ROW = Object.freeze({ shark: 0, club: 1, casual: 4, novice: 6 });
+  const KNOWLEDGE_OFF = Object.freeze({ bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false });
+  /* Decision 19. WEAK: a fitted value below this at bid time is a weak hand. EASE_UP and EASE_DOWN: the share of the
+     gap to the target that e closes after a hand. LET_GO: visible hands in a row without a trigger before the fast
+     path lets go. LOSS: a discard loss above this is a gross mistake. PROFILE_HANDS: the 100 in w = h / (h + 100). */
+  const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 100;
+  /* Tuning defaults, not owner decisions (the record leaves them to playtests):
+     - DECAY: each new sample keeps this share of the old sums, so the profile follows the last ~100 samples.
+     - Prior counts pull a small sample toward normal play: SHARE_PRIOR points at an even share (1/3),
+       FAIL_PRIOR calls at FAIL_NORMAL failed, BID_PRIOR bids with no error.
+     - The slow target adds FAIL_WEIGHT × (failed calls above FAIL_NORMAL, full at +FAIL_SPAN) and
+       BID_WEIGHT × (bid errors, full at BID_SPAN) to the score-share term.
+     - A bid error is a call with a fitted value below CALL_LOW, or a pass with one at PASS_HIGH or more. On the
+       fitted scale the bid thresholds sit at about 1.9 to 2.3, and callers win half their hands at about 3.4 to 4.0. */
+  const TUNE = Object.freeze({
+    DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
+    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2
+  });
+  const clamp01 = x => Math.min(1, Math.max(0, x));
+
+  /* ---- The fitted hand estimate ---- */
+  /** Expected tricks plus 0.9 × expected King points, with trump as given. @param {string[]} hand @param {string} trump @returns {number} */
+  function handEstimate(hand, trump) {
+    let tricks = 0, kings = 0, t = 0;
+    /** @type {Record<string, string[]>} */
+    const off = {};
+    for (const s of R.SUITS) if (s !== trump) off[s] = [];
+    for (const id of hand) {
+      if (R.isTrump(id, trump)) {
+        t++;
+        tricks += FIT.trump[R.trumpRank(id, trump)];
+        if (R.isKing(id)) kings += FIT.kTrump;
+      } else off[R.getEffectiveSuit(id, trump)].push(R.card(id).rank);
+    }
+    for (const s of Object.keys(off)) {
+      const rk = off[s], hasA = rk.includes('A'), hasK = rk.includes('K');
+      for (const r of rk) {
+        if (r === 'A') tricks += FIT.offA;
+        else if (r === 'K') {
+          if (hasA) { tricks += FIT.offK_A; kings += FIT.kOff_A; } else { tricks += rk.length >= 2 ? FIT.offK_2 : FIT.offK_1; kings += FIT.kOff; }
+        } else if (r === 'Q') tricks += hasA && hasK ? FIT.offQ_AK : FIT.offQ;
+        else tricks += FIT.offLow;
+      }
+      if (t >= 2) {
+        if (rk.length === 0) tricks += FIT.void_t2;
+        else if (rk.length === 1 && t >= 3) tricks += FIT.single_t3;
+      }
+    }
+    tricks += FIT.extraTrump * Math.max(0, t - 2);
+    return tricks + 0.9 * kings;
+  }
+  /** The estimate at the best trump, leaving out the blocked suit. @param {string[]} hand @param {string | null} [blocked] @returns {number} */
+  function bestEstimate(hand, blocked) {
+    let best = -Infinity;
+    for (const s of R.SUITS) if (s !== blocked) best = Math.max(best, handEstimate(hand, s));
+    return best;
+  }
+  /** The best estimate that any keep of n cards from the dealt hand reaches (120 keeps for 7 of 10). @param {string[]} dealt @param {number} n */
+  function bestKeep(dealt, n) {
+    let best = -Infinity;
+    const pick = /** @type {string[]} */ ([]);
+    const rec = (/** @type {number} */ i) => {
+      if (pick.length === n) { best = Math.max(best, bestEstimate(pick)); return; }
+      for (let j = i; j <= dealt.length - (n - pick.length); j++) { pick.push(dealt[j]); rec(j + 1); pick.pop(); }
+    };
+    rec(0);
+    return best;
+  }
+
+  /* ---- Easing a bot (decisions 1, 2, 8 and 17) ---- */
+  /** A personality's settings at easing e. e spreads evenly over the rows from the bot's starting row to the floor.
+      Hunches run from the bot's own value to the next rows' values; knowledge goes off as a group at row 4 (or the
+      bot's next row, if it starts there or below), brain farts rise to 60% at row 6 (likewise). On each dial the bot
+      keeps the weaker of its own value and the ladder's. Style never changes.
+      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @param {number} e @returns {AIConfig} */
+  function ease(persona, e) {
+    const own = AI.personaConfig(persona);
+    const x = clamp01(Number(e) || 0);
+    if (x === 0) return own;
+    const r0 = Object.prototype.hasOwnProperty.call(START_ROW, persona.tier) ? START_ROW[persona.tier] : 0;
+    const row = r0 + x * (FLOOR - r0);
+    const lo = Math.min(FLOOR, Math.floor(row)), hi = Math.min(FLOOR, lo + 1), f = row - lo;
+    const at = (/** @type {number} */ j) => (j === r0 ? own.thinking.worlds : /** @type {number} */ (LADDER[j][0]));
+    const hunches = Math.max(1, Math.round(at(lo) + (at(hi) - at(lo)) * f));
+    const knowOff = row >= (r0 < KNOW_ROW ? KNOW_ROW : r0 + 1);
+    const farts = row >= (r0 < FARTS_ROW ? FARTS_ROW : r0 + 1);
+    return AI.config(own, {
+      thinking: { worlds: Math.min(own.thinking.worlds, hunches), playoutSkill: farts ? Math.min(own.thinking.playoutSkill, FLOOR_SKILL) : own.thinking.playoutSkill },
+      knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge
+    });
+  }
+
+  /* ---- The profile (kct.profile) and the snapshot a game starts from ---- */
+  const num = (/** @type {any} */ x) => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : 0);
+  const blankProfile = () => ({
+    v: 1, hands: 0, games: 0,
+    /* Decayed sums. share: points won by you and by everyone (Dynamic games only). calls: your calls, the failed ones
+       and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss. */
+    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 },
+    /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
+    habits: { calls: 0, made: 0, value: 0 },
+    /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
+    mark: false, at: /** @type {number | null} */ (null)
+  });
+  /** A profile as the app can trust it (it can come from a backup). @param {any} x */
+  function cleanProfile(x) {
+    const p = blankProfile();
+    if (!x || typeof x !== 'object' || x.v !== 1) return p;
+    const o = (/** @type {any} */ y) => (y && typeof y === 'object' ? y : {});
+    p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
+    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits);
+    p.share = { me: num(s.me), all: Math.max(num(s.all), num(s.me)) };
+    p.calls = { n: num(c.n), failed: Math.min(num(c.failed), num(c.n)), value: num(c.value) };
+    p.bids = { n: num(b.n), errors: Math.min(num(b.errors), num(b.n)) };
+    p.discards = { n: num(d.n), loss: num(d.loss) };
+    p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
+    p.mark = x.mark === true;
+    p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
+    return p;
+  }
+  /** The part of the profile that a game starts from, and that Replay Seed needs. @param {any} profile @returns {DynSnapshot} */
+  function snapshotOf(profile) {
+    const p = cleanProfile(profile);
+    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, mark: p.mark };
+  }
+  /** A stored snapshot (a saved game or a replay code), or null when it is not one. @param {any} x @returns {DynSnapshot | null} */
+  function cleanSnapshot(x) {
+    if (!x || typeof x !== 'object' || !x.share || !x.calls || !x.bids || typeof x.mark !== 'boolean' || !Number.isInteger(x.h) || x.h < 0) return null;
+    const ok = (/** @type {any} */ y) => typeof y === 'number' && isFinite(y) && y >= 0;
+    if (![x.share.me, x.share.all, x.calls.n, x.calls.failed, x.bids.n, x.bids.errors].every(ok)) return null;
+    if (x.share.me > x.share.all || x.calls.failed > x.calls.n || x.bids.errors > x.bids.n) return null;
+    return { h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors }, mark: x.mark };
+  }
+
+  /* ---- The slow path (decision 19): score share, failed calls and bid errors, weighted by the hands on record ---- */
+  /** @param {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids }} x @returns {number} */
+  function slowTarget(x) {
+    const T = TUNE;
+    const share = (x.share.me + T.SHARE_EVEN * T.SHARE_PRIOR) / (x.share.all + T.SHARE_PRIOR);
+    const fail = (x.calls.failed + T.FAIL_NORMAL * T.FAIL_PRIOR) / (x.calls.n + T.FAIL_PRIOR);
+    const errors = x.bids.errors / (x.bids.n + T.BID_PRIOR);
+    const e = clamp01((T.SHARE_EVEN - share) / (T.SHARE_EVEN - T.SHARE_FULL)) +
+      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN);
+    return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
+  }
+  /** The easing a game starts at: 1 when the profile is marked, else w × e_profile. @param {DynSnapshot} snap */
+  const startEase = snap => (snap.mark ? 1 : slowTarget(snap));
+
+  /* ---- The read of a hand (decisions 5 and 20) ---- */
+  /* The phases where a hand has ended (its points are in), before the next deal. A game that ends mid-hand has no read. */
+  const HAND_ENDS = /** @type {readonly string[]} */ (Object.freeze([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED]));
+  /** Whether an action ended a hand: its events, and the phase after it. @param {{ type: string, outcome?: string }[]} events @param {{ phase: string }} after */
+  const handEnded = (events, after) => HAND_ENDS.includes(after.phase) && events.some(e => (e.type === 'HAND_SCORED' && e.outcome !== 'SHOWDOWN') || e.type === 'SHOWDOWN_SCORED' || e.type === 'HAND_ABANDONED');
+  /** What the table could see of seat me's hand once it ended. v is a view (a bot's: it holds nothing hidden that the
+      read uses). The hand is visible when me was neither caller nor receiver: then the 7 cards played in the main
+      tricks are the 7 kept at bid time. A caller is always in the exchange, so a call never makes a hand visible.
+      @param {any} v @param {number} me */
+  function readHand(v, me) {
+    const out = { visible: false, value: /** @type {number | null} */ (null), called: v.caller === me, failed: false, gain: [0, 0, 0] };
+    const main = Engine.tricksOf(v).main;
+    if (v.caller !== null && v.caller !== me && v.receiver !== me && main.length === C.MAIN_TRICKS) {
+      const kept = main.map(t => t.find(x => x.player === me)).filter(Boolean).map(x => x.card);
+      if (kept.length === C.MAIN_TRICKS) { out.visible = true; out.value = bestEstimate(kept); }
+    }
+    const hs = v.handSummary;
+    if (out.called) out.failed = !hs || hs.outcome === 'SHOWDOWN' || hs.winner !== me;
+    if (v.handStats) out.gain = v.handStats.pts.map(p => Math.max(0, p.king + p.hand + p.showdown));
+    return out;
+  }
+
+  /* ---- The easing during a game (decisions 4, 7b and 19) ---- */
+  /** Starts the easing of one game from its snapshot. hand(view) takes each ended hand, in order, and moves e.
+      @param {DynSnapshot | null} snapshot */
+  function tracker(snapshot) {
+    const snap = cleanSnapshot(snapshot) || snapshotOf(null);
+    const D = TUNE.DECAY;
+    const t = {
+      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids,
+      e0: startEase(snap), e: startEase(snap), target: startEase(snap),
+      /* Visible hands this game: weak (true) or not. fast: the fast path holds; quiet: visible hands since it fired. */
+      visible: /** @type {boolean[]} */ ([]), fast: false, quiet: 0, hands: 0,
+      /** @param {any} v the view after an ended hand */
+      hand(v) {
+        const r = readHand(v, 0);
+        t.hands++; t.h++;
+        const all = r.gain[0] + r.gain[1] + r.gain[2];
+        if (all > 0) { t.share = { me: t.share.me * D + r.gain[0], all: t.share.all * D + all }; }
+        if (r.called) t.calls = { n: t.calls.n * D + 1, failed: t.calls.failed * D + (r.failed ? 1 : 0) };
+        if (r.visible) {
+          t.visible.push(/** @type {number} */ (r.value) < WEAK);
+          const fire = t.visible.slice(-3).filter(Boolean).length >= 2;
+          if (fire) { t.fast = true; t.quiet = 0; } else if (t.fast && ++t.quiet >= LET_GO) t.fast = false;
+        }
+        t.target = t.fast ? 1 : slowTarget(t);
+        t.e += (t.target > t.e ? EASE_UP : EASE_DOWN) * (t.target - t.e);
+        return r;
+      },
+      /** The weak visible hands so far: a bot's read pace counts them. */
+      get weakSeen() { return t.visible.filter(Boolean).length; }
+    };
+    return t;
+  }
+  /** Replays a game from its decisions and returns its tracker at the game's current point.
+      @param {DynSnapshot | null} snapshot @param {GameState} state */
+  function trace(snapshot, state) {
+    const t = tracker(snapshot);
+    const rec = Replay.fromState(state);
+    if (!rec) throw new Error('the game has no decision list');
+    rec.result = null;
+    const cur = Replay.cursor(rec);
+    for (let step; cur.steps < state.version && (step = cur.step());) {
+      if (handEnded(step.events, cur.state)) t.hand(buildView(cur.state, 1));
+    }
+    if (cur.steps !== state.version) throw new Error('the game does not replay to its saved point');
+    return t;
+  }
+
+  /* ---- The post-game review (decision 18) ---- */
+  /** Reviews seat me's discards and bids in a finished game, with the whole deal rebuilt from the seed and the
+      decisions. Null for a game that is not finished (or does not replay): a review never runs during play.
+      @param {any} rec a replay record @param {number} [me] */
+  function review(rec, me = 0) {
+    if (!rec || !rec.result || !rec.result.finished) return null;
+    const hands = [];
+    let h = null;
+    try {
+      const cur = Replay.cursor(rec);
+      for (;;) {
+        const s = cur.state, phase = s.phase, mine = s.hands[me].slice();
+        /* The suit the turned card offers: round 1 bids on it, round 2 cannot name it. */
+        const turned = s.flippedId ? R.turnedSuit(s.flippedId, s.jokerSuit) : null;
+        const step = cur.step();
+        if (!step) break;
+        const a = step.action, st = cur.state;
+        if (a.type === 'DEAL') { h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0] }; hands.push(h); }
+        if (h && a.player === me) {
+          if (a.type === 'DISCARD' && phase === P.DISCARD) h.loss = Math.max(0, bestKeep(mine, mine.length - a.cards.length) - bestEstimate(mine.filter(id => !a.cards.includes(id))));
+          if (a.type === 'BID') {
+            const v = handEstimate(mine, /** @type {string} */ (turned));
+            h.bids.push(a.accept ? v < TUNE.CALL_LOW : v >= TUNE.PASS_HIGH);
+            if (a.accept) h.callValue = v;
+          }
+          if (a.type === 'NAME') {
+            const v = a.suit ? handEstimate(mine, a.suit) : bestEstimate(mine, turned);
+            h.bids.push(a.suit ? v < TUNE.CALL_LOW : v >= TUNE.PASS_HIGH);
+            if (a.suit) h.callValue = v;
+          }
+        }
+        if (h && (handEnded(step.events, st) || st.gameOver) && !h.done) {
+          h.done = true;
+          const r = readHand(buildView(st, (me + 1) % 3), me);
+          /* A game can end mid-hand (a King point reaches 10): a call then has no outcome. */
+          h.called = r.called && !!st.handSummary;
+          h.failed = r.failed;
+          h.gain = r.gain;
+          if (!h.called) h.callValue = null;
+        }
+      }
+    } catch (e) { return null; }
+    const done = hands.filter(x => x.done);
+    const losses = done.map(x => x.loss);
+    let marked = false;
+    for (let i = 2; i < losses.length; i++) if ([losses[i], losses[i - 1], losses[i - 2]].filter(x => x !== null && x > LOSS).length >= 2) marked = true;
+    return { hands: done, marked };
+  }
+  /** The profile after one reviewed game. Score share counts only Dynamic games (decision 13).
+      @param {any} profile @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+  function addGame(profile, rv, mode, at) {
+    const p = cleanProfile(profile), D = TUNE.DECAY;
+    for (const h of rv.hands) {
+      p.hands++;
+      if (h.loss !== null) p.discards = { n: p.discards.n * D + 1, loss: p.discards.loss * D + h.loss };
+      for (const err of h.bids) p.bids = { n: p.bids.n * D + 1, errors: p.bids.errors * D + (err ? 1 : 0) };
+      if (h.called) {
+        const v = h.callValue === null ? 0 : h.callValue;
+        p.calls = { n: p.calls.n * D + 1, failed: p.calls.failed * D + (h.failed ? 1 : 0), value: p.calls.value * D + v };
+        p.habits = { calls: p.habits.calls + 1, made: p.habits.made + (h.failed ? 0 : 1), value: p.habits.value + v };
+      }
+      const all = h.gain[0] + h.gain[1] + h.gain[2];
+      if (mode === 'dynamic' && all > 0) p.share = { me: p.share.me * D + h.gain[0], all: p.share.all * D + all };
+    }
+    p.games++;
+    p.mark = rv.marked;
+    p.at = at || Date.now();
+    return p;
+  }
+  /** kct.profile. A missing or broken store reads as a blank profile. @param {{ get(): string | null, set(text: string): void }} store */
+  function profileStore(store) {
+    const js = jsonStore(store);
+    let p = cleanProfile(js.load());
+    return Object.freeze({
+      get: () => JSON.parse(JSON.stringify(p)),
+      /** @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+      add(rv, mode, at) { p = addGame(p, rv, mode, at); js.save(p); return JSON.parse(JSON.stringify(p)); },
+      reset() { p = blankProfile(); js.save(p); }
+    });
+  }
+
+  return Object.freeze({ FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4644,8 +4992,12 @@ const App = (() => {
   const UI_MODES = { advanced: { advanced: true }, normal: { advanced: true }, flat: { advanced: false }, guided: { advanced: true } };
   const app = {
     state: null,
-    /* mode: 'waves', 'free', or null when no game is running (the empty table). */
+    /* mode: 'waves', 'free', 'dynamic', or null when no game is running (the empty table). */
     mode: null,
+    /* Dynamic only: the game's easing (Dynamic.tracker), from the snapshot it started from. Kept after the game ends,
+       for Replay Seed. said: the bots that have said their read line this game (never saved: a line shows once). */
+    dyn: /** @type {any} */ (null),
+    said: /** @type {Record<number, boolean>} */ ({}),
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* uiMode: Settings → Game → Interface (UI_MODES). advanced: true while that mode draws the Advanced UI.
        memory: Table memory, what every player has seen this hand. All are kept. */
@@ -4678,6 +5030,8 @@ const App = (() => {
   const slots = createSlots(localStore('kct.slots'));
   const stats = createStats(localStore('kct.stats'));
   const replays = createReplays(localStore('kct.replays'));
+  /* Dynamic mode's profile (kct.profile): set only by the review after a game. No bot reads it. */
+  const profile = Dynamic.profileStore(localStore('kct.profile'));
   const settingsStore = jsonStore(localStore('kct.settings'));
 
   /* Seats two personalities (West, East) and gives the table their names and colors. */
@@ -4694,9 +5048,12 @@ const App = (() => {
 
   /* The two personalities that a Free play seed seats: [West, East]. */
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
-  /* wave (optional): play that wave's table. Without it, the game is Free play and the seed picks the table. */
-  function newGame(seed, wave) {
+  /* wave (optional): play that wave's table. Without it, the seed picks the table: Free play, or Dynamic with
+     opts.mode 'dynamic'. opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
+     game's); without it, the profile now. */
+  function newGame(seed, wave, opts) {
     clearTimer();
+    runReview();
     /* The AI seat never carries over: each new game starts with you in your seat. */
     app.ui.autoplay = false;
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
@@ -4704,7 +5061,9 @@ const App = (() => {
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
     const w = Waves.get(wave);
     const pool = w ? [w.west, w.east] : seedTable(s);
-    app.mode = w ? 'waves' : 'free';
+    app.mode = w ? 'waves' : opts && opts.mode === 'dynamic' ? 'dynamic' : 'free';
+    app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
+    app.said = {};
     app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
     app.seatSwapPending = !w && !app.ui.autoplay;
@@ -4722,7 +5081,7 @@ const App = (() => {
     hideUpdateNote();
     const setSeed = $('setSeed');
     if (setSeed) setSeed.textContent = String(s);
-    addLog((w ? 'Wave ' + w.n + ': ' : 'Free play: ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
+    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
     /* Free play: you choose seats first (needsSwap). The dealer is drawn after, when Play schedules START_GAME. */
     if (app.seatSwapPending) { schedule(); return; }
     act({ type: 'START_GAME' });
@@ -4731,7 +5090,9 @@ const App = (() => {
   /* The empty table: no game runs, but Rules, Settings, profiles and the menu work. */
   function enterIdle() {
     clearTimer();
+    runReview();
     app.mode = null;
+    app.dyn = null;
     app.wave = { n: null, wasOpenAtStart: false, result: null };
     app.ui.autoplay = false;
     app.seatSwapPending = false;
@@ -4754,6 +5115,7 @@ const App = (() => {
     if (!res.ok) { draw([]); return res; }
     if (app.state.gameOver && res.events.some(e => e.type === 'GAME_ENDED')) finishGame();
     for (const e of res.events) narrate(e);
+    if (app.dyn && Dynamic.handEnded(res.events, app.state)) dynamicHand();
     draw(res.events);
     /* schedule draws again (for the Skip button): it gets the events too, so the card and score animations stay. */
     schedule(res.events);
@@ -4761,15 +5123,53 @@ const App = (() => {
     return res;
   }
 
-  /* The running (or just finished) game as a replay code. Null with no game, or for a game
+  /* Dynamic: a hand has ended. The table's read moves the easing (one amount for both bots). A bot that has now seen
+     its read pace of weak hands says its read line, once a game. The line is about what the table saw, never about
+     easing; it shows only while the fast path holds. */
+  function dynamicHand() {
+    const t = app.dyn;
+    t.hand(buildView(app.state, 1));
+    Logger.log('DYNAMIC_EASE', { hand: handNo(app.state), e: Math.round(t.e * 1000) / 1000, target: Math.round(t.target * 1000) / 1000, fast: t.fast });
+    if (!t.fast) return;
+    for (const p of [1, 2]) {
+      const x = PERSONA_BY_ID[app.ui.personas[p]];
+      if (!x || app.said[p] || t.weakSeen < x.readPace) continue;
+      app.said[p] = true;
+      addLog(x.name + ': “' + x.readLine + '”', 'ind');
+    }
+  }
+
+  /* The running (or just finished) game as a replay record. Null with no game, or for a game
      resumed from a save made before decisions were kept. endedAt (ms) is set for a finished game.
-     Free-form facts go in meta (see docs/replay-code.md): here, the AI settings of the game. */
-  function replayCode(endedAt) {
-    const rec = app.mode && app.state && Replay.fromState(app.state, {
+     Free-form facts go in meta (see docs/replay-code.md): here, the AI settings of the game, and in Dynamic, its
+     starting snapshot and easing. */
+  function replayRecord(endedAt) {
+    return app.mode && app.state ? Replay.fromState(app.state, {
       mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.humanSeatWasAutoplayed, endedAt,
-      meta: botMeta()
-    });
+      meta: Object.assign(botMeta(), app.mode === 'dynamic' && app.dyn ? dynamicMeta(app.dyn) : {})
+    }) : null;
+  }
+  /** The record as a replay code, or null. @param {number} [endedAt] */
+  function replayCode(endedAt) {
+    const rec = replayRecord(endedAt);
     return rec ? Replay.encode(rec) : null;
+  }
+  /* META for a Dynamic game (docs/replay-code.md, 4.4): the snapshot it started from (Replay Seed needs it), and the
+     easing at the start and now, in thousandths. Information only: a replay code needs none of it. */
+  function dynamicMeta(t) {
+    return { 'dyn.e0': Math.round(t.e0 * 1000), 'dyn.ease': Math.round(t.e * 1000), 'dyn.snap': JSON.stringify(t.snap) };
+  }
+  /* Dynamic's post-game review (decision 18) of the game that just ended, run once after the game-over box has drawn,
+     or before anything else starts. A game where the AI played your seat is never reviewed. */
+  let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
+  function runReview() {
+    const job = pendingReview;
+    pendingReview = null;
+    if (!job) return;
+    const rv = Dynamic.review(job.rec);
+    if (!rv) return;
+    const p = profile.add(rv, job.mode, job.rec.endedAt || undefined);
+    Logger.log('DYNAMIC_REVIEW', { mode: job.mode, hands: rv.hands.length, marked: rv.marked, profileHands: p.hands });
   }
   /* The AI settings that the bots used in this game, for the replay code META.
      personas: a bot played as its personality (its settings follow from SEATS).
@@ -4815,7 +5215,9 @@ const App = (() => {
     }
     if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
     const at = Date.now();
-    const code = replayCode(at);
+    const rec = replayRecord(at);
+    const code = rec ? Replay.encode(rec) : null;
+    pendingReview = rec && !app.humanSeatWasAutoplayed ? { rec, mode: app.mode } : null;
     if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
@@ -4823,7 +5225,7 @@ const App = (() => {
   function endButtonsHTML() {
     const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
     const menu = b('menu', 'Menu');
-    if (!inWaves()) return b('new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
+    if (!inWaves()) return b(app.mode === 'dynamic' ? 'new-dynamic-now' : 'new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
     const n = app.wave.n, won = app.state.winner === HUMAN;
     if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + b('replay-seed', 'Replay Seed') + menu;
     if (won) return b('replay-seed', 'Replay Seed') + b('menu', 'Menu', true);
@@ -4837,7 +5239,8 @@ const App = (() => {
     if (!app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX)
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX),
+      dynamic: app.dyn ? app.dyn.snap : null
     });
   }
   /* The first save that the browser refuses (full or blocked storage), for any key: the game,
@@ -4938,10 +5341,14 @@ const App = (() => {
     const s = slots.get(mode);
     if (!s) return false;
     clearTimer();
+    runReview();
     try {
       app.mode = mode;
       app.ui.scoreHold = {};
       app.state = JSON.parse(JSON.stringify(s.state));
+      /* Dynamic: the easing is worked out again from the snapshot and the game's moves. */
+      app.dyn = mode === 'dynamic' ? Dynamic.trace(s.dynamic, app.state) : null;
+      app.said = {};
       Fx.reset();
       app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, result: null };
       app.humanSeatWasAutoplayed = !!s.assisted;
@@ -5343,9 +5750,8 @@ const App = (() => {
     if (ai.length) {
       const p = ai[0];
       later(d.ai, () => {
-        const persona = personasOn() ? PERSONA_BY_ID[app.ui.personas[p]] : null;
-        const cfg = persona ? AI.personaConfig(persona) : app.ai;
-        if (p !== HUMAN) trackBotSettings(!!persona);
+        const { cfg, persona } = botConfig(p);
+        if (p !== HUMAN) trackBotSettings(persona);
         const view = buildView(app.state, p);
         /* An AI error must not stop the game. The same view gives the same error again, so each
            failure (a throw or an action that the Engine refuses) falls through to a simpler move:
@@ -5369,6 +5775,15 @@ const App = (() => {
       later(ms, () => act(sys));
     }
     draw(ev);
+  }
+
+  /* The settings an AI seat plays with: its personality's (in Dynamic, a bot's eased by the game's one easing amount;
+     the AI in your seat is never eased), or the Settings panel's when personalities are off. a: the app (a stand-in in
+     the self-test). @param {number} p @returns {{ cfg: AIConfig, persona: boolean }} */
+  function botConfig(p, a = app) {
+    const persona = personasOn(a) ? PERSONA_BY_ID[a.ui.personas[p]] : null;
+    if (!persona) return { cfg: a.ai, persona: false };
+    return { cfg: a.mode === 'dynamic' && a.dyn && p !== HUMAN ? Dynamic.ease(persona, a.dyn.e) : AI.personaConfig(persona), persona: true };
   }
 
   /* A legal action for seat p from the rules and that seat's own hand only: the last guard when the AI fails. */
@@ -5475,8 +5890,9 @@ const App = (() => {
   const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.humanSeatWasAutoplayed;
   /* Whether a game is being played: a mode is set and its game is not over. a: the app (a stand-in in the self-test). */
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
-  /* Whether the bots play their personalities: always in a wave (they set its difficulty), else as the switch says. */
-  const personasOn = (a = app) => a.usePersonas || inWaves(a);
+  /* Whether the bots play their personalities: always in a wave (they set its difficulty) and in Dynamic (it eases
+     each bot from its personality), else as the switch says. */
+  const personasOn = (a = app) => a.usePersonas || inWaves(a) || a.mode === 'dynamic';
   /* The Settings notes for the running game's house rules: note id -> its text, or '' when the setting matches. */
   function houseNotes(a = app) {
     /** @type {Record<string, string>} */
@@ -5487,23 +5903,24 @@ const App = (() => {
     }
     return out;
   }
-  /* Free play's goal on the menu: how many bots you have won a Free play game against (the results' modeOpponents). */
-  const beatenCount = (/** @type {any} */ results) => { const won = (results.modeOpponents || {}).free || {}; return PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length; };
+  /* Free play's (or Dynamic's) goal on the menu: how many bots you have won a game of that mode against (the results'
+     modeOpponents). */
+  const beatenCount = (/** @type {any} */ results, mode = 'free') => { const won = (results.modeOpponents || {})[mode] || {}; return PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length; };
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
      shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
   function syncModeUI() {
-    const waves = inWaves();
+    const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
     const chip = $('modeChip');
-    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode === 'free' ? 'Free play' : '';
+    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
     chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode;
     chip.title = waves ? 'Your tries for each wave' : 'Your wins against each opponent';
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
-    $('setPersonas').disabled = waves;
+    $('setPersonas').disabled = ownBots;
     $('setPersonas').checked = personasOn();
-    off('setPersonaRow', waves);
-    $('setWaveNote').hidden = !waves;
+    off('setPersonaRow', ownBots);
+    $('setWaveNote').hidden = !ownBots;
     off('setBotFields', personasOn());
     off('setAdvanced', personasOn());
     /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
@@ -5791,6 +6208,8 @@ const App = (() => {
       '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
     maybeOfferUpdate();
+    /* The review runs once the box has drawn, so you never wait on it. */
+    if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
   }
   function waveEndHTML() {
     if (!app.wave.n || !app.wave.result) return '';
@@ -5833,7 +6252,7 @@ const App = (() => {
        menu closes), or the saved one. */
     const card = (m, title, extra, tail, buttons) => {
       const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
-      const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', m === 'free' ? 'Two random opponents each game' : 'Clear a wave to open the next'];
+      const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', MODE_TAGLINE[m]];
       const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: main === m, disabled: !now && !st });
       /* Discard game: only on a card with a game, and quiet, so it never competes with Resume. */
       const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
@@ -5846,6 +6265,7 @@ const App = (() => {
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
     /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
     html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
+    html += card('dynamic', 'Dynamic', '', '<span class="mtail">Beaten ' + beatenCount(stats.get(), 'dynamic') + ' of ' + PERSONAS.length + '</span>', menuButton('new-dynamic', 'New game'));
     html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
       '<span class="mtail">' + p.cleared.length + ' of ' + p.total + ' cleared</span>', menuButton('play-wave', 'Play wave'));
     html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
@@ -5865,7 +6285,9 @@ const App = (() => {
   function unfinished(mode) {
     return app.mode === mode && gameOn() ? app.state : (slots.get(mode) || { state: null }).state;
   }
-  const modeName = mode => mode === 'waves' ? 'Waves' : 'Free play';
+  const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
+  /* A mode card's second line when it has no game. */
+  const MODE_TAGLINE = Object.freeze({ free: 'Two random opponents each game', dynamic: 'Random opponents who go easier while you learn', waves: 'Clear a wave to open the next' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* Resolves true when no started game would be lost, or when you agree to lose it. */
   async function confirmReplace(mode) {
@@ -5893,10 +6315,11 @@ const App = (() => {
     }
     showMenu(app.menuLaunch);
   }
-  function startMode(mode, seed, wave) {
+  /* snapshot: Dynamic's starting snapshot (Replay Seed passes the old game's). */
+  function startMode(mode, seed, wave, snapshot) {
     app.menuOpen = false;
     /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
-    newGame(seed, mode === 'waves' ? wave : undefined);
+    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot });
   }
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
@@ -6020,7 +6443,7 @@ const App = (() => {
   /* ---- Free play seat swap: offered once, before the dealer is drawn, so no one has a role or a card yet. ---- */
   function needsSwap() {
     const st = app.state;
-    return app.mode === 'free' && app.seatSwapPending && !app.ui.autoplay && st.phase === P.SETUP;
+    return (app.mode === 'free' || app.mode === 'dynamic') && app.seatSwapPending && !app.ui.autoplay && st.phase === P.SETUP;
   }
   function seatCardHTML(id, side) {
     const x = PERSONA_BY_ID[id];
@@ -6039,9 +6462,9 @@ const App = (() => {
       '<button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;
   }
-  /* One line: how your latest finished Free play game ended. */
+  /* One line: how your latest finished game of this mode (Free play or Dynamic) ended. */
   function lastGameHTML() {
-    const e = replays.list().find(x => x.mode === 'free' && x.west && x.east && x.scores && x.winner !== null);
+    const e = replays.list().find(x => x.mode === app.mode && x.west && x.east && x.scores && x.winner !== null);
     if (!e) return '';
     const name = id => escHTML(PERSONA_BY_ID[id].name);
     const who = [{ n: 'You', p: 0 }, { n: name(e.west), p: 1 }, { n: name(e.east), p: 2 }];
@@ -6059,7 +6482,7 @@ const App = (() => {
     const [, west, east] = app.ui.personas;
     let seed = RNG.freshSeed();
     for (let k = 0; k < 100 && seedTable(seed).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
-    newGame(seed);
+    newGame(seed, undefined, { mode: app.mode, snapshot: app.dyn && app.dyn.snap });
   }
   function swapPreview() {
     const [, west, east] = app.ui.personas;
@@ -6117,12 +6540,13 @@ const App = (() => {
         (locked ? '<p class="note">' + locked + (locked === 1 ? ' more wave opens' : ' more waves open') + ' as you clear them.</p>' : '') +
         '<p class="note">A try is a game that counts for the wave. A game where the AI played your seat is not a try.</p>' + close;
     }
-    const mine = (stats.get().modeOpponents.free) || {};
+    const mode = app.mode === 'dynamic' ? 'dynamic' : 'free', title = modeName(mode) + ' wins';
+    const mine = (stats.get().modeOpponents[mode]) || {};
     const rows = PERSONAS.map(x => {
       const r = mine[x.id] || { played: 0, won: 0 };
       return '<tr><td>' + who(x.id) + '</td><td class="num">' + r.won + '</td><td class="num">' + r.played + '</td></tr>';
     }).join('');
-    return '<div class="modal results" role="dialog" aria-label="Free play wins"><h2>Free play wins</h2>' +
+    return '<div class="modal results" role="dialog" aria-label="' + title + '"><h2>' + title + '</h2>' +
       '<p>Games you won against each opponent, and games you played against them.</p>' +
       '<table><tr><th>Opponent</th><th class="num">Wins</th><th class="num">Games</th></tr>' + rows + '</table>' +
       '<p class="note">A game where the AI played your seat does not count.</p>' + close;
@@ -6130,7 +6554,7 @@ const App = (() => {
   /* Your profile: your results kept in this browser (results, wave tries, the last replay codes).
      The filter scopes every part below it. Games where the AI played your seat are left out. */
   const profileUI = { mode: 'all', sort: { opp: { key: 'played', dir: -1 }, pair: { key: 'played', dir: -1 } } };
-  const PF_MODES = [['all', 'All'], ['free', 'Free play'], ['waves', 'Waves']];
+  const PF_MODES = [['all', 'All'], ['free', 'Free play'], ['dynamic', 'Dynamic'], ['waves', 'Waves']];
   const pfRate = r => r.played ? r.won / r.played : null;
   const pfPct = x => x === null ? '<span class="dim">—</span>' : Math.round(x * 100) + '%';
   function pfSorted(rows, which) {
@@ -6161,7 +6585,7 @@ const App = (() => {
     const d = new Date(at), thisYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: thisYear ? undefined : 'numeric', hour: 'numeric', minute: '2-digit' });
   };
-  const pfModeName = e => e.mode === 'waves' ? 'Wave ' + (e.wave || '?') : e.mode === 'free' ? 'Free play' : 'Game';
+  const pfModeName = e => e.mode === 'waves' ? 'Wave ' + (e.wave || '?') : e.mode === 'free' ? 'Free play' : e.mode === 'dynamic' ? 'Dynamic' : 'Game';
   /* The Last games chart: a column per game, oldest left. Column = your final score, the line = the best opponent score. */
   function pfChartHTML(games) {
     const W = 320, H = 150, L = 20, R = 4, T = 8, B = 18, n = games.length;
@@ -6200,7 +6624,7 @@ const App = (() => {
       '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><div><h2>Your profile</h2><p>Your results in this browser.</p></div></div>' +
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
-      (m !== 'free' ? tile('Waves cleared', pr.cleared.length + ' <small>of ' + pr.total + '</small>') : '') + '</div>';
+      (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.cleared.length + ' <small>of ' + pr.total + '</small>') : '') + '</div>';
     if (!tot.played && !games.length) {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
         '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
@@ -6213,6 +6637,7 @@ const App = (() => {
         games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
+    html += habitsHTML();
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
     html += '<h3>By opponent</h3><p class="pf-sub">Every game counts for both opponents at the table. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
@@ -6224,6 +6649,16 @@ const App = (() => {
     }
     return html + '<p class="pf-note">Games where the AI played your seat are not counted. The chart shows up to the last ' + REPLAYS_MAX + ' games.</p>' +
       '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+  }
+  /* Your bidding habits, from Dynamic's profile (decision 15): how often your calls are made, and your usual hand at a
+     call, as the fitted estimate of tricks and Kings. Never the easing. Every mode feeds it, so it ignores the filter. */
+  function habitsHTML() {
+    const h = profile.get().habits;
+    if (!h.calls) return '';
+    const tile = (label, value) => '<div class="pf-tile"><span>' + label + '</span><b>' + value + '</b></div>';
+    return '<h3>Your bidding</h3><p class="pf-sub">From every game you played yourself, in every mode.</p><div class="pf-tiles">' +
+      tile('Calls', h.calls) + tile('Calls made', pfPct(h.made / h.calls)) + tile('Usual hand at a call', (Math.round(h.value / h.calls * 10) / 10).toFixed(1) + ' <small>tricks</small>') + '</div>' +
+      '<p class="pf-note">A call is made when you take the most tricks without a Showdown. The usual hand counts the tricks and Kings a hand like it wins on average.</p>';
   }
   /* Draws Your profile; keepFocus puts the focus back on the control that was used. */
   function showProfile(keepFocus) {
@@ -6317,20 +6752,22 @@ const App = (() => {
       case 'menu-back': showMenu(app.menuLaunch); break;
       case 'close-menu': closeMenu(); break;
       case 'just-enter': app.menuOpen = false; $('overlay').hidden = true; enterIdle(); break;
-      case 'resume-waves': case 'resume-free': app.menuOpen = false; resumeGame(name.slice(7)); break;
+      case 'resume-waves': case 'resume-free': case 'resume-dynamic': app.menuOpen = false; resumeGame(name.slice(7)); break;
       case 'play-wave': {
         const n = Number($('waveSel').value);
         if (Waves.isUnlocked(n)) confirmReplace('waves').then(yes => yes ? startMode('waves', undefined, n) : showMenu(app.menuLaunch));
         break;
       }
-      case 'discard-free': case 'discard-waves': discardGame(name.slice(8)); break;
+      case 'discard-free': case 'discard-waves': case 'discard-dynamic': discardGame(name.slice(8)); break;
       case 'new-free': confirmReplace('free').then(yes => yes ? startMode('free') : showMenu(app.menuLaunch)); break;
+      case 'new-dynamic': confirmReplace('dynamic').then(yes => yes ? startMode('dynamic') : showMenu(app.menuLaunch)); break;
       case 'ask-ok': answerAsk(true); break;
       case 'ask-cancel': answerAsk(false); break;
       case 'new-game-now': startMode('free'); break;
+      case 'new-dynamic-now': startMode('dynamic'); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
-      case 'replay-seed': startMode(app.mode, app.state.seed, app.wave.n); break;
+      case 'replay-seed': startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined); break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
       case 'swap-back': swapBack(); break;
@@ -6462,7 +6899,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -6679,7 +7116,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, replayCode, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -7692,6 +8129,143 @@ const SelfTest = (() => {
       check('the Outside cell holds a marked count in the main hand', !!mc && !!mc.querySelector('.val[data-count]') && mc.querySelector('.val[data-count]').textContent === '12', mc ? mc.outerHTML : 'no main-hand view');
       check('in your Showdown it holds your discard as a mini card, with no count mark', !!sc && sc.querySelectorAll('.micro').length === 1 && !sc.querySelector('[data-count]'), sc ? sc.outerHTML : 'no Showdown found');
     });
+    /* --- Dynamic mode (issue #117): easing, the read, the fast path, the review and the profile. Fast and deterministic;
+       tests/dynamic.js plays real games through the controls and measures the fast path's rates. --- */
+    safeRun('dynamic', () => {
+      const DY = Dynamic, off = AI.SKILL_TIERS.novice.knowledge;
+      /* 1. Easing: never stronger than the bot's own personality, never weaker than the floor, style untouched. */
+      const bad = [];
+      for (const x of PERSONAS) {
+        const own = AI.personaConfig(x);
+        let prev = own;
+        for (let k = 0; k <= 20; k++) {
+          const c = DY.ease(x, k / 20), why = [];
+          if (c.thinking.worlds > own.thinking.worlds || c.thinking.playoutSkill > own.thinking.playoutSkill) why.push('stronger than its own');
+          if (Object.keys(own.knowledge).some(key => c.knowledge[key] && !own.knowledge[key])) why.push('knows more than its own');
+          if (c.thinking.worlds < 1 || c.thinking.playoutSkill < 0.4 - 1e-9) why.push('below the floor');
+          if (JSON.stringify(c.style) !== JSON.stringify(own.style) || c.persona !== true) why.push('style changed');
+          if (c.thinking.worlds > prev.thinking.worlds || c.thinking.playoutSkill > prev.thinking.playoutSkill || Object.keys(c.knowledge).some(key => c.knowledge[key] && !prev.knowledge[key])) why.push('stronger than at less easing');
+          if (why.length && bad.length < 5) bad.push(x.id + ' at ' + k / 20 + ': ' + why.join(', '));
+          prev = c;
+        }
+      }
+      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes, and more easing never helps', bad, []);
+      eq('easing 0 is each bot\'s own personality', PERSONAS.filter(x => JSON.stringify(DY.ease(x, 0)) !== JSON.stringify(AI.personaConfig(x))).map(x => x.id), []);
+      eq('easing 1 is the floor for every bot: 1 hunch, no knowledge, 60% brain farts',
+        PERSONAS.filter(x => { const c = DY.ease(x, 1); return c.thinking.worlds !== 1 || Math.abs(c.thinking.playoutSkill - 0.4) > 1e-9 || JSON.stringify(c.knowledge) !== JSON.stringify(off); }).map(x => x.id), []);
+      const vex = PERSONA_BY_ID.vex, half = DY.ease(vex, 0.5);
+      eq('a Shark at easing 0.5 sits at row 4 of the ladder: 5 hunches, knowledge off', [half.thinking.worlds, half.knowledge.voids, half.thinking.playoutSkill], [5, false, 1]);
+      eq('the bid thresholds are the same in every mode (decision 20)', AI.BID_THRESHOLDS, { ROUND1: 3.05, ROUND2: 2.95, ROUND2_LAST: 2.7, BID_TEMP: 0.35 });
+
+      /* 2. The read and the fast path, on hands built by hand. */
+      const weak = ['7H', '8H', '9D', '7C', '8C', '9H', '10D'], strong = ['JK', 'JS', 'JC', 'AS', 'KS', 'AH', 'AD'];
+      check('the fitted estimate: a weak hand below 2.5, a strong one far above', DY.bestEstimate(weak) < DY.WEAK && DY.bestEstimate(strong) > 5, DY.bestEstimate(weak) + ' / ' + DY.bestEstimate(strong));
+      /** A view after a hand that seat 0 played with these 7 cards. Each seat scores 1, an even share, so the slow path
+          stays at 0. o: caller, receiver, handSummary and so on. */
+      const ended = (cards, o) => {
+        const rest = R.ALL_IDS.filter(id => !cards.includes(id)), playLog = [], trickWinners = [];
+        for (let i = 0; i < 7; i++) { playLog.push({ player: 1, card: rest[2 * i] }, { player: 2, card: rest[2 * i + 1] }, { player: 0, card: cards[i] }); trickWinners.push(1); }
+        return Object.assign({ caller: 1, receiver: 2, playLog, trickWinners, showdown: null, handSummary: { outcome: 'CLEAR_WINNER', winner: 1, tricks: [0, 7, 0] },
+          handStats: { pts: [0, 1, 2].map(() => ({ king: 0, hand: 1, showdown: 0 })) } }, o || {});
+      };
+      const blank = DY.snapshotOf(null);
+      let t = DY.tracker(blank);
+      const es = [weak, weak, strong].map(h => { t.hand(ended(h)); return [Math.round(t.e * 1000) / 1000, t.fast]; });
+      eq('fast path: two weak visible hands set the target to 1; e closes half the gap each hand', es, [[0, false], [0.5, true], [0.75, true]]);
+      for (let k = 0; k < 3; k++) t.hand(ended(strong));
+      check('fast path holds through 3 quiet visible hands', t.fast && Math.abs(t.e - (1 - 0.25 * 0.5 ** 3)) < 1e-9, String(t.e));
+      const before = t.e;
+      t.hand(ended(strong));
+      check('fast path lets go after 4 visible hands in a row without a trigger', !t.fast && t.target === 0, JSON.stringify([t.fast, t.target]));
+      check('tightening back closes 15% of the gap', Math.abs(t.e - before * 0.85) < 1e-9, before + ' -> ' + t.e);
+      t = DY.tracker(blank);
+      for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 0, receiver: 1, handSummary: { outcome: 'CLEAR_WINNER', winner: 1, tricks: [1, 6, 0] } }));
+      eq('the fast path never fires on hands where the player called (decision 20)', [t.fast, t.visible.length], [false, 0]);
+      t = DY.tracker(blank);
+      for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 2, receiver: 0 }));
+      eq('a hand where the player received the turned card or the kitty is not visible either', t.visible.length, 0);
+      eq('a marked profile starts the game at full easing', DY.tracker(Object.assign({}, blank, { mark: true })).e, 1);
+
+      /* 3. Real games: the read uses only what the table saw, and replaying the moves gives the live easing. */
+      const play = (seed, discard) => {
+        const s = Engine.createGame(seed); D(s, { type: 'START_GAME' });
+        const live = DY.tracker(blank), reads = [];
+        let hidden = 0;
+        for (let g = 0; g < 6000 && !s.gameOver; g++) {
+          const ac = Engine.actors(s);
+          const a = ac.length ? (discard && ac[0] === 0 && s.phase === P.DISCARD ? discard(s) : AI.fastAction(s, ac[0])) : Engine.systemAction(s);
+          const res = D(s, a);
+          if (!res.ok) break;
+          if (DY.handEnded(res.events, s)) {
+            const r1 = DY.readHand(buildView(s, 1), 0), r2 = DY.readHand(buildView(s, 2), 0);
+            /* The hidden cards change: the outside pile (discards and the kitty swap) and seat 0's own memory of them. */
+            const x = JSON.parse(JSON.stringify(s)); x.outside.reverse(); x.outside.push(x.outside.shift()); x.memory[0].out = x.memory[0].out.slice().reverse().slice(1); x.kitty = [];
+            if (JSON.stringify(r1) !== JSON.stringify(r2) || JSON.stringify(r1) !== JSON.stringify(DY.readHand(buildView(x, 1), 0))) hidden++;
+            live.hand(buildView(s, 1));
+            reads.push(r1);
+          }
+        }
+        return { s, live, reads, hidden };
+      };
+      const g1 = play(9117);
+      eq('the read of the player is the same from either bot\'s view, and does not change when only hidden cards change', g1.hidden, 0);
+      check('a test game ended and had visible hands', g1.s.gameOver && g1.reads.some(r => r.visible), g1.reads.length + ' hands');
+      const tr = DY.trace(blank, g1.s);
+      eq('the easing worked out again from the moves equals the live easing', [tr.e, tr.hands, tr.fast], [g1.live.e, g1.live.hands, g1.live.fast]);
+
+      /* 4. The review: never before the end; a player who throws away their best cards is marked; the next game clears it. */
+      const rec1 = Replay.fromState(g1.s, { mode: 'free' });
+      const unfinished = JSON.parse(JSON.stringify(rec1)); unfinished.result.finished = false;
+      eq('the review never runs on a game that is not over', [DY.review(unfinished), DY.review(Replay.fromState(Engine.createGame(1)))], [null, null]);
+      const throwBest = s => {
+        const h = s.hands[0], best = R.SUITS.reduce((a, b) => DY.handEstimate(h, b) > DY.handEstimate(h, a) ? b : a);
+        return { type: 'DISCARD', player: 0, cards: h.slice().sort((a, b) => R.getCardStrength(b, best) - R.getCardStrength(a, best)).slice(0, Engine.C.INITIAL_DISCARD) };
+      };
+      const g2 = play(9118, throwBest);
+      const rv2 = DY.review(Replay.fromState(g2.s, { mode: 'free' })), rv1 = DY.review(rec1);
+      check('the review marks a player who throws away their best cards', !!rv2 && rv2.marked && rv2.hands.filter(h => h.loss > DY.LOSS).length >= 2, rv2 && rv2.hands.map(h => Math.round(h.loss * 10) / 10).join(' '));
+      check('the review of sound discards marks nothing', !!rv1 && !rv1.marked, rv1 && rv1.hands.map(h => Math.round(h.loss * 10) / 10).join(' '));
+      check('the thrower\'s weak hands set off the fast path within the game', g2.live.fast || g2.live.visible.filter(Boolean).length >= 2, JSON.stringify(g2.live.visible));
+      const marked = DY.addGame(null, rv2, 'free'), cleared = DY.addGame(marked, rv1, 'waves');
+      eq('a review with a trigger window sets the mark, the next review without one clears it', [marked.mark, cleared.mark, DY.snapshotOf(marked).mark], [true, false, true]);
+      eq('score share counts Dynamic games only (decision 13)', [marked.share, cleared.share], [{ me: 0, all: 0 }, { me: 0, all: 0 }]);
+      const dyn = DY.addGame(null, rv1, 'dynamic');
+      check('a Dynamic game adds to the score share', dyn.share.all > 0 && dyn.share.me <= dyn.share.all, JSON.stringify(dyn.share));
+      eq('Free play and Waves never change the slow path\'s score share', DY.addGame(dyn, rv2, 'free').share.all.toFixed(9), (dyn.share.all * 1).toFixed(9));
+      eq('a review counts every hand on record', [marked.hands, cleared.hands, marked.games, cleared.games], [rv2.hands.length, rv2.hands.length + rv1.hands.length, 1, 2]);
+      const w = h => DY.slowTarget(Object.assign({}, DY.snapshotOf(null), { h, share: { me: 0, all: 40 } }));
+      check('the slow path\'s weight grows with the hands on record: w = h / (h + 100)', w(0) === 0 && Math.abs(w(100) - 0.5 * w(1e9)) < 0.01 && w(1e9) > 0.95, [w(0), w(100), w(1e9)].join(' '));
+
+      /* 5. Stored data: a profile or snapshot from a backup is cleaned. */
+      const evil = { v: 1, hands: -3, games: 'x', share: { me: 9, all: 2 }, calls: { n: 1, failed: 5, value: NaN }, bids: { n: 2, errors: 1 }, mark: 'yes', habits: { calls: 2, made: 9, value: 1 } };
+      const cp = DY.cleanProfile(evil);
+      eq('a stored profile keeps only values that make sense', [cp.hands, cp.games, cp.share, cp.calls, cp.mark, cp.habits.made], [0, 0, { me: 9, all: 9 }, { n: 1, failed: 1, value: 0 }, false, 2]);
+      eq('a stored snapshot that is not one is refused', [DY.cleanSnapshot(null), DY.cleanSnapshot({ h: 1.5 }), DY.cleanSnapshot(Object.assign({}, blank, { share: { me: 2, all: 1 } })), DY.cleanSnapshot(blank)], [null, null, null, blank]);
+      const mem = () => { let x = null; return { get: () => x, set: v => { x = v; } }; };
+      const ps = DY.profileStore(mem());
+      ps.add(rv1, 'dynamic');
+      eq('the profile store adds a game and resets', [ps.get().games, (ps.reset(), ps.get().games)], [1, 0]);
+
+      /* 6. Saved games and replay codes. */
+      const mid = Engine.createGame(77); D(mid, { type: 'START_GAME' });
+      for (let g = 0; g < 3000 && mid.handNumber < 3; g++) { const ac = Engine.actors(mid); D(mid, ac.length ? AI.fastAction(mid, ac[0]) : Engine.systemAction(mid)); }
+      const slot = snap => ({ format: SAVE_FORMAT, state: mid, personas: [null, 'vex', 'lou'], wave: { n: null }, dynamic: snap });
+      eq('a Dynamic save keeps its snapshot; one without a snapshot is dropped', [!!cleanSlot('dynamic', slot(blank)), cleanSlot('dynamic', slot(blank)).dynamic, cleanSlot('dynamic', slot(null))], [true, blank, null]);
+      const code = Replay.encode(Replay.fromState(g1.s, { mode: 'dynamic', meta: { 'dyn.e0': 0, 'dyn.ease': 120, 'dyn.snap': JSON.stringify(blank) } }));
+      const back = Replay.decode(code);
+      eq('a replay code keeps the Dynamic mode (number 3) and its META', [back.mode, back.meta['dyn.ease'], DY.cleanSnapshot(JSON.parse(back.meta['dyn.snap']))], ['dynamic', 120, blank]);
+
+      /* 7. The app: in Dynamic both bots ease by the game's one amount, your seat's AI never; other modes as before. */
+      const A = App, dt = DY.tracker(Object.assign({}, blank, { mark: true }));
+      const mk = (/** @type {any} */ x) => Object.assign({ mode: 'dynamic', state: { gameOver: false }, usePersonas: false, wave: { n: null }, ui: { personas: ['kit', 'vex', 'gus'] }, ai: AI.DEFAULT_CONFIG, dyn: dt }, x);
+      eq('Dynamic: both bots use the same easing amount, from their own personalities', [A.botConfig(1, mk({})).cfg, A.botConfig(2, mk({})).cfg], [DY.ease(PERSONA_BY_ID.vex, 1), DY.ease(PERSONA_BY_ID.gus, 1)]);
+      eq('Dynamic: the AI in your seat plays its own personality', A.botConfig(0, mk({})).cfg, AI.personaConfig(PERSONA_BY_ID.kit));
+      eq('Dynamic always uses personalities', A.personasOn(mk({})), true);
+      eq('Free play and Waves: the bots play exactly as before', [A.botConfig(1, mk({ mode: 'free', usePersonas: true })).cfg, A.botConfig(1, mk({ mode: 'waves', wave: { n: 3 } })).cfg, A.botConfig(1, mk({ mode: 'free' })).cfg],
+        [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex), AI.DEFAULT_CONFIG]);
+      eq('read pace: Sharks notice soonest, Novices last', ['vex', 'ace', 'gus', 'lou'].map(id => PERSONA_BY_ID[id].readPace), [2, 3, 4, 6]);
+    });
+
     /* --- Truly random: fresh seeds and house rules on every run (RNG.freshSeed), so each run tries new deals. A failure
        names its seed and rules: Engine.createGame(seed, undefined, Engine.RULES_VERSION, rules) plays it again. --- */
     safeRun('random games', () => {
@@ -7842,7 +8416,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
