@@ -138,10 +138,11 @@ Dynamic is a third mode, next to Free play and Waves, in the app since 2026-10-1
 - **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
 - **The game's own hand value stays as it is.** Dynamic's reads and review use the fitted estimate instead.
 
-The record left only tuning open. The first build uses these defaults, all in `Dynamic.TUNE` in `index.html`. Playtests should set them:
+The record left only tuning open. The build uses these values, in `Dynamic.TUNE` and the constants beside it in `index.html`. Playtests should set them:
 
 | Setting | Default | Meaning |
 |---|---|---|
+| Slow-path weight | w = h / (h + 50) | Decision 14 set h / (h + 100). `node tests/pace.js 20 5 4 100,50,30` showed that 100 barely helps a weak player within five games (mean easing about 0.1), while 50 roughly doubles the help and adds little easing for normal players. Changed to 50 on 2026-10-14 (PR #124). |
 | Smoothing | 0.99 per sample | The profile follows about the last 100 calls, bids and Dynamic hands. |
 | Small-sample priors | 10 points, 5 calls, 10 bids | Pull a short record toward normal play: an even score share, 45% failed calls, no bid errors. |
 | Failed calls | +0.25 at most | Added to the slow target from 45% failed calls, in full at 80%. |

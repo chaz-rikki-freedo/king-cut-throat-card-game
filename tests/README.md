@@ -29,8 +29,9 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node handvalue.js 600 4` | Not a check. Three Shark bots play 600 games. Prints how well `AI.handValue` predicts the tricks and King points each hand wins, and fits new weights for its features. With `--write`, the fit replaces `data/handvalue-fit.json`. | about 10 min |
 | `node levers.js <set> 300 4` | Not a check. Bot strength for a named set of settings: `dials` (each strength dial on its own), `ladder` (the rows of the Dynamic easing ladder) or `handvalue` (the fitted weights and the bid thresholds). Each setting plays 300 games in a rotating test seat. Prints win rate, 95% margin and score share. It serves a patched copy of `index.html` and does not change the file. | 5–25 min |
 | `node review.js 150 4` | Not a check. A player seat plays at rows of the easing ladder, and as a new player who throws away its best cards. Prints the time a post-game review takes, the review's signals per row, and how often the fast-path triggers fire. | about 5 min |
+| `node pace.js 20 5 4 100,50,30` | Not a check. The pace of Dynamic's slow path: for each value of `PROFILE_HANDS` (the K in w = h / (h + K), now 50), players at four strengths play careers of Dynamic games from a blank profile, with the bots eased as in the app and the review between games. Prints the starting and mean easing per game, the hands until the easing reaches 0.3, and win rates. It serves a patched copy of `index.html` and does not change the file. | about 25 min |
 
-The last three scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
+The last four scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
 `npm test` runs `typecheck.js`, `selftest.js`, `sw.js`, `scenarios.js`, `dynamic.js` and `stress.js all 4`.
 
