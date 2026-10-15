@@ -861,7 +861,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'e83c3d3', date: '2026-10-13' });
+const BUILD = Object.freeze({ commit: '9c263ab', date: '2026-10-14' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -5601,7 +5601,9 @@ const App = (() => {
         return [n(seat) + ' · score', body];
       }
       case 'backs': {
-        /* A hand of backs: only the suits this player has shown void in (could not follow suit), as pips. */
+        /* A hand of backs: with Table memory on, the suits this player has shown void in (could not follow suit), as
+           pips. With it off, only the note that Table memory shows them. */
+        if (!memory) return [n(seat) + ' · hand', '<p class="pnote">Settings → Table memory shows the suits this player can\'t follow.</p>'];
         const voids = v.voids[seat] || [];
         const pips = voids.length ? voids.map(x => '<b class="vpip' + (R.COLOR[x] === 'red' ? ' pip-red' : '') + '" title="' + R.SUIT_NAME[x] + '">' + R.SYMBOL[x] + '</b>').join('') : '<b class="vpip none">—</b>';
         return [n(seat) + ' · hand', '<p class="pvoid">Void of ' + pips + '</p>'];
