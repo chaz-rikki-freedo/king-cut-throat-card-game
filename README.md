@@ -13,7 +13,7 @@ The menu has a card for each mode, **Free play**, **Dynamic** and **Waves**, and
 | **Resume** (in each card) | Continues that mode's game: the one you are playing (the menu closes), or the saved one. Disabled when there is none. At launch, the last game played is the main button. |
 | **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
 | **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
-| **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. |
+| **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
 | **Rules** | The quick rules. **Back** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
@@ -214,6 +214,7 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 - A wave always uses its personalities, also when **Personalities** is off.
 - A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing except the tries.
 - Each counted game on a wave that is not cleared yet adds one try. Click **Wave N of 18** in the header to see your tries.
+- Leaving a game also counts as a try from hand 2 on: a new game, another wave, a `?wave=` link or discarding the game. The question before you leave says so. During hand 1 you can leave for free: you have seen one deal and no one has scored. By hand 2, restarting whenever you fall behind would raise your win rate by about 6 percentage points, and by hand 7 by about 13 (3,000 bot games, waves 1 and 7). A game whose win would not count also costs no try. A reload resumes the game.
 - A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game. The first time you hand your seat to the AI in a wave that can still be cleared, the game asks first.
 - A win with **Replay Seed** counts too.
 - At the end of a wave: after a win, **Next wave**, **Replay Seed** and **Menu**; after a loss, **Try again** (same wave, new deal), **Replay Seed** and **Menu**.

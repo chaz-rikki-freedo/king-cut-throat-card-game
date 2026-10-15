@@ -5891,6 +5891,16 @@ const App = (() => {
   const inWaves = (a = app) => !!a.wave.n;
   /* Whether a win in this game clears its wave: the wave was open at the start and the AI never played your seat. */
   const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.humanSeatWasAutoplayed;
+  /* Leaving a Waves game counts as a try (a loss) from hand 2 on: by then a restart is worth up to 13 percentage points of win
+     rate. Hand 1 stays free (one deal seen, no score). Only a game whose win would clear its wave, on a wave not
+     cleared yet. Returns that wave, or null. saved: the Waves slot, used when the Waves game is not being played. */
+  function forfeitWave(a = app, saved = slots.get('waves'), cleared = Waves.progress().cleared) {
+    const live = a.mode === 'waves' && gameOn(a), st = live ? a.state : saved && saved.state;
+    if (!st || handNo(st) < 2) return null;
+    const n = live ? a.wave.n : saved.wave && saved.wave.n;
+    const counts = live ? waveCounts(a) : !!(saved.wave && saved.wave.open && !saved.assisted);
+    return n && counts && !cleared.includes(n) ? n : null;
+  }
   /* Whether a game is being played: a mode is set and its game is not over. a: the app (a stand-in in the self-test). */
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
   /* Whether the bots play their personalities: always in a wave (they set its difficulty) and in Dynamic (it eases
@@ -6292,25 +6302,39 @@ const App = (() => {
   /* A mode card's second line when it has no game. */
   const MODE_TAGLINE = Object.freeze({ free: 'Two random opponents each game', dynamic: 'Random opponents who go easier while you learn', waves: 'Clear a wave to open the next' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
+  /* The note in the questions below when leaving the game costs a try (forfeitWave). */
+  const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
+  /* Records the try that leaving a Waves game costs (forfeitWave), once you agree to leave it. */
+  function forfeit(/** @type {number | null} */ n) {
+    if (!n) return;
+    Waves.record(n, false);
+    Logger.log('WAVE_FORFEIT', { wave: n, tries: Waves.tries(n) });
+  }
   /* Resolves true when no started game would be lost, or when you agree to lose it. */
   async function confirmReplace(mode) {
     const st = unfinished(mode);
     if (!st || st.scores.every(x => x === 0) && handNo(st) <= 1) return true;
     if (app.menuOpen) $('overlay').hidden = true;
-    return ask({
+    const n = mode === 'waves' ? forfeitWave() : null;
+    const yes = await ask({
       title: 'Start a new ' + modeName(mode) + ' game?',
-      text: '<p>' + unfinishedText(mode, st) + ' will be lost.</p>',
+      text: '<p>' + unfinishedText(mode, st) + ' will be lost.</p>' + forfeitText(n),
       ok: 'Start new game', cancel: 'Keep it'
     });
+    if (yes) forfeit(n);
+    return yes;
   }
   /* Discard game: ends a mode's unfinished game without starting another. Its slot is cleared; a game being played
-     leaves the table empty. Like a new game, it is not a result: no loss, and wave progress stays. */
+     leaves the table empty. Like a new game, it is not a result (no loss in the results), but from hand 2 a Waves
+     game costs a try (forfeitWave). */
   async function discardGame(mode) {
     const st = unfinished(mode);
     if (st) {
       if (app.menuOpen) $('overlay').hidden = true;
-      const yes = await ask({ title: 'Discard your ' + modeName(mode) + ' game?', text: '<p>' + unfinishedText(mode, st) + ' ends. You cannot undo this.</p>', ok: 'Discard', cancel: 'Keep it' });
+      const n = mode === 'waves' ? forfeitWave() : null;
+      const yes = await ask({ title: 'Discard your ' + modeName(mode) + ' game?', text: '<p>' + unfinishedText(mode, st) + ' ends. You cannot undo this.</p>' + forfeitText(n), ok: 'Discard', cancel: 'Keep it' });
       if (yes) {
+        forfeit(n);
         slots.clear(mode);
         if (app.mode === mode) enterIdle();
         Logger.log('GAME_DISCARDED', { mode });
@@ -7119,7 +7143,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, personasOn, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, personasOn, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -8093,6 +8117,19 @@ const SelfTest = (() => {
       eq('inWaves and waveCounts: a win counts only in an open wave the AI never played your seat in',
         [A.inWaves(mk({ mode: 'free', state: live })), A.inWaves(w({})), A.waveCounts(w({})), A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: false } })), A.waveCounts(w({ humanSeatWasAutoplayed: true })), A.waveCounts(mk({ mode: 'free', state: live }))],
         [false, true, true, false, false, false]);
+      {
+        const h = (/** @type {number} */ k) => ({ gameOver: false, handNumber: k, phase: 'play', redeals: 0 });
+        const sv = (/** @type {any} */ x) => Object.assign({ state: h(3), wave: { n: 4, open: true }, assisted: false }, x);
+        eq('forfeitWave: leaving a wave game costs a try from hand 2, only when a win would clear the wave',
+          [A.forfeitWave(w({ state: h(1) }), null, []), A.forfeitWave(w({ state: h(2) }), null, []), A.forfeitWave(w({ state: h(2) }), null, [2]),
+            A.forfeitWave(w({ state: h(5), humanSeatWasAutoplayed: true }), null, []), A.forfeitWave(w({ state: h(5), wave: { n: 2, wasOpenAtStart: false } }), null, []),
+            A.forfeitWave(w({ state: h(5) }), sv({}), [])],
+          [null, 2, null, null, null, 2]);
+        eq('forfeitWave: a saved wave game, when another mode is being played',
+          [A.forfeitWave(mk({ mode: 'free', state: live }), sv({}), []), A.forfeitWave(mk({}), sv({ state: h(1) }), []), A.forfeitWave(mk({}), sv({ assisted: true }), []),
+            A.forfeitWave(mk({}), sv({ wave: { n: 4, open: false } }), []), A.forfeitWave(mk({}), sv({}), [4]), A.forfeitWave(mk({}), null, [])],
+          [4, null, null, null, null, null]);
+      }
       eq('Showdown lead by the rule: the Showdown player who won the latest main trick, not the mediator',
         [Engine.ruleLeader([1, 2, 0, 1, 2, 0, 2], [0, 1]), Engine.ruleLeader([0, 0, 0, 1, 1, 1, 2], [0, 1]), Engine.ruleLeader([2, 2], [0, 1])],
         [{ player: 0, mainTrick: 6 }, { player: 1, mainTrick: 6 }, null]);
