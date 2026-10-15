@@ -78,8 +78,8 @@ Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the
 
 | Setting | What it does |
 |---|---|
-| **Advanced UI** | Off by default. A minimal table for players who know the rules. See **Advanced UI** below. |
-| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet, where the turned card went, and the suits each bot has shown void in. Your own discards and the turned card count as seen. In the standard table, a seated player's profile adds a **This hand** box with the same bids and voids. |
+| **Interface** | **Advanced** by default: a minimal table for players who know the rules (see **Advanced UI** below). **Flat**: the classic table. **Normal** and **Guided** are coming soon. |
+| **Table memory** | Off by default. Shows what every player at the table has seen this hand, never a card someone holds unseen. In the Advanced UI, every strip cell, seat tag, score and hand of backs opens a popup that explains it; with this on, the popups add the trumps and Kings played and not seen yet, where the turned card went, and the suits each bot has shown void in. Your own discards and the turned card count as seen. In the Flat interface, a seated player's profile adds a **This hand** box with the same bids and voids. |
 
 Both settings are kept after a reload. **Defaults** (Bots tab) does not change them.
 
@@ -166,7 +166,7 @@ Each time a King wins a trick, a large green **+1** appears at the center of the
 
 ## Advanced UI
 
-Settings → Game → **Advanced UI**. The same game, drawn as a minimal table with no instructions. The game still enforces every rule: cards you cannot play stay dimmed, and a confirm button waits for enough cards.
+Settings → Game → **Interface** → **Advanced** (the default). The same game, drawn as a minimal table with no instructions. The game still enforces every rule: cards you cannot play stay dimmed, and a confirm button waits for enough cards.
 
 - **Seats.** The name, the score as a number, and tags in one fixed order as they come up: **Human** or **AI**, **Dealer**, **Namer**, **Kitty**, **Turn**, **Led**, then **Mediator** (**MED** on phones) or **SD** (Showdown). A bot's hand shows as small backs. Circles fill as tricks are won: 7 in a hand; a Showdown player counts Showdown tricks (5). Click the circles to see the cards of each trick that player won this hand: one column per player, headed by their name and starting with that player, with the card that led the trick ringed. With the house rule **Polite Play** off, the circles only count. During a Showdown, a Showdown player's list shows their Showdown tricks. During a Showdown, the **Dealer** tag moves to the mediator, who deals it.
 - **Information strip** (the bottom row of the header, so it stays in view when you scroll): **Trump**, **Hand** and the trick number (outside trick play, the stage of the hand: Discard, Bidding, Exchange, Result or Showdown), the **Latest** line (see below), **Turned up** (**Blocked** in round 2) and **Outside** (the outside pile's count; in a Showdown, a small card per discard, yours face up). Click **Outside** to see what the pile is and the cards you put in it.
