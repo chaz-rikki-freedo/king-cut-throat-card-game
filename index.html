@@ -5601,7 +5601,9 @@ const App = (() => {
         return [n(seat) + ' · score', body];
       }
       case 'backs': {
-        /* A hand of backs: only the suits this player has shown void in (could not follow suit), as pips. */
+        /* A hand of backs: with Table memory on, the suits this player has shown void in (could not follow suit), as
+           pips. With it off, only the note that Table memory shows them. */
+        if (!memory) return [n(seat) + ' · hand', '<p class="pnote">Settings → Table memory shows the suits this player can\'t follow.</p>'];
         const voids = v.voids[seat] || [];
         const pips = voids.length ? voids.map(x => '<b class="vpip' + (R.COLOR[x] === 'red' ? ' pip-red' : '') + '" title="' + R.SUIT_NAME[x] + '">' + R.SYMBOL[x] + '</b>').join('') : '<b class="vpip none">—</b>';
         return [n(seat) + ' · hand', '<p class="pvoid">Void of ' + pips + '</p>'];
