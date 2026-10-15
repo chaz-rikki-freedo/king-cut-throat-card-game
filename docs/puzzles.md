@@ -1,8 +1,8 @@
 # Puzzles: data format and loader
 
-A design note for puzzle lessons: short, fixed positions that each teach one mechanic. This step adds the data format, the loader and one lesson. It adds no UI. The **Tutorial** button in the menu stays disabled.
+A design note for puzzle lessons: short, fixed positions that each teach one mechanic. So far this adds the data format, the loader, the judge and one lesson. It adds no UI. The **Tutorial** button in the menu stays disabled. The plan for the lesson pop-ups is in [ui/teacher-bubbles.md](ui/teacher-bubbles.md).
 
-Status: format 1, loader in `index.html` (the `Puzzles` module, after `Replay`). Started 2026-10-15.
+Status: format 1, loader and judge in `index.html` (the `Puzzles` module, after `Replay`). Started 2026-10-15.
 
 ## Goals
 
@@ -54,13 +54,13 @@ System steps (the turn-up, the end of a trick, the next hand) run on their own b
 
 ### Goals
 
-The loader checks only the shape of the goal. The judge, the next step, decides when a goal is met.
+The loader checks each goal twice: its fields, and then whether the start position can judge it (see **Loader**). The judge decides when a goal is met (see **Judge**).
 
 | `type` | Extra field | Solved when | Judged |
 |---|---|---|---|
 | `winTrick` | none | You win the trick in progress. | At the end of that trick. |
-| `tricks` | `min` | You have taken at least `min` tricks this hand. Tricks taken before the start count. | At the end of the hand, or as soon as it is certain. |
-| `score` | `min` | Your score reaches `min` before the hand ends. | At each score change, and at the end of the hand. |
+| `tricks` | `min` | You have taken at least `min` main tricks this hand. Tricks taken before the start count. Showdown tricks don't. | As soon as it is certain: solved at the `min`-th trick, failed when too few tricks are left. |
+| `score` | `min` | Your score reaches `min` before the hand ends. `min` is a score, not a gain. A Showdown is part of the hand. | At each score change, and at the end of the hand. |
 | `winGame` | none | You reach 10 points. | When the game ends, or at the end of the hand. |
 | `decide` | `accept` | Your next decision is one of the decisions in `accept`. Discards match as a set, in any order. | At your next decision. |
 
@@ -80,12 +80,40 @@ KCT.PUZZLES                    // the bundled lessons, in order
 - A script step is illegal. The error names the step, for example `script step 6 (PLAY): illegal card`.
 - The game ends during the script.
 - After the script, it isn't your move.
+- The start position can't judge the goal:
+  - `winTrick` with no trick in progress.
+  - `tricks` after the main tricks, with `min` over 7, already met, or out of reach.
+  - `score` with `min` over 10, or already met.
+  - `decide` with an answer that the rules refuse at the start position. This catches a typo in a card.
 
 The start position always has these properties:
 
 - The rules are this app's current rules version, with the house rules off, whatever the Settings say. A lesson must not change with a setting.
 - The seats are named You, West and East.
 - The state has no decision list, so a puzzle makes no replay code and can't enter `kct.replays`.
+
+## Judge
+
+```js
+KCT.Puzzles.judge(goal, start, state, action)   // { verdict: 'open' } or { verdict: 'solved' | 'failed', reason }
+```
+
+The lesson calls the judge after every step from the start position: after your move, after each opponent's move and after each system step. `start` is the state that `load` returned, `state` is the current state, and `action` is the decision just applied, or `null` for a system step. The judge is a pure function. It changes nothing, and the same input always gives the same verdict.
+
+The first verdict that isn't `open` stands, and the lesson stops there. For example, a `score` goal is solved the moment your score reaches `min`, even if a lost Showdown takes a point back later in the hand.
+
+Every goal has a verdict by the end of the hand, so a lesson can't hang.
+
+| Reason | Verdict | Meaning |
+|---|---|---|
+| `won` | solved | The goal is met. |
+| `lostTrick` | failed | `winTrick`: another player won the trick. |
+| `outOfReach` | failed | `tricks`: too few tricks are left to reach `min`. |
+| `handOver` | failed | The hand ended before the goal was met. |
+| `gameOver` | failed | Another player reached 10 points. |
+| `otherChoice` | failed | `decide`: your decision isn't one of the answers. |
+
+The lesson UI turns each reason into a line for the teacher. See [ui/teacher-bubbles.md](ui/teacher-bubbles.md).
 
 ## Tests
 
@@ -94,7 +122,10 @@ The self-test area **Puzzles** (`node tests/selftest.js`, or **Self-tests: Run**
 - Every bundled lesson loads, starts on your move and places all 33 cards.
 - The loader's stacked deal leaves the state exactly as the Engine's own `DEAL` step does. If `DEAL` changes, this check fails, and the loader must follow.
 - Lesson 1 teaches one card: of your legal cards, only the Jack of Diamonds wins the trick.
-- Thirteen broken puzzles are each refused with the expected reason.
+- Eighteen broken puzzles are each refused with the expected reason, five of them for a goal that the start position can't judge.
+- The judge on lesson 1: each legal card gets a verdict at once, and only the J♦ solves it.
+- Discards match as a set: the same 3 cards in another order are the same decision.
+- Random play-outs: each goal type, from two sets of scores, plays 12 random hands to the end. Each goal must get a verdict, and the verdict must agree with what happened in the hand (144 play-outs). A planted bug in the `score` goal fails this check.
 
 ## Lesson 1: The Left Bower
 
@@ -106,9 +137,8 @@ The J♦ looks like a diamond, but with Hearts as trump it's the Left Bower, a t
 
 | Item | Plan |
 |---|---|
-| Judge | A pure function that takes the goal, the start state, the current state and the last events, and returns solved, failed or open. |
 | Defence | The opponents play the best defence, found by a full search of the open hands. Endgames of 4 cards or fewer are small enough. A test proves each trick-play lesson is solvable and that its goal can't be met by a wrong first card. |
-| UI | The Tutorial button opens a list of lessons. All hands are face up. One `localStorage` key keeps the lessons solved. Puzzles feed no results, no Dynamic profile and no wave tries. |
+| UI | The Tutorial button opens a list of lessons. All hands are face up. One `localStorage` key keeps the lessons solved. Puzzles feed no results, no Dynamic profile and no wave tries. The opponents teach in speech bubbles: see [ui/teacher-bubbles.md](ui/teacher-bubbles.md). |
 | Lessons 2 to 8 | Following suit with the Left Bower, King points, the win at 10, drawing trump, the bid, the discard, the Showdown. |
 | Showdown deal | The Showdown shuffles the outside pile with the RNG, so an author can choose only the `seed`, not the cards. A Showdown lesson may need a `showdownDeal` field (format 2). |
 | From a replay | `fromReplay(code, step)`: a puzzle cut from a real game, with the deal read at the `DEAL` step and the script up to `step`. |

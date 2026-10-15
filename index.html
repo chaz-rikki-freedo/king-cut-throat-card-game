@@ -2201,6 +2201,8 @@ const Puzzles = (() => {
       if (!Engine.actors(state).includes(0)) return { ok: false, error: 'after the script it must be your move' };
       const lost = Engine.audit(state);
       if (lost.length) return { ok: false, error: 'cards: ' + lost.join(', ') };
+      const goalErr = goalError(p.goal, state);
+      if (goalErr) return { ok: false, error: goalErr };
       delete state.decisions;
       return { ok: true, state, puzzle: p };
     } catch (e) {
@@ -2208,7 +2210,91 @@ const Puzzles = (() => {
     }
   }
 
-  return Object.freeze({ FORMAT, GOALS, shapeError, load, stackDeal });
+  /* The phases where the hand is over: no trick is left to play in it. A Showdown is part of the hand. */
+  /** @type {readonly string[]} */
+  const HAND_OVER = Object.freeze([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER]);
+  const inShowdown = st => !!(st.showdown && st.showdown.active);
+  /* The main hand's tricks are all played: the Showdown, if one comes, is next. */
+  const mainOver = st => HAND_OVER.includes(st.phase) || st.phase === P.SHOWDOWN_SETUP || !!st.showdown;
+
+  /* Whether a goal can be judged from this start position, or why not. Runs once the script is played. */
+  /** @param {PuzzleGoal} g @param {GameState} st @returns {string | null} */
+  function goalError(g, st) {
+    switch (g.type) {
+      case 'winTrick':
+        return Engine.PLAY_PHASES.includes(st.phase) ? null : 'goal winTrick needs a trick in progress';
+      case 'tricks': {
+        if (mainOver(st)) return 'goal tricks needs the main tricks still to play';
+        if (g.min > C.MAIN_TRICKS) return 'goal.min is more than ' + C.MAIN_TRICKS + ' tricks';
+        if (st.tricksWon[0] >= g.min) return 'goal tricks is met before the puzzle starts';
+        return st.tricksWon[0] + C.MAIN_TRICKS - st.trickWinners.length >= g.min ? null : 'goal tricks is out of reach';
+      }
+      case 'score':
+        if (g.min > C.WIN_SCORE) return 'goal.min is more than ' + C.WIN_SCORE + ' points';
+        return st.scores[0] < g.min ? null : 'goal score is met before the puzzle starts';
+      case 'decide':
+        for (const a of g.accept) {
+          const err = Engine.validate(st, a);
+          if (err) return 'goal.accept ' + a.type + ': ' + err;
+        }
+        return null;
+      default: return null;
+    }
+  }
+
+  /* Two decisions are the same: the same type and fields. Cards match as a set, in any order. */
+  /** @param {any} a @param {any} b */
+  function sameDecision(a, b) {
+    if (!a || !b || a.type !== b.type || a.player !== b.player) return false;
+    const keys = new Set(Object.keys(a).concat(Object.keys(b)));
+    for (const k of keys) {
+      if (k === 'cards') {
+        if (!Array.isArray(a.cards) || !Array.isArray(b.cards) || a.cards.length !== b.cards.length || !a.cards.every(c => b.cards.includes(c))) return false;
+      } else if (a[k] !== b[k]) return false;
+    }
+    return true;
+  }
+
+  /* The judge. Call it after every step from the start position, with the action just applied (null for a system
+     step). It returns { verdict: 'open' } until the goal is decided, then 'solved' or 'failed' with a reason.
+     The first verdict that is not open stands: the lesson stops there. Pure: it reads the states, changes nothing.
+     Reasons: won (met), lostTrick, outOfReach, handOver, gameOver (another player reached 10), otherChoice. */
+  /** @param {PuzzleGoal} g @param {GameState} start @param {GameState} st @param {Decision | null} [action]
+      @returns {{ verdict: 'open' | 'solved' | 'failed', reason?: string }} */
+  function judge(g, start, st, action) {
+    const solved = { verdict: /** @type {'solved'} */ ('solved'), reason: 'won' };
+    const failed = reason => ({ verdict: /** @type {'failed'} */ ('failed'), reason });
+    const open = { verdict: /** @type {'open'} */ ('open') };
+    if (st.handNumber !== start.handNumber) return failed('handOver');
+    const lostGame = st.gameOver && st.winner !== 0;
+    switch (g.type) {
+      case 'winTrick': {
+        const sd = inShowdown(start);
+        const before = (sd ? start.showdown : start).trickWinners.length;
+        const now = sd ? st.showdown.trickWinners : st.trickWinners;
+        if (now.length > before) return now[before] === 0 ? solved : failed('lostTrick');
+        return lostGame ? failed('gameOver') : open;
+      }
+      case 'tricks': {
+        if (st.tricksWon[0] >= g.min) return solved;
+        if (st.tricksWon[0] + C.MAIN_TRICKS - st.trickWinners.length < g.min) return failed('outOfReach');
+        return lostGame ? failed('gameOver') : open;
+      }
+      case 'score':
+        if (st.scores[0] >= g.min) return solved;
+        if (lostGame) return failed('gameOver');
+        return HAND_OVER.includes(st.phase) ? failed('handOver') : open;
+      case 'winGame':
+        if (st.gameOver) return st.winner === 0 ? solved : failed('gameOver');
+        return HAND_OVER.includes(st.phase) ? failed('handOver') : open;
+      case 'decide':
+        if (!action || action.player !== 0) return open;
+        return g.accept.some(a => sameDecision(a, action)) ? solved : failed('otherChoice');
+      default: return failed('unknownGoal');
+    }
+  }
+
+  return Object.freeze({ FORMAT, GOALS, shapeError, load, stackDeal, judge, sameDecision });
 })();
 
 /* The lessons, in order. Each one must load (self-test 'puzzles'). See docs/puzzles.md. */
@@ -7985,6 +8071,76 @@ const SelfTest = (() => {
       bad('a decide goal for another seat', p => { p.goal = { type: 'decide', accept: [{ type: 'PLAY', player: 1, card: 'AS' }] }; }, 'player 0');
       bad('a script that ends the game', p => { p.scores[1] = 9; p.script[5].card = 'KS'; p.script[6].card = 'AC'; p.script.push({ type: 'PLAY', player: 0, card: 'AD' }); }, 'the game ends');
       check('refuses a value that is not an object', !L(null).ok && !L([]).ok && !L('x').ok);
+      /* Goals that the start position can't judge are refused at load. */
+      bad('a winTrick goal with no trick in progress', p => { p.dealer = 2; p.script = []; }, 'needs a trick in progress');
+      bad('a tricks goal over 7', p => { p.goal = { type: 'tricks', min: 8 }; }, 'more than 7');
+      bad('a score goal already met', p => { p.scores[0] = 3; p.goal = { type: 'score', min: 2 }; }, 'met before');
+      bad('a score goal over 10', p => { p.goal = { type: 'score', min: 11 }; }, 'more than 10');
+      bad('a decide goal with an illegal answer', p => { p.goal = { type: 'decide', accept: [{ type: 'PLAY', player: 0, card: 'AS' }] }; }, 'goal.accept PLAY');
+
+      /* The judge on lesson 1: each legal card decides the goal at once, and only the Left Bower solves it. */
+      if (one.ok) {
+        const st0 = one.state;
+        const verdicts = R.legalCards(st0.hands[0], st0.trick.leadSuit, st0.trump).map(c => {
+          const st = JSON.parse(JSON.stringify(st0)), a = { type: 'PLAY', player: 0, card: c };
+          D(st, a);
+          return c + ':' + Puzzles.judge(PUZZLES[0].goal, st0, st, a).verdict;
+        });
+        eq('judge: only JD solves lesson 1', verdicts.filter(x => x.endsWith(':solved')), ['JD:solved']);
+        check('judge: every other card fails at once', verdicts.every(x => x.endsWith(':solved') || x.endsWith(':failed')), verdicts);
+        eq('judge: open before any move', Puzzles.judge(PUZZLES[0].goal, st0, st0, null), { verdict: 'open' });
+      }
+      check('decisions match with the cards in any order', Puzzles.sameDecision({ type: 'DISCARD', player: 0, cards: ['AS', 'KS', '7H'] }, { type: 'DISCARD', player: 0, cards: ['7H', 'AS', 'KS'] }) &&
+        !Puzzles.sameDecision({ type: 'DISCARD', player: 0, cards: ['AS', 'KS', '7H'] }, { type: 'DISCARD', player: 0, cards: ['AS', 'KS', '8H'] }) &&
+        !Puzzles.sameDecision({ type: 'NAME', player: 0, suit: null }, { type: 'NAME', player: 0, suit: 'S' }));
+
+      /* Random play-outs from lesson 1: every goal gets a verdict by the end of the hand, and the verdict agrees with
+         what happened. Every seat plays a random legal card. */
+      const goals = [
+        { type: 'winTrick' }, { type: 'tricks', min: 1 }, { type: 'tricks', min: 3 }, { type: 'score', min: 1 }, { type: 'score', min: 2 },
+        { type: 'winGame' }, { type: 'decide', accept: [{ type: 'PLAY', player: 0, card: 'JD' }] }
+      ];
+      const HAND_OVER = [P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.JOKER_VOID, P.GAME_OVER];
+      const rng = { s: 2026 };
+      const randomAction = st => {
+        const p = Engine.actors(st)[0];
+        if (st.phase === P.SHOWDOWN_DISCARD) return { type: 'SHOWDOWN_DISCARD', player: p, card: st.hands[p][RNG.int(rng, st.hands[p].length)] };
+        const legal = R.legalCards(st.hands[p], st.trick.leadSuit, st.trump);
+        return { type: 'PLAY', player: p, card: legal[RNG.int(rng, legal.length)] };
+      };
+      let runs = 0, wrong = [];
+      for (const scores of [[0, 0, 0], [8, 7, 9]]) {
+        for (const g of goals) {
+          const pz = Object.assign(JSON.parse(JSON.stringify(PUZZLES[0])), { scores, goal: g });
+          const ld = L(pz);
+          if (!ld.ok) { if (!(g.type === 'score' && scores[0] >= g.min)) wrong.push('load ' + g.type + ': ' + /** @type {any} */ (ld).error); continue; }
+          for (let game = 0; game < 12; game++) {
+            const start = ld.state, st = JSON.parse(JSON.stringify(start));
+            let first = null, myFirst = null, maxScore = st.scores[0], mainTricks = null, firstTrick = null;
+            for (let guard = 0; guard < 200 && !HAND_OVER.includes(st.phase); guard++) {
+              const sys = Engine.systemAction(st);
+              const a = sys || randomAction(st);
+              if (!D(st, a).ok) { wrong.push('step refused'); break; }
+              const mine = !sys && a.player === 0 ? a : null;
+              if (mine && !myFirst) myFirst = mine;
+              maxScore = Math.max(maxScore, st.scores[0]);
+              if (firstTrick === null && st.trickWinners.length) firstTrick = st.trickWinners[0];
+              if (mainTricks === null && (st.trickWinners.length === 7 || st.gameOver)) mainTricks = st.tricksWon[0];
+              const j = Puzzles.judge(g, start, st, sys ? null : a);
+              if (!first && j.verdict !== 'open') first = j;
+            }
+            runs++;
+            const want = g.type === 'winTrick' ? firstTrick === 0
+              : g.type === 'tricks' ? mainTricks !== null && mainTricks >= g.min
+              : g.type === 'score' ? maxScore >= g.min
+              : g.type === 'winGame' ? st.gameOver && st.winner === 0
+              : Puzzles.sameDecision(g.accept[0], myFirst);
+            if (!first) wrong.push(g.type + ' open at ' + st.phase);
+            else if ((first.verdict === 'solved') !== want) wrong.push(g.type + JSON.stringify(g) + ' said ' + first.verdict + ' (' + first.reason + ')');
+          }
+        }
+      }
+      check('judge agrees with ' + runs + ' random play-outs', !wrong.length && runs > 100, wrong.slice(0, 5));
     });
 
     safeRun('planner', () => {
