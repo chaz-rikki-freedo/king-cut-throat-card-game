@@ -133,17 +133,16 @@ You deal. West calls Hearts on the turned 7♥, and East takes the 7♥. West le
 
 The J♦ looks like a diamond, but with Hearts as trump it's the Left Bower, a trump above the Ace. It's the only card that wins. The 9♥ is trump too, but below the Q♥.
 
+**Not a puzzle on the real table.** The game tags the J♦ **LEFT ♥**, rings it in gold and sorts it with the trumps, so the table shows the answer. This position becomes the first tour, which teaches you to read those signs. See [ui/teacher-bubbles.md](ui/teacher-bubbles.md), **What the table already teaches**.
+
 ## Not in this step
 
 | Item | Plan |
 |---|---|
-| Defence | The opponents play the best defence, found by a full search of the open hands. Endgames of 4 cards or fewer are small enough. A test proves each trick-play lesson is solvable and that its goal can't be met by a wrong first card. |
-| UI | The Tutorial button opens a list of lessons. All hands are face up. One `localStorage` key keeps the lessons solved. Puzzles feed no results, no Dynamic profile and no wave tries. The opponents teach in speech bubbles: see [ui/teacher-bubbles.md](ui/teacher-bubbles.md). |
-| Lessons 2 to 8 | Following suit with the Left Bower, King points, the win at 10, drawing trump, the bid, the discard, the Showdown. |
-| Showdown deal | The Showdown shuffles the outside pile with the RNG, so an author can choose only the `seed`, not the cards. A Showdown lesson may need a `showdownDeal` field (format 2). |
+| Defence, lesson mode, bubbles, format 2, the lessons | Planned, with build steps and checks, in [ui/teacher-bubbles.md](ui/teacher-bubbles.md). |
 | From a replay | `fromReplay(code, step)`: a puzzle cut from a real game, with the deal read at the `DEAL` step and the script up to `step`. |
 
-## Open questions
+## Settled
 
-1. Should a lesson give a hint after a wrong answer, or only show the rule?
-2. After the goal is met, should the hand play on, or should the lesson end at once?
+- **A hint after a wrong answer:** yes. A failed puzzle offers **Hint**, which points at the right card.
+- **When the goal is met:** the lesson ends at once, on the judge's first verdict.
