@@ -19,6 +19,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node typecheck.js` | The TypeScript checker on the game script in `index.html`, so the JSDoc types are checked. No browser. | about 3 s |
 | `node selftest.js` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
 | `node sw.js` | The service worker, with the worker running: a page that loads but is not the game (a network sign-in page) is not offered as an update, and a real new version is. | about 6 s |
+| `node forfeit.js` | Waves tries through the menu buttons and questions: leaving a game in hand 1 is free; from hand 2, **Discard** or **Play wave** counts one try and the question says so, also for a saved wave game while Free play runs; a cleared wave and a game the AI played in cost none. | about 7 s |
 | `node scenarios.js` | Two full games through the real controls (Free play, then Waves wave 1): seat swap and log colors, reload and resume, the questions the app asks, end buttons, results, wave progress, replay codes, the Skip button in a Showdown between the two bots, an old save, and the Your seat setting (the AI seat never carries over). | 2–5 min |
 | `node dynamic.js` | Dynamic mode through the controls: the menu card, the seat dialog and the header, a reload and Resume (the easing is worked out again from the moves), the end (results, the replay code with mode 3 and its META, the review and the profile, backups), **Replay Seed** (the same game from the old snapshot, after the review changed the profile), and a game where the AI played your seat (adds nothing). Also checks the fitted estimate in `index.html` against `data/handvalue-fit.json`. | about 30 s |
 | `node dynamic.js rates 80 4` | Not a default check. Bot games that measure Dynamic's fast path: how often it catches a player who throws away their best cards within 3 visible hands, and how often it fires for players at ladder rows 4, 6 and 8. Fails under an 80% catch rate or over 3% false alarms. | about 40 s |
@@ -37,7 +38,7 @@ The last four scripts measure the design of Dynamic mode. The results and the de
 
 GitHub Actions has two workflows:
 
-- **Checks** (`.github/workflows/checks.yml`) runs the fast checks, `typecheck.js`, `selftest.js`, `sw.js` and `stress.js all 4`, on each pull request and each push to `main`. It takes about a minute.
+- **Checks** (`.github/workflows/checks.yml`) runs the fast checks, `typecheck.js`, `selftest.js`, `sw.js`, `forfeit.js` and `stress.js all 4`, on each pull request and each push to `main`. It takes about a minute.
 - **Tests** (`.github/workflows/test.yml`) runs `npm test` when a major release tag is pushed (`1.0.0`, `2.0.0`, `v3.0.0` and so on), or when you start it with **Run workflow** on the Actions tab.
 
 ## Stress sections
