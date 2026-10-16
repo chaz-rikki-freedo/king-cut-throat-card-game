@@ -157,16 +157,19 @@ function expect(name, ok, detail) {
       await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
       sw.checked = false; sw.dispatchEvent(new Event('change')); await sleep(20);
       out.free = [sw.checked, sw.disabled, app.usePersonas];
+      const cr = q('#setCourage'); cr.value = 'bold'; cr.dispatchEvent(new Event('change')); await sleep(20);
       click('[data-action="menu"]'); await sleep(20);
       q('#waveSel').value = '1'; click('[data-action="play-wave"]'); await sleep(50);
       if (askOpen()) { click('[data-action="ask-ok"]'); await sleep(50); }
       out.wave = [sw.checked, sw.disabled, app.usePersonas, q('#setBotFields').classList.contains('set-off')];
+      out.waveCourage = q('#setCourage').value;
       await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
       out.bots = !!app.botSettings.personas && !app.botSettings.panel;
       click('[data-action="menu"]'); await sleep(20);
       click('[data-action="discard-waves"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
       click('[data-action="resume-free"]'); await sleep(50);
       out.after = [sw.checked, sw.disabled, app.usePersonas];
+      out.afterCourage = q('#setCourage').value;
       click('[data-action="menu"]'); await sleep(20);
       sw.checked = true; sw.dispatchEvent(new Event('change')); await sleep(20);
       click('[data-action="discard-free"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
@@ -176,6 +179,7 @@ function expect(name, ok, detail) {
     expect('in a wave the switch shows on, locked, with the bot settings dimmed; Free play keeps its off', JSON.stringify(r.wave) === '[true,true,false,true]', r.wave);
     expect('the wave bots play their personalities', r.bots === true, r.bots);
     expect('back in Free play the switch shows its off again', JSON.stringify(r.after) === '[false,false,false]', r.after);
+    expect('in a wave the dimmed bot rows show the defaults, and Free play gets its own settings back', r.waveCourage === 'normal' && r.afterCourage === 'bold', [r.waveCourage, r.afterCourage]);
 
     console.log('Skip: a Showdown between the two bots');
     r = await step(`
@@ -256,12 +260,17 @@ function expect(name, ok, detail) {
     r = await step(`return arg.filter(ref => { let o = window; for (const k of ref.split('.')) { if (o == null || !(k in Object(o))) return true; o = o[k]; } return false; });`, refs);
     expect('every KCT command named in the docs exists (' + refs.length + ')', refs.length > 20 && r.length === 0, r);
     r = await step(`
-      const keep = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, courage: app.ai.style.courage };
+      const keep = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, courage: app.ai.style.courage }, was = app.usePersonas;
+      app.usePersonas = false;
       A.setSkillTier('shark'); const tier = q('#setTier').value;
       A.setStyle({ courage: 'bold' }); const courage = q('#setCourage').value;
+      /* With Personalities on, the dimmed rows show the defaults, not the set that no bot plays. */
+      app.usePersonas = true; A.setStyle({ courage: 'bold' }); const dimmed = [q('#setTier').value, q('#setCourage').value];
+      app.usePersonas = was;
       A.setThinking(keep.thinking); A.setKnowledge(keep.knowledge); A.setStyle({ courage: keep.courage });
-      return { tier, courage };`);
+      return { tier, courage, dimmed };`);
     expect('KCT.App.setSkillTier and setStyle move the panel controls', r.tier === 'shark' && r.courage === 'bold', r);
+    expect('with Personalities on, the dimmed bot rows show the defaults', r.dimmed[0] === 'casual' && r.dimmed[1] === 'normal', r);
 
     console.log('Backup: the Settings tab is kept as JSON, so a backup works after Settings has opened');
     r = await step(`
