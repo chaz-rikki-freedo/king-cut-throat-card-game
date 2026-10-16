@@ -101,7 +101,7 @@ All three settings are kept after a reload. A change to **Mediator picks the Sho
 
 ### Bots
 
-All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves or Dynamic game, **Personalities** and the bot settings are dimmed: a wave always uses its personalities, and Dynamic eases each bot from its personality. The switch keeps its value for Free play.
+All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves or Dynamic game, **Personalities** and the bot settings are dimmed and show the defaults: a wave always uses its personalities, and Dynamic eases each bot from its personality. The switch and your settings keep their values for Free play.
 
 | Setting | What it does |
 |---|---|
@@ -132,7 +132,7 @@ On, the bots are weaker.
 
 ### Expert: AI thinking and knowledge
 
-These fine-tune **Skill** for every bot. With **Personalities** on, or in a Waves or Dynamic game, they are dimmed and do not apply.
+These fine-tune **Skill** for every bot. With **Personalities** on, or in a Waves or Dynamic game, they are dimmed, show the defaults and do not apply.
 
 **AI thinking.** Both settings change how long the bots think.
 
