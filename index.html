@@ -779,7 +779,7 @@ body.adv .tag .short{display:none}
         <label class="set-row"><span class="set-text"><span class="set-name">Mediator picks the Showdown lead</span><span class="set-desc">Off: the latest main-trick winner leads. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setMediatorLead"></label>
         <p class="k-hint rule-note set-note" id="setMediatorNow" hidden></p>
         <div class="set-row"><span class="set-text"><label class="set-name" for="setJokerFlip">Turned-up Joker</label><span class="set-desc">Redeal: the hand is void. A suit: the Joker offers that suit for trump, to save a deal. Applies from your next game.</span></span>
-          <select id="setJokerFlip"><option value="">Redeal</option><option value="S">Spades</option><option value="D">Diamonds</option><option value="C">Clubs</option><option value="H">Hearts</option><option value="random">Random</option></select></div>
+          <select id="setJokerFlip"><option value="">Redeal</option><option value="S">Spades</option><option value="H">Hearts</option><option value="D">Diamonds</option><option value="C">Clubs</option><option value="random">Random</option></select></div>
         <p class="k-hint rule-note set-note" id="setJokerNow" hidden></p>
         <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Advanced UI: a click on trick circles shows the tricks won. Off: you remember them. Applies at once.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
       </div>
@@ -4982,7 +4982,7 @@ const App = (() => {
   };
   const HUMAN = 0;
   /* Settings → Game → Turned-up Joker, by value: what the rule notes call each choice. */
-  const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', D: 'Diamonds', C: 'Clubs', H: 'Hearts', random: 'Random' });
+  const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs', random: 'Random' });
   /* House rules (Settings → Game), for new games: a game keeps the rules it started with. Render reads
      them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
      Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code.
