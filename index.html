@@ -793,7 +793,7 @@ body.adv .tag .short{display:none}
       <div class="set-card" id="setPersonaRow">
         <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
       </div>
-      <p class="k-hint set-note" id="setWaveNote" hidden>Waves and Dynamic always use their personalities. These settings apply to Free play.</p>
+      <p class="k-hint set-note" id="setWaveNote" hidden>Waves and Dynamic always use their personalities, so these rows show the defaults. Your settings are kept and come back in Free play.</p>
       <h3 class="set-head">Every bot</h3>
       <div class="set-card" id="setBotFields">
         <div class="set-row"><span class="set-text"><label class="set-name" for="setTier">Skill</label><span class="set-desc">How well the bots play. Stronger bots think longer.</span></span>
@@ -861,7 +861,7 @@ body.adv .tag .short{display:none}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'c28e8f8', date: '2026-10-14' });
+const BUILD = Object.freeze({ commit: '8aa6999', date: '2026-10-16' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -5936,6 +5936,8 @@ const App = (() => {
     $('setWaveNote').hidden = !ownBots;
     off('setBotFields', personasOn());
     off('setAdvanced', personasOn());
+    /* Only when the rows switch between your settings and the defaults, so a row being edited keeps its text. */
+    if (personasOn() !== botRowsDefault) { botRowsDefault = personasOn(); syncBotPanel(); }
     /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
        has fixed it (it stays for the game). */
     const fixed = gameOn() && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
@@ -6864,13 +6866,14 @@ const App = (() => {
 
   /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
   function syncKnowledge() {
-    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
+    const ai = shownAI();
+    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) box.checked = ai.knowledge[box.getAttribute('data-knowledge')];
     syncTier();
   }
   function setKnowledge(k) {
     app.ai = AI.config(app.ai, { knowledge: k });
     const now = app.ai.knowledge;
-    syncKnowledge();
+    syncBotPanel();
     Logger.log('AI_KNOWLEDGE', now);
     const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); const name = box && box.closest('.set-row') && box.closest('.set-row').querySelector('.set-name'); return name ? name.textContent : key; };
     const off = Object.keys(now).filter(key => !now[key]).map(label);
@@ -6882,12 +6885,18 @@ const App = (() => {
   function setStyle(t) {
     app.ai = AI.config(app.ai, { style: t });
     const now = app.ai.style;
-    $('setRealTable').checked = now.realTable;
-    $('setCourage').value = now.courage;
+    syncBotPanel();
     Logger.log('AI_STYLE', now);
     addLog('Bot style: bid courage ' + $('setCourage').selectedOptions[0].textContent + ', real table ' + (now.realTable ? 'on' : 'off') + '.', 'h');
     saveSettings();
   }
+  function syncStyle() { const st = shownAI().style; $('setRealTable').checked = st.realTable; $('setCourage').value = st.courage; }
+  /* The bot settings the panel shows: yours, or the defaults while they do not apply (Personalities on, a wave,
+     Dynamic). A dimmed row never shows a custom set that no bot plays; yours are kept and come back in Free play. */
+  function shownAI() { return personasOn() ? AI.DEFAULT_CONFIG : AI.config(AI.DEFAULT_CONFIG, app.ai); }
+  function syncBotPanel() { syncThinking(); syncKnowledge(); syncStyle(); }
+  /* Whether the bot rows show the defaults now (syncModeUI refreshes them only when this changes). */
+  let botRowsDefault = /** @type {boolean | null} */ (null);
   /* Personalities switch: on, each bot plays its own style; off, all bots use the settings below. */
   /* The bot settings (Bots tab and Expert tab, Personalities aside) back to their defaults. */
   function resetBotSettings() { setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); }
@@ -6900,12 +6909,12 @@ const App = (() => {
   /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
   function setSkillTier(name) {
     app.ai = AI.withSkillTier(app.ai, name);
-    syncThinking(); syncKnowledge();
+    syncBotPanel();
     Logger.log('AI_SKILL', { tier: AI.skillTierOf(app.ai) });
     addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
     saveSettings();
   }
-  function syncTier() { $('setTier').value = AI.skillTierOf(app.ai); }
+  function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
 
   /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
   function copySeed() {
@@ -6950,8 +6959,9 @@ const App = (() => {
 
   /* AI thinking settings: change the AI, keep the controls in step, and log the change. */
   function syncThinking() {
-    $('setWorlds').value = app.ai.thinking.worlds;
-    const farts = Math.round((1 - app.ai.thinking.playoutSkill) * 100);
+    const ai = shownAI();
+    $('setWorlds').value = ai.thinking.worlds;
+    const farts = Math.round((1 - ai.thinking.playoutSkill) * 100);
     $('setSkill').value = farts;
     $('setSkillOut').textContent = farts + '%';
     syncTier();
@@ -6959,7 +6969,7 @@ const App = (() => {
   function setThinking(t) {
     app.ai = AI.config(app.ai, { thinking: t });
     const now = app.ai.thinking;
-    syncThinking();
+    syncBotPanel();
     const farts = Math.round((1 - now.playoutSkill) * 100);
     Logger.log('AI_THINKING', now);
     addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
@@ -7088,7 +7098,7 @@ const App = (() => {
     }
     syncThinking(); syncKnowledge();
     $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
-    $('setCourage').value = app.ai.style.courage;
+    syncStyle();
     $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
     /* Switching Personalities either way starts the bot settings from their defaults: dimmed (on), they show the
        defaults rather than an old custom set; enabled (off), you start from a known point. */
@@ -7099,7 +7109,6 @@ const App = (() => {
     $('setSeatPersona').append(...PERSONAS.map(x => new Option(x.name + ' (' + x.tier + ', ' + x.courage + ')', x.id)));
     $('setSeatPersona').value = app.seatPersona;
     $('setSeatPersona').addEventListener('change', () => setSeatPersona($('setSeatPersona').value));
-    $('setRealTable').checked = app.ai.style.realTable;
     $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */
     Logger.listeners.push(line => {
