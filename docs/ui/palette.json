@@ -1,0 +1,783 @@
+{
+ "about": "The color registry: every color token in index.html, its family and its job, and the rules that keep colors apart. tests/palette.js checks it; docs/ui/colors.md explains it.",
+ "levels": {
+  "lookalike": 3,
+  "similar": 10,
+  "distinct": 20
+ },
+ "levelsNote": "CIEDE2000 lower bounds. Identical: under 3, cannot be told apart even side by side. Lookalike: 3 to 10, different only side by side. Similar: 10 to 20, told apart at a glance. Distinct: 20 and over, recognized alone.",
+ "visions": [
+  "deuteranopia",
+  "protanopia"
+ ],
+ "colorBlindMin": "lookalike",
+ "families": {
+  "surface": "What things sit on.",
+  "text": "Words on dark surfaces.",
+  "action": "Act here, or important now. Never a label, a mode or a name.",
+  "status": "How something went.",
+  "card": "Cards and suits.",
+  "seat": "Which seat: you, West, East.",
+  "mode": "Which game: always a chip, a fill with its ink.",
+  "bot": "Which personality: always colored text next to the name.",
+  "settings": "The Settings panel's own surfaces."
+ },
+ "tokens": [
+  {
+   "name": "--page",
+   "family": "surface",
+   "value": "#0a2a19",
+   "job": "The page behind the table, and the browser theme color."
+  },
+  {
+   "name": "--felt",
+   "family": "surface",
+   "value": "#155a36",
+   "job": "The table felt."
+  },
+  {
+   "name": "--felt-edge",
+   "family": "surface",
+   "value": "#0c3a22",
+   "job": "The felt border, the seats, and the fields in the menu."
+  },
+  {
+   "name": "--felt-showdown",
+   "family": "surface",
+   "value": "#5a1f45",
+   "job": "The felt during a Showdown."
+  },
+  {
+   "name": "--felt-showdown-edge",
+   "family": "surface",
+   "value": "#3a1230",
+   "job": "The felt border during a Showdown."
+  },
+  {
+   "name": "--panel",
+   "family": "surface",
+   "value": "rgba(0,0,0,.26)",
+   "job": "A dark tint over the felt: chips, boxes and seats."
+  },
+  {
+   "name": "--panel-strong",
+   "family": "surface",
+   "value": "rgba(0,0,0,.42)",
+   "job": "A stronger tint over the felt: the trump chip."
+  },
+  {
+   "name": "--sheet",
+   "family": "surface",
+   "value": "#123f28",
+   "job": "The background of every panel: the menu, Your profile, Rules, the pop-ups and the questions."
+  },
+  {
+   "name": "--ink",
+   "family": "text",
+   "value": "#f5f2e9",
+   "job": "Main text on dark surfaces."
+  },
+  {
+   "name": "--muted",
+   "family": "text",
+   "value": "#bccbbf",
+   "job": "Secondary text on dark surfaces."
+  },
+  {
+   "name": "--gold",
+   "family": "action",
+   "value": "#f2c14e",
+   "job": "Act here, or important now: primary buttons, the selected tab, trump, the caller, the turn, the trick winner."
+  },
+  {
+   "name": "--gold-ink",
+   "family": "action",
+   "value": "#3a2a00",
+   "job": "Text on gold."
+  },
+  {
+   "name": "--accent",
+   "family": "action",
+   "value": "#7cc4ff",
+   "job": "Selection: the selected and playable cards, the lead mark, trump in the log."
+  },
+  {
+   "name": "--danger",
+   "family": "status",
+   "value": "#ff8a80",
+   "job": "Something went wrong, or a loss."
+  },
+  {
+   "name": "--good",
+   "family": "status",
+   "value": "#9be59b",
+   "job": "Something worked, or a gain."
+  },
+  {
+   "name": "--card",
+   "family": "card",
+   "value": "#fffdf6",
+   "job": "The face of a card."
+  },
+  {
+   "name": "--card-edge",
+   "family": "card",
+   "value": "#d6cfbd",
+   "job": "The edge of a card."
+  },
+  {
+   "name": "--red",
+   "family": "card",
+   "value": "#c62828",
+   "job": "Red suits on a card face."
+  },
+  {
+   "name": "--black",
+   "family": "card",
+   "value": "#1c1c1e",
+   "job": "Black suits on a card face, and text on light surfaces."
+  },
+  {
+   "name": "--pip-red",
+   "family": "card",
+   "value": "#ff6b6b",
+   "job": "Red suits on dark surfaces: the trump chip, the log, the Advanced panels."
+  },
+  {
+   "name": "--name0",
+   "family": "seat",
+   "value": "#5eead4",
+   "job": "You: your seat, your name, and your wins in the chart."
+  },
+  {
+   "name": "--name1",
+   "family": "seat",
+   "value": "#a3e635",
+   "job": "West, with no personality seated. A seated bot replaces it with its own --bot color."
+  },
+  {
+   "name": "--name2",
+   "family": "seat",
+   "value": "#a5b4fc",
+   "job": "East, with no personality seated. A seated bot replaces it with its own --bot color."
+  },
+  {
+   "name": "--mode-free",
+   "family": "mode",
+   "value": "#7cc4ff",
+   "job": "The Free play chip."
+  },
+  {
+   "name": "--mode-free-ink",
+   "family": "mode",
+   "value": "#07233a",
+   "job": "Text on the Free play chip."
+  },
+  {
+   "name": "--mode-dynamic",
+   "family": "mode",
+   "value": "#b9a3ff",
+   "job": "The Dynamic chip."
+  },
+  {
+   "name": "--mode-dynamic-ink",
+   "family": "mode",
+   "value": "#1c1240",
+   "job": "Text on the Dynamic chip."
+  },
+  {
+   "name": "--mode-waves",
+   "family": "mode",
+   "value": "#0e7490",
+   "job": "The Waves chip."
+  },
+  {
+   "name": "--mode-waves-ink",
+   "family": "mode",
+   "value": "#ecfeff",
+   "job": "Text on the Waves chip."
+  },
+  {
+   "name": "--bot-vex",
+   "family": "bot",
+   "value": "#ff7a7a",
+   "job": "Vex's name, wherever it shows."
+  },
+  {
+   "name": "--bot-doc",
+   "family": "bot",
+   "value": "#9db0ff",
+   "job": "Doc's name, wherever it shows."
+  },
+  {
+   "name": "--bot-ace",
+   "family": "bot",
+   "value": "#5fdc8f",
+   "job": "Ace's name, wherever it shows."
+  },
+  {
+   "name": "--bot-mei",
+   "family": "bot",
+   "value": "#ff9fd0",
+   "job": "Mei's name, wherever it shows."
+  },
+  {
+   "name": "--bot-gus",
+   "family": "bot",
+   "value": "#5cb8ff",
+   "job": "Gus's name, wherever it shows."
+  },
+  {
+   "name": "--bot-lou",
+   "family": "bot",
+   "value": "#ffad5c",
+   "job": "Lou's name, wherever it shows."
+  },
+  {
+   "name": "--bot-viv",
+   "family": "bot",
+   "value": "#c99bff",
+   "job": "Viv's name, wherever it shows."
+  },
+  {
+   "name": "--bot-tex",
+   "family": "bot",
+   "value": "#d9a874",
+   "job": "Tex's name, wherever it shows."
+  },
+  {
+   "name": "--bot-kit",
+   "family": "bot",
+   "value": "#d8e45a",
+   "job": "Kit's name, wherever it shows."
+  },
+  {
+   "name": "--bot-zen",
+   "family": "bot",
+   "value": "#cfd8dc",
+   "job": "Zen's name, wherever it shows."
+  },
+  {
+   "name": "--set-bg",
+   "family": "settings",
+   "value": "#0b0f0c",
+   "job": "The Settings panel background."
+  },
+  {
+   "name": "--set-card",
+   "family": "settings",
+   "value": "#111b15",
+   "job": "A Settings card."
+  },
+  {
+   "name": "--set-line",
+   "family": "settings",
+   "value": "#24382c",
+   "job": "Lines in Settings."
+  },
+  {
+   "name": "--set-field",
+   "family": "settings",
+   "value": "#16261d",
+   "job": "Fields and the tab row in Settings."
+  },
+  {
+   "name": "--set-hint",
+   "family": "settings",
+   "value": "#8fb89a",
+   "job": "Hint text in Settings."
+  }
+ ],
+ "groups": {
+  "people": [
+   "--name0",
+   "--bot-vex",
+   "--bot-doc",
+   "--bot-ace",
+   "--bot-mei",
+   "--bot-gus",
+   "--bot-lou",
+   "--bot-viv",
+   "--bot-tex",
+   "--bot-kit",
+   "--bot-zen"
+  ],
+  "seats": [
+   "--name0",
+   "--name1",
+   "--name2"
+  ],
+  "modes": [
+   "--mode-free",
+   "--mode-dynamic",
+   "--mode-waves"
+  ],
+  "signals": [
+   "--gold",
+   "--accent",
+   "--pip-red",
+   "--danger",
+   "--good"
+  ]
+ },
+ "rules": [
+  {
+   "id": "people",
+   "between": [
+    "people",
+    "people"
+   ],
+   "min": "similar",
+   "why": "Any two bots can share a table, and all ten share a list in Your profile."
+  },
+  {
+   "id": "seats",
+   "between": [
+    "seats",
+    "seats"
+   ],
+   "min": "similar",
+   "why": "The three seats with no personality seated."
+  },
+  {
+   "id": "modes",
+   "between": [
+    "modes",
+    "modes"
+   ],
+   "min": "similar",
+   "why": "The modes share the menu and the game history."
+  },
+  {
+   "id": "people-signals",
+   "between": [
+    "people",
+    "signals"
+   ],
+   "min": "similar",
+   "why": "Names sit next to gold, red suits and results in the log and on the table."
+  },
+  {
+   "id": "seats-signals",
+   "between": [
+    "seats",
+    "signals"
+   ],
+   "min": "similar",
+   "why": "As people-signals, for the seats with no personality seated."
+  },
+  {
+   "id": "modes-signals",
+   "between": [
+    "modes",
+    "signals"
+   ],
+   "min": "similar",
+   "why": "A mode chip is a fill, like a gold button and the selection outline."
+  },
+  {
+   "id": "modes-people",
+   "between": [
+    "modes",
+    "people"
+   ],
+   "min": "lookalike",
+   "why": "A mode is a chip and a name is text, so their form tells them apart; their colors must not be identical."
+  }
+ ],
+ "contrast": [
+  {
+   "text": "--ink",
+   "on": [
+    "--page",
+    "--panel@--felt",
+    "--sheet"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--muted",
+   "on": [
+    "--panel@--felt",
+    "--sheet"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--gold-ink",
+   "on": [
+    "--gold"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--mode-free-ink",
+   "on": [
+    "--mode-free"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--mode-dynamic-ink",
+   "on": [
+    "--mode-dynamic"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--mode-waves-ink",
+   "on": [
+    "--mode-waves"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--red",
+   "on": [
+    "--card"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--black",
+   "on": [
+    "--card"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--danger",
+   "on": [
+    "--sheet"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--good",
+   "on": [
+    "--sheet"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--pip-red",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 3
+  },
+  {
+   "text": "--name0",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-vex",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-doc",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-ace",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-mei",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-gus",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-lou",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-viv",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-tex",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-kit",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--bot-zen",
+   "on": [
+    "--sheet",
+    "--panel@--felt"
+   ],
+   "min": 4.5
+  }
+ ],
+ "untokenized": [
+  "#000000",
+  "#00838f",
+  "#070a08",
+  "#07233a",
+  "#0b0f0c",
+  "#0b1a12",
+  "#0b2416",
+  "#0b2a1a",
+  "#0c3a22",
+  "#0d2a44",
+  "#1b1b1b",
+  "#1e8e3e",
+  "#222222",
+  "#2a1212",
+  "#2e7d32",
+  "#2f4337",
+  "#33507a",
+  "#3d5747",
+  "#4a5a6a",
+  "#5b0d0d",
+  "#5b2a86",
+  "#5e7d5e",
+  "#69db7c",
+  "#6b6b6b",
+  "#7a1f2b",
+  "#7a5c13",
+  "#7f9a86",
+  "#8a9a8f",
+  "#8e5aa8",
+  "#8fa79a",
+  "#8fb89a",
+  "#93303d",
+  "#9be59b",
+  "#b8f5c4",
+  "#c2185b",
+  "#c792ff",
+  "#cfe0d4",
+  "#d32f2f",
+  "#d9d9d9",
+  "#e07b28",
+  "#e3f2fd",
+  "#ece6d4",
+  "#f2c14e",
+  "#f3e9ff",
+  "#f5f2e9",
+  "#ff4fd8",
+  "#ff8a80",
+  "#ff9ad5",
+  "#ffa94d",
+  "#ffb4ab",
+  "#ffcdd2",
+  "#fffdf6",
+  "#ffffff",
+  "rgba(0,0,0,0)",
+  "rgba(0,0,0,0.14)",
+  "rgba(0,0,0,0.18)",
+  "rgba(0,0,0,0.2)",
+  "rgba(0,0,0,0.22)",
+  "rgba(0,0,0,0.25)",
+  "rgba(0,0,0,0.28)",
+  "rgba(0,0,0,0.3)",
+  "rgba(0,0,0,0.35)",
+  "rgba(0,0,0,0.4)",
+  "rgba(0,0,0,0.45)",
+  "rgba(0,0,0,0.5)",
+  "rgba(0,0,0,0.55)",
+  "rgba(0,0,0,0.6)",
+  "rgba(0,0,0,0.75)",
+  "rgba(198,40,40,0.75)",
+  "rgba(242,193,78,0.25)",
+  "rgba(242,193,78,0.35)",
+  "rgba(255,255,255,0.04)",
+  "rgba(255,255,255,0.07)",
+  "rgba(255,255,255,0.08)",
+  "rgba(255,255,255,0.1)",
+  "rgba(255,255,255,0.12)",
+  "rgba(255,255,255,0.14)",
+  "rgba(255,255,255,0.16)",
+  "rgba(255,255,255,0.18)",
+  "rgba(255,255,255,0.2)",
+  "rgba(255,255,255,0.22)",
+  "rgba(255,255,255,0.3)",
+  "rgba(255,255,255,0.35)",
+  "rgba(255,255,255,0.45)",
+  "rgba(255,255,255,0.55)",
+  "rgba(52,199,89,0)",
+  "rgba(52,199,89,0.8)"
+ ],
+ "known": [
+  {
+   "key": "people --bot-lou --bot-tex normal",
+   "fix": "Recolor Tex: it is a lookalike of Lou."
+  },
+  {
+   "key": "people --bot-zen --name0 deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people --bot-doc --bot-gus deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people --bot-doc --bot-viv deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people --bot-gus --bot-viv deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people --bot-doc --bot-gus protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes --mode-dynamic --mode-free deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --bot-vex --pip-red normal",
+   "fix": "Recolor Vex away from red: red means hearts, diamonds and errors."
+  },
+  {
+   "key": "people-signals --bot-vex --danger normal",
+   "fix": "Recolor Vex away from red: red means hearts, diamonds and errors."
+  },
+  {
+   "key": "people-signals --bot-ace --good normal",
+   "fix": "Recolor Ace away from the success green."
+  },
+  {
+   "key": "people-signals --accent --bot-gus normal",
+   "fix": "Fixed with --accent / --mode-free."
+  },
+  {
+   "key": "people-signals --bot-vex --pip-red deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --bot-vex --danger deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --accent --bot-doc deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --bot-lou --gold deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --accent --bot-viv deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --bot-tex --danger deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "people-signals --bot-ace --good protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "seats-signals --gold --name1 deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "seats-signals --accent --name2 deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "seats-signals --accent --name2 protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-signals --accent --mode-free normal",
+   "fix": "Give the selection (--accent) its own color: today it is the Free play color."
+  },
+  {
+   "key": "modes-signals --accent --mode-free deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-signals --accent --mode-dynamic deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-signals --accent --mode-free protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-doc --mode-free deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-viv --mode-free deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-doc --mode-dynamic deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-gus --mode-dynamic deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-viv --mode-dynamic deuteranopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-doc --mode-dynamic protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-gus --mode-dynamic protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  },
+  {
+   "key": "modes-people --bot-viv --mode-dynamic protanopia",
+   "fix": "Color-blind pass: set these apart by lightness, not hue alone."
+  }
+ ],
+ "contrastNote": "WCAG 2 contrast. A background written \"--panel@--felt\" is the --panel tint over the felt, which is what the seats and the log sit on."
+}

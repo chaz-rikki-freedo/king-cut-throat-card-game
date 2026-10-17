@@ -17,6 +17,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | Script | What it checks | Time |
 |---|---|---|
 | `node typecheck.js` | The TypeScript checker on the game script in `index.html`, so the JSDoc types are checked. No browser. | about 3 s |
+| `node palette.js` | The colors against the registry, `docs/ui/palette.json`: every color is a registered token or on the untokenized list, no new collisions (also with color blindness simulated), and the contrast pairs. `--pack file.json` checks a theme pack. See [docs/ui/colors.md](../docs/ui/colors.md). No browser. | under 1 s |
 | `node selftest.js` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
 | `node sw.js` | The service worker, with the worker running: a page that loads but is not the game (a network sign-in page) is not offered as an update, and a real new version is. | about 6 s |
 | `node forfeit.js` | Waves tries through the menu buttons and questions: leaving a game in hand 1 is free; from hand 2, **Discard** or **Play wave** counts one try and the question says so, also for a saved wave game while Free play runs; a cleared wave and a game the AI played in cost none. | about 7 s |

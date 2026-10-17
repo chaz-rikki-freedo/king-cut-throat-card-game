@@ -359,3 +359,7 @@ The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.
 ## Tests
 
 The `tests/` folder has browser tests: the self-tests, two full games through the controls, stress tests for the Engine, replays, saves, backups and the AI, and a long soak. They are not part of the published app. See [tests/README.md](tests/README.md).
+
+## Colors
+
+Every color is a token in `:root`, registered with its family and job in `docs/ui/palette.json`. `tests/palette.js` checks that no two colors with different meanings can be mistaken for each other, also with color blindness simulated, and runs on every pull request. Read [docs/ui/colors.md](docs/ui/colors.md) before adding or changing a color.
