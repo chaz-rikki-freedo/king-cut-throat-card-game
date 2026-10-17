@@ -6,11 +6,11 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
 
-The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and a row of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu during a game has no heading; at launch it says **Welcome back** (or **King Cut-Throat** with no saved game).
+The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and a row of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu has the same header as **Settings**: **King Cut-Throat** (at launch with a saved game, **Welcome back**), then **✕** to close it. On a phone it fills the screen.
 
 The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. Its **✕** returns to the menu.
 
-Your profile, a bot's profile, the results pop-up and Rules have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile and Rules fill the screen.
+Your profile, a bot's profile, the results pop-up and Rules have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile and Rules fill the screen, like the menu.
 
 | Item | What it does |
 |---|---|
@@ -21,7 +21,7 @@ Your profile, a bot's profile, the results pop-up and Rules have the same header
 | **Rules** | The quick rules. **✕** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
-| **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
+| **✕** (header) | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
 
 A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed` and `wave` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
