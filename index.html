@@ -6307,7 +6307,7 @@ const App = (() => {
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
   /* A mode card's second line when it has no game. */
-  const MODE_TAGLINE = Object.freeze({ free: 'Random full strength opponents', dynamic: 'Random, adaptive strength opponents', waves: 'Clear increasingly difficult tables' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* The note in the questions below when leaving the game costs a try (forfeitWave). */
   const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
