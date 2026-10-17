@@ -386,9 +386,13 @@ body.set-open{overflow:hidden}
 .menu{width:min(27.5rem,100%);max-width:27.5rem}
 /* The menu: a card per mode, then the tools. Fixed shapes, so no button moves (see showMenu). */
 .mcard{margin-top:0.75rem;padding:0.75rem 0.875rem;border-radius:0.75rem;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:0.625rem}
-.mhead{display:flex;align-items:baseline;justify-content:space-between;gap:0.5rem}
-.mhead h3{margin:0;font-size:0.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-.mtail{font-size:0.75rem;color:var(--muted)}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
+/* The mode's name: the same chip as the mode chip in the top bar. */
+.mhead h3{margin:0}
+/* The mode's goal: opens Your profile for the mode. The padding makes a touch target; the margin keeps the card's shape. */
+.mtail{font-size:0.75rem;color:var(--muted);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.5rem 0.375rem;margin:-0.5rem -0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
+.mtail:hover{color:var(--ink)}
+.mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0}
 .mstat{margin:0;display:flex;flex-direction:column;font-size:0.8125rem;line-height:1.125rem;color:var(--muted)}
 .mstat span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mstat span:first-child{color:var(--ink)}
@@ -400,6 +404,8 @@ body.set-open{overflow:hidden}
 .mbtns{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
 .mbtns .btn,.mtools .btn{margin:0;min-height:2.75rem;width:100%}
 .mcard select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.5rem;font:inherit;width:100%}
+/* The in-game menu has no heading, so its first card sits at the top. */
+.menu > .mcard:first-child{margin-top:0}
 .mtools{display:flex;gap:0.5rem;margin-top:0.875rem}
 .mtools .btn{width:auto;flex:none;padding-left:0.875rem;padding-right:0.875rem}
 .mtools .mclose{margin-left:auto}
@@ -6268,17 +6274,20 @@ const App = (() => {
       /* Discard game: only on a card with a game, and quiet, so it never competes with Resume. */
       const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '';
-      return '<section class="mcard"><div class="mhead"><h3>' + title + '</h3>' + (tail || '') + '</div><p class="mstat' + (del ? ' has-del' : '') + '"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span>' + del + '</p>' +
+      return '<section class="mcard" data-mode="' + m + '"><div class="mhead"><h3 class="mode-chip ' + m + '">' + title + '</h3>' + (tail || '') + '</div><p class="mstat' + (del ? ' has-del' : '') + '"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span>' + del + '</p>' +
         (extra || '') + '<div class="mbtns">' + resume + buttons + '</div></section>';
     };
-    let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '"><h2>' + (launch ? (resumable.length ? 'Welcome back' : 'King Cut-Throat') : 'Menu') + '</h2>';
+    /* The menu needs no heading; at launch it greets you. */
+    let html = '<div class="modal menu" role="dialog" aria-label="' + (launch ? 'Welcome back' : 'Menu') + '">' + (launch ? '<h2>' + (resumable.length ? 'Welcome back' : 'King Cut-Throat') + '</h2>' : '');
     if (linkNote) { html += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
-    /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
-    html += card('free', 'Free play', '', '<span class="mtail">Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length + '</span>', menuButton('new-free', 'New game'));
-    html += card('dynamic', 'Dynamic', '', '<span class="mtail">Beaten ' + beatenCount(stats.get(), 'dynamic') + ' of ' + PERSONAS.length + '</span>', menuButton('new-dynamic', 'New game'));
+    /* A card's goal, in its top right. It opens Your profile for the mode. */
+    const tail = (m, text) => '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + text + '</button>';
+    html += card('dynamic', 'Dynamic', '', tail('dynamic', 'Beaten ' + beatenCount(stats.get(), 'dynamic') + ' of ' + PERSONAS.length), menuButton('new-dynamic', 'New game'));
     html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
-      '<span class="mtail">' + p.cleared.length + ' of ' + p.total + ' cleared</span>', menuButton('play-wave', 'Play wave'));
+      tail('waves', p.cleared.length + ' of ' + p.total + ' cleared'), menuButton('play-wave', 'Play wave'));
+    /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
+    html += card('free', 'Free play', '', tail('free', 'Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length), menuButton('new-free', 'New game'));
     html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
       (install.prompt ? menuButton('install-app', 'Install', { title: 'Play it from your home screen, also offline' }) : '') +
       menuButton(launch ? 'just-enter' : 'close-menu', 'Close', { cls: 'mclose', title: launch ? 'The table without a game. The menu and Settings work.' : '' }) + '</div>';
@@ -6298,7 +6307,7 @@ const App = (() => {
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
   /* A mode card's second line when it has no game. */
-  const MODE_TAGLINE = Object.freeze({ free: 'Two random opponents each game', dynamic: 'Random opponents who go easier while you learn', waves: 'Clear a wave to open the next' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Random full strength opponents', dynamic: 'Random, adaptive strength opponents', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* The note in the questions below when leaving the game costs a try (forfeitWave). */
   const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
@@ -6578,7 +6587,8 @@ const App = (() => {
   }
   /* Your profile: your results kept in this browser (results, wave tries, the last replay codes).
      The filter scopes every part below it. Games where the AI played your seat are left out. */
-  const profileUI = { mode: 'all', sort: { opp: { key: 'played', dir: -1 }, pair: { key: 'played', dir: -1 } } };
+  /* fromMenu: opened from a menu card, so Back returns to the menu. */
+  const profileUI = { mode: 'all', fromMenu: false, sort: { opp: { key: 'played', dir: -1 }, pair: { key: 'played', dir: -1 } } };
   const PF_MODES = [['all', 'All'], ['free', 'Free play'], ['dynamic', 'Dynamic'], ['waves', 'Waves']];
   const pfRate = r => r.played ? r.won / r.played : null;
   const pfPct = x => x === null ? '<span class="dim">—</span>' : Math.round(x * 100) + '%';
@@ -6633,6 +6643,8 @@ const App = (() => {
   }
   function profileHTML() {
     const st = stats.get(), m = profileUI.mode;
+    const close = '<div class="row">' + (profileUI.fromMenu ? '<button class="btn primary" type="button" data-action="menu-back">Back</button>' :
+      '<button class="btn primary" type="button" data-action="close-overlay">Close</button>') + '</div></div>';
     const sum = g => Object.values(g).reduce((t, r) => ({ played: t.played + r.played, won: t.won + r.won }), { played: 0, won: 0 });
     const tot = m === 'all' ? sum(st.modes) : st.modes[m] || { played: 0, won: 0 };
     const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m));
@@ -6652,7 +6664,7 @@ const App = (() => {
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.cleared.length + ' <small>of ' + pr.total + '</small>') : '') + '</div>';
     if (!tot.played && !games.length) {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
-        '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+        close;
     }
     if (games.length) {
       const shown = games.slice().reverse();
@@ -6672,8 +6684,7 @@ const App = (() => {
     } else {
       html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up: older games count under All only.</p>';
     }
-    return html + '<p class="pf-note">Games where the AI played your seat are not counted. The chart shows up to the last ' + REPLAYS_MAX + ' games.</p>' +
-      '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+    return html + '<p class="pf-note">Games where the AI played your seat are not counted. The chart shows up to the last ' + REPLAYS_MAX + ' games.</p>' + close;
   }
   /* Your bidding habits, from Dynamic's profile (decision 15): how often your calls are made, and your usual hand at a
      call, as the fitted estimate of tricks and Kings. Never the easing. Every mode feeds it, so it ignores the filter. */
@@ -6762,7 +6773,8 @@ const App = (() => {
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
-      case 'me-profile': showProfile(); break;
+      case 'me-profile': profileUI.fromMenu = false; showProfile(); break;
+      case 'menu-profile': profileUI.fromMenu = true; profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile(); break;
       case 'profile-mode': profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile('[data-action="profile-mode"][data-mode="' + profileUI.mode + '"]'); break;
       case 'profile-sort': {
         const which = el.getAttribute('data-table'), key = el.getAttribute('data-key'), cur = profileUI.sort[which];
