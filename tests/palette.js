@@ -13,11 +13,11 @@
      simulated color blindness in the registry.
    - Contrast: each text and background pair has at least its WCAG contrast ratio.
    - Known problems: a failing pair passes only while it is listed under known, and a listed pair that no longer
-     fails must be removed, so the list stays true. A theme pack has no known problems. */
+     fails must be removed, so the list stays true. A theme pack has no known problems.
+
+   The palette page (docs/ui/palette.html) loads this file too, for the same color math and checks: only main()
+   uses Node. */
 'use strict';
-const fs = require('fs'), path = require('path');
-const ROOT = path.resolve(__dirname, '..');
-const REG_FILE = path.join(ROOT, 'docs/ui/palette.json'), DOC_FILE = path.join(ROOT, 'docs/ui/colors.md');
 
 /* ---- Color math ---- */
 /** @returns {{ r: number, g: number, b: number, a: number } | null} 0–255 channels, alpha 0–1 */
@@ -184,6 +184,9 @@ function withTables(doc, reg) {
 
 /* ---- Main ---- */
 function main(argv) {
+  const fs = require('fs'), path = require('path');
+  const ROOT = path.resolve(__dirname, '..');
+  const REG_FILE = path.join(ROOT, 'docs/ui/palette.json'), DOC_FILE = path.join(ROOT, 'docs/ui/colors.md');
   const reg = JSON.parse(fs.readFileSync(REG_FILE, 'utf8'));
   if (argv[0] === '--write-doc') { fs.writeFileSync(DOC_FILE, withTables(fs.readFileSync(DOC_FILE, 'utf8'), reg)); console.log('colors.md: tables rewritten'); return 0; }
   const fails = [], note = s => console.log('  ' + s), fail = s => { fails.push(s); console.log('  ✖ ' + s); };
@@ -242,5 +245,7 @@ function main(argv) {
   console.log(fails.length ? 'FAIL: ' + fails.length + ' check(s) failed' : 'OK: no new collisions');
   return fails.length ? 1 : 0;
 }
-module.exports = { parse, norm, deltaE, deltaELab, contrast, seenAs, readGame, problems };
-if (require.main === module) process.exitCode = main(process.argv.slice(2));
+if (typeof module !== 'undefined') {
+  module.exports = { parse, norm, deltaE, deltaELab, contrast, seenAs, readGame, problems, levelOf, VISION, LEVELS };
+  if (require.main === module) process.exitCode = main(process.argv.slice(2));
+}

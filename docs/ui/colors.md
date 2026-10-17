@@ -9,6 +9,7 @@ The system has three parts:
 | Tokens | `index.html`, the `:root` block | The color values the game uses. Every rule draws its colors from a token (`var(--gold)`), not from a written value. |
 | Registry | [`palette.json`](palette.json) | Every token with its family and job, the groups, the rules, the contrast pairs, the colors not yet tokens, and the known problems. |
 | Checker | [`tests/palette.js`](../../tests/palette.js) | Checks the tokens against the registry and the rules. It runs in the Checks workflow on every pull request. |
+| Palette page | [`palette.html`](palette.html) | For development only, never published: every token, the colors in context, the collision table and the problems, with color blindness simulated, and a box to try a theme pack. |
 
 ## The families
 
@@ -64,7 +65,14 @@ node palette.js --write-doc      # rewrite the generated tables on this page fro
 node palette.js --pack pack.json # check a theme pack
 ```
 
-It fails when:
+To see the colors, serve the repository root and open the palette page. It uses the checker's own code, so it shows the same results:
+
+```sh
+python3 -m http.server          # from the repository root
+# then open http://localhost:8000/docs/ui/palette.html
+```
+
+The checker fails when:
 
 - a token in `index.html` is not in the registry, or has another value there;
 - a color is written in `index.html` outside a token and is not on the untokenized list;

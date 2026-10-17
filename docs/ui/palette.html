@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KCT palette</title>
+<link rel="icon" href="data:,">
+<!-- Development only: tools/publish.sh does not publish docs/. Serve the repository root and open
+     /docs/ui/palette.html, for example: python3 -m http.server, then http://localhost:8000/docs/ui/palette.html
+     It reads palette.json and index.html, and uses the checker's own code (tests/palette.js). -->
+<style>
+:root{--bg:#0d1511;--panel:#16211b;--line:#2a3a31;--ink:#eef2ee;--muted:#9fb3a6;--focus:#8ab4ff;
+  --lv-identical:#e5484d;--lv-lookalike:#f08c00;--lv-similar:#c9a227;--lv-distinct:#2f3b34}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:12px 20px;background:var(--bg);border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:18px}h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+h2{font-size:15px;margin:28px 0 4px}h2+p{margin:0 0 12px;color:var(--muted)}
+main{padding:0 20px 40px;max-width:1200px}
+label{color:var(--muted)}select,button,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px}
+select,button{padding:6px 10px;min-height:36px}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.status{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.pill.bad{border-color:var(--lv-identical);color:#ffb3b5}.pill.ok{border-color:#3f7a55;color:#b6e8c6}
+.fam{margin-top:18px}.fam h3{margin:0 0 2px;font-size:13px;text-transform:uppercase;letter-spacing:.08em}.fam p{margin:0 0 8px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.sw{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+.sw i{flex:none;width:44px;height:44px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background-image:linear-gradient(45deg,#777 25%,transparent 25%,transparent 75%,#777 75%),linear-gradient(45deg,#777 25%,#444 25%,#444 75%,#777 75%);background-size:10px 10px;background-position:0 0,5px 5px;position:relative;overflow:hidden}
+.sw i b{position:absolute;inset:0}
+.sw code{font-size:12px}.sw .v{color:var(--muted);font-size:12px}.sw .j{font-size:12px;color:var(--muted);margin-top:2px}
+.ctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px}
+.stage{border-radius:12px;padding:14px;border:1px solid var(--line)}.stage .lab{font-size:12px;opacity:.75;margin-bottom:8px}
+.names{display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:700;font-size:15px}
+.chips{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.chip{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px}
+.sig{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap;font-weight:700}
+.sig .btn{padding:4px 12px;border-radius:8px}.sig .sel{padding:2px 8px;border-radius:6px}
+.matrix{overflow:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;font-size:12px}th,td{padding:0;border:1px solid var(--line);text-align:center}
+th{position:sticky;background:var(--panel);font-weight:600;padding:4px 6px;white-space:nowrap}thead th{top:0;writing-mode:vertical-rl;transform:rotate(180deg);height:110px}
+tbody th{left:0;text-align:right}
+td{width:34px;height:28px;font-variant-numeric:tabular-nums}td.off{opacity:.28}td.self{background:#0a0f0c}
+.key{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;color:var(--muted);font-size:12px}.key span::before{content:'';display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px;background:var(--c)}
+ul.probs{list-style:none;padding:0;margin:0;display:grid;gap:4px}ul.probs li{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;padding:6px 10px}
+ul.probs .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-right:8px;color:var(--muted)}ul.probs .new{color:#ffb3b5}
+textarea{width:100%;min-height:110px;padding:8px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}.msg{color:var(--muted)}
+.err{background:#2a1212;border:1px solid #6b2a2a;border-radius:10px;padding:12px;margin-top:20px}
+@media (max-width:600px){header,main{padding-left:12px;padding-right:12px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>KCT palette<small>Development only · not published</small></h1>
+  <label>Vision <select id="vision"></select></label>
+  <div class="status" id="status"></div>
+</header>
+<main id="main"><p class="msg">Loading palette.json and index.html…</p></main>
+<script src="../../tests/palette.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const LEVEL_COLOR = { identical: 'var(--lv-identical)', lookalike: 'var(--lv-lookalike)', similar: 'var(--lv-similar)', distinct: 'var(--lv-distinct)' };
+const state = { reg: null, game: null, values: null, pack: null, vision: 'normal' };
+
+/* A color as the chosen vision sees it, as CSS. */
+function shown(value) {
+  const c = parse(value);
+  if (!c) return value;
+  const s = seenAs(c, state.vision), k = v => Math.round(Math.max(0, Math.min(255, v)));
+  return 'rgba(' + k(s.r) + ',' + k(s.g) + ',' + k(s.b) + ',' + c.a + ')';
+}
+const v = name => state.values.get(name);
+
+function swatches() {
+  const { reg } = state;
+  return Object.entries(reg.families).map(([fam, job]) => {
+    const ts = reg.tokens.filter(t => t.family === fam);
+    if (!ts.length) return '';
+    return '<section class="fam"><h3>' + esc(fam) + '</h3><p>' + esc(job) + '</p><div class="grid">' + ts.map(t =>
+      '<div class="sw"><i><b style="background:' + shown(v(t.name)) + '"></b></i><div><code>' + esc(t.name) + '</code><div class="v">' + esc(v(t.name)) +
+      (state.pack && state.pack.tokens[t.name] ? ' · pack' : '') + '</div><div class="j">' + esc(t.job) + '</div></div></div>').join('') + '</div></section>';
+  }).join('');
+}
+
+function contextHTML() {
+  const { reg } = state, people = reg.groups.people;
+  const nameOf = n => n === '--name0' ? 'You' : n.replace('--bot-', '').replace(/^./, c => c.toUpperCase());
+  const stage = (label, bg) => '<div class="stage" style="background:' + shown(bg) + ';color:' + shown(v('--ink')) + '"><div class="lab">' + label + '</div>' +
+    '<div class="names">' + people.map(n => '<span style="color:' + shown(v(n)) + '">' + nameOf(n) + '</span>').join('') + '</div>' +
+    '<div class="chips">' + ['free', 'dynamic', 'waves'].map(m => '<span class="chip" style="background:' + shown(v('--mode-' + m)) + ';color:' + shown(v('--mode-' + m + '-ink')) + '">' + (m === 'free' ? 'Free play' : m) + '</span>').join('') + '</div>' +
+    '<div class="sig"><span class="btn" style="background:' + shown(v('--gold')) + ';color:' + shown(v('--gold-ink')) + '">Gold button</span>' +
+    '<span class="sel" style="box-shadow:0 0 0 2px ' + shown(v('--accent')) + '">Selected</span>' +
+    '<span style="color:' + shown(v('--pip-red')) + '">♥ ♦</span><span style="color:' + shown(v('--danger')) + '">−2</span><span style="color:' + shown(v('--good')) + '">+1</span>' +
+    '<span style="color:' + shown(v('--muted')) + '">Muted text</span></div></div>';
+  /* The seats and the log sit on the --panel tint over the felt. */
+  const over = (top, under) => { const t = parse(v(top)), u = parse(v(under)), m = k => t[k] * t.a + u[k] * (1 - t.a); return '#' + ['r', 'g', 'b'].map(k => Math.round(m(k)).toString(16).padStart(2, '0')).join(''); };
+  return '<div class="ctx">' + stage('On --sheet: the menu, Your profile, the pop-ups', v('--sheet')) + stage('On --panel over --felt: the seats and the log', over('--panel', '--felt')) + '</div>';
+}
+
+/* Every pair of names, modes and signals, with the level it is seen at. A cell no rule covers is faded. */
+function matrixHTML() {
+  const { reg } = state, rows = [...new Set([...reg.groups.people, ...reg.groups.seats, ...reg.groups.modes, ...reg.groups.signals])];
+  const ruled = new Map();
+  for (const rule of reg.rules) {
+    const A = reg.groups[rule.between[0]], B = reg.groups[rule.between[1]];
+    for (const a of A) for (const b of B) if (a !== b) { const k = [a, b].sort().join(' '); if (!ruled.has(k) || LEVELS.indexOf(rule.min) > LEVELS.indexOf(ruled.get(k))) ruled.set(k, rule.min); }
+  }
+  const head = '<thead><tr><th></th>' + rows.map(n => '<th>' + esc(n) + '</th>').join('') + '</tr></thead>';
+  const body = rows.map(a => '<tr><th>' + esc(a) + '</th>' + rows.map(b => {
+    if (a === b) return '<td class="self"></td>';
+    const d = deltaE(seenAs(parse(v(a)), state.vision), seenAs(parse(v(b)), state.vision)), lv = levelOf(reg, d), need = ruled.get([a, b].sort().join(' '));
+    const needHere = state.vision === 'normal' ? need : need && reg.colorBlindMin;
+    return '<td class="' + (need ? '' : 'off') + '" style="background:' + LEVEL_COLOR[lv] + '" title="' + esc(a + ' / ' + b + ': ' + lv + ' (' + d.toFixed(1) + ')' + (needHere ? ', needs ' + needHere : ', no rule')) + '">' + Math.round(d) + '</td>';
+  }).join('') + '</tr>').join('');
+  return '<div class="key">' + LEVELS.map(l => '<span style="--c:' + LEVEL_COLOR[l] + '">' + l + '</span>').join('') + '<span style="--c:#555">faded: no rule covers the pair</span></div>' +
+    '<div class="matrix"><table>' + head + '<tbody>' + body + '</tbody></table></div>';
+}
+
+function problemsHTML(found) {
+  const known = new Set(state.pack ? [] : state.reg.known.map(k => k.key));
+  const fix = new Map(state.reg.known.map(k => [k.key, k.fix]));
+  if (!found.length) return '<p class="msg">No problems.</p>';
+  return '<ul class="probs">' + found.map(p => {
+    const isKnown = known.has(p.key);
+    return '<li style="--c:' + (isKnown ? 'var(--lv-lookalike)' : 'var(--lv-identical)') + '"><span class="tag ' + (isKnown ? '' : 'new') + '">' + (isKnown ? 'known' : 'new') + '</span>' +
+      '<b>' + esc(p.check) + '</b> · <code>' + esc(p.a) + '</code> / <code>' + esc(p.b) + '</code>' + (p.vision === 'normal' ? '' : ' · ' + esc(p.vision)) + ' · ' + esc(p.text) +
+      (isKnown && fix.get(p.key) ? '<div class="msg">' + esc(fix.get(p.key)) + '</div>' : '') + '</li>';
+  }).join('') + '</ul>';
+}
+
+function render() {
+  const { reg, game } = state;
+  const found = problems(reg, state.values), known = new Set(state.pack ? [] : reg.known.map(k => k.key));
+  const fresh = found.filter(p => !known.has(p.key)).length;
+  const drift = reg.tokens.filter(t => { const g = game.tokens.find(x => x.name === t.name); return !g || g.value !== norm(t.value); }).length + game.tokens.filter(g => !reg.tokens.some(t => t.name === g.name)).length;
+  $('status').innerHTML = '<span class="pill">' + reg.tokens.length + ' tokens</span><span class="pill">' + game.stray.size + ' not yet tokens</span>' +
+    '<span class="pill ' + (fresh ? 'bad' : 'ok') + '">' + found.length + ' problems, ' + fresh + ' new</span>' +
+    '<span class="pill ' + (drift ? 'bad' : 'ok') + '">' + (drift ? drift + ' tokens differ from index.html' : 'index.html matches the registry') + '</span>' +
+    (state.pack ? '<span class="pill">Pack: ' + esc(state.pack.name || 'unnamed') + '</span>' : '');
+  $('main').innerHTML =
+    '<h2>In context</h2><p>Names, mode chips and signals on the two backgrounds they sit on, as the chosen vision sees them.</p>' + contextHTML() +
+    '<h2>Collisions</h2><p>How different each pair of names, modes and signals looks (CIEDE2000). Hover a cell for the pair and the level its rule needs.</p>' + matrixHTML() +
+    '<h2>Problems</h2><p>Every failing rule and contrast pair' + (state.pack ? ' for the pack. A pack has no known problems.' : '. Known problems are on the baseline in palette.json; a new one fails the checker.') + '</p>' + problemsHTML(found) +
+    '<h2>Try a theme pack</h2><p>Paste a pack, then Apply: every view on this page uses its colors. The same check as <code>node palette.js --pack</code>.</p>' +
+    '<textarea id="pack" spellcheck="false">' + esc(state.packText || '{ "name": "Draft", "tokens": { "--bot-vex": "#ff9e7a" } }') + '</textarea>' +
+    '<div class="row"><button type="button" id="apply">Apply</button><button type="button" id="reset">Reset to the defaults</button><span class="msg" id="packMsg"></span></div>' +
+    '<h2>Tokens</h2><p>Every token in palette.json, by family.</p>' + swatches();
+  $('apply').onclick = applyPack;
+  $('reset').onclick = () => { state.pack = null; state.values = defaults(); render(); };
+}
+
+const defaults = () => new Map(state.reg.tokens.map(t => [t.name, norm(t.value)]));
+function applyPack() {
+  state.packText = $('pack').value;
+  let pack;
+  try { pack = JSON.parse(state.packText); } catch (e) { $('packMsg').textContent = 'Not JSON: ' + e.message; return; }
+  const values = defaults(), bad = [];
+  for (const [name, val] of Object.entries(pack.tokens || {})) {
+    if (!values.has(name)) bad.push(name + ' is not a token');
+    else if (!parse(val)) bad.push(name + ': ' + val + ' is not a color');
+    else values.set(name, norm(val));
+  }
+  if (bad.length) { $('packMsg').textContent = bad.join(' · '); return; }
+  state.pack = pack; state.values = values; render();
+}
+
+(async () => {
+  try {
+    const [reg, html] = await Promise.all([fetch('palette.json').then(r => r.json()), fetch('../../index.html').then(r => r.text())]);
+    state.reg = reg; state.game = readGame(html); state.values = defaults();
+    $('vision').innerHTML = Object.keys(VISION).map(k => '<option value="' + k + '">' + k[0].toUpperCase() + k.slice(1) + '</option>').join('');
+    $('vision').onchange = e => { state.vision = e.target.value; render(); };
+    render();
+  } catch (e) {
+    $('main').innerHTML = '<div class="err"><b>Could not load palette.json and index.html.</b><p>Browsers block reading files from a file:// page. Serve the repository root, then open this page from the server:</p>' +
+      '<pre>python3 -m http.server\nhttp://localhost:8000/docs/ui/palette.html</pre><p class="msg">' + esc(e.message) + '</p></div>';
+  }
+})();
+</script>
+</body>
+</html>
