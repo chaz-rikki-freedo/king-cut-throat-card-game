@@ -114,11 +114,13 @@ function expect(name, ok, detail) {
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
-      click('#overlay .profile [data-action="menu-back"]'); await sleep(20);
+      out.x = (q('#overlay .profile .dlg-x') || {}).getAttribute && q('#overlay .profile .dlg-x').getAttribute('data-action');
+      click('#overlay .profile .row [data-action="menu-back"]'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
     expect('the menu: no heading, Dynamic, Waves, then Free play', !r.heading && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
     expect("a card's goal opens Your profile for the mode; Back returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
+    expect('Your profile from the menu has a pinned X that goes back too', r.x === 'menu-back', r);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
