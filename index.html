@@ -90,9 +90,9 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .seat-face:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 #seat0 .seat-name{color:var(--name0)}
 .playing-as{font-size:0.8125rem;color:var(--muted)}
-.persona{display:flex;flex-direction:column;align-items:center;gap:0.875rem;text-align:center;max-width:22.5rem}
+.modal.persona{max-width:22.5rem}
+.persona .sheet-body{display:flex;flex-direction:column;align-items:center;gap:0.875rem;text-align:center}
 .persona .p-face{width:8.25rem;height:8.25rem;background:center bottom/contain no-repeat}
-.persona h2{margin:0;font-size:1.5rem;letter-spacing:.02em}
 .persona .p-quote{margin:0;font-size:0.9375rem;font-style:italic}
 .persona .p-hint{margin:0;font-size:0.8125rem;color:var(--muted)}
 .persona .p-dials{align-self:stretch;display:grid;grid-template-columns:auto 1fr;gap:0.5rem 1rem;align-items:center;font-size:0.8125rem;color:var(--muted);background:rgba(0,0,0,.25);border-radius:0.625rem;padding:0.75rem 1rem;text-align:left}
@@ -104,7 +104,6 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 /* Your profile: your results from this browser. Filter row, figure tiles, the Last games chart, sortable tables. */
 .modal.profile{max-width:36rem;position:relative}
 .profile .pf-head{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem}
-.profile .pf-head h2{margin:0}
 .profile .pf-head .p-face{width:3.5rem;height:3.5rem;flex:none;background:center/contain no-repeat}
 .profile .pf-head p{margin:0.125rem 0 0;font-size:0.8125rem;color:var(--muted)}
 .profile h3{margin:1.125rem 0 0.25rem;font-size:1rem}
@@ -299,8 +298,8 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 /* On phones, the long panels (Your profile, Rules) fill the screen: no frame or margin around the text. */
 @media (max-width:600px){
   .overlay:has(> .modal.profile,> .modal.rules){padding:0}
-  .modal.profile,.modal.rules{max-width:none;width:100%;height:100%;max-height:none;border:0;border-radius:0;
-    padding:max(1.25rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(1.25rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+  .modal.profile,.modal.rules{max-width:none;width:100%;height:100%;max-height:none;border:0;border-radius:0}
+  .modal.profile .sheet-body,.modal.rules .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
 .modal{background:#123f28;border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
@@ -310,10 +309,10 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .modal td,.modal th{padding:0.3125rem 0.5rem;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:1.25rem}
 .modal .row{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.875rem;flex-wrap:wrap}
-.dlg-x{position:sticky;top:0;float:right;z-index:2;margin:-0.5rem -0.5rem 0 0.5rem;width:2.75rem;height:2.75rem;display:grid;place-items:center;padding:0;border-radius:62.4375rem;background:#123f28;border:1px solid rgba(255,255,255,.18);color:var(--ink);cursor:pointer;box-shadow:0 0.125rem 0.5rem rgba(0,0,0,.35)}
-.dlg-x:hover{background:#1b5236}
-.dlg-x:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.dlg-x svg{width:1.125rem;height:1.125rem;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.modal.sheet{padding:0;display:flex;flex-direction:column;overflow:hidden}
+.sheet-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0.75rem;padding:0.75rem 1rem 0.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.12);flex:none}
+.sheet-top h2{margin:0;font-size:1.125rem;font-weight:800}
+.sheet-body{overflow:auto;min-height:0;padding:1.25rem;position:relative}
 /* Settings: full screen, one tab at a time (Game, Bots, Expert, Tools). Each setting is a row: its name and a
    one-line description, then its control. On/off settings are switches; the whole row toggles them. */
 .settings{--s1:0.25rem;--s2:0.5rem;--s3:0.75rem;--s4:1rem;--s5:1.5rem;--set-bg:#0b0f0c;--set-card:#111b15;--set-line:#24382c;--set-field:#16261d;--set-hint:#8fb89a;
@@ -322,7 +321,7 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 body.set-open{overflow:hidden}
 .settings .set-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);background:var(--set-bg)}
 .settings .set-title{margin:0;font-size:1.125rem;font-weight:800}
-.settings .set-close{justify-self:end;font-size:0.9375rem;font-weight:700;padding:0.5rem 1rem;min-height:2.75rem;margin:0}
+.set-close{justify-self:end;font-size:0.9375rem;font-weight:700;padding:0.5rem 1rem;min-height:2.75rem;margin:0}
 .settings .set-tabs{display:flex;gap:0.25rem;padding:0.25rem;border-radius:0.75rem;background:var(--set-field)}
 .settings .set-tab{appearance:none;border:0;background:transparent;color:var(--set-hint);font:inherit;font-weight:700;padding:0.5rem 1.125rem;min-height:2.5rem;border-radius:0.5625rem;cursor:pointer}
 .settings .set-tab:hover{color:var(--ink)}
@@ -381,11 +380,11 @@ body.set-open{overflow:hidden}
 .settings pre:empty::before{content:'The event log is empty. It records new events while Event log is on.';color:#7f9a86;font-style:italic}
 .settings pre{margin:var(--s3) 0 0;padding:var(--s3);border-radius:0.5rem;background:#070a08;overflow:auto;font:0.75rem/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;min-height:5rem;max-height:40vh;white-space:pre-wrap;word-break:break-word}
 @media (max-width:620px){
+  .set-close-word{display:none}
+  .set-close{padding:0.5rem 0.875rem}
   .settings .set-top{grid-template-columns:1fr auto;padding:var(--s2) var(--s3) var(--s3)}
   .settings .set-tabs{grid-column:1 / -1;grid-row:2}
   .settings .set-tab{flex:1;padding:0.5rem 0.375rem}
-  .settings .set-close-word{display:none}
-  .settings .set-close{padding:0.5rem 0.875rem}
   .settings .set-pane{padding:var(--s4) var(--s3) 2.5rem}
   .settings .set-card{padding:0 var(--s3)}
   .settings select{max-width:9.5rem}
@@ -1755,12 +1754,13 @@ const Base64url = Object.freeze({
     return out;
   }
 });
-/* The X of a stats dialog (Your profile, a bot's profile, the results pop-up): pinned to the top right while the
-   dialog scrolls, so a way out is always in view. action: what the dialog's own bottom button does. */
-const closeXHTML = (action = 'close-overlay') => '<button class="dlg-x" type="button" data-action="' + action + '" aria-label="Close" title="Close">' +
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
 /** @param {unknown} t @returns {string} the text, safe inside HTML and inside a quoted attribute */
 const escHTML = t => String(t).replace(/[&<>"']/g, c => /** @type {Record<string, string>} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+/* A panel with the Settings header: the title, then the ✕ button that closes it (action: what closing does). Only
+   the body scrolls, so the way out stays in view. cls: the panel's own class; title: the header's contents. */
+const sheetHTML = (cls, label, title, action = 'close-overlay') => '<div class="modal sheet ' + cls + '" role="dialog" aria-label="' + label + '">' +
+  '<header class="sheet-top">' + title + '<button class="btn set-close" type="button" data-action="' + action + '" aria-label="Close">✕<span class="set-close-word"> Close</span></button></header>' +
+  '<div class="sheet-body">';
 
 /* ---------------------------------------------------------------------
    4b. REPLAY — rebuilds a game from its seed and its decision list.
@@ -3871,11 +3871,10 @@ const Render = (() => {
   }
   function personaHTML(x) {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
-    return '<div class="modal persona" role="dialog" aria-label="' + escHTML(x.name) + '">' + closeXHTML() + faceHTML(x) +
-      '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2><p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
+    return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
+      '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
-      (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' +
-      '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+      (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
   }
 
   /* A bot's King point is held back while its +1 flies to the seat (App kingPop): the score changes when it lands. */
@@ -6552,7 +6551,7 @@ const App = (() => {
   /* The rules open from the menu; Back returns to it (the game stays paused). */
   function showRules() {
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal rules" role="dialog" aria-label="Rules">' + closeXHTML('menu-back') + '<h2>King Cut-Throat — quick rules</h2><ul>' +
+    ov.innerHTML = sheetHTML('rules', 'Rules', '<h2>King Cut-Throat — quick rules</h2>', 'menu-back') + '<ul>' +
       '<li>3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.</li>' +
       '<li>33-card deck: 7–A in four suits plus the Joker. Deal: 3 each, 3 to the kitty, 4 each, 3 each.</li>' +
       '<li>Trump order: Joker, Right Bower (Jack of trump), Left Bower (other Jack of the same color, counts as trump), A, K, Q, 10, 9, 8, 7.</li>' +
@@ -6565,14 +6564,14 @@ const App = (() => {
       '<li>End of hand: most tricks +1 · namer takes all 7: +2 · non-namer takes all 7: +3.</li>' +
       '<li>The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</li>' +
       '<li><b>Showdown:</b> on a 3–3–1 split, the 1-trick player mediates, shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. The mediator picks who leads (house rule, on by default; off: the player who won the latest main trick between them leads). Winner +1, loser −1 (not below 0).</li>' +
-      '</ul><div class="row"><button class="btn primary" type="button" data-action="menu-back">Back</button></div></div>';
+      '</ul></div></div>';
     ov.hidden = false;
   }
 
   /* The mode chip opens your results for the mode: tries per wave, or Free play wins per opponent. */
   function resultsHTML() {
     const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</span>'; };
-    const close = '<div class="row"><button class="btn primary" type="button" data-action="close-overlay">Close</button></div></div>';
+    const close = '</div></div>';
     if (app.mode === 'waves') {
       const pr = Waves.progress();
       /* Newest wave first. Locked waves are not listed: their opponents are a surprise. */
@@ -6583,7 +6582,7 @@ const App = (() => {
       }).join('');
       const total = pr.cleared.reduce((t, n) => t + Waves.tries(n), 0);
       const locked = pr.total - pr.unlocked;
-      return '<div class="modal results" role="dialog" aria-label="Wave tries">' + closeXHTML() + '<h2>Wave tries</h2>' +
+      return sheetHTML('results', 'Wave tries', '<h2>Wave tries</h2>') +
         '<p>Cleared ' + pr.cleared.length + ' of ' + pr.total + (pr.cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared wave.</p>' +
         '<table><tr><th>Wave</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
         (locked ? '<p class="note">' + locked + (locked === 1 ? ' more wave opens' : ' more waves open') + ' as you clear them.</p>' : '') +
@@ -6595,14 +6594,14 @@ const App = (() => {
       const r = mine[x.id] || { played: 0, won: 0 };
       return '<tr><td>' + who(x.id) + '</td><td class="num">' + r.won + '</td><td class="num">' + r.played + '</td></tr>';
     }).join('');
-    return '<div class="modal results" role="dialog" aria-label="' + title + '">' + closeXHTML() + '<h2>' + title + '</h2>' +
+    return sheetHTML('results', title, '<h2>' + title + '</h2>') +
       '<p>Games you won against each opponent, and games you played against them.</p>' +
       '<table><tr><th>Opponent</th><th class="num">Wins</th><th class="num">Games</th></tr>' + rows + '</table>' +
       '<p class="note">A game where the AI played your seat does not count.</p>' + close;
   }
   /* Your profile: your results kept in this browser (results, wave tries, the last replay codes).
      The filter scopes every part below it. Games where the AI played your seat are left out. */
-  /* fromMenu: opened from a menu card, so Back returns to the menu. */
+  /* fromMenu: opened from a menu card, so its ✕ returns to the menu. */
   const profileUI = { mode: 'all', fromMenu: false, sort: { opp: { key: 'played', dir: -1 }, pair: { key: 'played', dir: -1 } } };
   const PF_MODES = [['all', 'All'], ['free', 'Free play'], ['dynamic', 'Dynamic'], ['waves', 'Waves']];
   const pfRate = r => r.played ? r.won / r.played : null;
@@ -6658,8 +6657,7 @@ const App = (() => {
   }
   function profileHTML() {
     const st = stats.get(), m = profileUI.mode;
-    const close = '<div class="row">' + (profileUI.fromMenu ? '<button class="btn primary" type="button" data-action="menu-back">Back</button>' :
-      '<button class="btn primary" type="button" data-action="close-overlay">Close</button>') + '</div></div>';
+    const close = '</div></div>';
     const sum = g => Object.values(g).reduce((t, r) => ({ played: t.played + r.played, won: t.won + r.won }), { played: 0, won: 0 });
     const tot = m === 'all' ? sum(st.modes) : st.modes[m] || { played: 0, won: 0 };
     const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m));
@@ -6672,8 +6670,8 @@ const App = (() => {
     }
     const pr = Waves.progress();
     const tile = (label, value) => '<div class="pf-tile"><span>' + label + '</span><b>' + value + '</b></div>';
-    let html = '<div class="modal profile" role="dialog" aria-label="Your profile">' + closeXHTML(profileUI.fromMenu ? 'menu-back' : 'close-overlay') +
-      '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><div><h2>Your profile</h2><p>Your results in this browser.</p></div></div>' +
+    let html = sheetHTML('profile', 'Your profile', '<h2>Your profile</h2>', profileUI.fromMenu ? 'menu-back' : 'close-overlay') +
+      '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><p>Your results in this browser.</p></div>' +
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.cleared.length + ' <small>of ' + pr.total + '</small>') : '') + '</div>';
@@ -6713,18 +6711,19 @@ const App = (() => {
   }
   /* Draws Your profile; keepFocus puts the focus back on the control that was used. */
   function showProfile(keepFocus) {
-    const ov = $('overlay'), old = ov.querySelector('.profile'), scroll = old ? old.scrollTop : 0;
+    const ov = $('overlay'), old = ov.querySelector('.profile'), body = old && old.querySelector('.sheet-body'), scroll = body ? body.scrollTop : 0;
     const open = old ? Array.from(old.querySelectorAll('details'), d => d.open) : [];
     ov.innerHTML = profileHTML();
     ov.hidden = false;
     const box = ov.querySelector('.profile');
     if (box) box.querySelectorAll('details').forEach((d, i) => { if (open[i]) d.open = true; });
-    if (box) box.scrollTop = scroll;
+    const nb = box && box.querySelector('.sheet-body');
+    if (nb) nb.scrollTop = scroll;
     if (keepFocus) { const el = ov.querySelector(keepFocus); if (el instanceof HTMLElement) el.focus(); }
   }
   /* The chart's tooltip: the same text as the column's label, shown on hover and on keyboard focus. */
   function profileTip(ev) {
-    const t = ev.target instanceof Element ? ev.target.closest('.pf-col') : null, chart = t && t.closest('.pf-chart'), box = t && t.closest('.profile');
+    const t = ev.target instanceof Element ? ev.target.closest('.pf-col') : null, chart = t && t.closest('.pf-chart'), box = t && t.closest('.profile .sheet-body');
     const old = $('overlay').querySelector('.pf-tip');
     if (ev.type === 'focusout' || ev.type === 'pointerout') {
       const to = ev.relatedTarget;

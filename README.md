@@ -8,9 +8,9 @@ Each launch opens on the menu. To open it during a game, click **☰** in the he
 
 The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and a row of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu during a game has no heading; at launch it says **Welcome back** (or **King Cut-Throat** with no saved game).
 
-The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. **Back** returns to the menu.
+The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. Its **✕** returns to the menu.
 
-Your profile, a bot's profile and the results pop-up have an **X** in the top right that stays in view while the panel scrolls. It does the same as the panel's bottom button. On a phone (600 px wide or less), Your profile and Rules fill the screen.
+Your profile, a bot's profile, the results pop-up and Rules have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile and Rules fill the screen.
 
 | Item | What it does |
 |---|---|
@@ -18,7 +18,7 @@ Your profile, a bot's profile and the results pop-up have an **X** in the top ri
 | **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
 | **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
-| **Rules** | The quick rules. **Back** (or the **X** in the top right) returns to the menu. |
+| **Rules** | The quick rules. **✕** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
 | **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |

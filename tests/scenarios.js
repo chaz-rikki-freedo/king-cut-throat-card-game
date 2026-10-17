@@ -114,13 +114,13 @@ function expect(name, ok, detail) {
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
-      out.x = (q('#overlay .profile .dlg-x') || {}).getAttribute && q('#overlay .profile .dlg-x').getAttribute('data-action');
-      click('#overlay .profile .row [data-action="menu-back"]'); await sleep(20);
+      out.exits = Array.from(document.querySelectorAll('#overlay .profile button[data-action="menu-back"], #overlay .profile button[data-action="close-overlay"]'), x => x.closest('.sheet-top') ? 'header' : 'body');
+      click('#overlay .profile .sheet-top .set-close'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
     expect('the menu: no heading, Dynamic, Waves, then Free play', !r.heading && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
-    expect("a card's goal opens Your profile for the mode; Back returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
-    expect('Your profile from the menu has a pinned X that goes back too', r.x === 'menu-back', r);
+    expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
+    expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
