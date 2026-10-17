@@ -269,7 +269,9 @@ function expect(name, ok, detail) {
     const docText = ['README.md', ...fs.readdirSync(path.join(ROOT, 'docs')).filter(f => f.endsWith('.md')).map(f => 'docs/' + f)]
       .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
     const refs = [...new Set(docText.match(/KCT(?:\.[A-Za-z_]+)+/g) || [])];
-    r = await step(`return arg.filter(ref => { let o = window; for (const k of ref.split('.')) { if (o == null || !(k in Object(o))) return true; o = o[k]; } return false; });`, refs);
+    /* A path counts once it reaches a property that is there but empty now: KCT.App.app.dyn is null outside a
+       Dynamic game, so KCT.App.app.dyn.e cannot be followed here. */
+    r = await step(`return arg.filter(ref => { let o = window; for (const k of ref.split('.')) { if (o == null) return false; if (!(k in Object(o))) return true; o = o[k]; } return false; });`, refs);
     expect('every KCT command named in the docs exists (' + refs.length + ')', refs.length > 20 && r.length === 0, r);
     r = await step(`
       const keep = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, courage: app.ai.style.courage }, was = app.usePersonas;
