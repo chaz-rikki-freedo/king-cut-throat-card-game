@@ -10,7 +10,7 @@ The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and
 
 The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. **Back** returns to the menu.
 
-Your profile, a bot's profile and the results pop-up have an **X** in the top right that stays in view while the panel scrolls. It does the same as the panel's bottom button.
+Your profile, a bot's profile and the results pop-up have an **X** in the top right that stays in view while the panel scrolls. It does the same as the panel's bottom button. On a phone (600 px wide or less), Your profile and Rules fill the screen.
 
 | Item | What it does |
 |---|---|
@@ -18,7 +18,7 @@ Your profile, a bot's profile and the results pop-up have an **X** in the top ri
 | **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
 | **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
-| **Rules** | The quick rules. **Back** returns to the menu. |
+| **Rules** | The quick rules. **Back** (or the **X** in the top right) returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
 | **Close** | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
