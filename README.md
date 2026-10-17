@@ -6,7 +6,9 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
 
-The menu has a card for each mode, **Free play**, **Dynamic** and **Waves**, and a row of tools. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game**. Every button stays in the same place whatever is saved or running.
+The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and a row of tools. Each card's name is the same colored chip as the mode chip in the header. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu during a game has no heading; at launch it says **Welcome back** (or **King Cut-Throat** with no saved game).
+
+The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. **Back** returns to the menu.
 
 | Item | What it does |
 |---|---|

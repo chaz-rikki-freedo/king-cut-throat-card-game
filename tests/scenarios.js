@@ -101,7 +101,7 @@ function expect(name, ok, detail) {
       click('[data-action="discard-free"]'); await sleep(50);
       click('[data-action="ask-ok"]'); await sleep(50);
       const won = A.stats.get().modeOpponents.free || {};
-      out.beaten = [q('#overlay .mcard .mtail').textContent, 'Beaten ' + KCT.PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length + ' of ' + KCT.PERSONAS.length];
+      out.beaten = [q('#overlay .mcard[data-mode="free"] .mtail').textContent, 'Beaten ' + KCT.PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length + ' of ' + KCT.PERSONAS.length];
       Object.assign(out, { mode: app.mode, slot: !!A.slots.get('free'), menu: !!q('#overlay .menu'), icons: document.querySelectorAll('#overlay .mdel').length,
         resume: q('[data-action="resume-free"]') && q('[data-action="resume-free"]').disabled, statsSame: JSON.stringify(A.stats.get()) === out.stats, replaysSame: A.replays.list().length === out.replays });
       return out;`);
@@ -109,6 +109,16 @@ function expect(name, ok, detail) {
     expect('after Discard the card has no icon and Resume is off', r.icons === 0 && r.resume === true, r);
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
+    r = await step(`
+      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: !!q('#overlay .menu h2') };
+      click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
+      out.profile = !!q('#overlay .profile');
+      out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
+      click('#overlay .profile [data-action="menu-back"]'); await sleep(20);
+      out.back = !!q('#overlay .menu');
+      return out;`);
+    expect('the menu: no heading, Dynamic, Waves, then Free play', !r.heading && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
+    expect("a card's goal opens Your profile for the mode; Back returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
