@@ -50,8 +50,8 @@ button{font:inherit;color:inherit}
 @media (max-width:479px){ .brand{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)} }
 @media (max-width:359px){ .mode-chip .of{display:none} }
 .mode-chip{font-size:0.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:0.1875rem 0.625rem;border-radius:62.4375rem;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
-/* Waves: fuchsia, a color no other control, seat or bot uses (gold is the app's own accent). */
-.mode-chip.waves{background:#f0abfc;color:#4a044e}
+/* Waves: deep sea, a dark fill that no other control, seat or bot uses (gold is the app's own accent). */
+.mode-chip.waves{background:#0e7490;color:#ecfeff}
 .mode-chip.free{background:var(--accent);color:#07233a}
 .mode-chip.dynamic{background:#b9a3ff;color:#1c1240}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
@@ -860,7 +860,7 @@ body.adv .tag.led{background:#00838f;color:#fff}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '7f91a69', date: '2026-10-17' });
+const BUILD = Object.freeze({ commit: '8e06e8a', date: '2026-10-17' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
