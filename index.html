@@ -50,7 +50,8 @@ button{font:inherit;color:inherit}
 @media (max-width:479px){ .brand{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)} }
 @media (max-width:359px){ .mode-chip .of{display:none} }
 .mode-chip{font-size:0.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:0.1875rem 0.625rem;border-radius:62.4375rem;background:rgba(255,255,255,.12);color:var(--muted);white-space:nowrap}
-.mode-chip.waves{background:var(--gold);color:var(--gold-ink)}
+/* Waves: fuchsia, a color no other control, seat or bot uses (gold is the app's own accent). */
+.mode-chip.waves{background:#f0abfc;color:#4a044e}
 .mode-chip.free{background:var(--accent);color:#07233a}
 .mode-chip.dynamic{background:#b9a3ff;color:#1c1240}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
@@ -303,6 +304,10 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .modal td,.modal th{padding:0.3125rem 0.5rem;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .modal ul{padding-left:1.25rem}
 .modal .row{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.875rem;flex-wrap:wrap}
+.dlg-x{position:sticky;top:0;float:right;z-index:2;margin:-0.5rem -0.5rem 0 0.5rem;width:2.75rem;height:2.75rem;display:grid;place-items:center;padding:0;border-radius:62.4375rem;background:#123f28;border:1px solid rgba(255,255,255,.18);color:var(--ink);cursor:pointer;box-shadow:0 0.125rem 0.5rem rgba(0,0,0,.35)}
+.dlg-x:hover{background:#1b5236}
+.dlg-x:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.dlg-x svg{width:1.125rem;height:1.125rem;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 /* Settings: full screen, one tab at a time (Game, Bots, Expert, Tools). Each setting is a row: its name and a
    one-line description, then its control. On/off settings are switches; the whole row toggles them. */
 .settings{--s1:0.25rem;--s2:0.5rem;--s3:0.75rem;--s4:1rem;--s5:1.5rem;--set-bg:#0b0f0c;--set-card:#111b15;--set-line:#24382c;--set-field:#16261d;--set-hint:#8fb89a;
@@ -1744,6 +1749,10 @@ const Base64url = Object.freeze({
     return out;
   }
 });
+/* The X of a stats dialog (Your profile, a bot's profile, the results pop-up): pinned to the top right while the
+   dialog scrolls, so a way out is always in view. action: what the dialog's own bottom button does. */
+const closeXHTML = (action = 'close-overlay') => '<button class="dlg-x" type="button" data-action="' + action + '" aria-label="Close" title="Close">' +
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
 /** @param {unknown} t @returns {string} the text, safe inside HTML and inside a quoted attribute */
 const escHTML = t => String(t).replace(/[&<>"']/g, c => /** @type {Record<string, string>} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -3856,7 +3865,7 @@ const Render = (() => {
   }
   function personaHTML(x) {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
-    return '<div class="modal persona" role="dialog" aria-label="' + escHTML(x.name) + '">' + faceHTML(x) +
+    return '<div class="modal persona" role="dialog" aria-label="' + escHTML(x.name) + '">' + closeXHTML() + faceHTML(x) +
       '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2><p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' +
@@ -6568,7 +6577,7 @@ const App = (() => {
       }).join('');
       const total = pr.cleared.reduce((t, n) => t + Waves.tries(n), 0);
       const locked = pr.total - pr.unlocked;
-      return '<div class="modal results" role="dialog" aria-label="Wave tries"><h2>Wave tries</h2>' +
+      return '<div class="modal results" role="dialog" aria-label="Wave tries">' + closeXHTML() + '<h2>Wave tries</h2>' +
         '<p>Cleared ' + pr.cleared.length + ' of ' + pr.total + (pr.cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared wave.</p>' +
         '<table><tr><th>Wave</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
         (locked ? '<p class="note">' + locked + (locked === 1 ? ' more wave opens' : ' more waves open') + ' as you clear them.</p>' : '') +
@@ -6580,7 +6589,7 @@ const App = (() => {
       const r = mine[x.id] || { played: 0, won: 0 };
       return '<tr><td>' + who(x.id) + '</td><td class="num">' + r.won + '</td><td class="num">' + r.played + '</td></tr>';
     }).join('');
-    return '<div class="modal results" role="dialog" aria-label="' + title + '"><h2>' + title + '</h2>' +
+    return '<div class="modal results" role="dialog" aria-label="' + title + '">' + closeXHTML() + '<h2>' + title + '</h2>' +
       '<p>Games you won against each opponent, and games you played against them.</p>' +
       '<table><tr><th>Opponent</th><th class="num">Wins</th><th class="num">Games</th></tr>' + rows + '</table>' +
       '<p class="note">A game where the AI played your seat does not count.</p>' + close;
@@ -6657,7 +6666,7 @@ const App = (() => {
     }
     const pr = Waves.progress();
     const tile = (label, value) => '<div class="pf-tile"><span>' + label + '</span><b>' + value + '</b></div>';
-    let html = '<div class="modal profile" role="dialog" aria-label="Your profile">' +
+    let html = '<div class="modal profile" role="dialog" aria-label="Your profile">' + closeXHTML(profileUI.fromMenu ? 'menu-back' : 'close-overlay') +
       '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><div><h2>Your profile</h2><p>Your results in this browser.</p></div></div>' +
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
