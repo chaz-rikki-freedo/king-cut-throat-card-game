@@ -849,7 +849,7 @@ body.adv .tag.led{background:#00838f;color:#fff}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '689530c', date: '2026-10-16' });
+const BUILD = Object.freeze({ commit: '176f7cb', date: '2026-10-16' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -4026,6 +4026,8 @@ const Render = (() => {
   CONTINUE_LABEL[P.HAND_SCORE] = 'Next hand';
   CONTINUE_LABEL[P.SHOWDOWN_SETUP] = 'Deal the Showdown';
   CONTINUE_LABEL[P.SHOWDOWN_SCORE] = 'Next hand';
+  /* The mediator deals the Showdown; everyone else enters it. */
+  const continueLabel = v => v.phase === P.SHOWDOWN_SETUP && v.showdown.mediator !== v.seat ? 'Enter the Showdown' : CONTINUE_LABEL[v.phase];
 
   const statusText = v => youText(statusRaw(v));
   function statusRaw(v) {
@@ -4103,7 +4105,7 @@ const Render = (() => {
         break;
       default: break;
     }
-    if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>';
+    if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + continueLabel(v) + '</button>';
     if (ctx.waiting && botShowdown(v)) return skipHTML();
     return '<div class="hint">' + statusText(v) + '</div>';
   }
@@ -4335,7 +4337,7 @@ const Render = (() => {
         case P.SHOWDOWN_LEAD: if (v.showdown.mediator === you) return '<div class="pile-act seats">' + leadButtonsHTML(v) + '</div>'; break;
         default: break;
       }
-      if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + CONTINUE_LABEL[v.phase] + '</button>');
+      if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + continueLabel(v) + '</button>');
     }
     const html = b.join('');
     return html ? '<div class="pile-act">' + html + '</div>' : '';
