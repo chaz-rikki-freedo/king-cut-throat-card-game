@@ -110,7 +110,8 @@ function expect(name, ok, detail) {
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
     r = await step(`
-      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: !!q('#overlay .menu h2') };
+      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#overlay .menu .sheet-top h2') || {}).textContent,
+        exits: Array.from(document.querySelectorAll('#overlay .menu [data-action="close-menu"]'), x => x.closest('.sheet-top') ? 'header' : x.textContent) };
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
@@ -118,7 +119,8 @@ function expect(name, ok, detail) {
       click('#overlay .profile .sheet-top .set-close'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
-    expect('the menu: no heading, Dynamic, Waves, then Free play', !r.heading && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
+    expect('the menu: the Settings header, then Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
+    expect('with no game being played, the menu closes only from its header \u2715', JSON.stringify(r.exits) === '["header"]', r);
     expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
     expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
 
