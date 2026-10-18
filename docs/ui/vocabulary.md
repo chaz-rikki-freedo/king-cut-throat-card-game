@@ -318,6 +318,17 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Check again button | `install-check` | C | Runs the install check again. |
 | Install app button | `install-app`, `#setInstallBtn` | C | Shows when the browser offers an install. |
 
+#### Your data
+
+`#setData`, last in Tools, under Diagnostics.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Save file button | `backup-save` | C | Saves a backup as a `.kct` file. |
+| Choose file button | `backup-restore`, `#backupFile` | C | Picks a backup file, then opens the restore confirm. |
+| Data note | `#setDataNote` | D | Says what happened: the file saved, or a file that is not a backup (nothing changed). |
+| Restore confirm | `ask` with `danger`, `table.data-cmp` | D | **Replace all data?**: this device and the backup side by side, no undo. **Cancel** has the focus; **Replace all data** is red (`.btn.danger`). |
+
 ### 5.6 Debug area
 
 | Term | Code anchor | Kind | What it is |

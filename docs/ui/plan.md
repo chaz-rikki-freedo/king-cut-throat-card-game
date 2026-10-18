@@ -1,6 +1,6 @@
 # UI plan: replays, seeds, backup and themes
 
-Status: **agreed**, in phases. Phases 1, 2 and 3 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
+Status: **agreed**, in phases. Phases 1 to 4 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
 
 ## Principles
 
@@ -61,14 +61,14 @@ A read-only table. It saves nothing, records no results and runs no bots. The ga
 
 ### Backup (phase 4)
 
-**Settings → Tools**, a **Your data** card:
+File only. **Settings → Tools**, last: a **Your data** card, under Diagnostics.
 
-| Row | Controls |
+| Row | Control |
 |---|---|
-| Back up | **Save file** and **Copy code** |
-| Restore | **Choose file** or paste a code, then **Restore…** |
+| Back up | **Save file**: a `king-cut-throat-backup-<date>.kct` file that holds the backup code. |
+| Restore | **Choose file…**, then the confirm. |
 
-**Restore…** opens a confirm dialog with the backup summary (`inspect`) and the warning that all data on this device is replaced, with no undo (see [backup.md](../backup.md), section 5).
+No Copy code and no paste box: a full backup is about 16 KB of text, too long to paste well on a phone. The picker takes any file, and the app decides what is a backup; an older `.json` backup still restores. The confirm (**Replace all data?**) shows this device and the backup side by side (when saved, waves unlocked, games played, saved games, replays) and says that there is no undo. **Cancel** has the focus; **Replace all data** is red. A file that is not a backup opens no confirm: a note under the rows says that nothing changed (see [backup.md](../backup.md), section 5).
 
 ### Themes (phase 5)
 

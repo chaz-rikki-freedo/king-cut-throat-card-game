@@ -6,7 +6,7 @@ Format version: **1**. Code: `Backup` in `index.html` (section 5e) and `App.back
 
 A backup holds the full client state of the app: wave progress, results, saved games (also a game in progress, with its log), the last replay codes and the settings. With a backup, you can move your progress to another device or browser, or keep it safe when the browser clears its storage.
 
-There is no UI yet. Use the console (section 7).
+In the app: **Settings → Tools → Your data** (**Save file**, and **Restore** with **Choose file…**). Also the console (section 7).
 
 ## 2. What a backup holds
 
@@ -53,8 +53,10 @@ Rules for a valid envelope (`Backup.check`):
 
 | Form | How | Size (mid-game, 66 decisions) | Use |
 |---|---|---|---|
-| **File** | The envelope as JSON, in `king-cut-throat-backup-<date>.json` | about 25 KB | Save on the device, send by email or cloud drive. |
-| **Text code** | `KCTS1-` + base64url(mode byte + body) | about 3.4 KB | Copy and paste between devices. |
+| **File** | The text code, in `king-cut-throat-backup-<date>.kct` (type `application/octet-stream`, so a browser adds no extension) | about 3–16 KB | **Save file** in the app. Save on the device, send by email or cloud drive. |
+| **Text code** | `KCTS1-` + base64url(mode byte + body) | about 3.4 KB mid-game; about 16 KB with 20 replays | The console. Too long to paste well on a phone, so the app has no paste box. |
+
+Before the `.kct` file, the file was the envelope as JSON (`.json`, about 25–34 KB). `parse` still reads it, so an older file restores. The file picker does not filter by extension (a phone greys out a type it does not know), so `parse` decides what is a backup.
 
 Text code mode byte:
 
@@ -80,7 +82,7 @@ An import **replaces** all app data:
 
 **There is no undo.** Keys of other apps are not changed.
 
-> **TODO (UI):** before an import, show a warning: all progress, results, saved games and settings on this device are replaced, and there is no undo. Show the `describe` summary (section 7) in the warning.
+**The confirm.** Before an import, the app shows this device and the backup side by side (`describe` of each: when saved, waves unlocked, games played, saved games, replays) and says that all progress, results, saved games and settings on this device are replaced, with no undo. **Cancel** has the focus; **Replace all data** is red. A file that is not a backup opens no confirm: a note under **Restore** says that nothing changed.
 
 A saved game from another `SAVE_FORMAT`, or one that fails the card audit, is dropped when the app starts, as for any saved game. The menu then says that the game was lost.
 
@@ -99,7 +101,7 @@ KCT.App.backup.create()               // the envelope (saves the running game fi
 KCT.App.backup.toJSON()               // the file text
 await KCT.App.backup.toCode()         // the text code (KCTS1-…), gzip when the browser can
 await KCT.App.backup.toCode({ plain: true })  // a code with no compression
-KCT.App.backup.download()             // saves the .json file; returns the file name
+await KCT.App.backup.download()       // saves the .kct file; returns the file name
 await KCT.App.backup.inspect(x)       // summary of a file text, a File/Blob or a code; changes nothing
 await KCT.App.backup.restore(x)       // REPLACES all data with the backup, then reloads the page
 ```
