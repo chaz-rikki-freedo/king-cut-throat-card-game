@@ -37,7 +37,7 @@ A row whose code this app cannot read (a newer rules version, or no mode) shows 
 
 ### Game-over end buttons
 
-In every mode: **Watch** (dimmed for a game with no replay code), **Try again**, **New deal** and **Export**, each an icon and a label. After a win that opens the next wave, also **Next wave**, as the main button; otherwise **New deal** is the main button.
+In every mode: **Watch** (dimmed for a game with no replay code), **Try again**, **New deal** and **Export**, each a text label with no icon. After a win that opens the next wave, also **Next wave**, as the main button; otherwise **New deal** is the main button.
 
 - **New deal** in Free play and Dynamic finds a new seed that seats the same two opponents in the same seats, because the seed picks the table.
 - **Export** opens a small dialog: **Copy seed** and **Copy replay code**.
