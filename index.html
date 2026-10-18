@@ -527,8 +527,10 @@ body.adv .hand{min-height:0!important}
   body.adv .info{gap:0.25rem;padding:0.25rem}
   body.adv .info .cell{padding:0.1875rem 0.5rem}
   body.adv .info .latest{order:6;flex:1 1 100%}
-  /* The Latest line can take two lines here: keep room for both, so the header does not change height. */
-  body.adv .info .latest .val{line-height:1.125rem;height:2.25rem;min-height:0;align-content:center}
+  /* The Latest line keeps to one line here: a long line shows its short form (shortLine), and "…" ends anything
+     still too long. A move's two lines show one after the other. */
+  body.adv .info .latest .val{line-height:1.125rem;height:1.125rem;min-height:0;min-width:0;display:block;flex:1 1 auto}
+  body.adv .info .latest .val li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   body.adv .info .muted{flex:1 1 0}
 }
 body.adv .info .muted .val{font-weight:600;font-size:0.8125rem;color:var(--muted)}
@@ -544,7 +546,7 @@ body.adv .seat .backs{order:2}
 body.adv .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
 body.adv .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
 body.adv .info .latest{min-width:0}
-body.adv .info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+@media (min-width:721px){body.adv .info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}}
 body.adv .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.25rem;width:100%;min-height:2.75rem}
 body.adv .seat-east .tagbox{direction:rtl}
 /* Every tag has one width: a third of a bot seat's tag row (--tag-w, set by Fit), in your row too. */
@@ -6123,6 +6125,7 @@ const App = (() => {
   function logItem(text, cls) {
     const li = document.createElement('li');
     li.innerHTML = logHTML(Render.youText(text), cls);
+    li.dataset.raw = text;
     if (cls) li.className = cls;
     return li;
   }
@@ -6148,26 +6151,76 @@ const App = (() => {
      One move can add several lines at once (an accept and the kitty card it moves; the last card, the trick's winner
      and a King point). They show together, at most 2, so the first is not gone before it can be read: a card played
      is left out when the same move adds more (the card is on the table). */
-  let falling = null;
+  let falling = null, nextUp = 0;
   /* burst: the lines that the current move added, as [html, classes]. It closes after the move (a microtask). */
   let burst = [], burstOpen = false;
   function noteBurst(li) {
     if (!burstOpen) { burst = []; burstOpen = true; queueMicrotask(() => { burstOpen = false; }); }
     burst.push(li);
   }
-  function burstHTML() {
+  function burstLines() {
     /* The game's end shows only the winner line. */
     const end = burst.find(li => li.classList.contains('end'));
-    if (end) return end.innerHTML;
+    if (end) return [end];
     const more = burst.filter(li => !li.classList.contains('play'));
-    return (more.length ? more : burst).slice(-2).map(li => li.innerHTML).join('</li><li>');
+    return (more.length ? more : burst).slice(-2);
+  }
+  /* Phones keep the Latest cell to one line (see the CSS). A line too long for it shows its short form; the Latest
+     Scroll keeps the full text. Each pattern matches a log line as narrate writes it, before "You" verbs agree. */
+  const PHONE = matchMedia('(max-width:720px)');
+  const oneLine = () => app.ui.advanced && PHONE.matches;
+  /** @type {[RegExp, string][]} */
+  const SHORT_LINES = [
+    [/^(Hand \d+(?: \(redeal\))?): (\S+) deals 10 cards to each player and 3 to the kitty\.$/, '$1: $2 deals.'],
+    [/^The Joker was turned\. The hand is void and will be dealt again\.$/, 'Joker turned: the hand is void.'],
+    [/^(\S+) turns up the Joker\. House rule: it plays as (\S+) for the bidding\.$/, '$1 turns up the Joker: $2.'],
+    [/^Round 2: (\S+) is blocked\. Players may name another suit\.$/, 'Round 2: $1 is blocked.'],
+    [/^The 2 face-down kitty cards go to (\S+) \(left of the namer\)\.$/, 'Kitty: 2 face-down cards to $1.'],
+    [/^(.+) goes to (\S+) \(left of the namer\)\.$/, '$1 goes to $2.'],
+    [/^Everyone passed twice\. The hand is abandoned\.$/, 'All passed twice: hand abandoned.'],
+    [/^SHOWDOWN! (\S+) and (\S+) tied 3–3\. (\S+) is the mediator\.$/, 'SHOWDOWN! $1 v $2. $3 mediates.'],
+    [/^(\S+) shuffles the 12 outside cards\. \S+ deals 6 to each Showdown player\.$/, '$1 deals the Showdown.'],
+    [/^(\S+) \(mediator\) picks (\S+) to lead the Showdown\.$/, '$1 picks $2 to lead.'],
+    [/^(\S+) leads the Showdown \(won main trick \d+, the latest by a Showdown player\)\.$/, '$1 leads the Showdown.'],
+    [/^(\S+) to (\S+) \(([^,)]+)(?:, already at 0)?\)\. Score: .+$/, '$1 to $2 ($3).'],
+    [/^Hand tricks: (.+)$/, 'Tricks: $1'],
+    [/^(\S+) wins Showdown trick (\d+) with (.+)$/, '$1 wins SD trick $2 with $3'],
+    [/^🏆 Congratulations(?:!| to) ([^\s,]+),? (?:who )?wins the game with more than 10 points \(⭐\)\.$/, '🏆 $1 wins with 11+ points ⭐'],
+    [/^🏆 Congratulations(?:!| to) ([^\s,]+),? (?:who )?wins the game with (\d+) points\.$/, '🏆 $1 wins with $2 points.'],
+    [/^Seats: (\S+) \(West, your left\) and (\S+) \(East, your right\)\.$/, 'Seats: $1 (West), $2 (East).'],
+    [/^(.+): (\S+) \(West\) and (\S+) \(East\)\.(?: New game\.)?$/, '$1: $2 and $3.']
+  ];
+  const shortLine = t => { for (const [re, to] of SHORT_LINES) if (re.test(t)) return t.replace(re, to); return t; };
+  /* The Latest cell's HTML for a log line: its short form on a phone when the full line does not fit. */
+  function latestHTML(li) {
+    const raw = li.dataset.raw;
+    if (!oneLine() || !raw) return li.innerHTML;
+    const probe = document.createElement('li');
+    probe.innerHTML = li.innerHTML;
+    $('latestLine').appendChild(probe);
+    const cut = probe.scrollWidth > probe.clientWidth;
+    probe.remove();
+    const short = cut ? shortLine(raw) : raw;
+    return short === raw ? li.innerHTML : logHTML(Render.youText(short), li.className);
   }
   function showLatest(still, note) {
+    clearTimeout(nextUp);
+    let lines = note ? [note] : [];
+    if (!note && burstOpen && burst.length) lines = burstLines().map(latestHTML);
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
+    /* One line at a time on a phone: a move's second line drops in after a pause, unless a newer line comes first. */
+    if (lines.length > 1 && oneLine()) {
+      const next = lines[1];
+      nextUp = setTimeout(() => dropLatest(next, false), { slow: 1600, normal: 1200 }[app.ui.speed] || 800);
+      lines = [lines[0]];
+    }
+    dropLatest(lines.join('</li><li>'), still);
+  }
+  function dropLatest(html, still) {
     const cell = $('latestCell'), line = $('latestLine');
-    let html = note || '';
-    if (!note && burstOpen && burst.length) html = burstHTML();
-    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
+    /* The same line already on its way (the first of a move's lines) keeps falling. */
+    if (falling && falling.html === html && !still) return;
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
     if (still || !html || !ms || !app.ui.advanced || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }

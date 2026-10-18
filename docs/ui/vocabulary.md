@@ -353,7 +353,7 @@ Region: `aside.logpanel`. The player name for it is **Latest Scroll**. In the Ad
 |---|---|---|---|---|
 | Toast stack | Toasts | `#toasts` | — | Notices under the top bar. They fade by themselves. |
 | Toast | Popup, flash message | `.toast`, `.toast.info`, `.toast.neg` | S | One short notice: trump calls, King points, score changes, "SHOWDOWN!", a refused save. Not in the Advanced UI. |
-| Latest cell | Latest line | `#latestCell`, `#latestLine` | S, C | Advanced UI. The newest log line, trick headings left out. Opens and closes the Latest Scroll dropdown (`toggle-log`). |
+| Latest cell | Latest line | `#latestCell`, `#latestLine` | S, C | Advanced UI. The newest log line, trick headings left out. One line on a phone: a short form when the full line does not fit (`shortLine`). Opens and closes the Latest Scroll dropdown (`toggle-log`). |
 | Drop-in | Toast (Advanced UI) | `.latest-drop` | S | Advanced UI. A new log line, or an app note, falling from above the window into the Latest cell. |
 | Update note | Update bar | `#updateNote` | S, C | "A new version is ready." with **Reload** (`update-reload`) and **Later** (`update-later`). Shows only between games. |
 | Live status | Screen-reader status | `#liveStatus` | S | A hidden copy of the status line for screen readers. |
