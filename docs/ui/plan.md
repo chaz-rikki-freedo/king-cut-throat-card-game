@@ -1,6 +1,6 @@
 # UI plan: replays, seeds, backup and themes
 
-Status: **agreed**, in phases. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
+Status: **agreed**, in phases. Phases 1 and 2 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
 
 ## Principles
 
@@ -31,13 +31,13 @@ At the end of a game, the winner line congratulates the winner ("🏆 Congratula
 Each row of **Show these games as a table** ends with two icons:
 
 - **Try again icon.** Starts the same table again. A Dynamic game starts from the profile snapshot in its replay code (`dyn.snap`). If that mode has an unfinished game that has begun, the app asks first, as **New game** does.
-- **Watch icon** (phase 2). Opens the replay viewer.
+- **Watch icon.** Opens the replay viewer. Exit returns to Your profile.
 
 A row whose code this app cannot read (a newer rules version, or no mode) shows no icons.
 
 ### Game-over end buttons
 
-In every mode: **Watch** (dimmed until phase 2), **Try again**, **New deal** and **Export**, each an icon and a label. After a win that opens the next wave, also **Next wave**, as the main button; otherwise **New deal** is the main button.
+In every mode: **Watch** (dimmed for a game with no replay code), **Try again**, **New deal** and **Export**, each an icon and a label. After a win that opens the next wave, also **Next wave**, as the main button; otherwise **New deal** is the main button.
 
 - **New deal** in Free play and Dynamic finds a new seed that seats the same two opponents in the same seats, because the seed picks the table.
 - **Export** opens a small dialog: **Copy seed** and **Copy replay code**.
@@ -51,8 +51,9 @@ The Seed row (seed readout and **Copy**) is removed.
 
 A read-only table. It saves nothing, records no results and runs no bots. The game timer waits, as it does while the menu is open.
 
-- **Controls:** start, back one decision, play or pause, forward one decision, end, and **Exit**. Back rebuilds from the seed (`Replay.cursor().seek`). Steps back skip the card animations.
+- **Controls:** Start, Back, Play or Pause, Forward, End, a move count, and **Exit**. A move is one Engine step: a decision, or a step of the table such as a deal. Start is the first table after `START_GAME`. Back rebuilds from the seed (`Replay.cursor().seek`). A jump draws the table at once; one step forward moves the cards as in a game. Keys: Left and Right step, Space or Enter plays or pauses, Escape exits.
 - **Mode chip:** **Replay**.
+- **Log:** the Latest Scroll narrates the replay, from a line that names the table. A jump narrates without toasts. Exit brings back the log of the game behind.
 - **Rotate icon** (phase 3): watch from You, then West, then East. Each seat shows its own view (`buildView(state, seat)`), so the rule that a view holds only what its seat can see still holds. This needs a seat-to-position map in `Render`, which today places seat 1 left and seat 2 right. Rotation is in the viewer only, never in a live game.
 - **Exit** returns to where you were: the menu, the game-over dialog, or a game that you can resume.
 - **`?replay=` link:** opens the viewer for that code, as `?seed=` starts a game. A code that does not decode opens the menu with a note. The app removes `replay` from the address after use.

@@ -23,7 +23,7 @@ Your profile, a bot's profile, the results pop-up and Rules have the same header
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
 | **✕** (header) | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
 
-A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed` and `wave` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
+A link with `?replay=` and a replay code opens that game in the replay viewer (see **Watch a game**). A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed`, `wave` and `replay` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
 ## Header
 
@@ -287,7 +287,7 @@ The hand-over is for that game only. The next game starts with you in your seat,
 
 ## Replay a game
 
-The same seed gives the same deals: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has a **Try again** icon (a counter-clockwise arrow): it plays that table again, with the same mode, wave, opponents, deals and house rules. Plans for the replay viewer: [docs/ui/plan.md](docs/ui/plan.md).
+The same seed gives the same deals: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has two icons: **Watch** (an eye) opens the game in the replay viewer, and **Try again** (a counter-clockwise arrow) plays that table again, with the same mode, wave, opponents, deals and house rules. The plan for these parts: [docs/ui/plan.md](docs/ui/plan.md).
 
 ### End of a game
 
@@ -295,13 +295,26 @@ The Latest Scroll's last line congratulates the winner. The results dialog and t
 
 | Button | What it does |
 |---|---|
-| **Watch** | Watch the game again in the replay viewer. Coming soon: dimmed for now. |
+| **Watch** | Watch the game again in the replay viewer. |
 | **Try again** | The same deal again: the same table, cards and house rules. |
 | **New deal** | New cards at the same table: the same wave, or in Free play and Dynamic, the same two opponents in the same seats. |
 | **Export** | Copy the seed (the deals) or the replay code (the whole game). |
 | **Next wave** | Only after a win that opens the next wave. |
 
 **✕** (Back) in the dialog's top right returns to the table. The menu is the **☰** button in the header.
+
+### Watch a game
+
+The replay viewer plays a finished game again, from your seat, at the game speed. The header shows **Replay**. It is read only: it saves nothing, records no results and runs no bots. A game you were playing waits behind it.
+
+| Control | What it does |
+|---|---|
+| **Start** and **End** | Go to the first deal's table, or to the game's end. |
+| **Back** and **Forward** | One move (a play, a bid, a discard, or a step of the table such as a deal). The Left and Right arrow keys do the same. |
+| **Play** or **Pause** | Plays the moves at the game speed. Space or Enter does the same. Play at the end starts again from the start. |
+| **Exit** | Returns to where you were: the results dialog, Your profile, or the menu. Escape does the same. |
+
+The count between the buttons shows the move and the number of moves. A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
 
 The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 

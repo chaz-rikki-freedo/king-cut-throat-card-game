@@ -21,7 +21,7 @@ Region: `header#topbar`. Always visible. It can wrap to two rows on a narrow scr
 |---|---|---|---|---|
 | Menu button | Hamburger | `data-action="menu"` | C | Opens the menu dialog. The game waits while the menu is open. |
 | Brand | Title, logo | `.brand` | L | The game name, "King Cut-Throat". |
-| Mode chip | Mode badge | `#modeChip`, `data-action="mode-results"` | C, L | "Wave *n* of 18" (gold) or "Free play" (blue). Opens the results dialog. Hidden when no game runs. |
+| Mode chip | Mode badge | `#modeChip`, `data-action="mode-results"` | C, L | "Wave *n* of 18" (gold) or "Free play" (blue). Opens the results dialog. Hidden when no game runs. In the replay viewer: "Replay", and it opens nothing. |
 | Trump chip | Trump badge | `#trumpChip` | S | "Trump: ♠ Spades", or "Trump: —" before trump is set. |
 | Hand chip | Counter | `#handChip` | S | "Hand 3 · Trick 4/7", or "Showdown trick 2/5". |
 | Speed picker | Speed menu | `#speedSel` in `.speed-pick` | C | Slow, Normal, Fast, Instant. Not saved. |
@@ -137,6 +137,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |
+| Replay controls | Viewer controls | `ui.watch`, `.watch-ctl` | C | In the replay viewer, in place of every other button: **Start** (`watch-start`), **Back** (`watch-back`), **Play** or **Pause** (`watch-play`), **Forward** (`watch-fwd`), **End** (`watch-end`), the move count (`.watch-pos`) and **Exit** (`watch-exit`). |
 | Wait hint | — | `.actionbar .hint` with the status | S | The status line again, while another player acts. |
 
 ## 3. Dialog layer
@@ -208,6 +209,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
 | Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20, oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
 | Last games table | `.profile details` | S | The same games as a table. Each row ends with its actions (`.pf-acts`). |
+| Watch icon | `.tiny-btn`, `data-action="replay-watch"`, `data-at` | C | An eye on a Last games row: opens the game in the replay viewer. Exit returns to Your profile. Missing when the code has a newer rules version. |
 | Try again icon | `.tiny-btn`, `data-action="replay-seed"`, `data-at` | C | A counter-clockwise arrow on a Last games row: plays the same table again (mode, wave, opponents, deals and house rules). Missing when this app cannot play the game again. |
 | Opponent table | `data-table="opp"` | C, S | Games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
 | Table list | `.pf-tables` | C, S | Under All only, collapsed: the same columns for each West / East pair. |
@@ -234,7 +236,7 @@ Opens when a player reaches 10 points.
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave. |
 | Back button | `.modal-x`, `close-overlay` | C | ✕ in the top right. Closes the dialog. The end buttons stay in the action bar. |
-| End buttons | `endButtonsHTML()`, `.btn-ico` | C | The same in every mode, each an icon and a label: **Watch** (`replay-watch`, dimmed until the replay viewer), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
+| End buttons | `endButtonsHTML()`, `.btn-ico` | C | The same in every mode, each an icon and a label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
 | Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. ✕, Escape or a click outside closes it. |
 
 ## 4. Confirm layer

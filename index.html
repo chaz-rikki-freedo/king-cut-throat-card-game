@@ -63,6 +63,10 @@ button{font:inherit;color:inherit}
 .end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
 .modal .row .end-btns{justify-content:flex-end}
 .end-btns .btn-ico{justify-content:center}
+/* The replay viewer's controls: icon buttons, the move count and Exit, on one row. */
+.watch-ctl{display:flex;align-items:center;justify-content:center;gap:0.375rem;flex-wrap:wrap}
+.watch-ctl .btn-ico{padding-left:0.625rem;padding-right:0.625rem}
+.watch-pos{min-width:4.5rem;text-align:center;font-size:0.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
 @media (max-width:480px){
   .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .end-btns [data-action="next-wave"]{grid-column:1 / -1}
@@ -83,6 +87,7 @@ button{font:inherit;color:inherit}
 .mode-chip.waves{background:var(--mode-waves);color:var(--mode-waves-ink)}
 .mode-chip.free{background:var(--mode-free);color:var(--mode-free-ink)}
 .mode-chip.dynamic{background:var(--mode-dynamic);color:var(--mode-dynamic-ink)}
+.mode-chip.replay{background:rgba(255,255,255,.18);color:var(--ink)}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
 button.mode-chip:hover{filter:brightness(1.1)}
 button.mode-chip:focus-visible{outline:0.125rem solid var(--ink);outline-offset:0.125rem}
@@ -4109,6 +4114,8 @@ const Render = (() => {
     const n = p => nameOf(v, p);
     const sel = ui.selected.size;
     const L = Engine.seatAfter(you);
+    /* ui.watch: the replay viewer's controls, in place of every game button (set by the controller). */
+    if (ui.watch) return ui.watch;
     /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
     if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div>' + (ui.endButtons || '');
     if (v.phase === P.SETUP && v.seating) return '<div class="prompt">Choosing seats.</div>';
@@ -4169,7 +4176,7 @@ const Render = (() => {
     const sorted = R.sortHand(v.hand, v.trump);
     const ph = v.phase;
     let mode = 'none';
-    if (!v.gameOver && !ui.autoplay) {
+    if (!v.gameOver && !ui.autoplay && !ui.watch) {
       if (discardNeed(v, you)) mode = 'select';
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
@@ -4186,7 +4193,7 @@ const Render = (() => {
       /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
          UI's round 2, on your call, a card you click says which button names its suit. */
       const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2;
-      if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
+      if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay && !ui.watch) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
       return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
     return '<div class="hand" id="hand">' + cards + '</div>';
@@ -4316,7 +4323,7 @@ const Render = (() => {
 
   /* While it is your move and you have not picked a card, the play area explains itself: a click on a trick slot,
      the kitty or the outside pile in the middle opens what it is now (adv-info). At other times these only show. */
-  const explains = (v, ui) => !!ui && !v.gameOver && !ui.autoplay && isTurn(v, v.seat) && !ui.selected.size;
+  const explains = (v, ui) => !!ui && !ui.watch && !v.gameOver && !ui.autoplay && isTurn(v, v.seat) && !ui.selected.size;
   /* Closes an open class attribute and makes the element an adv-info control. */
   const infoAttrs = (kind, label, seat) => ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '"' +
     (seat === undefined ? '' : ' data-seat="' + seat + '"') + ' aria-label="' + label + '"';
@@ -4373,6 +4380,7 @@ const Render = (() => {
   function advButtonsHTML(v, ui, ctx) {
     const you = v.seat, sel = ui.selected.size;
     const b = [];
+    if (ui.watch) return '<div class="pile-act ends">' + ui.watch + '</div>';
     if (v.gameOver) b.push(ui.endButtons || '');
     else if (v.phase === P.SETUP) { if (!v.seating) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>'); }
     else if (!(ui.autoplay && isTurn(v, you))) {
@@ -4402,7 +4410,7 @@ const Render = (() => {
      how many cards that takes (Discard 3, 2 or 1). The bid steps' buttons already say the move (Accept ♠ or Pass,
      "Mei leads"); round 2's are bare suit symbols. The screen reader hears the full status line instead. */
   function advMoveText(v, ui) {
-    if (v.gameOver || ui.autoplay || !isTurn(v, v.seat)) return '';
+    if (v.gameOver || ui.autoplay || ui.watch || !isTurn(v, v.seat)) return '';
     switch (v.phase) {
       case P.BID2: return 'Name trump.';
       case P.DISCARD: case P.EXCHANGE: return 'Reduce to ' + Engine.C.MAIN_TRICKS + '.';
@@ -5101,6 +5109,7 @@ const App = (() => {
      game's). opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
      game's); without it, the profile now. */
   function newGame(seed, wave, opts) {
+    dropWatch();
     clearTimer();
     runReview();
     /* The AI seat never carries over: each new game starts with you in your seat. */
@@ -5136,6 +5145,7 @@ const App = (() => {
 
   /* The empty table: no game runs, but Rules, Settings, profiles and the menu work. */
   function enterIdle() {
+    dropWatch();
     clearTimer();
     runReview();
     app.mode = null;
@@ -5155,6 +5165,7 @@ const App = (() => {
   }
 
   function act(action) {
+    if (watch) return { ok: false, error: 'a replay is being watched', events: [] };
     if (TabLock.stale) return { ok: false, error: 'another tab is more current', events: [] };
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
@@ -5208,6 +5219,8 @@ const App = (() => {
      or before anything else starts. A game where the AI played your seat is never reviewed. */
   /* The finished game's replay code, for Export. */
   let endCode = /** @type {string | null} */ (null);
+  /* The replay viewer while it is open (watchGame), and whether its narration is quiet (a jump). */
+  let watch = /** @type {any} */ (null), hush = false;
   let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
   function runReview() {
     const job = pendingReview;
@@ -5276,13 +5289,13 @@ const App = (() => {
   const ICON_DEAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>';
   const ICON_EXPORT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>';
   const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
-  /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer, phase 2), Try again (the
+  /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer), Try again (the
      same deal), New deal (new cards at the same table) and Export. A won wave adds Next wave. The menu is the header's. */
   function endButtonsHTML() {
     const b = (action, label, icon, o = {}) => '<button class="btn btn-ico' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' +
       (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + icon + label + '</button>';
     const n = app.wave.n, next = inWaves() && app.state.winner === HUMAN && n < WAVES.length && Waves.isUnlocked(n + 1);
-    return '<div class="end-btns">' + b('replay-watch', 'Watch', ICON_WATCH, { disabled: true, title: 'Watch the game: coming soon' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
+    return '<div class="end-btns">' + b('replay-watch', 'Watch', ICON_WATCH, { disabled: !endCode, title: endCode ? 'Watch the game again' : 'This game has no replay' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
       b('new-deal', 'New deal', ICON_DEAL, { primary: !next, title: inWaves() ? 'This wave, with new cards' : 'The same opponents, with new cards' }) +
       b('export', 'Export', ICON_EXPORT, { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', '', { primary: true }) : '') + '</div>';
   }
@@ -5291,7 +5304,7 @@ const App = (() => {
      A save that the browser refuses is reported through SaveWatch (see reportSaveFail). */
   function saveGame() {
     /* A game still choosing seats has not begun: Back leaves the mode's saved game as it was. */
-    if (!app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
+    if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
       assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX),
@@ -5395,6 +5408,7 @@ const App = (() => {
   function resumeGame(mode) {
     const s = slots.get(mode);
     if (!s) return false;
+    dropWatch();
     clearTimer();
     runReview();
     try {
@@ -5789,6 +5803,8 @@ const App = (() => {
   function schedule(events) {
     clearTimer();
     const st = app.state, ev = events || [];
+    /* The replay viewer runs its own steps (watchTick): no bot plays. */
+    if (watch) { draw(ev); return; }
     /* The game waits while the menu or a question is open. It stops when another tab is more current. */
     if (app.menuOpen || askDone || TabLock.stale) return;
     if (!app.mode) { draw(ev); return; }
@@ -5869,6 +5885,7 @@ const App = (() => {
       if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
     }
     drawnVersion = app.state ? app.state.version : -1;
+    const ui = watch ? watchUI() : app.ui;
     const v = buildView(app.state, HUMAN);
     v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
@@ -5879,7 +5896,7 @@ const App = (() => {
       if (e.type === 'SCORE_CHANGED' && e.delta !== 0) ctx.flashSeats.add(e.player);
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
     }
-    if (Render.render(v, app.ui, ctx)) closePanel();
+    if (Render.render(v, ui, ctx)) closePanel();
     syncModeUI();
     Fit.update();
   }
@@ -5980,10 +5997,10 @@ const App = (() => {
   function syncModeUI() {
     const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
     const chip = $('modeChip');
-    chip.innerHTML = waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
-    chip.className = 'mode-chip' + (app.mode ? ' ' + app.mode : '');
-    chip.hidden = !app.mode;
-    chip.title = waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    chip.innerHTML = watch ? 'Replay' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
+    chip.className = 'mode-chip' + (watch ? ' replay' : app.mode ? ' ' + app.mode : '');
+    chip.hidden = !app.mode && !watch;
+    chip.title = watch ? 'You are watching a replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setPersonas').disabled = ownBots;
@@ -6045,6 +6062,8 @@ const App = (() => {
   function addLog(text, cls, isShowdown) {
     const classes = (cls || '').split(' ').filter(Boolean);
     if (isShowdown) classes.push('sd');
+    /* The replay viewer's jumps keep only the text: the log is drawn once, after the jump. */
+    if (hush) { logLines.push([text, classes.join(' ')]); return; }
     /* The log follows new lines only from its newest end (the top in the Advanced UI, the bottom otherwise). A reader
        scrolled into older lines stays on the same lines. */
     const ol = $('gameLog'), top = app.ui.advanced, h0 = ol.scrollHeight;
@@ -6205,18 +6224,20 @@ const App = (() => {
   function narrate(e) {
     const st = app.state;
     const n = p => st.players[p].name;
+    /* A jump in the replay viewer narrates many moves at once: no toasts then. */
+    const pop = (text, cls) => { if (!hush) toast(text, cls); };
     switch (e.type) {
       case 'DEAL': addLog(handLabel(st) + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED':
-        if (e.jokerSuit) { addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h'); toast('Joker turned — ' + R.SYMBOL[e.jokerSuit] + ' ' + R.SUIT_NAME[e.jokerSuit], 'info'); }
+        if (e.jokerSuit) { addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h'); pop('Joker turned — ' + R.SYMBOL[e.jokerSuit] + ' ' + R.SUIT_NAME[e.jokerSuit], 'info'); }
         else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind');
         break;
-      case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); toast('Joker turned — redeal', 'info'); break;
+      case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); pop('Joker turned — redeal', 'info'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
-      case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
-      case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); toast(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
+      case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); pop(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
+      case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); pop(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
       case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', 'ind'); break;
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
@@ -6225,19 +6246,19 @@ const App = (() => {
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); kingPop(e.player); toast('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); if (!hush) kingPop(e.player); pop('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
           addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason].log + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's ind' : 'k ind', e.reason === 'SHOWDOWN_WIN' || e.reason === 'SHOWDOWN_LOSS');
-          toast(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason].log, e.requested < 0 ? 'neg' : '');
+          pop(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason].log, e.requested < 0 ? 'neg' : '');
         }
         break;
       case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
       case 'SHOWDOWN_STARTED':
         addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true);
         /* The Advanced UI has no Showdown banner: its toast names the two players and the mediator. */
-        toast('SHOWDOWN!', 'neg');
+        pop('SHOWDOWN!', 'neg');
         break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
@@ -6438,6 +6459,159 @@ const App = (() => {
     const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
     if (!g) return;
     confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules); else showProfile(); });
+  }
+
+  /* ---- The replay viewer (docs/ui/plan.md): a read-only table that plays a replay code from your seat. It saves
+     nothing, records no results and runs no bots. The game behind it waits, and Exit brings it back. ---- */
+  const WATCH_ICON = {
+    start: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"/><path d="M18 5 9 12l9 7z"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>',
+    fwd: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
+    end: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"/><path d="m6 5 9 7-9 7z"/></svg>'
+  };
+  /* Whether the viewer can show a Last games row: its code reads, with a rules version this app has. @param {any} e */
+  function canWatch(e) {
+    const rec = safe(() => Replay.decode(e.code));
+    return !!rec && (rec.rules || 1) <= Engine.RULES_VERSION;
+  }
+  /** Opens the viewer at the game's start. from: where Exit returns ('end', 'profile' or 'link'). False when the code
+      does not replay to its result. @param {string} code @param {string} from */
+  function watchGame(code, from) {
+    const rec = safe(() => Replay.decode(code)), run = rec && safe(() => Replay.run(rec));
+    if (!run || !run.ok) return false;
+    const seats = Array.isArray(rec.seats) ? rec.seats : [], seat = k => PERSONA_BY_ID[seats[k]] ? seats[k] : null;
+    const west = seat(1), east = seat(2), names = ['You', west ? PERSONA_BY_ID[west].name : 'West', east ? PERSONA_BY_ID[east].name : 'East'];
+    clearTimer();
+    const ov = $('overlay');
+    watch = {
+      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], playing: false, timer: 0,
+      assisted: !!rec.assisted, personas: [seat(0), west, east],
+      back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
+    };
+    ov.hidden = true;
+    app.menuOpen = false;
+    app.mode = null; app.dyn = null; app.ui.autoplay = false;
+    app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.state = watch.cur.state;
+    seatBots(west, east);
+    app.ui.selected.clear();
+    closePanel();
+    clearLog();
+    const what = rec.mode === 'waves' && rec.wave ? 'Wave ' + rec.wave + ', ' : MODES.includes(rec.mode) ? modeName(rec.mode) + ', ' : '';
+    addLog('Replay: ' + what + names[1] + ' (West) and ' + names[2] + ' (East).', '');
+    watch.marks[0] = logLines.length;
+    watchStep();   /* START_GAME: the table, with its dealer */
+    watch.min = watch.cur.steps;
+    resetDraw();
+    draw([]);
+    return true;
+  }
+  /* The next step of the replay, narrated. Its events, or null at the end. */
+  function watchStep() {
+    const r = watch.cur.step();
+    if (!r) return null;
+    app.state = watch.cur.state;
+    for (const e of r.events) narrate(e);
+    watch.marks[watch.cur.steps] = logLines.length;
+    return r.events;
+  }
+  /* Goes to step n. One step forward moves the cards as in a game; a jump (back rebuilds from the seed) draws the
+     table at once. */
+  function watchGo(n) {
+    const w = watch, to = Math.max(w.min, Math.min(w.total, n));
+    if (to === w.cur.steps + 1) { draw(watchStep() || []); return; }
+    if (to < w.cur.steps) {
+      w.cur.seek(to);
+      app.state = w.cur.state;
+      logLines.length = w.marks[to];
+      redrawLog();
+    } else if (to > w.cur.steps) {
+      hush = true;
+      try { while (w.cur.steps < to && watchStep()); } finally { hush = false; }
+      redrawLog();
+    }
+    resetDraw();
+    draw([]);
+  }
+  /** Start, back, forward and end: playing stops. @param {number} n */
+  function watchMove(n) {
+    clearTimeout(watch.timer);
+    watch.playing = false;
+    watchGo(n);
+  }
+  /* Play steps at the game speed and waits while a dialog is open. Play at the end starts again from the start. */
+  function watchPlay(on) {
+    const w = watch;
+    clearTimeout(w.timer);
+    w.playing = on;
+    if (on && w.cur.steps >= w.total) watchGo(w.min);
+    if (on) w.timer = setTimeout(watchTick, watchDelay());
+    draw([]);
+  }
+  function watchTick() {
+    const w = watch;
+    if (!w || !w.playing) return;
+    const wait = app.menuOpen || askDone || !$('overlay').hidden ? 200 : heldDraw ? 50 : Fx.busyFor();
+    if (wait > 0) { w.timer = setTimeout(watchTick, wait + 16); return; }
+    const ev = watchStep();
+    if (!ev || w.cur.steps >= w.total) w.playing = false;
+    draw(ev || []);
+    if (w.playing) w.timer = setTimeout(watchTick, watchDelay());
+  }
+  /* The wait before the next step, as in a game: a bot's move, a trick or hand that has ended, or a system step. */
+  function watchDelay() {
+    const d = DELAYS[app.ui.speed], st = app.state, sys = Engine.systemAction(st);
+    return Math.max(40, sys ? (Engine.TRICK_DONE_PHASES.includes(st.phase) || Render.CONTINUE_LABEL[st.phase] ? d.trick : d.sys) : d.ai);
+  }
+  /* The viewer's controls replace every game button. Your seat shows as it was played: the AI's, in an assisted game. */
+  function watchUI() {
+    const w = watch, at = w.cur.steps;
+    const b = (action, label, icon, off, primary) => '<button class="btn btn-ico' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '" aria-label="' + label + '" title="' + label + '"' + (off ? ' disabled' : '') + '>' + icon + '</button>';
+    const html = '<div class="watch-ctl" role="group" aria-label="Replay">' +
+      b('watch-start', 'Start', WATCH_ICON.start, at <= w.min) + b('watch-back', 'Back one move', WATCH_ICON.back, at <= w.min) +
+      b('watch-play', w.playing ? 'Pause' : 'Play', w.playing ? WATCH_ICON.pause : WATCH_ICON.play, false, true) +
+      b('watch-fwd', 'Forward one move', WATCH_ICON.fwd, at >= w.total) + b('watch-end', 'End', WATCH_ICON.end, at >= w.total) +
+      '<span class="watch-pos" role="status" aria-label="Move ' + (at - w.min) + ' of ' + (w.total - w.min) + '">' + (at - w.min) + ' / ' + (w.total - w.min) + '</span>' +
+      '<button class="btn" type="button" data-action="watch-exit">Exit</button></div>';
+    return Object.assign({}, app.ui, { watch: html, autoplay: w.assisted, allowSeatAI: false, endButtons: '', personas: w.personas });
+  }
+  /* Exit: the table, the log and the dialog you came from come back. A game being played goes on. */
+  function watchExit() {
+    const w = watch, b = w.back;
+    clearTimeout(w.timer);
+    watch = null;
+    app.state = b.state; app.mode = b.mode; app.wave = b.wave; app.dyn = b.dyn; app.ui.autoplay = b.autoplay;
+    seatBots(b.personas[1], b.personas[2]);
+    app.ui.personas[HUMAN] = b.personas[HUMAN];
+    app.ui.selected.clear();
+    closePanel();
+    logLines = b.log;
+    redrawLog();
+    resetDraw();
+    draw([]);
+    app.menuOpen = b.menuOpen;
+    const ov = $('overlay');
+    /* The dialog comes back as it was, or drawn again when the menu replaced it. Watch from the action bar (the
+       results closed) returns to the table. */
+    if (b.dialog && ov.firstElementChild === b.dialog) ov.hidden = false;
+    else if (w.from === 'end') { if (b.dialog && app.state.gameOver) showGameOver(); }
+    else if (w.from === 'profile') showProfile();
+    else showMenu(!app.mode);
+    if (gameOn() && !app.menuOpen) schedule();
+  }
+  /* A new game, the empty table or a resumed game closes the viewer without bringing back what was behind it. */
+  function dropWatch() {
+    if (!watch) return;
+    clearTimeout(watch.timer);
+    watch = null;
+  }
+  /* The next draw is a full one, with no motion from the table before it. */
+  function resetDraw() {
+    if (heldDraw) clearTimeout(heldDraw);
+    heldDraw = 0; heldEvents = []; drawnVersion = -1;
+    Fx.reset();
   }
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
@@ -6756,7 +6930,8 @@ const App = (() => {
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
         '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
         games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
-          '<td class="pf-acts">' + (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
+          '<td class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, ' data-at="' + escHTML(String(e.at)) + '"') : '') +
+          (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
     html += habitsHTML();
@@ -6869,7 +7044,7 @@ const App = (() => {
         showProfile('[data-action="profile-sort"][data-table="' + which + '"][data-key="' + key + '"]');
         break;
       }
-      case 'mode-results': showResults(); break;
+      case 'mode-results': if (!watch) showResults(); break;
       case 'menu': showMenu(false); break;
       case 'menu-rules': showRules(); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
@@ -6891,6 +7066,23 @@ const App = (() => {
       case 'export-seed': copyExport(String(app.state.seed)); break;
       case 'export-code': if (endCode) copyExport(endCode); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
+      case 'replay-watch': {
+        const row = el.hasAttribute('data-at') ? replays.list().find(x => String(x.at) === el.getAttribute('data-at')) : null;
+        const code = el.hasAttribute('data-at') ? row && row.code : endCode;
+        if (code && !watchGame(code, row ? 'profile' : 'end')) note('This game cannot be shown.', 'neg');
+        break;
+      }
+      case 'watch-start': case 'watch-back': case 'watch-fwd': case 'watch-end': case 'watch-play': {
+        if (!watch) break;
+        const at = watch.cur.steps;
+        if (name === 'watch-play') watchPlay(!watch.playing);
+        else watchMove(name === 'watch-start' ? 0 : name === 'watch-back' ? at - 1 : name === 'watch-fwd' ? at + 1 : Infinity);
+        /* The buttons are drawn again: the focus goes back to the one used, or to Play when it is now dimmed. */
+        const f = document.querySelector('[data-action="' + name + '"]:not(:disabled)') || document.querySelector('[data-action="watch-play"]');
+        if (f instanceof HTMLElement) f.focus();
+        break;
+      }
+      case 'watch-exit': if (watch) watchExit(); break;
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
@@ -7151,6 +7343,11 @@ const App = (() => {
       }
       if (ev.key === 'Escape' && needsSwap() && !$('overlay').hidden && $('overlay').querySelector('.swap')) { ev.preventDefault(); swapBack(); return; }
       if (ev.key === 'Escape' && !$('logDrop').hidden && $('overlay').hidden) { openLog(false); $('latestCell').focus(); return; }
+      /* The replay viewer: Escape exits, the arrow keys step, and Space or Enter plays or pauses (below). */
+      if (watch && $('overlay').hidden && !(ev.target instanceof Element && /^(SELECT|INPUT|TEXTAREA)$/.test(ev.target.tagName))) {
+        if (ev.key === 'Escape') { ev.preventDefault(); watchExit(); return; }
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); watchMove(watch.cur.steps + (ev.key === 'ArrowLeft' ? -1 : 1)); return; }
+      }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
       /* A focused control takes its own keys (a <summary> opens its section). The Settings panel never moves the game. */
@@ -7159,7 +7356,8 @@ const App = (() => {
       if (t && t.matches('[role="button"][data-action]')) { ev.preventDefault(); onAction(t.getAttribute('data-action'), t); return; }
       if (!$('overlay').hidden) return; /* a dialog is open: its buttons take the keys */
       ev.preventDefault();
-      if (app.timerFn) skip();
+      if (watch) watchPlay(!watch.playing);
+      else if (app.timerFn) skip();
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
@@ -7241,21 +7439,25 @@ const App = (() => {
     /* A ?seed= or ?wave= link starts that game. Otherwise every launch opens on the menu. */
     const seedParam = params.get('seed');
     const waveParam = params.get('wave');
+    /* A ?replay= link opens the replay viewer for that code. */
+    const replayParam = params.get('replay');
     /* A seed is 32 bits. A larger number used to wrap around to another seed, so the link played another game. */
     const seed = seedParam !== null && /^\d{1,10}$/.test(seedParam) && Number(seedParam) <= 0xFFFFFFFF ? Number(seedParam) : undefined;
     const wave = waveParam !== null && /^\d+$/.test(waveParam) ? Number(waveParam) : undefined;
     const badLink = (seedParam !== null && seed === undefined) || (waveParam !== null && !Waves.get(wave));
     if (badLink) linkNote = 'This link does not name a game: a seed is a whole number from 0 to 4294967295, and a wave is 1 to ' + WAVES.length + '.';
     /* The link is used once: a reload or a reopened tab resumes the game instead of starting it again. */
-    if (seedParam !== null || waveParam !== null) {
+    if (seedParam !== null || waveParam !== null || replayParam !== null) {
       safe(() => {
         const url = new URL(location.href);
-        url.searchParams.delete('seed'); url.searchParams.delete('wave');
+        url.searchParams.delete('seed'); url.searchParams.delete('wave'); url.searchParams.delete('replay');
         history.replaceState(history.state, '', url.pathname + url.search + url.hash);
       });
     }
     enterIdle();
-    if (!badLink && (seed !== undefined || Waves.get(wave))) {
+    if (replayParam !== null) {
+      if (!watchGame(replayParam.trim(), 'link')) { linkNote = 'This replay link does not hold a game that this app can show.'; showMenu(true); }
+    } else if (!badLink && (seed !== undefined || Waves.get(wave))) {
       /* Like New game in the menu: a begun unfinished game of that mode is lost only if you agree. */
       confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave); else showMenu(true); });
     } else showMenu(true);
