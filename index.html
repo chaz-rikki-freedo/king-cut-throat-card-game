@@ -63,10 +63,9 @@ button{font:inherit;color:inherit}
 .end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
 .modal .row .end-btns{justify-content:flex-end}
 .end-btns .btn-ico{justify-content:center}
-/* The replay viewer's controls: icon buttons, the move count and Exit, on one row. */
+/* The replay viewer's controls: five icon buttons, Play in the middle. Exit is the header's Replay chip. */
 .watch-ctl{display:flex;align-items:center;justify-content:center;gap:0.375rem;flex-wrap:wrap}
 .watch-ctl .btn-ico{padding-left:0.625rem;padding-right:0.625rem}
-.watch-pos{min-width:4.5rem;text-align:center;font-size:0.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
 @media (max-width:480px){
   .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .end-btns [data-action="next-wave"]{grid-column:1 / -1}
@@ -88,6 +87,7 @@ button{font:inherit;color:inherit}
 .mode-chip.free{background:var(--mode-free);color:var(--mode-free-ink)}
 .mode-chip.dynamic{background:var(--mode-dynamic);color:var(--mode-dynamic-ink)}
 .mode-chip.replay{background:rgba(255,255,255,.18);color:var(--ink)}
+.mode-chip.replay .x{margin-left:0.375rem;opacity:.8}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
 button.mode-chip:hover{filter:brightness(1.1)}
 button.mode-chip:focus-visible{outline:0.125rem solid var(--ink);outline-offset:0.125rem}
@@ -5997,10 +5997,11 @@ const App = (() => {
   function syncModeUI() {
     const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
     const chip = $('modeChip');
-    chip.innerHTML = watch ? 'Replay' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
+    chip.innerHTML = watch ? 'Replay<span class="x" aria-hidden="true">✕</span>' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
     chip.className = 'mode-chip' + (watch ? ' replay' : app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode && !watch;
-    chip.title = watch ? 'You are watching a replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    chip.title = watch ? 'Exit the replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setPersonas').disabled = ownBots;
@@ -6486,7 +6487,7 @@ const App = (() => {
     clearTimer();
     const ov = $('overlay');
     watch = {
-      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], playing: false, timer: 0,
+      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
       back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
@@ -6507,6 +6508,25 @@ const App = (() => {
     resetDraw();
     draw([]);
     return true;
+  }
+  /* The step count just after each hand's deal: where the hand buttons stop. A redeal is the same hand: it stops after
+     the deal that is played. */
+  function dealSteps(rec) {
+    const cur = Replay.cursor(rec), out = [];
+    let last = -1;
+    for (let r; (r = cur.step());) {
+      if (r.action.type !== 'DEAL') continue;
+      const n = handNo(cur.state);
+      if (n === last) out[out.length - 1] = cur.steps; else out.push(cur.steps);
+      last = n;
+    }
+    return out;
+  }
+  /* The previous or next hand from step at: the start of this hand (or the one before, at a hand's start), or the
+     next deal (or the end, in the last hand). */
+  function watchHand(at, dir) {
+    const w = watch, stops = [w.min, ...w.hands, w.total];
+    return dir < 0 ? stops.filter(x => x < at).pop() ?? w.min : stops.find(x => x > at) ?? w.total;
   }
   /* The next step of the replay, narrated. Its events, or null at the end. */
   function watchStep() {
@@ -6570,11 +6590,9 @@ const App = (() => {
     const w = watch, at = w.cur.steps;
     const b = (action, label, icon, off, primary) => '<button class="btn btn-ico' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '" aria-label="' + label + '" title="' + label + '"' + (off ? ' disabled' : '') + '>' + icon + '</button>';
     const html = '<div class="watch-ctl" role="group" aria-label="Replay">' +
-      b('watch-start', 'Start', WATCH_ICON.start, at <= w.min) + b('watch-back', 'Back one move', WATCH_ICON.back, at <= w.min) +
+      b('watch-prev', 'Previous hand', WATCH_ICON.start, at <= w.min) + b('watch-back', 'Back one move', WATCH_ICON.back, at <= w.min) +
       b('watch-play', w.playing ? 'Pause' : 'Play', w.playing ? WATCH_ICON.pause : WATCH_ICON.play, false, true) +
-      b('watch-fwd', 'Forward one move', WATCH_ICON.fwd, at >= w.total) + b('watch-end', 'End', WATCH_ICON.end, at >= w.total) +
-      '<span class="watch-pos" role="status" aria-label="Move ' + (at - w.min) + ' of ' + (w.total - w.min) + '">' + (at - w.min) + ' / ' + (w.total - w.min) + '</span>' +
-      '<button class="btn" type="button" data-action="watch-exit">Exit</button></div>';
+      b('watch-fwd', 'Forward one move', WATCH_ICON.fwd, at >= w.total) + b('watch-next', 'Next hand', WATCH_ICON.end, at >= w.total) + '</div>';
     return Object.assign({}, app.ui, { watch: html, autoplay: w.assisted, allowSeatAI: false, endButtons: '', personas: w.personas });
   }
   /* Exit: the table, the log and the dialog you came from come back. A game being played goes on. */
@@ -7044,7 +7062,7 @@ const App = (() => {
         showProfile('[data-action="profile-sort"][data-table="' + which + '"][data-key="' + key + '"]');
         break;
       }
-      case 'mode-results': if (!watch) showResults(); break;
+      case 'mode-results': if (watch) watchExit(); else showResults(); break;
       case 'menu': showMenu(false); break;
       case 'menu-rules': showRules(); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
@@ -7072,11 +7090,11 @@ const App = (() => {
         if (code && !watchGame(code, row ? 'profile' : 'end')) note('This game cannot be shown.', 'neg');
         break;
       }
-      case 'watch-start': case 'watch-back': case 'watch-fwd': case 'watch-end': case 'watch-play': {
+      case 'watch-prev': case 'watch-back': case 'watch-fwd': case 'watch-next': case 'watch-play': {
         if (!watch) break;
         const at = watch.cur.steps;
         if (name === 'watch-play') watchPlay(!watch.playing);
-        else watchMove(name === 'watch-start' ? 0 : name === 'watch-back' ? at - 1 : name === 'watch-fwd' ? at + 1 : Infinity);
+        else watchMove(name === 'watch-prev' ? watchHand(at, -1) : name === 'watch-back' ? at - 1 : name === 'watch-fwd' ? at + 1 : watchHand(at, 1));
         /* The buttons are drawn again: the focus goes back to the one used, or to Play when it is now dimmed. */
         const f = document.querySelector('[data-action="' + name + '"]:not(:disabled)') || document.querySelector('[data-action="watch-play"]');
         if (f instanceof HTMLElement) f.focus();

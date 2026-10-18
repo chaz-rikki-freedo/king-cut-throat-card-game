@@ -21,7 +21,7 @@ Region: `header#topbar`. Always visible. It can wrap to two rows on a narrow scr
 |---|---|---|---|---|
 | Menu button | Hamburger | `data-action="menu"` | C | Opens the menu dialog. The game waits while the menu is open. |
 | Brand | Title, logo | `.brand` | L | The game name, "King Cut-Throat". |
-| Mode chip | Mode badge | `#modeChip`, `data-action="mode-results"` | C, L | "Wave *n* of 18" (gold) or "Free play" (blue). Opens the results dialog. Hidden when no game runs. In the replay viewer: "Replay", and it opens nothing. |
+| Mode chip | Mode badge | `#modeChip`, `data-action="mode-results"` | C, L | "Wave *n* of 18" (gold) or "Free play" (blue). Opens the results dialog. Hidden when no game runs. In the replay viewer: "Replay ✕", which exits the viewer. |
 | Trump chip | Trump badge | `#trumpChip` | S | "Trump: ♠ Spades", or "Trump: —" before trump is set. |
 | Hand chip | Counter | `#handChip` | S | "Hand 3 · Trick 4/7", or "Showdown trick 2/5". |
 | Speed picker | Speed menu | `#speedSel` in `.speed-pick` | C | Slow, Normal, Fast, Instant. Not saved. |
@@ -137,7 +137,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |
-| Replay controls | Viewer controls | `ui.watch`, `.watch-ctl` | C | In the replay viewer, in place of every other button: **Start** (`watch-start`), **Back** (`watch-back`), **Play** or **Pause** (`watch-play`), **Forward** (`watch-fwd`), **End** (`watch-end`), the move count (`.watch-pos`) and **Exit** (`watch-exit`). |
+| Replay controls | Viewer controls | `ui.watch`, `.watch-ctl` | C | In the replay viewer, in place of every other button: five icon buttons, Play in the middle: **Previous hand** (`watch-prev`), **Back** (`watch-back`), **Play** or **Pause** (`watch-play`), **Forward** (`watch-fwd`) and **Next hand** (`watch-next`). Exit is the mode chip. |
 | Wait hint | — | `.actionbar .hint` with the status | S | The status line again, while another player acts. |
 
 ## 3. Dialog layer

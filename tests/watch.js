@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* The replay viewer (docs/ui/plan.md, phase 2), through the real controls: Watch at the end of a game, the step
-   controls, Exit back to the results, the Watch icon in Your profile's Last games, and the ?replay= link.
+   controls, Exit (the Replay chip) back to the results, the Watch icon in Your profile's Last games, and the ?replay= link.
    Your seat is played by the fast AI, by clicks. Exit code 1 on a failed check. */
 'use strict';
 const { serve, launch, openPage, run } = require('./lib/browser');
@@ -30,44 +30,55 @@ function expect(name, ok, detail) {
 
     r = await step(`
       click('#overlay [data-action="replay-watch"]'); await sleep(50);
-      const pos = () => q('.watch-pos').textContent;
+      /* The viewer's position: the replayed game's step count (one Engine action a step). */
+      const pos = () => app.state.version, hand = () => app.state.handNumber + (app.state.phase === P.HAND_START ? 1 : 0) - (app.state.redeals || 0);
       const out = { overlay: overlayOpen(), chip: q('#modeChip').textContent, chipShown: !q('#modeChip').hidden, start: pos(),
-        startOff: q('[data-action="watch-start"]').disabled, hand: q('#hand button:not([disabled])') ? 'clickable' : 'read-only',
+        startOff: q('[data-action="watch-prev"]').disabled, count: !!q('.watch-pos'), buttons: [...document.querySelectorAll('.watch-ctl button')].map(b => b.dataset.action), hand: q('#hand button:not([disabled])') ? 'clickable' : 'read-only',
         log: q('#gameLog').textContent.slice(0, 80), seed: app.state.seed, mode: app.mode };
       click('[data-action="watch-fwd"]'); await sleep(20);
       click('[data-action="watch-fwd"]'); await sleep(20);
       out.two = pos();
       click('[data-action="watch-back"]'); await sleep(20);
       out.back = pos();
-      click('[data-action="watch-end"]'); await sleep(50);
-      out.end = pos();
+      /* Next hand: after the next deal, one hand on each time, then the end. */
+      out.hands = [hand()];
+      click('[data-action="watch-next"]'); await sleep(30); out.hands.push(hand()); out.dealt = q('#hand button') ? 'cards' : 'none';
+      click('[data-action="watch-next"]'); await sleep(30); out.hands.push(hand());
+      out.atDeal = pos();
+      click('[data-action="watch-fwd"]'); click('[data-action="watch-fwd"]'); await sleep(30);
+      click('[data-action="watch-prev"]'); await sleep(30); out.prevToStart = pos() === out.atDeal && hand() === out.hands[2];
+      click('[data-action="watch-prev"]'); await sleep(30); out.prevAgain = hand() < out.hands[2];
+      for (let k = 0; k < 60 && !q('[data-action="watch-next"]').disabled; k++) { click('[data-action="watch-next"]'); await sleep(5); }
       out.endScores = app.state.scores.slice(); out.over = app.state.gameOver; out.endOff = q('[data-action="watch-fwd"]').disabled;
       out.congrats = /Congratulations/.test(q('#gameLog').textContent);
       out.dialog = overlayOpen();
-      click('[data-action="watch-start"]'); await sleep(50);
-      out.again = pos();
+      for (let k = 0; k < 60 && !q('[data-action="watch-prev"]').disabled; k++) { click('[data-action="watch-prev"]'); await sleep(5); }
+      out.again = pos() === out.start;
       /* Play: at instant speed, the steps run on their own. */
       click('[data-action="watch-play"]'); await sleep(400);
-      out.played = pos(); out.pauseLabel = q('[data-action="watch-play"]').getAttribute('aria-label');
+      out.played = pos() > out.start; out.pauseLabel = q('[data-action="watch-play"]').getAttribute('aria-label');
       click('[data-action="watch-play"]');
       out.saved = KCT.App.slots.get('free');
       return out;
     `);
     expect('the viewer covers the table, not a dialog', !r.overlay, r);
-    expect('the mode chip says Replay', r.chipShown && r.chip === 'Replay', r.chip);
-    expect('it opens at the start, with Start dimmed', /^0 \/ \d+$/.test(r.start) && r.startOff, r.start);
+    expect('the mode chip says Replay, with ✕', r.chipShown && r.chip === 'Replay✕', r.chip);
+    expect('it opens at the start, with Previous hand dimmed', r.startOff, r);
+    expect('five controls, Play in the middle, and no move count', JSON.stringify(r.buttons) === JSON.stringify(['watch-prev', 'watch-back', 'watch-play', 'watch-fwd', 'watch-next']) && !r.count, r.buttons);
     expect('your hand cannot be played', r.hand === 'read-only');
     expect('the log names the replay', /^Replay: Free play, /.test(r.log), r.log);
     expect('the viewer runs no game mode', r.mode === null && r.seed === live.seed, r);
-    expect('forward and back step one move', r.two.startsWith('2 /') && r.back.startsWith('1 /'), [r.two, r.back]);
-    expect('End reaches the recorded result', r.over && JSON.stringify(r.endScores) === JSON.stringify(live.scores) && r.endOff, r);
+    expect('forward and back step one move', r.two === r.start + 2 && r.back === r.start + 1, [r.start, r.two, r.back]);
+    expect('Next hand goes to the next deal, one hand at a time', r.dealt === 'cards' && r.hands[1] === 1 && r.hands[2] === 2, r.hands);
+    expect('Previous hand goes to this hand\'s start, then the hand before', r.prevToStart && r.prevAgain, r);
+    expect('Next hand in the last hand reaches the recorded result', r.over && JSON.stringify(r.endScores) === JSON.stringify(live.scores) && r.endOff, r);
     expect('the end shows the winner line, and no results dialog', r.congrats && !r.dialog);
-    expect('Start goes back to the start', r.again.startsWith('0 /'), r.again);
-    expect('Play steps on its own and shows Pause', !r.played.startsWith('0 /') && r.pauseLabel === 'Pause', r);
+    expect('Previous hand reaches the start', r.again);
+    expect('Play steps on its own and shows Pause', r.played && r.pauseLabel === 'Pause', r);
     expect('watching saves nothing', r.saved === null, r.saved);
 
     r = await step(`
-      click('[data-action="watch-exit"]'); await sleep(50);
+      click('#modeChip'); await sleep(50);
       return { dialog: !!q('#overlay .gameover') && overlayOpen(), version: app.state.version, scores: app.state.scores.slice(), mode: app.mode,
         chip: q('#modeChip').textContent, log: /Congratulations/.test(q('#gameLog').textContent) && !/^Replay:/.test(q('#gameLog').textContent) };
     `);
@@ -78,7 +89,7 @@ function expect(name, ok, detail) {
       click('#overlay [data-action="close-overlay"]');
       click('.actionbar [data-action="replay-watch"]'); await sleep(50);
       const watching = !!q('.watch-ctl');
-      click('[data-action="watch-exit"]'); await sleep(50);
+      click('#modeChip'); await sleep(50);
       return { watching, dialog: overlayOpen(), ends: !!q('.actionbar [data-action="replay-watch"]') };
     `);
     expect('Watch from the action bar returns to the table, not the results', r.watching && !r.dialog && r.ends, r);
@@ -108,7 +119,7 @@ function expect(name, ok, detail) {
     r = await step(`
       await sleep(50);
       const out = { watching: !!q('.watch-ctl'), url: location.search, menu: overlayOpen() };
-      click('[data-action="watch-exit"]'); await sleep(50);
+      click('#modeChip'); await sleep(50);
       out.menuAfter = overlayOpen() && !!q('#overlay .mcard');
       return out;
     `);
@@ -134,13 +145,14 @@ function expect(name, ok, detail) {
       click('[data-action="watch-fwd"]'); await sleep(30); click('[data-action="watch-fwd"]'); await sleep(30); click('[data-action="watch-fwd"]');
       await sleep(1500);
       out.cards = document.querySelectorAll('#hand .card').length;
-      click('[data-action="watch-end"]'); await sleep(200);
-      out.end = q('.watch-pos').textContent;
+      for (let k = 0; k < 60 && !q('[data-action="watch-next"]').disabled; k++) { click('[data-action="watch-next"]'); await sleep(5); }
+      await sleep(200);
+      out.end = app.state.gameOver;
       return out;
     `);
     expect('the controls sit on the table', r.adv && r.ctl, r);
     expect('the deal shows your cards', r.cards > 0, r.cards);
-    expect('End works in the Advanced UI', /^(\d+) \/ \1$/.test(r.end), r.end);
+    expect('Next hand reaches the end in the Advanced UI', r.end === true, r.end);
   } catch (e) {
     failed++;
     console.log('  ✖ ' + (e && e.message || e));

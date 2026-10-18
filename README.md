@@ -305,16 +305,16 @@ The Latest Scroll's last line congratulates the winner. The results dialog and t
 
 ### Watch a game
 
-The replay viewer plays a finished game again, from your seat, at the game speed. The header shows **Replay**. It is read only: it saves nothing, records no results and runs no bots. A game you were playing waits behind it.
+The replay viewer plays a finished game again, from your seat, at the game speed. The header shows **Replay ✕**: select it to exit. It is read only: it saves nothing, records no results and runs no bots. A game you were playing waits behind it.
 
 | Control | What it does |
 |---|---|
-| **Start** and **End** | Go to the first deal's table, or to the game's end. |
+| **Previous hand** and **Next hand** | Previous hand goes to the start of this hand, or of the hand before when you are at a hand's start. Next hand goes to the next hand's deal, or to the game's end in the last hand. A redeal is the same hand. |
 | **Back** and **Forward** | One move (a play, a bid, a discard, or a step of the table such as a deal). The Left and Right arrow keys do the same. |
 | **Play** or **Pause** | Plays the moves at the game speed. Space or Enter does the same. Play at the end starts again from the start. |
-| **Exit** | Returns to where you were: the results dialog, Your profile, or the menu. Escape does the same. |
+| **Replay ✕** (header) | Exit: returns to where you were: the results dialog, Your profile, or the menu. Escape does the same. |
 
-The count between the buttons shows the move and the number of moves. A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
+A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
 
 The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 

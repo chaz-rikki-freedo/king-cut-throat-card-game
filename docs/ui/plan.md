@@ -51,11 +51,11 @@ The Seed row (seed readout and **Copy**) is removed.
 
 A read-only table. It saves nothing, records no results and runs no bots. The game timer waits, as it does while the menu is open.
 
-- **Controls:** Start, Back, Play or Pause, Forward, End, a move count, and **Exit**. A move is one Engine step: a decision, or a step of the table such as a deal. Start is the first table after `START_GAME`. Back rebuilds from the seed (`Replay.cursor().seek`). A jump draws the table at once; one step forward moves the cards as in a game. Keys: Left and Right step, Space or Enter plays or pauses, Escape exits.
-- **Mode chip:** **Replay**.
+- **Controls:** five icon buttons, symmetrical round Play: Previous hand, Back, Play or Pause, Forward, Next hand. No move count. A move is one Engine step: a decision, or a step of the table such as a deal. A hand stop is the step after the hand's deal (after a redeal, the deal that is played); the first stop is the table after `START_GAME`, the last the game's end. Back rebuilds from the seed (`Replay.cursor().seek`). A jump draws the table at once; one step forward moves the cards as in a game. Keys: Left and Right step, Space or Enter plays or pauses, Escape exits.
+- **Mode chip:** **Replay ✕**. It is **Exit**.
 - **Log:** the Latest Scroll narrates the replay, from a line that names the table. A jump narrates without toasts. Exit brings back the log of the game behind.
 - **Rotate icon** (phase 3): watch from You, then West, then East. Each seat shows its own view (`buildView(state, seat)`), so the rule that a view holds only what its seat can see still holds. This needs a seat-to-position map in `Render`, which today places seat 1 left and seat 2 right. Rotation is in the viewer only, never in a live game.
-- **Exit** returns to where you were: the menu, the game-over dialog, or a game that you can resume.
+- **Exit** (the mode chip, or Escape) returns to where you were: the menu, the game-over dialog, or a game that you can resume.
 - **`?replay=` link:** opens the viewer for that code, as `?seed=` starts a game. A code that does not decode opens the menu with a note. The app removes `replay` from the address after use.
 
 ### Backup (phase 4)
