@@ -115,7 +115,7 @@ async function checks() {
       await sleep(300);
       const before = A.profile.get();
       click('[data-action="close-overlay"]'); await sleep(20);
-      click('[data-action="new-dynamic-now"]'); await sleep(50);
+      click('[data-action="new-deal"]'); await sleep(50);
       allowSeatAI(true); await sleep(20);
       click('[data-action="swap-done"]'); await sleep(20);
       click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20);
