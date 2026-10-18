@@ -138,6 +138,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |
 | Replay controls | Viewer controls | `ui.watch`, `.watch-ctl` | C | In the replay viewer, in place of every other button: five icon buttons, Play in the middle: **Previous hand** (`watch-prev`), **Back** (`watch-back`), **Play** or **Pause** (`watch-play`), **Forward** (`watch-fwd`) and **Next hand** (`watch-next`). Exit is the mode chip. |
+| Seat button | Sit button | `.seat-sit`, `data-action="watch-seat"`, `data-seat`, `.sit-ico` | C | In the replay viewer, a side seat's figure, name and a small circular arrow: watch from that seat. It moves to the bottom with its own view. |
 | Wait hint | — | `.actionbar .hint` with the status | S | The status line again, while another player acts. |
 
 ## 3. Dialog layer

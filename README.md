@@ -314,6 +314,8 @@ The replay viewer plays a finished game again, from your seat, at the game speed
 | **Play** or **Pause** | Plays the moves at the game speed. Space or Enter does the same. Play at the end starts again from the start. |
 | **Replay ✕** (header) | Exit: returns to where you were: the results dialog, Your profile, or the menu. Escape does the same. |
 
+To see a bot's side of the game, tap its figure or name (a small circular arrow follows the name). Its seat moves to the bottom with its own hand face up; the other two hands show as backs, as that bot saw them, and you sit where the seating order puts you. Tap your own seat to come back. The log stays the same from every seat.
+
 A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
 
 The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
