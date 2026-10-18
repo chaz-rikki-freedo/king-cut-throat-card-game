@@ -86,7 +86,7 @@ async function checks() {
       return out;`);
     expect('after a reload, Resume continues the Dynamic game at the saved move', r.primary && r.mode === 'dynamic' && r.version === mid.version, [r.version, mid.version]);
     expect('the easing worked out again after the reload equals the easing before it', r.e === mid.e && r.hands === mid.hands, [r.e, mid.e]);
-    expect('the game ends with New Game, Replay Seed and Menu', r.stop === 'game-over' && JSON.stringify(r.buttons) === '["View table","New Game","Replay Seed","Menu"]', r.buttons);
+    expect('the game ends with Watch, Try again, New deal and Export', r.stop === 'game-over' && JSON.stringify(r.buttons) === '["Watch","Try again","New deal","Export"]', r.buttons);
     expect('the end counts a Dynamic result and clears the slot', r.slotCleared && r.stats && r.stats.played === 1, r.stats);
     expect('the replay code has mode dynamic, replays, and holds the snapshot and the easing in META',
       r.recMode === 'dynamic' && r.replayOk && r.meta['dyn.e0'] === 1000 && r.meta['dyn.ease'] === Math.round(r.eEnd * 1000) && JSON.stringify(JSON.parse(r.meta['dyn.snap'])) === JSON.stringify(mid.snap), r.meta);
@@ -100,7 +100,7 @@ async function checks() {
     r = await step(`
       /* The review changed the profile: a new game would start from another snapshot. Replay Seed keeps the old one. */
       const out = { fresh: JSON.stringify(KCT.Dynamic.snapshotOf(A.profile.get())) };
-      /* The game-over box was closed (View table): its buttons again. */
+      /* The game-over box was closed (✕, Back): its buttons again. */
       q('#overlay').innerHTML = '<div class="modal"><div class="row">' + app.ui.endButtons + '</div></div>'; q('#overlay').hidden = false;
       click('[data-action="replay-seed"]'); await sleep(50);
       out.snap = JSON.stringify(app.dyn.snap); out.seed = app.state.seed; out.mode = app.mode;

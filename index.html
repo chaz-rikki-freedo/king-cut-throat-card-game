@@ -49,7 +49,15 @@ button{font:inherit;color:inherit}
 .tiny-btn:hover{background:rgba(255,255,255,.18)}
 .tiny-btn:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 .tiny-btn svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.modal .row .tiny-btn{align-self:center}
+/* A button with an icon before its label: the end buttons. */
+.btn-ico{display:inline-flex;align-items:center;gap:0.375rem}
+.btn-ico svg{width:1rem;height:1rem;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-ico:disabled{opacity:.45;cursor:default}
+/* The results dialog: ✕ (Back) in its top right returns to the table. */
+.modal.gameover{position:relative}
+.modal.gameover .big{padding-right:2.5rem}
+.modal .modal-x{position:absolute;top:0.75rem;right:0.75rem}
+.export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted)}
 .profile td.pf-acts{text-align:right;white-space:nowrap}
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
@@ -269,11 +277,6 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .hl-trump{color:var(--accent);font-weight:700}
 .gamelog .hl-loss{color:var(--danger);font-weight:800}
 .gamelog li.ind{padding-left:2em}
-/* The end-of-game line: a Copy button for the replay code, which itself never shows. */
-.gamelog li.code{display:flex;align-items:center;gap:0.5rem;padding-top:0.375rem}
-.gamelog .log-copy{display:inline-flex;align-items:center;gap:0.375rem}
-.gamelog .log-copy svg{width:0.875rem;height:0.875rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.gamelog .log-copied{font-size:0.75rem;color:var(--muted)}
 .gamelog li.sd.ind,.gamelog li.sd.play{padding-left:6em}
 .gamelog li.w{color:var(--good);font-weight:800}
 .gamelog li.play{padding-left:2em}
@@ -5186,7 +5189,7 @@ const App = (() => {
   }
   /* Dynamic's post-game review (decision 18) of the game that just ended, run once after the game-over box has drawn,
      or before anything else starts. A game where the AI played your seat is never reviewed. */
-  /* The finished game's replay code, for the Latest Scroll line after the winner line (see narrate, GAME_ENDED). */
+  /* The finished game's replay code, for Export. */
   let endCode = /** @type {string | null} */ (null);
   let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
   function runReview() {
@@ -5252,16 +5255,19 @@ const App = (() => {
   }
   /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
   const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
-  const ICON_COPY = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const ICON_WATCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const ICON_DEAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>';
+  const ICON_EXPORT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>';
   const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
+  /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer, phase 2), Try again (the
+     same deal), New deal (new cards at the same table) and Export. A won wave adds Next wave. The menu is the header's. */
   function endButtonsHTML() {
-    const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
-    const menu = b('menu', 'Menu'), again = tinyButton('replay-seed', 'Replay Seed', ICON_AGAIN);
-    if (!inWaves()) return b(app.mode === 'dynamic' ? 'new-dynamic-now' : 'new-game-now', 'New Game', true) + again + menu;
-    const n = app.wave.n, won = app.state.winner === HUMAN;
-    if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + again + menu;
-    if (won) return again + b('menu', 'Menu', true);
-    return b('retry-wave', 'Try again', true) + again + menu;
+    const b = (action, label, icon, o = {}) => '<button class="btn btn-ico' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' +
+      (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + icon + label + '</button>';
+    const n = app.wave.n, next = inWaves() && app.state.winner === HUMAN && n < WAVES.length && Waves.isUnlocked(n + 1);
+    return b('replay-watch', 'Watch', ICON_WATCH, { disabled: true, title: 'Watch the game: coming soon' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
+      b('new-deal', 'New deal', ICON_DEAL, { primary: !next, title: inWaves() ? 'This wave, with new cards' : 'The same opponents, with new cards' }) +
+      b('export', 'Export', ICON_EXPORT, { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', '', { primary: true }) : '');
   }
 
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
@@ -6029,16 +6035,12 @@ const App = (() => {
     appendLog(text, classes.join(' '));
     if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
     else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
-    if (!classes.includes('trick-head') && !classes.includes('code')) { noteBurst(ol.lastElementChild); showLatest(); }
+    if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
     const li = document.createElement('li');
-    /* A code line holds the replay code (its text) behind a Copy button; the code itself never shows. */
-    if (/\bcode\b/.test(cls || '')) {
-      li.dataset.code = text;
-      li.innerHTML = '<button class="btn btn-sm log-copy" type="button" data-action="copy-replay">' + ICON_COPY + 'Copy replay code</button><span class="log-copied" aria-live="polite"></span>';
-    } else li.innerHTML = logHTML(Render.youText(text), cls);
+    li.innerHTML = logHTML(Render.youText(text), cls);
     if (cls) li.className = cls;
     return li;
   }
@@ -6097,7 +6099,7 @@ const App = (() => {
     const cell = $('latestCell'), line = $('latestLine');
     let html = note || '';
     if (!note && burstOpen && burst.length) html = burstHTML();
-    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head') && !li.classList.contains('code')) { html = li.innerHTML; break; }
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
@@ -6229,8 +6231,6 @@ const App = (() => {
       case 'GAME_ENDED': {
         const pts = e.scores[e.winner] > Engine.C.WIN_SCORE ? 'more than 10 points (⭐)' : e.scores[e.winner] + ' points';
         addLog(e.winner === HUMAN ? '🏆 Congratulations! ' + n(e.winner) + ' wins the game with ' + pts + '.' : '🏆 Congratulations to ' + n(e.winner) + ', who wins the game with ' + pts + '.', 'w gap end');
-        /* The replay code's only place: a Copy button under the winner line, in the open log only (see logItem). */
-        if (endCode) addLog(endCode, 'code');
         break;
       }
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
@@ -6263,10 +6263,10 @@ const App = (() => {
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
+    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><button class="btn modal-x" type="button" data-action="close-overlay" aria-label="Back" title="Back">✕</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
-      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
+      '<div class="row">' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
@@ -6398,6 +6398,15 @@ const App = (() => {
     app.menuOpen = false;
     /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
     newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot, rules });
+  }
+  /* New deal: new cards at the same table. Waves: the same wave. Free play and Dynamic: a new seed that seats the same
+     two opponents in the same seats, since the seed picks the table (one seed in 90 does). */
+  function newDeal() {
+    if (inWaves()) { startMode('waves', undefined, app.wave.n); return; }
+    const west = app.ui.personas[1], east = app.ui.personas[2];
+    let seed = RNG.freshSeed();
+    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = seedTable(seed); if (t[0] === west && t[1] === east) break; }
+    startMode(app.mode, seed);
   }
   /* Replay Seed on a Last games row: the same table as that game, from its replay code. Null when this app cannot
      play it again (a newer rules version, no mode, or a Dynamic code without its snapshot). @param {any} e */
@@ -6729,7 +6738,7 @@ const App = (() => {
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
         '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
         games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
-          '<td class="pf-acts">' + (againOf(e) ? tinyButton('replay-seed', 'Replay Seed', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
+          '<td class="pf-acts">' + (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
     html += habitsHTML();
@@ -6859,11 +6868,11 @@ const App = (() => {
       case 'new-dynamic': confirmReplace('dynamic').then(yes => yes ? startMode('dynamic') : showMenu(app.menuLaunch)); break;
       case 'ask-ok': answerAsk(true); break;
       case 'ask-cancel': answerAsk(false); break;
-      case 'new-game-now': startMode('free'); break;
-      case 'new-dynamic-now': startMode('dynamic'); break;
+      case 'new-deal': newDeal(); break;
+      case 'export': exportGame(); break;
+      case 'export-seed': copyExport(String(app.state.seed)); break;
+      case 'export-code': if (endCode) copyExport(endCode); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
-      case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
-      case 'copy-replay': copyReplay(el); break;
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
@@ -6999,11 +7008,25 @@ const App = (() => {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
     else fallback();
   }
-  /* The Latest Scroll's Copy replay code button. @param {Element} el */
-  function copyReplay(el) {
-    const li = el.closest('li'), note = li && li.querySelector('.log-copied');
-    if (!(li instanceof HTMLElement) || !li.dataset.code) return;
-    copyText(li.dataset.code, ok => { if (note) { note.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { note.textContent = ''; }, 1500); } });
+  /* Export: a small dialog in the confirm layer that copies the seed or the replay code. ✕, Escape or a click
+     outside closes it. */
+  function exportGame() {
+    if (askDone) askDone(false);
+    const layer = $('askLayer');
+    layer.innerHTML = '<div class="modal ask gameover" role="dialog" aria-modal="true" aria-labelledby="askTitle">' +
+      '<button class="btn modal-x" type="button" data-action="ask-cancel" aria-label="Close" title="Close">✕</button>' +
+      '<h2 id="askTitle">Export this game</h2><p>The replay code holds the whole game, every move. The seed holds its deals only.</p>' +
+      '<div class="row"><button class="btn" type="button" data-action="export-seed">Copy seed</button>' +
+      '<button class="btn primary" type="button" data-action="export-code"' + (endCode ? '' : ' disabled') + '>Copy replay code</button></div>' +
+      '<p class="export-copied" aria-live="polite"></p></div>';
+    layer.hidden = false;
+    const btn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="export-code"]'));
+    if (btn) btn.focus();
+    askDone = () => { askDone = null; layer.hidden = true; layer.innerHTML = ''; };
+  }
+  function copyExport(text) {
+    const note = $('askLayer').querySelector('.export-copied');
+    copyText(text, ok => { if (note) note.textContent = ok ? 'Copied.' : 'Copy failed.'; });
   }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {

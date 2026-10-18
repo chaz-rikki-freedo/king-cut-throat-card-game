@@ -126,7 +126,7 @@ Keys that the app writes now:
 | `ai.know.showdownPlans` | BOOL | Knowledge switch: plans showdowns. |
 | `ai.personas` | BOOL | At least one bot move used the bot's personality. Its settings follow from its id in SEATS. |
 | `ai.changed` | BOOL | The bots used more than one set of Settings-panel values in this game. |
-| `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Replay Seed** needs it to run the bots again; a replay of the code does not. |
+| `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Try again** needs it to run the bots again; a replay of the code does not. |
 | `dyn.e0` | INT | Dynamic only: the easing at the start, in thousandths (0 = normal, 1000 = the floor). |
 | `dyn.ease` | INT | Dynamic only: the easing when the code was made, in thousandths. |
 

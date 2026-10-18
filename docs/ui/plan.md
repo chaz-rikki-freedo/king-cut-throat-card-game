@@ -4,14 +4,17 @@ Status: **agreed**, in phases. This page records where each feature that the cod
 
 ## Principles
 
-- **No codes in the interface.** No seed or replay code shows as text. The only way to get a code is the **Copy replay code** button in the Latest Scroll, at the end of a game. A player who wants to share a game uses the copied code in a link (`?replay=`).
+- **No codes in the interface.** No seed or replay code shows as text. The only way to get one is **Export**, at the end of a game. A player who wants to share a game uses the copied code in a link (`?seed=` or `?replay=`).
+- **The same end buttons in every mode.** Watch, Try again, New deal and Export. Only a won wave adds one: Next wave. The menu is the header's ☰ button, so the end buttons have no Menu.
 - **Small icons on the lines they act on.** A game's actions sit on that game's line: the row in Your profile, or the end buttons of the game just played.
 
 ## Icons
 
 | Icon | Name | Action | Meaning |
 |---|---|---|---|
-| Counter-clockwise arrow | Replay Seed icon | `replay-seed` | Play the same table again: the same mode, wave, opponents and deals. |
+| Counter-clockwise arrow | Try again | `replay-seed` | Play the same table again: the same mode, wave, opponents, deals and house rules. |
+| Shuffle arrows | New deal | `new-deal` | New cards at the same table: the same wave, or the same two opponents in the same seats. |
+| Up arrow from a tray | Export | `export` | Copy the seed or the replay code. |
 | Eye | Watch icon | `replay-watch` | Watch the game in the replay viewer. |
 | Circular arrow (small) | Rotate icon | `replay-rotate` | In the replay viewer only: watch from the next seat. |
 
@@ -21,21 +24,24 @@ Each icon button has an `aria-label` and a `title`, because it has no visible te
 
 ### Latest Scroll: the codes
 
-At the end of a game, the winner line congratulates the winner ("🏆 Congratulations! You win the game with 10 points." or "🏆 Congratulations to Viv, who wins the game with 10 points."). The Latest strip shows only that line. Under it, in the open Latest Scroll only, a **Copy replay code** button (`copy-replay`) copies the code; "Copied" confirms it. The new-game line no longer shows the seed.
+At the end of a game, the winner line congratulates the winner ("🏆 Congratulations! You win the game with 10 points." or "🏆 Congratulations to Viv, who wins the game with 10 points."). The Latest strip shows only that line. The new-game line no longer shows the seed.
 
 ### Your profile: Last games table
 
 Each row of **Show these games as a table** ends with two icons:
 
-- **Replay Seed icon.** Starts the same table again. A Dynamic game starts from the profile snapshot in its replay code (`dyn.snap`). If that mode has an unfinished game that has begun, the app asks first, as **New game** does.
+- **Try again icon.** Starts the same table again. A Dynamic game starts from the profile snapshot in its replay code (`dyn.snap`). If that mode has an unfinished game that has begun, the app asks first, as **New game** does.
 - **Watch icon** (phase 2). Opens the replay viewer.
 
 A row whose code this app cannot read (a newer rules version, or no mode) shows no icons.
 
 ### Game-over end buttons
 
-- **Replay Seed** becomes the Replay Seed icon. Its name stays for screen readers.
-- The Watch icon (phase 2) sits beside it and opens the viewer for the game just played.
+In every mode: **Watch** (dimmed until phase 2), **Try again**, **New deal** and **Export**, each an icon and a label. After a win that opens the next wave, also **Next wave**, as the main button; otherwise **New deal** is the main button.
+
+- **New deal** in Free play and Dynamic finds a new seed that seats the same two opponents in the same seats, because the seed picks the table.
+- **Export** opens a small dialog: **Copy seed** and **Copy replay code**.
+- The results dialog has **✕** (Back) in its top right instead of a View table button.
 
 ### Settings → Tools
 
@@ -75,8 +81,8 @@ A read-only table. It saves nothing, records no results and runs no bots. The ga
 
 | Phase | Contents |
 |---|---|
-| 1 | The winner line and the Copy replay code button in the Latest Scroll. The Seed row removed. The Replay Seed icon on the end buttons and on the Last games rows. |
-| 2 | The replay viewer from your seat, the Watch icons and the `?replay=` link. |
+| 1 | The winner line. The Seed row removed. The end buttons (Watch dimmed, Try again, New deal, Export), Back in the results dialog, and the Try again icon on the Last games rows. |
+| 2 | The replay viewer from your seat: Watch turns on, a Watch icon on the Last games rows, and the `?replay=` link. |
 | 3 | The Rotate icon in the viewer. |
 | 4 | The backup UI. |
 | 5 | Themes. |
