@@ -269,8 +269,11 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .hl-trump{color:var(--accent);font-weight:700}
 .gamelog .hl-loss{color:var(--danger);font-weight:800}
 .gamelog li.ind{padding-left:2em}
-/* The end-of-game codes: one tap selects the whole line, to copy it. */
-.gamelog li.code{font:0.6875rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
+/* The end-of-game line: a Copy button for the replay code, which itself never shows. */
+.gamelog li.code{display:flex;align-items:center;gap:0.5rem;padding-top:0.375rem}
+.gamelog .log-copy{display:inline-flex;align-items:center;gap:0.375rem}
+.gamelog .log-copy svg{width:0.875rem;height:0.875rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gamelog .log-copied{font-size:0.75rem;color:var(--muted)}
 .gamelog li.sd.ind,.gamelog li.sd.play{padding-left:6em}
 .gamelog li.w{color:var(--good);font-weight:800}
 .gamelog li.play{padding-left:2em}
@@ -5249,6 +5252,7 @@ const App = (() => {
   }
   /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
   const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
+  const ICON_COPY = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
   const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
   function endButtonsHTML() {
     const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
@@ -6030,8 +6034,11 @@ const App = (() => {
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
     const li = document.createElement('li');
-    /* A code line is plain text: a name or a log word inside a code is not one. */
-    li.innerHTML = /\bcode\b/.test(cls || '') ? escHTML(text) : logHTML(Render.youText(text), cls);
+    /* A code line holds the replay code (its text) behind a Copy button; the code itself never shows. */
+    if (/\bcode\b/.test(cls || '')) {
+      li.dataset.code = text;
+      li.innerHTML = '<button class="btn btn-sm log-copy" type="button" data-action="copy-replay">' + ICON_COPY + 'Copy replay code</button><span class="log-copied" aria-live="polite"></span>';
+    } else li.innerHTML = logHTML(Render.youText(text), cls);
     if (cls) li.className = cls;
     return li;
   }
@@ -6080,6 +6087,9 @@ const App = (() => {
     burst.push(li);
   }
   function burstHTML() {
+    /* The game's end shows only the winner line. */
+    const end = burst.find(li => li.classList.contains('end'));
+    if (end) return end.innerHTML;
     const more = burst.filter(li => !li.classList.contains('play'));
     return (more.length ? more : burst).slice(-2).map(li => li.innerHTML).join('</li><li>');
   }
@@ -6216,11 +6226,13 @@ const App = (() => {
         addLog(e.by != null ? n(e.by) + ' (mediator) picks ' + n(e.player) + ' to lead the Showdown.' : n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true);
         break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
-      case 'GAME_ENDED':
-        addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end');
-        /* The only place the codes show: a link takes either (?seed= or ?replay=). */
-        if (endCode) addLog('Seed ' + app.state.seed + ' · Replay code ' + endCode, 'code');
+      case 'GAME_ENDED': {
+        const pts = e.scores[e.winner] > Engine.C.WIN_SCORE ? 'more than 10 points (⭐)' : e.scores[e.winner] + ' points';
+        addLog(e.winner === HUMAN ? '🏆 Congratulations! ' + n(e.winner) + ' wins the game with ' + pts + '.' : '🏆 Congratulations to ' + n(e.winner) + ', who wins the game with ' + pts + '.', 'w gap end');
+        /* The replay code's only place: a Copy button under the winner line, in the open log only (see logItem). */
+        if (endCode) addLog(endCode, 'code');
         break;
+      }
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
@@ -6851,6 +6863,7 @@ const App = (() => {
       case 'new-dynamic-now': startMode('dynamic'); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
+      case 'copy-replay': copyReplay(el); break;
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
@@ -6973,6 +6986,25 @@ const App = (() => {
   }
   function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
 
+  /* Copies text (the clipboard API can be blocked on local files, so fall back). done(ok) reports the result. */
+  function copyText(text, done) {
+    const fallback = () => {
+      const t = document.createElement('textarea');
+      t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      t.remove(); done(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
+    else fallback();
+  }
+  /* The Latest Scroll's Copy replay code button. @param {Element} el */
+  function copyReplay(el) {
+    const li = el.closest('li'), note = li && li.querySelector('.log-copied');
+    if (!(li instanceof HTMLElement) || !li.dataset.code) return;
+    copyText(li.dataset.code, ok => { if (note) { note.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { note.textContent = ''; }, 1500); } });
+  }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',

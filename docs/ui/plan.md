@@ -4,7 +4,7 @@ Status: **agreed**, in phases. This page records where each feature that the cod
 
 ## Principles
 
-- **No codes in the interface.** The seed and the replay code show in one place only: the Latest Scroll, at the end of a game. A player who wants to share a game copies the code from there and uses it in a link (`?seed=` or `?replay=`).
+- **No codes in the interface.** No seed or replay code shows as text. The only way to get a code is the **Copy replay code** button in the Latest Scroll, at the end of a game. A player who wants to share a game uses the copied code in a link (`?replay=`).
 - **Small icons on the lines they act on.** A game's actions sit on that game's line: the row in Your profile, or the end buttons of the game just played.
 
 ## Icons
@@ -21,7 +21,7 @@ Each icon button has an `aria-label` and a `title`, because it has no visible te
 
 ### Latest Scroll: the codes
 
-At the end of a game, after the winner line, the Latest Scroll gets one line: `Seed 4242 · Replay code KCT3-…`. The line does not show in the Latest strip. The new-game line no longer shows the seed.
+At the end of a game, the winner line congratulates the winner ("🏆 Congratulations! You win the game with 10 points." or "🏆 Congratulations to Viv, who wins the game with 10 points."). The Latest strip shows only that line. Under it, in the open Latest Scroll only, a **Copy replay code** button (`copy-replay`) copies the code; "Copied" confirms it. The new-game line no longer shows the seed.
 
 ### Your profile: Last games table
 
@@ -75,7 +75,7 @@ A read-only table. It saves nothing, records no results and runs no bots. The ga
 
 | Phase | Contents |
 |---|---|
-| 1 | The codes in the Latest Scroll. The Seed row removed. The Replay Seed icon on the end buttons and on the Last games rows. |
+| 1 | The winner line and the Copy replay code button in the Latest Scroll. The Seed row removed. The Replay Seed icon on the end buttons and on the Last games rows. |
 | 2 | The replay viewer from your seat, the Watch icons and the `?replay=` link. |
 | 3 | The Rotate icon in the viewer. |
 | 4 | The backup UI. |

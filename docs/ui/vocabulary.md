@@ -330,6 +330,8 @@ Region: `aside.logpanel`. The player name for it is **Latest Scroll**. In the Ad
 |---|---|---|---|---|
 | Log heading | — | `.logpanel h2` | L | "Latest Scroll". |
 | Log | Game log, scroll | `#gameLog`, `.gamelog` | R | One line for each event of this game. Cleared at each new game. |
+| Winner line | — | `li.end` | S | The last event of a game: it congratulates the winner. At the game's end the Latest cell shows only this line. |
+| Copy replay code button | — | `li.code`, `data-action="copy-replay"`, `.log-copied` | C | Under the winner line. Copies the game's replay code, which never shows as text. "Copied" confirms it. Not in the Latest cell. |
 | Hand line | Blue line | `li.h` | R | Deals, trump calls and hand results. |
 | Showdown line | Pink line | `li.s`, `li.sd` | R | Showdown events, indented. |
 | King line | Gold line | `li.k` | R | "♔ +1 to West…". |
