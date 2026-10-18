@@ -78,6 +78,17 @@ Click the mode in the header.
 
 Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has four tabs: **Game**, **Bots**, **Expert** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
+### Game: Theme
+
+The first setting in the Game tab.
+
+| Setting | What it does |
+|---|---|
+| **Felt** | The color of the table, the page and the panels: **Classic** (the green felt, the default), **Spring** (lilac), **Summer** (sea teal), **Fall** (russet, with a navy Showdown felt) or **Winter** (slate). Each tile shows its felt. The change is at once, and the browser bar takes the felt's color. |
+| **Color-blind safe colors** | Off by default. On, the names, the mode chips and the selection take colors that stay apart with red-green color blindness (deuteranopia and protanopia), with any felt. The bots and the modes change color; their names and labels do not change. |
+
+The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the Classic felt never flashes first.
+
 ### Game: Table
 
 | Setting | What it does |
