@@ -2,7 +2,7 @@
 
 A design note, not a spec. It reviews where the game asks a player to make real choices, and whether those choices stay interesting at a strong level of play. Each part says whether it is an observation, a hypothesis, a measurement or a proposal, as in [human-play.md](human-play.md).
 
-Started 2026-10-16. It grew out of a question from play: is losing a trick on purpose, to force a Showdown, a real tactic?
+Started 2026-10-16. It grew out of a question from play: is losing a trick on purpose, to force a Showdown, a real tactic? Updated 2026-10-18 with discard lessons from replays.
 
 ## Summary
 
@@ -10,6 +10,7 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 - **A player with a weak hand still has choices.** Losing a trick on purpose can turn a 3–2–2 hand into a 3–3–1 Showdown. That takes the leader's point away and lets the weak player pick who leads the Showdown. In a three-player game, this is also kingmaking: a player who can't win the hand decides who gains.
 - **Seat order matters more than skill gaps suggest.** The gift always goes to the caller's left, so the same two bots make a wave of 35% or 18% depending on which side each one sits (Waves 11 and 15).
 - **Calling is cheap.** A failed call costs no points. The gift is the only price, so the bid is mostly a decision about who gets the gift.
+- **The discard holds more than the hand value counts.** In replays, strong bots overrule it. They keep trump length over lone Kings, and keep a backup suit that shares a Jack with their best suit.
 
 ## Where the choices are
 
@@ -42,6 +43,46 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 *Observation.* On a 3–3–1 split, the player with 1 trick mediates. The two tied players get 6 of the 12 outside cards each, discard 1, and play 5 tricks with the same trump. The winner scores +1 and the loser loses 1, but never goes below 0. With the house rule **Mediator picks the Showdown lead** (on by default), the mediator picks who leads.
 
 So the player who did worst in the hand decides a 2-point swing between the other two.
+
+## Discard lessons from replays
+
+*Observation, from replays of real games (2026-10-18).* Replay playback shows every bot's hand, so a player can see what each bot threw and compare it with the game's hand value (`handValue`, in the AI section of `index.html`). Bots that aren't Real table don't discard by hand value alone. They take the 6 discards it rates best, play each one out over imagined deals, and keep the one that scores best. Three discards from hand 1 of three games show what the hand value misses.
+
+The fitted figures come from `tests/data/handvalue-fit.json`, 600 games of three Sharks (see [human-play.md](human-play.md)).
+
+### Trump length beats lone honors
+
+Viv (Club player) held Q♠ J♠ 7♠, A♥ 10♥, K♣ and A♦ J♦ 10♦ 9♦, and threw J♠ 7♠ K♣. The hand value rated that discard fifth. Its first choice was all three spades, keeping the K♣.
+
+- **A King alone in its suit is worth little.** In the fitted data, it averages about 0.04 tricks and 0.15 King points, about half of what the hand value counts. Viv can't see 23 cards, and 20 of them are in her opponents' hands, so the A♣ is with an opponent about 87% of the time.
+- **Each trump past the second is worth about 0.70 tricks,** against 0.20 in the hand value. Viv kept four diamonds, with the J♦ as the Right Bower, and both Aces.
+- **Either way, she kept one void.** The K♣ would have left her void in spades. The Q♠ left her void in clubs. So the real trade was a lone King for a lone Queen.
+
+Don't keep a King for the King point alone. Keep it when it can win a trick: with its Ace, or as trump.
+
+### A thrown card can come back
+
+Viv's game went to a Showdown, and the K♣ came back to her from the outside pile. She won a trick with it and scored the King point. A discard is out of play only until a Showdown. A strong card can come back to an opponent, as **The blind discard** says, or to the player who threw it.
+
+### Keep the backup suit that shares a Jack
+
+Doc (Shark) held A♠ K♠ 8♠, Q♥ 8♥ 7♥, J♣ 10♣ and A♦ J♦. He threw 8♥ 7♥ J♦. The hand value rated that fourth, behind throwing the 10♣.
+
+- Spades is his best suit either way, with the J♣ as the Left Bower.
+- Keeping the 10♣ makes clubs the backup suit, with the J♣ as the Right Bower. Keeping the J♦ makes diamonds the backup suit. Clubs rates higher (3.54 against 3.25), and it shares the J♣ with spades.
+- If spades is the turned card and everyone passes, spades is blocked in round 2. Clubs is then the strongest suit Doc can name, and as the dealer he names last.
+
+Throwing all three hearts was also sound: it keeps both Jacks, so the hand holds a Bower in every suit. The hand value rated it third, between the other two. The three discards are within 0.06 of each other.
+
+### Keep the higher of two low cards
+
+Tex (Novice) held the Joker, Q♠ J♠, A♥ 10♥ 9♥, 10♣ 8♣ 7♣ and 7♦. He threw Q♠ 10♥ 7♦ and kept the 9♥.
+
+The hand value counts every off-suit card below a Queen the same, so it rated throwing the 9♥ and throwing the 10♥ as equal. A Novice plays out only 3 imagined deals, and chance picked the 10♥. The 10♥ is never worse than the 9♥, so keep the higher card.
+
+### What this shows
+
+In two of the three replays, Doc and Viv, a strong bot's play-outs overruled the hand value. The discard holds more than the hand value counts: Jacks shared across suits, voids, trump length, and cards coming back in a Showdown.
 
 ## Forcing a Showdown
 
