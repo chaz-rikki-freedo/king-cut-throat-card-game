@@ -107,6 +107,7 @@ button.mode-chip:focus-visible{outline:0.125rem solid var(--ink);outline-offset:
 .btn:hover{background:rgba(255,255,255,.18)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn.primary{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:700}
+.btn.danger{background:var(--danger);color:#3a0a06;border-color:var(--danger);font-weight:700}
 .btn.primary:hover{filter:brightness(1.07)}
 .btn.suit{min-width:6rem;font-weight:700;background:var(--card);color:var(--black);border-color:var(--card-edge)}
 .btn.suit.red{color:var(--red)}
@@ -479,6 +480,11 @@ body.set-open{overflow:hidden}
 .ask{max-width:25rem}
 .ask h2{font-size:1.25rem}
 .ask p{margin:0 0 0.25rem;line-height:1.5}
+/* The restore confirm: this device and the backup side by side. */
+.ask table.data-cmp{width:100%;border-collapse:collapse;margin:0.25rem 0 0.75rem;font-size:0.875rem}
+.ask table.data-cmp th,.ask table.data-cmp td{padding:0.25rem 0.375rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.12)}
+.ask table.data-cmp th{font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.ask table.data-cmp td:first-child{color:var(--muted)}
 .update-note{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem;padding:0.625rem 0.875rem;border-radius:0.75rem;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 0.5rem 1.5rem rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 2rem)}
 .update-note[hidden]{display:none}
 /* ---- Advanced UI (Settings → Game). A minimal table: tags, numbers and circles in the seats, the shared
@@ -893,6 +899,12 @@ body.adv .tag.led{background:#00838f;color:#fff}
         <div class="set-tests" id="setTests" hidden></div>
         <pre id="setLog"></pre>
         <div class="set-row set-row-end"><button class="btn btn-sm" type="button" data-action="clear-log">Clear log</button></div>
+      </div>
+      <h3 class="set-head">Your data</h3>
+      <div class="set-card" id="setData">
+        <div class="set-row"><span class="set-text"><span class="set-name">Back up</span><span class="set-desc">Save your progress, results, saved games and settings in a file.</span></span><button class="btn" type="button" data-action="backup-save">Save file</button></div>
+        <div class="set-row"><span class="set-text"><span class="set-name">Restore</span><span class="set-desc">Replace all data on this device with a backup file.</span></span><button class="btn" type="button" data-action="backup-restore">Choose file…</button><input type="file" id="backupFile" aria-label="Backup file" hidden></div>
+        <p class="k-hint set-note" id="setDataNote" role="status" hidden></p>
       </div>
     </section>
   </div>
@@ -2643,7 +2655,7 @@ const Backup = (() => {
     }
     return Object.keys(e.data);
   }
-  /** A short summary for the console. TODO(UI): also for the import confirm dialog.
+  /** A short summary, for the console and the restore confirm.
       @param {unknown} env @returns {BackupSummary} */
   function describe(env) {
     const e = check(env);
@@ -2719,7 +2731,7 @@ const Backup = (() => {
     return check(env);
   }
   /** @param {unknown} env @returns {string} */
-  const fileName = env => 'king-cut-throat-backup-' + new Date(check(env).createdAt || Date.now()).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  const fileName = env => 'king-cut-throat-backup-' + new Date(check(env).createdAt || Date.now()).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.kct';
   return Object.freeze({ FORMAT, VERSION, PREFIX, keysOf, snapshot, create, check, apply, describe, toJSON, toCode, parse, fileName, canGzip });
 })();
 
@@ -5385,7 +5397,7 @@ const App = (() => {
       ok: 'Reload', cancel: 'Keep playing'
     }).then(yes => { if (yes) location.reload(); });
   }
-  /* ---- Backup (docs/backup.md). No UI yet: use KCT.App.backup from the console. ---- */
+  /* ---- Backup (docs/backup.md). Settings → Tools → Your data, and KCT.App.backup from the console. ---- */
   const backup = Object.freeze({
     /** The full client state now. The running game is saved first, so mid-game progress is in it.
         @returns {BackupEnvelope} */
@@ -5397,11 +5409,14 @@ const App = (() => {
     toJSON() { return Backup.toJSON(backup.create()); },
     /** @param {{ plain?: boolean }} [opts] @returns {Promise<string>} */
     toCode(opts) { return Backup.toCode(backup.create(), opts); },
-    /** Saves the backup as a .json file (the browser's download). @returns {string} the file name */
-    download() {
+    /** Saves the backup as a .kct file (the browser's download): the text code, so it is small and not plain to read.
+        @returns {Promise<string>} the file name */
+    async download() {
       const env = backup.create();
+      const code = await Backup.toCode(env);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([Backup.toJSON(env)], { type: 'application/json' }));
+      /* A generic type, so the browser does not add its own extension to the name. */
+      a.href = URL.createObjectURL(new Blob([code], { type: 'application/octet-stream' }));
       a.download = Backup.fileName(env);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 10000);
@@ -5410,8 +5425,7 @@ const App = (() => {
     /** Reads a file text, a File/Blob or a text code, and describes it. Changes nothing.
         @param {string | Blob} input @returns {Promise<BackupSummary>} */
     async inspect(input) { return Backup.describe(await Backup.parse(await textOf(input))); },
-    /** REPLACES all app data with the backup, then reloads the page. No undo.
-        TODO(UI): warn the player before this call (see Backup).
+    /** REPLACES all app data with the backup, then reloads the page. No undo. The UI asks first (restoreFile).
         @param {string | Blob} input @param {{ noReload?: boolean }} [opts] @returns {Promise<BackupSummary>} */
     async restore(input, opts) {
       const env = await Backup.parse(await textOf(input));
@@ -5427,6 +5441,38 @@ const App = (() => {
   });
   /** @param {string | Blob} x @returns {Promise<string>} */
   const textOf = async x => (x instanceof Blob ? x.text() : String(x || ''));
+  /* Your data (Settings → Tools). A note under the rows says what happened. */
+  function dataNote(text) { const n = $('setDataNote'); n.textContent = text; n.hidden = !text; }
+  async function saveBackup() {
+    try { dataNote('Saved ' + await backup.download() + '.'); } catch (e) { dataNote('The backup could not be saved: ' + (e instanceof Error ? e.message : String(e)) + '.'); }
+  }
+  /* A backup file is a few dozen KB. A much larger file is not one: it is not read. */
+  const BACKUP_FILE_MAX = 8 << 20;
+  /** Restore: read the chosen file, show this device and the backup side by side, and replace only on a yes.
+      @param {File} file */
+  async function restoreFile(file) {
+    dataNote('');
+    let text, theirs;
+    try {
+      if (file.size > BACKUP_FILE_MAX) throw new Error('not a backup file');
+      text = await file.text();
+      theirs = Backup.describe(await Backup.parse(text));
+    } catch (e) { dataNote('This file is not a King Cut-Throat backup that this app can read. Nothing changed.'); return; }
+    const ours = Backup.describe(backup.create());
+    const when = t => t ? new Date(t).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+    const saved = x => x.savedGames.length ? x.savedGames.map(modeName).join(', ') : '—';
+    const rows = [['Saved', 'Now', when(theirs.createdAt)], ['Waves unlocked', ours.wavesUnlocked ?? 1, theirs.wavesUnlocked ?? 1],
+      ['Games played', ours.gamesPlayed, theirs.gamesPlayed], ['Saved games', saved(ours), saved(theirs)], ['Replays', ours.replays, theirs.replays]];
+    const yes = await ask({
+      title: 'Replace all data?',
+      text: '<table class="data-cmp"><tr><th></th><th>This device</th><th>Backup</th></tr>' +
+        rows.map(r => '<tr>' + r.map(c => '<td>' + escHTML(String(c)) + '</td>').join('') + '</tr>').join('') + '</table>' +
+        '<p>All progress, results, saved games and settings on this device are replaced by the backup. There is no undo.</p>',
+      ok: 'Replace all data', cancel: 'Cancel', danger: true
+    });
+    if (!yes) return;
+    try { await backup.restore(text); } catch (e) { dataNote('Nothing changed: ' + (e instanceof Error ? e.message : String(e)) + '.'); }
+  }
   /* ---- One tab (see TabLock). Another tab is more current: this tab stops and asks. ---- */
   /* The pop-up has two buttons only: Update reloads this tab with the newest data (then the other
      tab stops), and Quit closes this tab. Escape and clicks outside the pop-up do nothing. */
@@ -5768,19 +5814,24 @@ const App = (() => {
      Resolves true for the OK button, false for Cancel, Escape or a click outside it.
      text is HTML: escape any data in it with escHTML. title, ok and cancel are plain text. */
   let askDone = null;
-  function ask({ title, text, ok, cancel }) {
+  /** @param {{ title: string, text: string, ok?: string, cancel?: string, danger?: boolean }} o */
+  function ask({ title, text, ok, cancel, danger }) {
     if (askDone) askDone(false);
     clearTimer();
     const layer = $('askLayer');
     layer.innerHTML = '<div class="modal ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">' +
       '<h2 id="askTitle">' + escHTML(title) + '</h2><div id="askText">' + text + '</div>' +
       '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + escHTML(cancel || 'Cancel') + '</button>' +
-      '<button class="btn primary" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
+      '<button class="btn ' + (danger ? 'danger' : 'primary') + '" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
     layer.hidden = false;
-    const okBtn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="ask-ok"]'));
-    if (okBtn) okBtn.focus();
+    /* Over open Settings (which makes the rest of the page inert), the question is the one live part until answered. */
+    const panel = $('settingsPanel'), was = { layer: layer.inert, panel: panel.inert };
+    layer.inert = false; panel.inert = !panel.hidden;
+    /* A destructive question starts on Cancel, so Enter does not replace anything. */
+    const first = /** @type {HTMLElement | null} */ (layer.querySelector(danger ? '[data-action="ask-cancel"]' : '[data-action="ask-ok"]'));
+    if (first) first.focus();
     return new Promise(resolve => {
-      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; resolve(answer); schedule(); };
+      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; resolve(answer); schedule(); };
     });
   }
   function answerAsk(answer) { if (askDone) askDone(answer); }
@@ -7245,6 +7296,8 @@ const App = (() => {
       case 'update-reload': applyUpdate(); break;
       case 'install-app': installApp(); break;
       case 'install-check': checkInstall(); break;
+      case 'backup-save': saveBackup(); break;
+      case 'backup-restore': $('backupFile').click(); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
@@ -7519,6 +7572,11 @@ const App = (() => {
     $('setUIMode').addEventListener('change', () => setUIMode($('setUIMode').value));
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
+    $('backupFile').addEventListener('change', () => {
+      const input = /** @type {HTMLInputElement} */ ($('backupFile')), file = input.files && input.files[0];
+      input.value = '';
+      if (file) restoreFile(file);
+    });
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setMediatorLead').addEventListener('change', () => { app.houseRules.mediatorLead = $('setMediatorLead').checked; saveSettings(); draw([]); });
     $('setJokerFlip').value = app.houseRules.jokerFlip;

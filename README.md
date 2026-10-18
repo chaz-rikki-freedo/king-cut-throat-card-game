@@ -57,7 +57,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 If the browser refuses to save any of these (storage full or blocked), a note says so once per page load. The data then lasts until the page closes.
 
-**Backup.** One backup holds all of this, also a game in progress: as a `.json` file or as a text code (`KCTS1-…`) to copy to another device. An import replaces all the data on the device, with no undo. There is no UI yet; see **Console** and [docs/backup.md](docs/backup.md).
+**Backup.** One backup file holds all of this, also a game in progress. In **Settings → Tools → Your data**, **Save file** saves a `.kct` file, and **Restore** (**Choose file…**) reads one back on any device. Before it replaces anything, a confirm shows this device and the backup side by side (when saved, waves unlocked, games played, saved games, replays); **Replace all data** replaces all the data on the device, with no undo. Older `.json` backups still restore. See [docs/backup.md](docs/backup.md).
 
 **One tab.** Only one tab of the game can play and save. Each new tab (or reload) becomes the active tab. An older tab of the game then stops, writes nothing more, and shows **Another tab is more current**, with two buttons only: **Update** loads the newest data in that tab (the other tab then stops), and **Quit** closes it. If the browser does not let the page close the tab, the tab stays stopped and says that you can close it. The tab checks before each save, when another tab opens, and when the tab shows again. The mark of the active tab (`kct-tab`) is not in a backup.
 
@@ -349,7 +349,7 @@ KCT.App.setThinking({ worlds: 10, playoutSkill: 0.5 })
 KCT.App.setKnowledge({ bids: false })
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
-KCT.App.backup.download()                   // save all app data (also a game in progress) as a .json file
+await KCT.App.backup.download()             // save all app data (also a game in progress) as a .kct file
 await KCT.App.backup.toCode()               // the same as a text code (KCTS1-…)
 await KCT.App.backup.inspect(codeOrFile)    // what a backup holds; changes nothing
 await KCT.App.backup.restore(codeOrFile)    // REPLACES all app data on this device, then reloads (no undo)
