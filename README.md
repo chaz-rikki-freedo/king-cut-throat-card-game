@@ -159,7 +159,6 @@ These fine-tune **Skill** for every bot. With **Personalities** on, or in a Wave
 | Control | What it does |
 |---|---|
 | **Event log** | Starts the timestamped event log (public information only), shown below it. |
-| **Seed / Copy** | Shows the current game's seed and copies it. |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear log** | Clears the log and the test results. |
@@ -288,7 +287,7 @@ The hand-over is for that game only. The next game starts with you in your seat,
 
 ## Replay a game
 
-The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
+The same seed gives the same deals: `index.html?seed=123456`. At the end of a game, the last line of the Latest Scroll shows the seed and the replay code (`Seed 123456 · Replay code KCT3-…`). One tap selects the line, to copy it. The seed and the code show nowhere else. In **Your profile**, each row of the last games table has a **Replay Seed** icon (a counter-clockwise arrow): it plays that table again, with the same mode, wave, opponents, deals and house rules. Plans for the replay viewer: [docs/ui/plan.md](docs/ui/plan.md).
 
 The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 

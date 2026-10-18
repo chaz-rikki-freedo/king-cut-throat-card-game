@@ -44,6 +44,13 @@ button{font:inherit;color:inherit}
 .icon-btn{display:inline-grid;place-items:center;width:2.5rem;height:2.5rem;padding:0;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;flex:none}
 .icon-btn:hover{background:rgba(255,255,255,.18)}
 .icon-btn:focus-visible,.speed-pick:focus-within{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+/* A small icon button on a line it acts on: the end buttons and the Last games rows. */
+.tiny-btn{display:inline-grid;place-items:center;width:1.75rem;height:1.75rem;padding:0;border-radius:0.4375rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:inherit;cursor:pointer;vertical-align:middle}
+.tiny-btn:hover{background:rgba(255,255,255,.18)}
+.tiny-btn:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.tiny-btn svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.modal .row .tiny-btn{align-self:center}
+.profile td.pf-acts{text-align:right;white-space:nowrap}
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
 .speed-pick svg{width:1.25rem;height:1.25rem;flex:none}
@@ -262,6 +269,8 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .hl-trump{color:var(--accent);font-weight:700}
 .gamelog .hl-loss{color:var(--danger);font-weight:800}
 .gamelog li.ind{padding-left:2em}
+/* The end-of-game codes: one tap selects the whole line, to copy it. */
+.gamelog li.code{font:0.6875rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 .gamelog li.sd.ind,.gamelog li.sd.play{padding-left:6em}
 .gamelog li.w{color:var(--good);font-weight:800}
 .gamelog li.play{padding-left:2em}
@@ -371,8 +380,6 @@ body.set-open{overflow:hidden}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
 .settings .set-off{opacity:.45;pointer-events:none}
-.settings .set-seed{display:inline-flex;gap:var(--s2);align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.settings .set-seed code{font:0.8125rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;font-variant-numeric:tabular-nums}
 .settings .btn-sm{padding:0.375rem 0.75rem;font-size:0.8125rem;min-height:2.25rem;margin:0}
 .settings .set-tests{padding:var(--s3) 0;border-bottom:1px solid var(--set-line);font-size:0.8125rem}
 .settings .set-tests .t-sum{font-size:0.9375rem;font-weight:800;margin-bottom:0.375rem}
@@ -835,7 +842,6 @@ body.adv .tag.led{background:#00838f;color:#fff}
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row"><span class="set-text"><span class="set-name">Seed</span><span class="set-desc">This game's seed, to share or replay its deal.</span></span><span class="set-seed"><code id="setSeed"></code><button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button><span class="k-hint" id="setCopied" aria-live="polite"></span></span></div>
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline.</span></span>
           <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></span></div>
@@ -5068,7 +5074,8 @@ const App = (() => {
   /* The two personalities that a Free play seed seats: [West, East]. */
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
   /* wave (optional): play that wave's table. Without it, the seed picks the table: Free play, or Dynamic with
-     opts.mode 'dynamic'. opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
+     opts.mode 'dynamic'. opts.rules: house rules for this game instead of the settings (Replay Seed passes the old
+     game's). opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
      game's); without it, the profile now. */
   function newGame(seed, wave, opts) {
     clearTimer();
@@ -5089,7 +5096,7 @@ const App = (() => {
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
-    app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, app.houseRules);
+    app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, opts && opts.rules ? Object.assign({}, app.houseRules, opts.rules) : app.houseRules);
     Fx.reset();
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
@@ -5098,9 +5105,7 @@ const App = (() => {
     app.menuOpen = false;
     $('overlay').hidden = true;
     hideUpdateNote();
-    const setSeed = $('setSeed');
-    if (setSeed) setSeed.textContent = String(s);
-    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
+    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game.', '');
     /* Free play: you choose seats first (needsSwap). The dealer is drawn after, when Play schedules START_GAME. */
     if (app.seatSwapPending) { schedule(); return; }
     act({ type: 'START_GAME' });
@@ -5122,8 +5127,6 @@ const App = (() => {
     Fx.reset();
     seatBots(null, null);
     clearLog();
-    const setSeed = $('setSeed');
-    if (setSeed) setSeed.textContent = '—';
     draw([]);
     maybeOfferUpdate();
   }
@@ -5180,6 +5183,8 @@ const App = (() => {
   }
   /* Dynamic's post-game review (decision 18) of the game that just ended, run once after the game-over box has drawn,
      or before anything else starts. A game where the AI played your seat is never reviewed. */
+  /* The finished game's replay code, for the Latest Scroll line after the winner line (see narrate, GAME_ENDED). */
+  let endCode = /** @type {string | null} */ (null);
   let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
   function runReview() {
     const job = pendingReview;
@@ -5237,18 +5242,22 @@ const App = (() => {
     const rec = replayRecord(at);
     const code = rec ? Replay.encode(rec) : null;
     pendingReview = rec && !app.humanSeatWasAutoplayed ? { rec, mode: app.mode } : null;
+    endCode = code;
     if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
+  /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
+  const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
+  const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
   function endButtonsHTML() {
     const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
-    const menu = b('menu', 'Menu');
-    if (!inWaves()) return b(app.mode === 'dynamic' ? 'new-dynamic-now' : 'new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
+    const menu = b('menu', 'Menu'), again = tinyButton('replay-seed', 'Replay Seed', ICON_AGAIN);
+    if (!inWaves()) return b(app.mode === 'dynamic' ? 'new-dynamic-now' : 'new-game-now', 'New Game', true) + again + menu;
     const n = app.wave.n, won = app.state.winner === HUMAN;
-    if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + b('replay-seed', 'Replay Seed') + menu;
-    if (won) return b('replay-seed', 'Replay Seed') + b('menu', 'Menu', true);
-    return b('retry-wave', 'Try again', true) + b('replay-seed', 'Replay Seed') + menu;
+    if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + again + menu;
+    if (won) return again + b('menu', 'Menu', true);
+    return b('retry-wave', 'Try again', true) + again + menu;
   }
 
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
@@ -5382,7 +5391,6 @@ const App = (() => {
       logLines = s.log.map(([text, cls]) => [text, cls]);
       redrawLog();
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
-      $('setSeed').textContent = String(app.state.seed);
       app.menuOpen = false;
       $('overlay').hidden = true;
       hideUpdateNote();
@@ -6017,12 +6025,13 @@ const App = (() => {
     appendLog(text, classes.join(' '));
     if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
     else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
-    if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
+    if (!classes.includes('trick-head') && !classes.includes('code')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
   function logItem(text, cls) {
     const li = document.createElement('li');
-    li.innerHTML = logHTML(Render.youText(text), cls);
+    /* A code line is plain text: a name or a log word inside a code is not one. */
+    li.innerHTML = /\bcode\b/.test(cls || '') ? escHTML(text) : logHTML(Render.youText(text), cls);
     if (cls) li.className = cls;
     return li;
   }
@@ -6078,7 +6087,7 @@ const App = (() => {
     const cell = $('latestCell'), line = $('latestLine');
     let html = note || '';
     if (!note && burstOpen && burst.length) html = burstHTML();
-    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { html = li.innerHTML; break; }
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head') && !li.classList.contains('code')) { html = li.innerHTML; break; }
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
@@ -6207,7 +6216,11 @@ const App = (() => {
         addLog(e.by != null ? n(e.by) + ' (mediator) picks ' + n(e.player) + ' to lead the Showdown.' : n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true);
         break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
-      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end'); break;
+      case 'GAME_ENDED':
+        addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end');
+        /* The only place the codes show: a link takes either (?seed= or ?replay=). */
+        if (endCode) addLog('Seed ' + app.state.seed + ' · Replay code ' + endCode, 'code');
+        break;
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
@@ -6368,11 +6381,25 @@ const App = (() => {
     }
     showMenu(app.menuLaunch);
   }
-  /* snapshot: Dynamic's starting snapshot (Replay Seed passes the old game's). */
-  function startMode(mode, seed, wave, snapshot) {
+  /* snapshot: Dynamic's starting snapshot, rules: the house rules (Replay Seed passes the old game's). */
+  function startMode(mode, seed, wave, snapshot, rules) {
     app.menuOpen = false;
     /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
-    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot });
+    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot, rules });
+  }
+  /* Replay Seed on a Last games row: the same table as that game, from its replay code. Null when this app cannot
+     play it again (a newer rules version, no mode, or a Dynamic code without its snapshot). @param {any} e */
+  function againOf(e) {
+    const rec = safe(() => Replay.decode(e.code));
+    if (!rec || rec.rules > Engine.RULES_VERSION || !MODES.includes(rec.mode) || (rec.mode === 'waves' && !Waves.get(rec.wave))) return null;
+    const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : undefined;
+    if (snap === null) return null;
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' } };
+  }
+  function replaySeedRow(at) {
+    const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
+    if (!g) return;
+    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules); else showProfile(); });
   }
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
@@ -6688,8 +6715,9 @@ const App = (() => {
       const shown = games.slice().reverse();
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
-        '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th></tr></thead><tbody>' +
-        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td></tr>').join('') +
+        '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
+        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
+          '<td class="pf-acts">' + (againOf(e) ? tinyButton('replay-seed', 'Replay Seed', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
     html += habitsHTML();
@@ -6823,7 +6851,10 @@ const App = (() => {
       case 'new-dynamic-now': startMode('dynamic'); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
-      case 'replay-seed': startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined); break;
+      case 'replay-seed':
+        if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
+        break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
       case 'swap-back': swapBack(); break;
@@ -6837,7 +6868,6 @@ const App = (() => {
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
       case 'settings-reset': resetBotSettings(); setPersonas(true); break;
-      case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         if (testsRunning) break;
         testsRunning = true;
@@ -6943,21 +6973,6 @@ const App = (() => {
   }
   function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
 
-  /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
-  function copySeed() {
-    const seed = String(app.state.seed);
-    const done = ok => { $('setCopied').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('setCopied').textContent = ''; }, 1500); };
-    const fallback = () => {
-      const t = document.createElement('textarea');
-      t.value = seed; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
-      document.body.appendChild(t); t.select();
-      let ok = false;
-      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-      t.remove(); done(ok);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(() => done(true), fallback);
-    else fallback();
-  }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
