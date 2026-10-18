@@ -272,6 +272,17 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Setting hint | `.k-hint` | D | The small text under a setting: defaults and effects. |
 | Setting tooltip | `title` attribute | D | The text that shows when you hover over a setting. |
 
+### 5.0 Theme section
+
+`#setTheme`, the first card of the Game tab.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Felt tiles | `#setFelt`, `.felt-tile`, `.felt-radio` | C | One radio for each felt pack (Classic, Spring, Summer, Fall, Winter), drawn in that felt (`--tile-felt`, `--tile-edge`). |
+| Color-blind switch | `#setColorBlind` | C | Lays the `colorblind` color pack over the felt. |
+| Theme packs | `#themePacks` | — | The packs, as JSON in the head: `felts` and `colors`. Each sets only tokens. |
+| Theme boot | `#themeBoot`, `window.kctTheme` | — | Applies the saved theme before the page draws; `apply(felt, colors)` changes it. |
+
 ### 5.1 Bots section
 
 `#setBots`.
