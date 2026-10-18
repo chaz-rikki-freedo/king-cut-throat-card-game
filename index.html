@@ -63,9 +63,14 @@ button{font:inherit;color:inherit}
 .end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
 .modal .row .end-btns{justify-content:flex-end}
 .end-btns .btn-ico{justify-content:center}
-/* The replay viewer's controls: five icon buttons, Play in the middle. Exit is the header's Replay chip. */
-.watch-ctl{display:flex;align-items:center;justify-content:center;gap:0.375rem;flex-wrap:wrap}
-.watch-ctl .btn-ico{padding-left:0.625rem;padding-right:0.625rem}
+/* The replay viewer's controls: five filled icons, Play in the middle, on one dark bar. Exit is the header's Replay chip. */
+.watch-ctl{display:inline-flex;align-items:center;gap:0.5rem;padding:0.25rem 0.75rem;border-radius:0.875rem;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12)}
+.watch-btn{display:grid;place-items:center;width:2.75rem;height:2.75rem;padding:0;border:0;border-radius:0.625rem;background:none;color:var(--accent);cursor:pointer}
+.watch-btn svg{width:2rem;height:2rem;fill:currentColor}
+.watch-btn:hover:not(:disabled){background:rgba(255,255,255,.08)}
+.watch-btn:focus-visible{outline:0.125rem solid var(--accent);outline-offset:0}
+.watch-btn:disabled{opacity:.35;cursor:default}
+.actionbar .watch-ctl{margin:0 auto}
 @media (max-width:480px){
   .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .end-btns [data-action="next-wave"]{grid-column:1 / -1}
@@ -6465,12 +6470,12 @@ const App = (() => {
   /* ---- The replay viewer (docs/ui/plan.md): a read-only table that plays a replay code from your seat. It saves
      nothing, records no results and runs no bots. The game behind it waits, and Exit brings it back. ---- */
   const WATCH_ICON = {
-    start: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"/><path d="M18 5 9 12l9 7z"/></svg>',
-    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
-    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>',
-    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>',
-    fwd: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
-    end: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"/><path d="m6 5 9 7-9 7z"/></svg>'
+    prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2.5v14H3zM13.5 5 6.5 12l7 7zM21 5l-7 7 7 7z"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5 7 12l9 7z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>',
+    fwd: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l9 7-9 7z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l7 7-7 7zM10.5 5l7 7-7 7zM18.5 5H21v14h-2.5z"/></svg>'
   };
   /* Whether the viewer can show a Last games row: its code reads, with a rules version this app has. @param {any} e */
   function canWatch(e) {
@@ -6588,11 +6593,11 @@ const App = (() => {
   /* The viewer's controls replace every game button. Your seat shows as it was played: the AI's, in an assisted game. */
   function watchUI() {
     const w = watch, at = w.cur.steps;
-    const b = (action, label, icon, off, primary) => '<button class="btn btn-ico' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '" aria-label="' + label + '" title="' + label + '"' + (off ? ' disabled' : '') + '>' + icon + '</button>';
+    const b = (action, label, icon, off) => '<button class="watch-btn" type="button" data-action="' + action + '" aria-label="' + label + '" title="' + label + '"' + (off ? ' disabled' : '') + '>' + icon + '</button>';
     const html = '<div class="watch-ctl" role="group" aria-label="Replay">' +
-      b('watch-prev', 'Previous hand', WATCH_ICON.start, at <= w.min) + b('watch-back', 'Back one move', WATCH_ICON.back, at <= w.min) +
-      b('watch-play', w.playing ? 'Pause' : 'Play', w.playing ? WATCH_ICON.pause : WATCH_ICON.play, false, true) +
-      b('watch-fwd', 'Forward one move', WATCH_ICON.fwd, at >= w.total) + b('watch-next', 'Next hand', WATCH_ICON.end, at >= w.total) + '</div>';
+      b('watch-prev', 'Previous hand', WATCH_ICON.prev, at <= w.min) + b('watch-back', 'Back one move', WATCH_ICON.back, at <= w.min) +
+      b('watch-play', w.playing ? 'Pause' : 'Play', w.playing ? WATCH_ICON.pause : WATCH_ICON.play, false) +
+      b('watch-fwd', 'Forward one move', WATCH_ICON.fwd, at >= w.total) + b('watch-next', 'Next hand', WATCH_ICON.next, at >= w.total) + '</div>';
     return Object.assign({}, app.ui, { watch: html, autoplay: w.assisted, allowSeatAI: false, endButtons: '', personas: w.personas });
   }
   /* Exit: the table, the log and the dialog you came from come back. A game being played goes on. */
