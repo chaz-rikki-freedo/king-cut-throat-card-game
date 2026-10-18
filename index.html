@@ -570,7 +570,6 @@ body.adv .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(1
 body.adv .trick .slot-0 .card,body.adv .trick .slot-0 .empty{transform:rotateX(22deg) translateZ(1.875rem)}
 body.adv .trick .slot-0 .card{box-shadow:0 1.125rem 1.375rem rgba(0,0,0,.5)}
 body.adv .c-tag.king{background:#f2c14e;color:#1b1b1b}
-body.adv .gamelog li.gap.top{margin-top:0}
 body.adv .info .hand.wide{flex:0 0 auto;min-width:8.75rem}
 body.adv .info .out .val{gap:0.5rem}
 body.adv .minis{display:inline-flex}
@@ -5522,8 +5521,7 @@ const App = (() => {
     placeLog();
     closePanel();
     Fx.reset();
-    orderLog();
-    $('gameLog').scrollTop = on ? 0 : $('gameLog').scrollHeight;
+    $('gameLog').scrollTop = $('gameLog').scrollHeight;
     syncSpeedTitle();
     if (app.state) draw([]);
     saveSettings();
@@ -5545,7 +5543,7 @@ const App = (() => {
   function openLog(open) {
     $('logDrop').hidden = !open;
     $('latestCell').setAttribute('aria-expanded', String(open));
-    if (open) { closePanel(); $('gameLog').scrollTop = 0; }
+    if (open) { closePanel(); $('gameLog').scrollTop = $('gameLog').scrollHeight; }
   }
   const toggleLog = () => openLog($('logDrop').hidden);
   /* The Advanced UI's popups: the Outside cell lists your discards, a player's trick circles list the tricks they won
@@ -6113,13 +6111,12 @@ const App = (() => {
     if (isShowdown) classes.push('sd');
     /* The replay viewer's jumps keep only the text: the log is drawn once, after the jump. */
     if (hush) { logLines.push([text, classes.join(' ')]); return; }
-    /* The log follows new lines only from its newest end (the top in the Advanced UI, the bottom otherwise). A reader
-       scrolled into older lines stays on the same lines. */
-    const ol = $('gameLog'), top = app.ui.advanced, h0 = ol.scrollHeight;
-    const away = top ? ol.scrollTop : h0 - ol.scrollTop - ol.clientHeight;
+    /* The log follows new lines only from its newest end, the bottom. A reader scrolled into older lines stays on the
+       same lines. */
+    const ol = $('gameLog');
+    const away = ol.scrollHeight - ol.scrollTop - ol.clientHeight;
     appendLog(text, classes.join(' '));
-    if (away < 24) ol.scrollTop = top ? 0 : ol.scrollHeight;
-    else if (top) ol.scrollTop = away + (ol.scrollHeight - h0);
+    if (away < 24) ol.scrollTop = ol.scrollHeight;
     if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
   /* One line: logHTML escapes the text before it adds its own markup. */
@@ -6135,7 +6132,6 @@ const App = (() => {
     ol.appendChild(logItem(text, cls));
     while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
     if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
-    orderLog();
   }
   /* Draws the whole log again from its text. A name's color belongs to its seat, so after
      a seat swap the earlier lines must be drawn again with the new seats. */
@@ -6143,21 +6139,7 @@ const App = (() => {
     const ol = $('gameLog'), keep = ol.scrollTop;
     ol.replaceChildren(...logLines.map(([text, cls]) => logItem(text, cls)));
     ol.scrollTop = keep;
-    orderLog();
     showLatest(true);
-  }
-  /* The Advanced UI shows the Latest Scroll newest first: each group keeps its heading line on top and its other
-     lines newest first. The lines stay in play order in the page (the game trims the oldest); CSS order places them. */
-  function orderLog() {
-    const ol = $('gameLog'), lines = Array.from(ol.children);
-    if (!app.ui.advanced) { for (const li of lines) { li.style.order = ''; li.classList.remove('top'); } return; }
-    const groups = [];
-    for (const li of lines) { if (!groups.length || li.classList.contains('gap')) groups.push([]); groups[groups.length - 1].push(li); }
-    let k = 0;
-    for (const g of groups.reverse()) {
-      const head = g[0].classList.contains('gap') ? 1 : 0;
-      for (const li of g.slice(0, head).concat(g.slice(head).reverse())) { li.classList.toggle('top', !k); li.style.order = String(k++); }
-    }
   }
   /* The Latest cell (Advanced UI): the newest line of the Latest Scroll, trick headings left out. A new line drops in
      from above the window, exactly the size of the cell, and becomes the Latest line. The newest line wins: a line
