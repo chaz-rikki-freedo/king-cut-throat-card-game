@@ -57,7 +57,16 @@ button{font:inherit;color:inherit}
 .modal.gameover{position:relative}
 .modal.gameover .big{padding-right:2.5rem}
 .modal .modal-x{position:absolute;top:0.75rem;right:0.75rem}
-.export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted)}
+.export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted);text-align:right}
+/* The end buttons, in the results dialog and the action bar: one row, centered (the dialog's at its right); on a
+   phone a 2 x 2 grid of equal buttons, Next wave across the full width under it. */
+.end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
+.modal .row .end-btns{justify-content:flex-end}
+.end-btns .btn-ico{justify-content:center}
+@media (max-width:480px){
+  .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .end-btns [data-action="next-wave"]{grid-column:1 / -1}
+}
 .profile td.pf-acts{text-align:right;white-space:nowrap}
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
@@ -595,6 +604,14 @@ body.adv .center > .yourmove.wait{visibility:hidden}
 body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
 body.adv .center > .pile-act.seats{flex-direction:row}
+/* The end buttons take the table's width, so they can wrap instead of running off a phone's screen. */
+body.adv .center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
+/* On a phone the Advanced table has room for one row: equal buttons, each an icon over a short label. */
+@media (max-width:480px){
+  body.adv .pile-act.ends .end-btns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none;gap:0.375rem}
+  body.adv .pile-act.ends .end-btns [data-action="next-wave"]{grid-column:auto}
+  body.adv .pile-act.ends .btn-ico{flex-direction:column;gap:0.125rem;padding:0.375rem 0.25rem;font-size:0.75rem;line-height:1.1;white-space:normal}
+}
 body.adv .pile-act .btn{font-size:0.9375rem;padding:0.5rem 1.125rem;white-space:nowrap;flex:none}
 body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
@@ -4377,7 +4394,7 @@ const Render = (() => {
       if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + continueLabel(v) + '</button>');
     }
     const html = b.join('');
-    return html ? '<div class="pile-act">' + html + '</div>' : '';
+    return html ? '<div class="pile-act' + (v.gameOver ? ' ends' : '') + '">' + html + '</div>' : '';
   }
 
   /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). Every discard
@@ -5265,9 +5282,9 @@ const App = (() => {
     const b = (action, label, icon, o = {}) => '<button class="btn btn-ico' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' +
       (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + icon + label + '</button>';
     const n = app.wave.n, next = inWaves() && app.state.winner === HUMAN && n < WAVES.length && Waves.isUnlocked(n + 1);
-    return b('replay-watch', 'Watch', ICON_WATCH, { disabled: true, title: 'Watch the game: coming soon' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
+    return '<div class="end-btns">' + b('replay-watch', 'Watch', ICON_WATCH, { disabled: true, title: 'Watch the game: coming soon' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
       b('new-deal', 'New deal', ICON_DEAL, { primary: !next, title: inWaves() ? 'This wave, with new cards' : 'The same opponents, with new cards' }) +
-      b('export', 'Export', ICON_EXPORT, { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', '', { primary: true }) : '');
+      b('export', 'Export', ICON_EXPORT, { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', '', { primary: true }) : '') + '</div>';
   }
 
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
