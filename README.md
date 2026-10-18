@@ -310,9 +310,11 @@ The replay viewer plays a finished game again, from your seat, at the game speed
 | Control | What it does |
 |---|---|
 | **Previous hand** and **Next hand** | Previous hand goes to the start of this hand, or of the hand before when you are at a hand's start. Next hand goes to the next hand's deal, or to the game's end in the last hand. A redeal is the same hand. |
-| **Back** and **Forward** | One move (a play, a bid, a discard, or a step of the table such as a deal). The Left and Right arrow keys do the same. |
-| **Play** or **Pause** | Plays the moves at the game speed. Space or Enter does the same. Play at the end starts again from the start. |
+| **Back** and **Forward** | One move (a play, a bid, a discard, or a step of the table such as a deal). The Left and Right arrow keys do the same. A discard by the seat at the bottom takes two steps: its cards rise first, then go to the pile. Back while they are raised lowers them. |
+| **Play** or **Pause** | Plays the moves at the game speed. Space or Enter does the same. Raised discards stay up for a trick's wait before they go. Play at the end starts again from the start. |
 | **Replay ✕** (header) | Exit: returns to where you were: the results dialog, Your profile, or the menu. Escape does the same. |
+
+To see a bot's side of the game, tap its figure or name (a small circular arrow follows the name). Its seat moves to the bottom with its own hand face up; the other two hands show as backs, as that bot saw them, and you sit where the seating order puts you. Tap your own seat to come back. The log stays the same from every seat.
 
 A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
 

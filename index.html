@@ -67,6 +67,12 @@ button{font:inherit;color:inherit}
 .watch-btn:focus-visible{outline:0.125rem solid var(--accent);outline-offset:0}
 .watch-btn:disabled{opacity:.35;cursor:default}
 .actionbar .watch-ctl{margin:0 auto}
+/* In the replay viewer a seat's figure and name are one button: watch from that seat. The arrow says so. */
+.seat-sit{display:inline-flex;align-items:center;gap:0.375rem;padding:0.125rem 0.375rem 0.125rem 0;border:0;border-radius:0.5rem;background:none;color:inherit;font:inherit;cursor:pointer;min-width:0}
+.seat-sit:hover{background:rgba(255,255,255,.08)}
+.seat-sit:focus-visible{outline:0.125rem solid var(--accent);outline-offset:0.125rem}
+.seat-sit .seat-face{display:inline-block;flex:none}
+.sit-ico{width:0.875rem;height:0.875rem;flex:none;fill:none;stroke:var(--accent);stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
 @media (max-width:480px){
   .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .end-btns [data-action="next-wave"]{grid-column:1 / -1}
@@ -3813,6 +3819,21 @@ const Render = (() => {
   const suitLabel = s => symHTML(s) + ' ' + R.SUIT_NAME[s];
   /* Text from data (names, personality texts) goes into HTML only through escHTML. */
   const nameOf = (v, p) => escHTML(v.players[p].name);
+  /* Where a seat sits on the table, seen from the view's seat: 0 the bottom, 1 the left, 2 the right. A game is
+     always seen from your seat; the replay viewer can sit in another (docs/ui/plan.md). */
+  const posOf = (v, p) => (p - v.seat + 3) % 3;
+  /** The seats on the left and the right of the view's seat. @returns {number[]} */
+  const around = v => [Engine.seatAfter(v.seat), Engine.seatAfter(Engine.seatAfter(v.seat))];
+  /* The three seat panels keep their places (West's on the left, East's on the right, yours at the bottom); each
+     takes the id of the seat drawn in it, so '#seat' + p finds a seat wherever it sits. */
+  let placedFor = 0;
+  function placeSeats(me) {
+    if (me === placedFor) return;
+    placedFor = me;
+    const [l, r] = [Engine.seatAfter(me), Engine.seatAfter(Engine.seatAfter(me))];
+    const west = /** @type {HTMLElement} */ (document.querySelector('#table .seat-west')), east = /** @type {HTMLElement} */ (document.querySelector('#table .seat-east')), bottom = /** @type {HTMLElement} */ (document.querySelector('#table .me'));
+    west.id = 'seat' + l; east.id = 'seat' + r; bottom.id = 'seat' + me;
+  }
   /* The human seat is named "You": make the following verb agree ("You plays" -> "You play"). */
   const YOU_VERB = { is: 'are', has: 'have', was: 'were', passes: 'pass', reaches: 'reach', goes: 'go', plays: 'play', wins: 'win', accepts: 'accept', names: 'name', discards: 'discard', leads: 'lead', deals: 'deal', turns: 'turn', shuffles: 'shuffle', takes: 'take', receives: 'receive', picks: 'pick', bids: 'bid', holds: 'hold', mediates: 'mediate', needs: 'need' };
   /* "You" takes the plural verb, also for each verb after "and" in the same sentence. */
@@ -3904,11 +3925,25 @@ const Render = (() => {
   /* A personality's figure: a small button that opens its profile, or a large picture. */
   const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + escHTML(x.id) + '" aria-label="About ' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
   const faceHTML = x => '<div class="p-face" role="img" aria-label="' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>';
+  /* The bottom seat's figure and name: yours, or a bot's in its color when the replay viewer sits there. */
+  function meNameHTML(v, ui) {
+    const bot = !v.players[v.seat].human && PERSONA_BY_ID[ui.personas[v.seat]];
+    if (bot) return faceButtonHTML(bot) + '<span class="seat-name" style="color:' + escHTML(bot.color) + '">' + nameOf(v, v.seat) + '</span>';
+    const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    return meFaceHTML(mine) + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
+  }
   /* Your figure while you play your own seat (opens Your profile); a bot playing for you shows its own. */
   const meFaceHTML = mine => mine ? faceButtonHTML(mine) : '<button type="button" class="seat-face" data-action="me-profile" aria-label="Your profile" style="background-image:url(' + YOU_ART + ')"></button>';
-  /* A bot's figure (opens its profile) and its name in its own color. */
+  const SIT_ICON = '<svg class="sit-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>';
+  /* A bot's figure (opens its profile) and its name in its own color. In the replay viewer the figure, the name and a
+     small turn arrow are one button: it watches from that seat. */
   function nameHTML(v, p, ui) {
     const id = ui.personas[p], x = id && PERSONA_BY_ID[id];
+    if (ui.watch) {
+      const face = '<span class="seat-face" aria-hidden="true" style="background-image:url(' + (x ? PERSONA_ART[x.id] : YOU_ART) + ')"></span>';
+      return '<button type="button" class="seat-sit" data-action="watch-seat" data-seat="' + p + '" title="Watch from this seat" aria-label="Watch from ' + nameOf(v, p) + '\'s seat">' + face +
+        '<span class="seat-name"' + (x ? ' style="color:' + escHTML(x.color) + '"' : '') + '>' + nameOf(v, p) + '</span>' + SIT_ICON + '</button>';
+    }
     if (!x) return '<span class="seat-name">' + nameOf(v, p) + '</span>';
     return faceButtonHTML(x) + '<span class="seat-name" style="color:' + escHTML(x.color) + '">' + nameOf(v, p) + '</span>';
   }
@@ -3972,16 +4007,16 @@ const Render = (() => {
     let label = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks;
     if (leadSuit) label += '<br>Led: ' + symHTML(leadSuit);
     let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
-    for (const p of [1, 2, 0]) {
+    for (const p of [...around(v), v.seat]) {
       if (!v.activePlayers.includes(p)) {
-        html += '<div data-seat="' + p + '" class="slot slot-' + p + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
+        html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
         continue;
       }
       const play = plays.find(x => x.player === p);
       const win = winner === p;
       const who = nameOf(v, p) + (leader === p ? ' <span class="lead-mark">(lead)</span>' : '') + (win ? ' — wins' : '');
       const cardPart = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
-      html += '<div data-seat="' + p + '" class="slot slot-' + p + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
+      html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
     }
     return html + '</div>';
   }
@@ -4196,7 +4231,9 @@ const Render = (() => {
       }
       /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
          UI's round 2, on your call, a card you click says which button names its suit. */
-      const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2;
+      const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2 || !!ui.watch;   /* the replay viewer shows the hand bright too */
+      /* The replay viewer raises a discard's cards before they go (ui.selected). */
+      if (ui.watch && ui.selected.has(id)) return cardHTML(id, v.trump, { button: true, disabled: true, cls: ['idle', 'bidding', 'selected'], isNew });
       if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay && !ui.watch) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
       return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
@@ -4274,9 +4311,9 @@ const Render = (() => {
       advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p, ctx.ui);
   }
   function advMeHTML(v, ui, ctx) {
-    const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    const mine = v.players[v.seat].human && ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const hand = handHTML(v, ui).replace('<div class="hand" id="hand">', '<div class="hand" id="hand" style="--n:' + Math.max(2, v.hand.length) + '">');
-    return '<div class="me-head">' + meFaceHTML(mine) + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>' +
+    return '<div class="me-head">' + meNameHTML(v, ui) +
       scoreButton(v, v.seat, ctx) + advTags(v, v.seat, ui) +
       (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
       hand + advCircles(v, v.seat, ui);
@@ -4340,13 +4377,13 @@ const Render = (() => {
     const winner = done && v.lastTrick ? v.lastTrick.winner : null;
     const tap = !done && explains(v, ctx.ui);
     let html = '<div class="trick">';
-    for (const p of [1, 2, 0]) {
+    for (const p of [...around(v), v.seat]) {
       const at = plays.findIndex(x => x.player === p), z = at >= 0 ? at + 1 : plays.length + 1;
-      if (!v.activePlayers.includes(p)) { html += '<div data-seat="' + p + '" class="slot slot-' + p + '" style="z-index:' + z + '"></div>'; continue; }
+      if (!v.activePlayers.includes(p)) { html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + '" style="z-index:' + z + '"></div>'; continue; }
       const play = plays[at];
       const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
       const about = p === v.seat ? 'About your card' : 'About ' + nameOf(v, p) + '\'s card';
-      html += '<div data-seat="' + p + '" class="slot slot-' + p + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
+      html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
     }
     return html + '</div>';
   }
@@ -4359,8 +4396,9 @@ const Render = (() => {
     const kpile = '<div class="kpile' + (tap ? infoAttrs('kitty', 'Kitty: ' + v.kittyCount + ' cards. About the kitty') : '" role="img" aria-label="Kitty: ' + v.kittyCount + ' cards"') + '>';
     const backs = (/** @type {number} */ n) => { let h = ''; for (let i = 0; i < n; i++) h += '<div class="card back" aria-hidden="true" style="left:calc(' + i + ' * var(--kw) * var(--kstep))"></div>'; return h; };
     if (v.phase === P.DISCARD) {
+      /* By place on the table (posOf). */
       const SEAT = { 1: { rest: -7, dx: -3 }, 2: { rest: 6, dx: 3 }, 0: { rest: 1, dx: 0 } };
-      const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[p].rest + 'deg;--dx:' + SEAT[p].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
+      const layers = order.map((p, i) => '<div class="olayer" data-seat="' + p + '" style="--rest:' + SEAT[posOf(v, p)].rest + 'deg;--dx:' + SEAT[posOf(v, p)].dx + 'px;--lift:' + (-i * 2) + 'px;--ms:0ms">' +
         [-1, 0, 1].map(j => '<div class="card back" style="--fan:' + (j * 9) + 'deg;--fx:' + (j * 14) + 'px"></div>').join('') + '</div>').join('');
       /* The kitty, dealt as the fourth packet, lies beside the outside pile until the discards are done. */
       const outLabel = 'Outside pile: ' + v.outsideCount + ' cards';
@@ -4446,7 +4484,7 @@ const Render = (() => {
     const said = statusText(v), live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
     const order = Fx.discardOrder(v);
-    const parts = /** @type {[HTMLElement, string][]} */ ([[$('seat1'), advSeatHTML(v, 1, ctx)], [$('seat2'), advSeatHTML(v, 2, ctx)], [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat0'), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
+    const parts = /** @type {[HTMLElement, string][]} */ ([...around(v).map(p => /** @type {[HTMLElement, string]} */ ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
     const skip = ctx.waiting && botShowdown(v) && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
@@ -4456,14 +4494,15 @@ const Render = (() => {
     for (const [el, h] of parts) el.innerHTML = h;
     $('info').hidden = false;
     const slot = $('skipSlot'); slot.innerHTML = skip; slot.hidden = !skip;
-    for (const p of [1, 2]) {
+    for (const p of around(v)) {
       const el = $('seat' + p);
       el.classList.toggle('turn', isTurn(v, p));
       el.classList.toggle('out', !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(p)));
       el.classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === p));
     }
-    $('seat0').classList.toggle('turn', isTurn(v, v.seat));
-    $('seat0').classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
+    $('seat' + v.seat).classList.toggle('turn', isTurn(v, v.seat));
+    $('seat' + v.seat).classList.toggle('out', false);
+    $('seat' + v.seat).classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
     Fx.after(v, ui);
     return true;
   }
@@ -4478,6 +4517,7 @@ const Render = (() => {
 
   function render(v, ui, ctx) {
     adv = !!ui.advanced;
+    placeSeats(v.seat);
     jokerSuit = v.jokerSuit || null;
     if (adv) return renderAdvanced(v, ui, ctx);
     if (advKey.seats) leaveAdvanced();
@@ -4486,7 +4526,7 @@ const Render = (() => {
     $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
     $('handChip').textContent = handChipText(v);
     ctx.ui = ui;
-    for (const p of [1, 2]) {
+    for (const p of around(v)) {
       const el = $('seat' + p);
       el.innerHTML = seatHTML(v, p, ctx);
       el.classList.toggle('turn', isTurn(v, p));
@@ -4507,10 +4547,10 @@ const Render = (() => {
     const said = $('center').querySelector('.status').textContent, live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
 
-    const me = $('seat0');
+    const me = $('seat' + v.seat);
     const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
-    const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
-    const meName = meFaceHTML(mine) + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
+    const mine = v.players[v.seat].human && ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    const meName = meNameHTML(v, ui);
     me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay, ui.allowSeatAI) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
       '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / ' + WIN + '</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
       '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
@@ -4539,8 +4579,12 @@ const Fx = (() => {
   const ms = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : STEP[speed] ?? 450;
   const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   const cw = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
+  /* By place on the table: 0 the bottom, 1 the left, 2 the right (pos). */
   const TILT = { 0: 0, 1: -30, 2: 30 };
   const REST = { 1: -7, 2: 6, 0: 1 };   // each player's discard layer keeps a slight turn toward its seat
+  /* The seat at the bottom (the view's seat: yours, or the one the replay viewer sits in), and a seat's place. */
+  let me = 0;
+  const pos = (/** @type {number} */ p) => /** @type {0 | 1 | 2} */ ((p - me + 3) % 3);
 
   /** @type {{ hand: number, phase: string, counts: number[] } | null} */
   let prev = null;
@@ -4561,6 +4605,7 @@ const Fx = (() => {
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
   function discardOrder(v) {
+    me = v.seat;
     if (v.phase === Engine.P.DISCARD) {
       if (discardHand !== v.handNumber) { discardHand = v.handNumber; discarders = []; layerStart.length = 0; }
       for (const k of [1, 2, 3]) { const p = (v.dealer + k) % 3; if (!discarders.includes(p) && !v.pendingDiscard[p]) discarders.push(p); }
@@ -4654,7 +4699,7 @@ const Fx = (() => {
     return fall;
   }
   const done = (el, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => el.remove());
-  const seatOf = p => p === 0 ? (q('#hand') || q('#seat0')) : q('#seat' + p);
+  const seatOf = p => p === me ? (q('#hand') || q('#seat' + me)) : q('#seat' + p);
   const dealWait = key => handDeal.key === key ? Math.max(0, handDeal.end - performance.now()) : 0;
 
   /* ---- Counts change when the cards arrive. Each pending arrival is keyed, so a redraw does not count it twice. ---- */
@@ -4699,7 +4744,7 @@ const Fx = (() => {
       const to = q('#seat' + v.dealer); if (!to) return;
       o.hand.forEach((x, i) => { const g = place(x.k); done(g, [fly(g, to, t, i * 25)]); });
       if (o.kpile) { const g = place(o.kpile); done(g, [fly(g, to, t)]); }
-      for (const p of [1, 2]) if (before.counts[p]) for (let i = 0; i < 3; i++) { const g = backAt(p, i - 1, 12); done(g, [fly(g, to, t, i * 40)]); }
+      for (const p of [0, 1, 2]) if (p !== me && before.counts[p]) for (let i = 0; i < 3; i++) { const g = backAt(p, i - 1, 12); done(g, [fly(g, to, t, i * 40)]); }
       dealHold = performance.now() + t * 1.4; handDeal.key = '';   // a fresh deal, once the cards are back
       return;
     }
@@ -4723,7 +4768,7 @@ const Fx = (() => {
       const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = (Engine.trumpCall(v.bidLog) || { round: 0 }).round === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
-      done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[/** @type {0 | 1 | 2} */ (v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
+      done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[pos(v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
     }
     // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
     // the pile did not show yet land first (a bot's as backs from its seat), then the pile drops through the table,
@@ -4747,7 +4792,7 @@ const Fx = (() => {
         const at = n * gap;
         pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: now + at + t });
         if (layer) setTimeout(() => { layer.style.visibility = ''; }, at + t);
-        if (p === 0) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
+        if (p === me) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
         for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, at + i * 70)]); }
       });
       const wait = Math.max(until - now, missing.length ? t + (missing.length - 1) * gap : 0);
@@ -4758,8 +4803,8 @@ const Fx = (() => {
     } else if (pileNow && mine.length) {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
-      mineLand = { hand: v.handNumber, idx: discarders.indexOf(0), t0: performance.now() + hold };
-      expect('pile' + v.handNumber + '|0', { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: mineLand.t0 + t });
+      mineLand = { hand: v.handNumber, idx: discarders.indexOf(me), t0: performance.now() + hold };
+      expect('pile' + v.handNumber + '|' + me, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: mineLand.t0 + t });
       holdMyLayer(v, performance.now());
     }
     // Exchange and Showdown discards go to the middle of the table and drop through it: your cards themselves, a bot's
@@ -4770,7 +4815,7 @@ const Fx = (() => {
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - v.handCounts[p]; if (k <= 0) continue;
         expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 2 + 80 * k });
-        if (p === 0) { o.hand.filter(x => !ids.has(x.id)).forEach((x, i) => { const g = place(x.k); g.classList.remove('selected'); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]); }); continue; }
+        if (p === me) { o.hand.filter(x => !ids.has(x.id)).forEach((x, i) => { const g = place(x.k); g.classList.remove('selected'); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]); }); continue; }
         if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
         for (let i = 0; i < k; i++) {
           const g = backAt(p, i, 10); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]);
@@ -4807,7 +4852,7 @@ const Fx = (() => {
     const pr = pile.getBoundingClientRect();
     qa('.olayer', pile).forEach((el, i) => {
       const p = +el.dataset.seat, sr = q('#seat' + p).getBoundingClientRect();
-      el.style.setProperty('--from', 'translate(' + Math.round(sr.left + sr.width / 2 - pr.left - pr.width / 2) + 'px,' + Math.round(sr.top + sr.height / 2 - pr.top - pr.height / 2) + 'px) rotate(' + REST[p] * 4 + 'deg)');
+      el.style.setProperty('--from', 'translate(' + Math.round(sr.left + sr.width / 2 - pr.left - pr.width / 2) + 'px,' + Math.round(sr.top + sr.height / 2 - pr.top - pr.height / 2) + 'px) rotate(' + REST[pos(p)] * 4 + 'deg)');
       if (layerStart[i] == null) layerStart[i] = Math.max(now, handDeal.key === String(v.handNumber) ? handDeal.end : 0, i ? (layerStart[i - 1] ?? 0) + t * 0.4 : 0);
       if (mineLand && mineLand.hand === v.handNumber && mineLand.idx === i) return;
       expect('pile' + v.handNumber + '|' + discarders[i], { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: layerStart[i] + t });
@@ -4866,7 +4911,7 @@ const Fx = (() => {
       if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
       const [dx, dy] = center(q('#seat' + v.dealer));
       cards.forEach((c, i) => { const [cx, cy] = center(c);
-        c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[v.dealer] + 'deg)' }, { transform: 'none' }],
+        c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[pos(v.dealer)] + 'deg)' }, { transform: 'none' }],
           { duration: t, delay: i * t * PACKET_CARD, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
     }
     const turned = now - turnStart;
@@ -4971,6 +5016,7 @@ const Fx = (() => {
 
   /* After a redraw: run the motion, then the counts. */
   function after(v, ui) {
+    me = v.seat;
     speed = ui.speed;
     const now = performance.now();
     discardLayers(v, now);
@@ -5888,7 +5934,7 @@ const App = (() => {
     }
     drawnVersion = app.state ? app.state.version : -1;
     const ui = watch ? watchUI() : app.ui;
-    const v = buildView(app.state, HUMAN);
+    const v = buildView(app.state, watch ? watch.seat : HUMAN);
     v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
@@ -6176,7 +6222,7 @@ const App = (() => {
     document.body.appendChild(el);
     /* A bot's seat: the +1 ends on its score (the seat when the score is not drawn). A seat scrolled out of view: it
        ends at the window's edge on that side. The seat shows the point when the +1 lands (scoreHold). */
-    const seat = p !== HUMAN && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
+    const seat = p !== (watch ? watch.seat : HUMAN) && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
     /** @type {Keyframe[]} */
     let frames;
     if (seat) {
@@ -6489,7 +6535,7 @@ const App = (() => {
     clearTimer();
     const ov = $('overlay');
     watch = {
-      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), playing: false, timer: 0,
+      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
       back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
@@ -6543,7 +6589,16 @@ const App = (() => {
      table at once. */
   function watchGo(n) {
     const w = watch, to = Math.max(w.min, Math.min(w.total, n));
-    if (to === w.cur.steps + 1) { draw(watchStep() || []); return; }
+    if (to === w.cur.steps + 1) {
+      /* A discard by the seat at the bottom shows first as its cards raised, then goes on the next step. */
+      const cards = w.preview ? null : discardOf(watchPeek(), w.seat);
+      w.preview = cards;
+      app.ui.selected = new Set(cards || []);
+      draw(cards ? [] : watchStep() || []);
+      return;
+    }
+    w.preview = null;
+    app.ui.selected.clear();
     if (to < w.cur.steps) {
       w.cur.seek(to);
       app.state = w.cur.state;
@@ -6557,11 +6612,36 @@ const App = (() => {
     resetDraw();
     draw([]);
   }
-  /** Start, back, forward and end: playing stops. @param {number} n */
+  /* The next decision, or null when the next step is the table's own (a deal, a trick's end). */
+  function watchPeek() {
+    const c = watch.cur, d = c.record.decisions;
+    if (Engine.systemAction(app.state)) return null;
+    let i = c.decisionsUsed;
+    while (i < d.length && d[i] && d[i].type === 'MARK') i++;
+    return d[i] || null;
+  }
+  /** The cards a decision discards from seat p's hand: the opening discard, the exchange or a Showdown discard.
+      @returns {string[] | null} */
+  function discardOf(a, p) {
+    if (!a || a.player !== p) return null;
+    if (a.type === 'DISCARD' || a.type === 'EXCHANGE') return a.cards.slice();
+    return a.type === 'SHOWDOWN_DISCARD' ? [a.card] : null;
+  }
+  /** The hand buttons, Back and Forward: playing stops. @param {number} n */
   function watchMove(n) {
     clearTimeout(watch.timer);
     watch.playing = false;
     watchGo(n);
+  }
+  /* Back one move. While a discard shows raised, Back lowers it first. */
+  function watchBack() {
+    const w = watch;
+    if (!w.preview) { watchMove(w.cur.steps - 1); return; }
+    clearTimeout(w.timer);
+    w.playing = false;
+    w.preview = null;
+    app.ui.selected.clear();
+    draw([]);
   }
   /* Play steps at the game speed and waits while a dialog is open. Play at the end starts again from the start. */
   function watchPlay(on) {
@@ -6577,10 +6657,11 @@ const App = (() => {
     if (!w || !w.playing) return;
     const wait = app.menuOpen || askDone || !$('overlay').hidden ? 200 : heldDraw ? 50 : Fx.busyFor();
     if (wait > 0) { w.timer = setTimeout(watchTick, wait + 16); return; }
-    const ev = watchStep();
-    if (!ev || w.cur.steps >= w.total) w.playing = false;
-    draw(ev || []);
-    if (w.playing) w.timer = setTimeout(watchTick, watchDelay());
+    const at = w.cur.steps;
+    watchGo(at + 1);
+    if ((w.cur.steps === at && !w.preview) || w.cur.steps >= w.total) { w.playing = false; draw([]); }
+    /* Raised discards stay up for a trick's wait, so they can be seen. */
+    if (w.playing) w.timer = setTimeout(watchTick, w.preview ? Math.max(400, DELAYS[app.ui.speed].trick) : watchDelay());
   }
   /* The wait before the next step, as in a game: a bot's move, a trick or hand that has ended, or a system step. */
   function watchDelay() {
@@ -7096,13 +7177,28 @@ const App = (() => {
         if (!watch) break;
         const at = watch.cur.steps;
         if (name === 'watch-play') watchPlay(!watch.playing);
-        else watchMove(name === 'watch-prev' ? watchHand(at, -1) : name === 'watch-back' ? at - 1 : name === 'watch-fwd' ? at + 1 : watchHand(at, 1));
+        else if (name === 'watch-back') watchBack();
+        else watchMove(name === 'watch-prev' ? watchHand(at, -1) : name === 'watch-fwd' ? at + 1 : watchHand(at, 1));
         /* The buttons are drawn again: the focus goes back to the one used, or to Play when it is now dimmed. */
         const f = document.querySelector('[data-action="' + name + '"]:not(:disabled)') || document.querySelector('[data-action="watch-play"]');
         if (f instanceof HTMLElement) f.focus();
         break;
       }
       case 'watch-exit': if (watch) watchExit(); break;
+      /* Sit in another seat: it moves to the bottom, with its own view. */
+      case 'watch-seat': {
+        const p = Number(el.getAttribute('data-seat'));
+        if (!watch || ![0, 1, 2].includes(p)) break;
+        watch.seat = p;
+        watch.preview = null;
+        app.ui.selected.clear();
+        closePanel();
+        resetDraw();
+        draw([]);
+        const f = document.querySelector('[data-action="watch-play"]');
+        if (f instanceof HTMLElement) f.focus();
+        break;
+      }
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
@@ -7366,7 +7462,7 @@ const App = (() => {
       /* The replay viewer: Escape exits, the arrow keys step, and Space or Enter plays or pauses (below). */
       if (watch && $('overlay').hidden && !(ev.target instanceof Element && /^(SELECT|INPUT|TEXTAREA)$/.test(ev.target.tagName))) {
         if (ev.key === 'Escape') { ev.preventDefault(); watchExit(); return; }
-        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); watchMove(watch.cur.steps + (ev.key === 'ArrowLeft' ? -1 : 1)); return; }
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); if (ev.key === 'ArrowLeft') watchBack(); else watchMove(watch.cur.steps + 1); return; }
       }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;

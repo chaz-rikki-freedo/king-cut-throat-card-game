@@ -1,6 +1,6 @@
 # UI plan: replays, seeds, backup and themes
 
-Status: **agreed**, in phases. Phases 1 and 2 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
+Status: **agreed**, in phases. Phases 1, 2 and 3 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
 
 ## Principles
 
@@ -16,7 +16,7 @@ Status: **agreed**, in phases. Phases 1 and 2 are built. This page records where
 | Shuffle arrows | New deal | `new-deal` | New cards at the same table: the same wave, or the same two opponents in the same seats. |
 | Up arrow from a tray | Export | `export` | Copy the seed or the replay code. |
 | Eye | Watch icon | `replay-watch` | Watch the game in the replay viewer. |
-| Circular arrow (small) | Rotate icon | `replay-rotate` | In the replay viewer only: watch from the next seat. |
+| Circular arrow (small) | Sit icon | `watch-seat` | In the replay viewer only, after a seat's name: watch from that seat. |
 
 Each icon button has an `aria-label` and a `title`, because it has no visible text.
 
@@ -52,9 +52,10 @@ The Seed row (seed readout and **Copy**) is removed.
 A read-only table. It saves nothing, records no results and runs no bots. The game timer waits, as it does while the menu is open.
 
 - **Controls:** five icon buttons, symmetrical round Play: Previous hand, Back, Play or Pause, Forward, Next hand. No move count. A move is one Engine step: a decision, or a step of the table such as a deal. A hand stop is the step after the hand's deal (after a redeal, the deal that is played); the first stop is the table after `START_GAME`, the last the game's end. Back rebuilds from the seed (`Replay.cursor().seek`). A jump draws the table at once; one step forward moves the cards as in a game. Keys: Left and Right step, Space or Enter plays or pauses, Escape exits.
+- **Discards:** a discard by the seat at the bottom (the opening discard, the exchange or a Showdown discard) takes two steps: its cards rise as selected (`ui.selected`), then the move is made. Back while they are raised lowers them; a jump or a seat change drops them. Play holds them for a trick's wait. The other seats' discards are backs, so they show as moves only.
 - **Mode chip:** **Replay ✕**. It is **Exit**.
 - **Log:** the Latest Scroll narrates the replay, from a line that names the table. A jump narrates without toasts. Exit brings back the log of the game behind.
-- **Rotate icon** (phase 3): watch from You, then West, then East. Each seat shows its own view (`buildView(state, seat)`), so the rule that a view holds only what its seat can see still holds. This needs a seat-to-position map in `Render`, which today places seat 1 left and seat 2 right. Rotation is in the viewer only, never in a live game.
+- **Watch from another seat** (phase 3): tap a side seat's figure or name (a small circular arrow follows it) to sit there. That seat moves to the bottom with its own view (`buildView(state, seat)`): its hand face up, the other two as backs, so a view still holds only what its seat can see. The others keep the seating order: the next seat sits on the left. Tap your own seat to come back. Real names stay ("You" is always you), and the log does not change. `Render` places each seat by `posOf`, and the three seat panels take the id of the seat drawn in them, so `Fx` finds `#seat` + *n* wherever it sits. Only in the viewer, never in a live game.
 - **Exit** (the mode chip, or Escape) returns to where you were: the menu, the game-over dialog, or a game that you can resume.
 - **`?replay=` link:** opens the viewer for that code, as `?seed=` starts a game. A code that does not decode opens the menu with a note. The app removes `replay` from the address after use.
 
@@ -84,7 +85,7 @@ A read-only table. It saves nothing, records no results and runs no bots. The ga
 |---|---|
 | 1 | The winner line. The Seed row removed. The end buttons (Watch dimmed, Try again, New deal, Export), Back in the results dialog, and the Try again icon on the Last games rows. |
 | 2 | The replay viewer from your seat: Watch turns on, a Watch icon on the Last games rows, and the `?replay=` link. |
-| 3 | The Rotate icon in the viewer. |
+| 3 | Watch from another seat in the viewer (tap a seat). |
 | 4 | The backup UI. |
 | 5 | Themes. |
 
