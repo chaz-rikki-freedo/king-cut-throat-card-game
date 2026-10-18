@@ -44,6 +44,30 @@ button{font:inherit;color:inherit}
 .icon-btn{display:inline-grid;place-items:center;width:2.5rem;height:2.5rem;padding:0;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;flex:none}
 .icon-btn:hover{background:rgba(255,255,255,.18)}
 .icon-btn:focus-visible,.speed-pick:focus-within{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+/* A small icon button on a line it acts on: the end buttons and the Last games rows. */
+.tiny-btn{display:inline-grid;place-items:center;width:1.75rem;height:1.75rem;padding:0;border-radius:0.4375rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:inherit;cursor:pointer;vertical-align:middle}
+.tiny-btn:hover{background:rgba(255,255,255,.18)}
+.tiny-btn:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.tiny-btn svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* A button with an icon before its label: the end buttons. */
+.btn-ico{display:inline-flex;align-items:center;gap:0.375rem}
+.btn-ico svg{width:1rem;height:1rem;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-ico:disabled{opacity:.45;cursor:default}
+/* The results dialog: ✕ (Back) in its top right returns to the table. */
+.modal.gameover{position:relative}
+.modal.gameover .big{padding-right:2.5rem}
+.modal .modal-x{position:absolute;top:0.75rem;right:0.75rem}
+.export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted);text-align:right}
+/* The end buttons, in the results dialog and the action bar: one row, centered (the dialog's at its right); on a
+   phone a 2 x 2 grid of equal buttons, Next wave across the full width under it. */
+.end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
+.modal .row .end-btns{justify-content:flex-end}
+.end-btns .btn-ico{justify-content:center}
+@media (max-width:480px){
+  .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .end-btns [data-action="next-wave"]{grid-column:1 / -1}
+}
+.profile td.pf-acts{text-align:right;white-space:nowrap}
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
 .speed-pick svg{width:1.25rem;height:1.25rem;flex:none}
@@ -371,8 +395,6 @@ body.set-open{overflow:hidden}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
 .settings .set-off{opacity:.45;pointer-events:none}
-.settings .set-seed{display:inline-flex;gap:var(--s2);align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.settings .set-seed code{font:0.8125rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;font-variant-numeric:tabular-nums}
 .settings .btn-sm{padding:0.375rem 0.75rem;font-size:0.8125rem;min-height:2.25rem;margin:0}
 .settings .set-tests{padding:var(--s3) 0;border-bottom:1px solid var(--set-line);font-size:0.8125rem}
 .settings .set-tests .t-sum{font-size:0.9375rem;font-weight:800;margin-bottom:0.375rem}
@@ -582,6 +604,14 @@ body.adv .center > .yourmove.wait{visibility:hidden}
 body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
 body.adv .center > .pile-act.seats{flex-direction:row}
+/* The end buttons take the table's width, so they can wrap instead of running off a phone's screen. */
+body.adv .center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
+/* On a phone the Advanced table has room for one row: equal buttons, each an icon over a short label. */
+@media (max-width:480px){
+  body.adv .pile-act.ends .end-btns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none;gap:0.375rem}
+  body.adv .pile-act.ends .end-btns [data-action="next-wave"]{grid-column:auto}
+  body.adv .pile-act.ends .btn-ico{flex-direction:column;gap:0.125rem;padding:0.375rem 0.25rem;font-size:0.75rem;line-height:1.1;white-space:normal}
+}
 body.adv .pile-act .btn{font-size:0.9375rem;padding:0.5rem 1.125rem;white-space:nowrap;flex:none}
 body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
@@ -835,7 +865,6 @@ body.adv .tag.led{background:#00838f;color:#fff}
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row"><span class="set-text"><span class="set-name">Seed</span><span class="set-desc">This game's seed, to share or replay its deal.</span></span><span class="set-seed"><code id="setSeed"></code><button class="btn btn-sm" type="button" data-action="copy-seed">Copy</button><span class="k-hint" id="setCopied" aria-live="polite"></span></span></div>
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline.</span></span>
           <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></span></div>
@@ -869,7 +898,7 @@ body.adv .tag.led{background:#00838f;color:#fff}
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: '827c0c0', date: '2026-10-17' });
+const BUILD = Object.freeze({ commit: '7f5e0c5', date: '2026-10-17' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
@@ -4365,7 +4394,7 @@ const Render = (() => {
       if (!b.length && CONTINUE_LABEL[v.phase]) b.push('<button class="btn primary" type="button" data-action="continue">' + continueLabel(v) + '</button>');
     }
     const html = b.join('');
-    return html ? '<div class="pile-act">' + html + '</div>' : '';
+    return html ? '<div class="pile-act' + (v.gameOver ? ' ends' : '') + '">' + html + '</div>' : '';
   }
 
   /* What you do now, in a few words, or '' while nothing waits on you (or the AI plays your seat). Every discard
@@ -5068,7 +5097,8 @@ const App = (() => {
   /* The two personalities that a Free play seed seats: [West, East]. */
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
   /* wave (optional): play that wave's table. Without it, the seed picks the table: Free play, or Dynamic with
-     opts.mode 'dynamic'. opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
+     opts.mode 'dynamic'. opts.rules: house rules for this game instead of the settings (Replay Seed passes the old
+     game's). opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
      game's); without it, the profile now. */
   function newGame(seed, wave, opts) {
     clearTimer();
@@ -5089,7 +5119,7 @@ const App = (() => {
     app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
-    app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, app.houseRules);
+    app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, opts && opts.rules ? Object.assign({}, app.houseRules, opts.rules) : app.houseRules);
     Fx.reset();
     seatBots(pool[0], pool[1]);
     app.ui.selected.clear();
@@ -5098,9 +5128,7 @@ const App = (() => {
     app.menuOpen = false;
     $('overlay').hidden = true;
     hideUpdateNote();
-    const setSeed = $('setSeed');
-    if (setSeed) setSeed.textContent = String(s);
-    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game (seed ' + s + ').', '');
+    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game.', '');
     /* Free play: you choose seats first (needsSwap). The dealer is drawn after, when Play schedules START_GAME. */
     if (app.seatSwapPending) { schedule(); return; }
     act({ type: 'START_GAME' });
@@ -5122,8 +5150,6 @@ const App = (() => {
     Fx.reset();
     seatBots(null, null);
     clearLog();
-    const setSeed = $('setSeed');
-    if (setSeed) setSeed.textContent = '—';
     draw([]);
     maybeOfferUpdate();
   }
@@ -5180,6 +5206,8 @@ const App = (() => {
   }
   /* Dynamic's post-game review (decision 18) of the game that just ended, run once after the game-over box has drawn,
      or before anything else starts. A game where the AI played your seat is never reviewed. */
+  /* The finished game's replay code, for Export. */
+  let endCode = /** @type {string | null} */ (null);
   let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
   function runReview() {
     const job = pendingReview;
@@ -5237,18 +5265,26 @@ const App = (() => {
     const rec = replayRecord(at);
     const code = rec ? Replay.encode(rec) : null;
     pendingReview = rec && !app.humanSeatWasAutoplayed ? { rec, mode: app.mode } : null;
+    endCode = code;
     if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
+  /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
+  const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
+  const ICON_WATCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const ICON_DEAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>';
+  const ICON_EXPORT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>';
+  const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
+  /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer, phase 2), Try again (the
+     same deal), New deal (new cards at the same table) and Export. A won wave adds Next wave. The menu is the header's. */
   function endButtonsHTML() {
-    const b = (action, label, primary) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-action="' + action + '">' + label + '</button>';
-    const menu = b('menu', 'Menu');
-    if (!inWaves()) return b(app.mode === 'dynamic' ? 'new-dynamic-now' : 'new-game-now', 'New Game', true) + b('replay-seed', 'Replay Seed') + menu;
-    const n = app.wave.n, won = app.state.winner === HUMAN;
-    if (won && n < WAVES.length && Waves.isUnlocked(n + 1)) return b('next-wave', 'Next wave', true) + b('replay-seed', 'Replay Seed') + menu;
-    if (won) return b('replay-seed', 'Replay Seed') + b('menu', 'Menu', true);
-    return b('retry-wave', 'Try again', true) + b('replay-seed', 'Replay Seed') + menu;
+    const b = (action, label, icon, o = {}) => '<button class="btn btn-ico' + (o.primary ? ' primary' : '') + '" type="button" data-action="' + action + '"' +
+      (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + icon + label + '</button>';
+    const n = app.wave.n, next = inWaves() && app.state.winner === HUMAN && n < WAVES.length && Waves.isUnlocked(n + 1);
+    return '<div class="end-btns">' + b('replay-watch', 'Watch', ICON_WATCH, { disabled: true, title: 'Watch the game: coming soon' }) + b('replay-seed', 'Try again', ICON_AGAIN, { title: 'The same deal again' }) +
+      b('new-deal', 'New deal', ICON_DEAL, { primary: !next, title: inWaves() ? 'This wave, with new cards' : 'The same opponents, with new cards' }) +
+      b('export', 'Export', ICON_EXPORT, { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', '', { primary: true }) : '') + '</div>';
   }
 
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
@@ -5382,7 +5418,6 @@ const App = (() => {
       logLines = s.log.map(([text, cls]) => [text, cls]);
       redrawLog();
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
-      $('setSeed').textContent = String(app.state.seed);
       app.menuOpen = false;
       $('overlay').hidden = true;
       hideUpdateNote();
@@ -6071,6 +6106,9 @@ const App = (() => {
     burst.push(li);
   }
   function burstHTML() {
+    /* The game's end shows only the winner line. */
+    const end = burst.find(li => li.classList.contains('end'));
+    if (end) return end.innerHTML;
     const more = burst.filter(li => !li.classList.contains('play'));
     return (more.length ? more : burst).slice(-2).map(li => li.innerHTML).join('</li><li>');
   }
@@ -6207,7 +6245,11 @@ const App = (() => {
         addLog(e.by != null ? n(e.by) + ' (mediator) picks ' + n(e.player) + ' to lead the Showdown.' : n(e.player) + ' leads the Showdown (won main trick ' + e.mainTrick + ', the latest by a Showdown player).', 's', true);
         break;
       case 'SHOWDOWN_SCORED': addLog('Showdown tricks: ' + n(e.winner) + ' ' + e.tricks[e.winner] + ', ' + n(e.loser) + ' ' + e.tricks[e.loser] + '.', 's', true); break;
-      case 'GAME_ENDED': addLog('🏆 ' + n(e.winner) + (e.scores[e.winner] > Engine.C.WIN_SCORE ? ' wins the game with more than 10 points (⭐).' : ' reaches ' + e.scores[e.winner] + ' points and wins the game.'), 'w gap end'); break;
+      case 'GAME_ENDED': {
+        const pts = e.scores[e.winner] > Engine.C.WIN_SCORE ? 'more than 10 points (⭐)' : e.scores[e.winner] + ' points';
+        addLog(e.winner === HUMAN ? '🏆 Congratulations! ' + n(e.winner) + ' wins the game with ' + pts + '.' : '🏆 Congratulations to ' + n(e.winner) + ', who wins the game with ' + pts + '.', 'w gap end');
+        break;
+      }
       case 'DEALER_ROTATED': addLog('The deal passes to ' + n(e.dealer) + '.', ''); break;
       case 'REDEAL': addLog(n(e.dealer) + ' deals again.', ''); break;
       default: break;
@@ -6238,10 +6280,10 @@ const App = (() => {
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal" role="dialog" aria-label="Game over"><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
+    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><button class="btn modal-x" type="button" data-action="close-overlay" aria-label="Back" title="Back">✕</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
-      '<div class="row"><button class="btn" type="button" data-action="close-overlay">View table</button>' + app.ui.endButtons + '</div></div>';
+      '<div class="row">' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
@@ -6368,11 +6410,34 @@ const App = (() => {
     }
     showMenu(app.menuLaunch);
   }
-  /* snapshot: Dynamic's starting snapshot (Replay Seed passes the old game's). */
-  function startMode(mode, seed, wave, snapshot) {
+  /* snapshot: Dynamic's starting snapshot, rules: the house rules (Replay Seed passes the old game's). */
+  function startMode(mode, seed, wave, snapshot, rules) {
     app.menuOpen = false;
     /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
-    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot });
+    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot, rules });
+  }
+  /* New deal: new cards at the same table. Waves: the same wave. Free play and Dynamic: a new seed that seats the same
+     two opponents in the same seats, since the seed picks the table (one seed in 90 does). */
+  function newDeal() {
+    if (inWaves()) { startMode('waves', undefined, app.wave.n); return; }
+    const west = app.ui.personas[1], east = app.ui.personas[2];
+    let seed = RNG.freshSeed();
+    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = seedTable(seed); if (t[0] === west && t[1] === east) break; }
+    startMode(app.mode, seed);
+  }
+  /* Replay Seed on a Last games row: the same table as that game, from its replay code. Null when this app cannot
+     play it again (a newer rules version, no mode, or a Dynamic code without its snapshot). @param {any} e */
+  function againOf(e) {
+    const rec = safe(() => Replay.decode(e.code));
+    if (!rec || rec.rules > Engine.RULES_VERSION || !MODES.includes(rec.mode) || (rec.mode === 'waves' && !Waves.get(rec.wave))) return null;
+    const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : undefined;
+    if (snap === null) return null;
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' } };
+  }
+  function replaySeedRow(at) {
+    const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
+    if (!g) return;
+    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules); else showProfile(); });
   }
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
@@ -6416,8 +6481,9 @@ const App = (() => {
   async function checkInstall() {
     const rows = [];
     const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
-    /* A local copy (file://) cannot install or play offline, so the checks below do not apply. */
-    const local = location.protocol === 'file:';
+    /* A local copy cannot install or play offline, so the checks below do not apply: file://, or content:// when a
+       phone opens a downloaded file. There the service worker calls reject. */
+    const local = !/^https?:$/.test(location.protocol);
     const note = $('setLocalNote');
     if (note) note.hidden = !local;
     const show = () => {
@@ -6451,7 +6517,7 @@ const App = (() => {
     } catch (e) { row('bad', 'Manifest could not be loaded: ' + e.message + '.'); }
     if (!('serviceWorker' in navigator)) row('bad', 'This browser has no service workers.');
     else {
-      const reg = await safe(() => navigator.serviceWorker.getRegistration());
+      const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
       row(reg && reg.active ? 'ok' : 'bad', reg && reg.active ? 'Service worker is active.' : 'Service worker is not active yet.');
       row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
     }
@@ -6688,8 +6754,9 @@ const App = (() => {
       const shown = games.slice().reverse();
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
-        '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th></tr></thead><tbody>' +
-        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td></tr>').join('') +
+        '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
+        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
+          '<td class="pf-acts">' + (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
     html += habitsHTML();
@@ -6819,11 +6886,15 @@ const App = (() => {
       case 'new-dynamic': confirmReplace('dynamic').then(yes => yes ? startMode('dynamic') : showMenu(app.menuLaunch)); break;
       case 'ask-ok': answerAsk(true); break;
       case 'ask-cancel': answerAsk(false); break;
-      case 'new-game-now': startMode('free'); break;
-      case 'new-dynamic-now': startMode('dynamic'); break;
+      case 'new-deal': newDeal(); break;
+      case 'export': exportGame(); break;
+      case 'export-seed': copyExport(String(app.state.seed)); break;
+      case 'export-code': if (endCode) copyExport(endCode); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
-      case 'retry-wave': startMode('waves', undefined, app.wave.n); break;
-      case 'replay-seed': startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined); break;
+      case 'replay-seed':
+        if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
+        break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
       case 'swap-back': swapBack(); break;
@@ -6837,7 +6908,6 @@ const App = (() => {
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
       case 'settings-reset': resetBotSettings(); setPersonas(true); break;
-      case 'copy-seed': copySeed(); break;
       case 'run-tests': {
         if (testsRunning) break;
         testsRunning = true;
@@ -6943,20 +7013,38 @@ const App = (() => {
   }
   function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
 
-  /* Settings panel: copy the seed (the clipboard API can be blocked on local files, so fall back). */
-  function copySeed() {
-    const seed = String(app.state.seed);
-    const done = ok => { $('setCopied').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('setCopied').textContent = ''; }, 1500); };
+  /* Copies text (the clipboard API can be blocked on local files, so fall back). done(ok) reports the result. */
+  function copyText(text, done) {
     const fallback = () => {
       const t = document.createElement('textarea');
-      t.value = seed; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
       document.body.appendChild(t); t.select();
       let ok = false;
       try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
       t.remove(); done(ok);
     };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(() => done(true), fallback);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
     else fallback();
+  }
+  /* Export: a small dialog in the confirm layer that copies the seed or the replay code. ✕, Escape or a click
+     outside closes it. */
+  function exportGame() {
+    if (askDone) askDone(false);
+    const layer = $('askLayer');
+    layer.innerHTML = '<div class="modal ask gameover" role="dialog" aria-modal="true" aria-labelledby="askTitle">' +
+      '<button class="btn modal-x" type="button" data-action="ask-cancel" aria-label="Close" title="Close">✕</button>' +
+      '<h2 id="askTitle">Export this game</h2><p>The replay code holds the whole game, every move. The seed holds its deals only.</p>' +
+      '<div class="row"><button class="btn" type="button" data-action="export-seed">Copy seed</button>' +
+      '<button class="btn primary" type="button" data-action="export-code"' + (endCode ? '' : ' disabled') + '>Copy replay code</button></div>' +
+      '<p class="export-copied" aria-live="polite"></p></div>';
+    layer.hidden = false;
+    const btn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="export-code"]'));
+    if (btn) btn.focus();
+    askDone = () => { askDone = null; layer.hidden = true; layer.innerHTML = ''; };
+  }
+  function copyExport(text) {
+    const note = $('askLayer').querySelector('.export-copied');
+    copyText(text, ok => { if (note) note.textContent = ok ? 'Copied.' : 'Copy failed.'; });
   }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   const TEST_AREAS = {
