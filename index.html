@@ -6464,8 +6464,9 @@ const App = (() => {
   async function checkInstall() {
     const rows = [];
     const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
-    /* A local copy (file://) cannot install or play offline, so the checks below do not apply. */
-    const local = location.protocol === 'file:';
+    /* A local copy cannot install or play offline, so the checks below do not apply: file://, or content:// when a
+       phone opens a downloaded file. There the service worker calls reject. */
+    const local = !/^https?:$/.test(location.protocol);
     const note = $('setLocalNote');
     if (note) note.hidden = !local;
     const show = () => {
@@ -6499,7 +6500,7 @@ const App = (() => {
     } catch (e) { row('bad', 'Manifest could not be loaded: ' + e.message + '.'); }
     if (!('serviceWorker' in navigator)) row('bad', 'This browser has no service workers.');
     else {
-      const reg = await safe(() => navigator.serviceWorker.getRegistration());
+      const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
       row(reg && reg.active ? 'ok' : 'bad', reg && reg.active ? 'Service worker is active.' : 'Service worker is not active yet.');
       row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
     }
