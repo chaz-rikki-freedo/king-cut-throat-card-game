@@ -154,6 +154,34 @@ function expect(name, ok, detail) {
     expect('the deal shows your cards', r.cards > 0, r.cards);
     expect('Next hand reaches the end in the Advanced UI', r.end === true, r.end);
 
+    console.log('Discards: raised first, then sent');
+    await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
+    r = await step(`
+      await sleep(100); speed('instant');
+      const raised = () => document.querySelectorAll('#hand .card.selected').length, cards = () => document.querySelectorAll('#hand .card[data-card]').length;
+      let k = 0;
+      for (; k < 80 && !raised(); k++) { click('[data-action="watch-fwd"]'); await sleep(10); }
+      const out = { raised: raised(), cards: cards(), v: app.state.version, phase: app.state.phase };
+      click('[data-action="watch-back"]'); await sleep(20);
+      out.lowered = raised() === 0 && app.state.version === out.v;
+      click('[data-action="watch-fwd"]'); await sleep(20);
+      out.again = raised();
+      click('[data-action="watch-fwd"]'); await sleep(50);
+      out.after = { raised: raised(), cards: cards(), v: app.state.version };
+      /* Play holds the raised cards, then sends them. */
+      click('[data-action="watch-prev"]'); await sleep(20);
+      speed('fast'); click('[data-action="watch-play"]');
+      let sawRaised = false;
+      for (let i = 0; i < 400 && app.state.handNumber < 3; i++) { if (raised()) sawRaised = true; await sleep(10); }
+      click('[data-action="watch-play"]');
+      out.sawRaised = sawRaised;
+      return out;
+    `);
+    expect('a discard from the bottom seat first raises its cards, with no move made', [3, 2, 1].includes(r.raised) && r.cards >= r.raised, r);
+    expect('Back lowers them, at the same move', r.lowered);
+    expect('the next Forward sends them to the pile', r.again === r.raised && r.after.raised === 0 && r.after.cards === r.cards - r.raised && r.after.v === r.v + 1, r);
+    expect('Play shows the raised cards before they go', r.sawRaised);
+
     console.log('Watch from another seat');
     const seatCheck = `
       const name = sel => (q(sel + ' .seat-name') || {}).textContent;

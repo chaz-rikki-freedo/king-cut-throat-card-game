@@ -4232,6 +4232,8 @@ const Render = (() => {
       /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
          UI's round 2, on your call, a card you click says which button names its suit. */
       const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2 || !!ui.watch;   /* the replay viewer shows the hand bright too */
+      /* The replay viewer raises a discard's cards before they go (ui.selected). */
+      if (ui.watch && ui.selected.has(id)) return cardHTML(id, v.trump, { button: true, disabled: true, cls: ['idle', 'bidding', 'selected'], isNew });
       if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay && !ui.watch) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
       return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
@@ -6533,7 +6535,7 @@ const App = (() => {
     clearTimer();
     const ov = $('overlay');
     watch = {
-      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, playing: false, timer: 0,
+      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
       back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
@@ -6587,7 +6589,16 @@ const App = (() => {
      table at once. */
   function watchGo(n) {
     const w = watch, to = Math.max(w.min, Math.min(w.total, n));
-    if (to === w.cur.steps + 1) { draw(watchStep() || []); return; }
+    if (to === w.cur.steps + 1) {
+      /* A discard by the seat at the bottom shows first as its cards raised, then goes on the next step. */
+      const cards = w.preview ? null : discardOf(watchPeek(), w.seat);
+      w.preview = cards;
+      app.ui.selected = new Set(cards || []);
+      draw(cards ? [] : watchStep() || []);
+      return;
+    }
+    w.preview = null;
+    app.ui.selected.clear();
     if (to < w.cur.steps) {
       w.cur.seek(to);
       app.state = w.cur.state;
@@ -6601,11 +6612,36 @@ const App = (() => {
     resetDraw();
     draw([]);
   }
-  /** Start, back, forward and end: playing stops. @param {number} n */
+  /* The next decision, or null when the next step is the table's own (a deal, a trick's end). */
+  function watchPeek() {
+    const c = watch.cur, d = c.record.decisions;
+    if (Engine.systemAction(app.state)) return null;
+    let i = c.decisionsUsed;
+    while (i < d.length && d[i] && d[i].type === 'MARK') i++;
+    return d[i] || null;
+  }
+  /** The cards a decision discards from seat p's hand: the opening discard, the exchange or a Showdown discard.
+      @returns {string[] | null} */
+  function discardOf(a, p) {
+    if (!a || a.player !== p) return null;
+    if (a.type === 'DISCARD' || a.type === 'EXCHANGE') return a.cards.slice();
+    return a.type === 'SHOWDOWN_DISCARD' ? [a.card] : null;
+  }
+  /** The hand buttons, Back and Forward: playing stops. @param {number} n */
   function watchMove(n) {
     clearTimeout(watch.timer);
     watch.playing = false;
     watchGo(n);
+  }
+  /* Back one move. While a discard shows raised, Back lowers it first. */
+  function watchBack() {
+    const w = watch;
+    if (!w.preview) { watchMove(w.cur.steps - 1); return; }
+    clearTimeout(w.timer);
+    w.playing = false;
+    w.preview = null;
+    app.ui.selected.clear();
+    draw([]);
   }
   /* Play steps at the game speed and waits while a dialog is open. Play at the end starts again from the start. */
   function watchPlay(on) {
@@ -6621,10 +6657,11 @@ const App = (() => {
     if (!w || !w.playing) return;
     const wait = app.menuOpen || askDone || !$('overlay').hidden ? 200 : heldDraw ? 50 : Fx.busyFor();
     if (wait > 0) { w.timer = setTimeout(watchTick, wait + 16); return; }
-    const ev = watchStep();
-    if (!ev || w.cur.steps >= w.total) w.playing = false;
-    draw(ev || []);
-    if (w.playing) w.timer = setTimeout(watchTick, watchDelay());
+    const at = w.cur.steps;
+    watchGo(at + 1);
+    if ((w.cur.steps === at && !w.preview) || w.cur.steps >= w.total) { w.playing = false; draw([]); }
+    /* Raised discards stay up for a trick's wait, so they can be seen. */
+    if (w.playing) w.timer = setTimeout(watchTick, w.preview ? Math.max(400, DELAYS[app.ui.speed].trick) : watchDelay());
   }
   /* The wait before the next step, as in a game: a bot's move, a trick or hand that has ended, or a system step. */
   function watchDelay() {
@@ -7140,7 +7177,8 @@ const App = (() => {
         if (!watch) break;
         const at = watch.cur.steps;
         if (name === 'watch-play') watchPlay(!watch.playing);
-        else watchMove(name === 'watch-prev' ? watchHand(at, -1) : name === 'watch-back' ? at - 1 : name === 'watch-fwd' ? at + 1 : watchHand(at, 1));
+        else if (name === 'watch-back') watchBack();
+        else watchMove(name === 'watch-prev' ? watchHand(at, -1) : name === 'watch-fwd' ? at + 1 : watchHand(at, 1));
         /* The buttons are drawn again: the focus goes back to the one used, or to Play when it is now dimmed. */
         const f = document.querySelector('[data-action="' + name + '"]:not(:disabled)') || document.querySelector('[data-action="watch-play"]');
         if (f instanceof HTMLElement) f.focus();
@@ -7152,6 +7190,7 @@ const App = (() => {
         const p = Number(el.getAttribute('data-seat'));
         if (!watch || ![0, 1, 2].includes(p)) break;
         watch.seat = p;
+        watch.preview = null;
         app.ui.selected.clear();
         closePanel();
         resetDraw();
@@ -7423,7 +7462,7 @@ const App = (() => {
       /* The replay viewer: Escape exits, the arrow keys step, and Space or Enter plays or pauses (below). */
       if (watch && $('overlay').hidden && !(ev.target instanceof Element && /^(SELECT|INPUT|TEXTAREA)$/.test(ev.target.tagName))) {
         if (ev.key === 'Escape') { ev.preventDefault(); watchExit(); return; }
-        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); watchMove(watch.cur.steps + (ev.key === 'ArrowLeft' ? -1 : 1)); return; }
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); if (ev.key === 'ArrowLeft') watchBack(); else watchMove(watch.cur.steps + 1); return; }
       }
       if (ev.key !== ' ' && ev.key !== 'Enter') return;
       const t = ev.target instanceof Element ? ev.target : null;
