@@ -207,7 +207,8 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play or Waves. Scopes every part below it. |
 | Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
 | Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20, oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
-| Last games table | `.profile details` | S | The same games as a table. |
+| Last games table | `.profile details` | S | The same games as a table. Each row ends with its actions (`.pf-acts`). |
+| Try again icon | `.tiny-btn`, `data-action="replay-seed"`, `data-at` | C | A counter-clockwise arrow on a Last games row: plays the same table again (mode, wave, opponents, deals and house rules). Missing when this app cannot play the game again. |
 | Opponent table | `data-table="opp"` | C, S | Games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
 | Table list | `.pf-tables` | C, S | Under All only, collapsed: the same columns for each West / East pair. |
 
@@ -232,8 +233,9 @@ Opens when a player reaches 10 points.
 | Final scores | `table` | R | Only when there are no hand stats. |
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave. |
-| View table button | `close-overlay` | C | Closes the dialog. The end buttons stay in the action bar. |
-| End buttons | `endButtonsHTML()` | C | Free play: **New Game**, **Replay Seed**, **Menu**. Waves: **Next wave** or **Try again**, **Replay Seed**, **Menu**. |
+| Back button | `.modal-x`, `close-overlay` | C | ✕ in the top right. Closes the dialog. The end buttons stay in the action bar. |
+| End buttons | `endButtonsHTML()`, `.btn-ico` | C | The same in every mode, each an icon and a label: **Watch** (`replay-watch`, dimmed until the replay viewer), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
+| Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. ✕, Escape or a click outside closes it. |
 
 ## 4. Confirm layer
 
@@ -308,8 +310,6 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Logging switch | `#setEnable` | C | Turns the debug log on. |
-| Seed readout | `#setSeed`, `.set-seed` | L | The seed of the current game. |
-| Copy seed button | `copy-seed`, `#setCopied` | C | Copies the seed. "Copied" confirms it. |
 | Local-copy note | `#setLocalNote` | D | Shows when the page was opened from a file. |
 | Install group | `#setInstall`, `.install-check` | S | A checklist of why the app can or cannot install. |
 | Check again button | `install-check` | C | Runs the install check again. |
@@ -331,6 +331,7 @@ Region: `aside.logpanel`. The player name for it is **Latest Scroll**. In the Ad
 |---|---|---|---|---|
 | Log heading | — | `.logpanel h2` | L | "Latest Scroll". |
 | Log | Game log, scroll | `#gameLog`, `.gamelog` | R | One line for each event of this game. Cleared at each new game. |
+| Winner line | — | `li.end` | S | The last event of a game: it congratulates the winner. At the game's end the Latest cell shows only this line. |
 | Hand line | Blue line | `li.h` | R | Deals, trump calls and hand results. |
 | Showdown line | Pink line | `li.s`, `li.sd` | R | Showdown events, indented. |
 | King line | Gold line | `li.k` | R | "♔ +1 to West…". |

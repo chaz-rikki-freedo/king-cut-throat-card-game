@@ -37,7 +37,7 @@ The header stays at the top of the window, and the page scrolls under it. From l
 
 ### Free play and Dynamic: choose seats
 
-In Free play and Dynamic, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Replay Seed** offers it again. There is no dialog when the AI plays your seat at the start.
+In Free play and Dynamic, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Try again** and **New deal** offer it again. There is no dialog when the AI plays your seat at the start.
 
 - **New opponents** seats two other random opponents (a new seed), neither of the two shown.
 - **Back** (or **Esc**) does not start the game: the table empties and the menu opens. Your saved game of that mode, if any, stays as it was, because a game is saved only once **Play** is pressed.
@@ -159,7 +159,6 @@ These fine-tune **Skill** for every bot. With **Personalities** on, or in a Wave
 | Control | What it does |
 |---|---|
 | **Event log** | Starts the timestamped event log (public information only), shown below it. |
-| **Seed / Copy** | Shows the current game's seed and copies it. |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear log** | Clears the log and the test results. |
@@ -220,8 +219,8 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 - Each counted game on a wave that is not cleared yet adds one try. Click **Wave N of 18** in the header to see your tries.
 - Leaving a game also counts as a try from hand 2 on: a new game, another wave, a `?wave=` link or discarding the game. The question before you leave says so. During hand 1 you can leave for free: you have seen one deal and no one has scored. By hand 2, restarting whenever you fall behind would raise your win rate by about 6 percentage points, and by hand 7 by about 13 (3,000 bot games, waves 1 and 7). A game whose win would not count also costs no try. A reload resumes the game.
 - A win does not count when the wave was locked at the start, or when the AI played your seat at any time in the game. The first time you hand your seat to the AI in a wave that can still be cleared, the game asks first.
-- A win with **Replay Seed** counts too.
-- At the end of a wave: after a win, **Next wave**, **Replay Seed** and **Menu**; after a loss, **Try again** (same wave, new deal), **Replay Seed** and **Menu**.
+- A win with **Try again** counts too.
+- At the end of a wave: the end buttons (see **End of a game**); after a win that opens the next wave, also **Next wave**. **New deal** plays the same wave with new cards.
 - Progress is kept in the browser (`localStorage`, key `kct.waves`). Without storage, it lasts until the page reloads.
 
 **Your win** is the win rate of a human-style bot (Casual, Real table) in your seat, from 150 bot games per table. A real first-time player wins less. A rematch is an earlier wave with the seats swapped. For how real tables differ from this bot, see [docs/human-play.md](docs/human-play.md).
@@ -275,20 +274,34 @@ A mode for new players: the bots ease off while you learn, and tighten back to n
 - **What the bots read during a game:** only what the table saw. After each hand, a hand where you were neither caller nor receiver shows all 7 cards you kept, because you played them. Weak hands there (2 of the last 3) ease the bots off fast. Your score share and your failed calls ease them slowly. A bot may say so, in its own words, once a game.
 - **Bluffing stays a real tactic.** The bots read your bids as they always do, in every mode.
 - **After a game:** the app reviews your discards and bids with the whole deal, and updates your profile (`kct.profile`). The next Dynamic game starts from it. The review runs after the end-of-game box shows, never during play, and no bot reads it. Games from every mode feed it; your score share counts only from Dynamic games. Games where the AI played your seat never count.
-- **Replay Seed** plays the same game again from the profile that the game started from. The replay code keeps that starting point in its META (see [docs/replay-code.md](docs/replay-code.md), 4.4).
+- **Try again** plays the same game again from the profile that the game started from. The replay code keeps that starting point in its META (see [docs/replay-code.md](docs/replay-code.md), 4.4).
 - **Results:** Dynamic has its own results. Dynamic wins never clear or open waves.
 
 ## AI plays your seat
 
 Turn on **Settings → Game → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the personality from **Settings → Game → AI personality**, or one that the seed picks (see **Your seat**). It keeps that personality for the rest of the game, however often you switch. With Personalities off, in Free play, the AI uses the bot settings for your seat, as it does for West and East.
 
-The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Replay Seed** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game.
+The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Try again** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game.
 
-The hand-over is for that game only. The next game starts with you in your seat, also after **Replay Seed** or **Try again**. A saved game resumed with the Your seat switch off (always so after a reload) gives you your seat back; the game stays assisted.
+The hand-over is for that game only. The next game starts with you in your seat, also after **Try again** or **New deal**. A saved game resumed with the Your seat switch off (always so after a reload) gives you your seat back; the game stays assisted.
 
 ## Replay a game
 
-The same seed gives the same deals: `index.html?seed=123456`. The panel shows the current seed with a **Copy** button.
+The same seed gives the same deals: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has a **Try again** icon (a counter-clockwise arrow): it plays that table again, with the same mode, wave, opponents, deals and house rules. Plans for the replay viewer: [docs/ui/plan.md](docs/ui/plan.md).
+
+### End of a game
+
+The Latest Scroll's last line congratulates the winner. The results dialog and the action bar show the same end buttons in every mode:
+
+| Button | What it does |
+|---|---|
+| **Watch** | Watch the game again in the replay viewer. Coming soon: dimmed for now. |
+| **Try again** | The same deal again: the same table, cards and house rules. |
+| **New deal** | New cards at the same table: the same wave, or in Free play and Dynamic, the same two opponents in the same seats. |
+| **Export** | Copy the seed (the deals) or the replay code (the whole game). |
+| **Next wave** | Only after a win that opens the next wave. |
+
+**✕** (Back) in the dialog's top right returns to the table. The menu is the **☰** button in the header.
 
 The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 

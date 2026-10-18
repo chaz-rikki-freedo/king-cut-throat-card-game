@@ -11,6 +11,7 @@ The vocabulary supports the planned **UI levels**: four versions of the interfac
 | [Vocabulary](vocabulary.md) | The name, code anchor and text kind of each area and part. |
 | [UI levels](levels.md) | The four UI levels, the text kinds, and a draft of what each level shows. |
 | [Game moments](moments.md) | The names of the steps of a hand, and what the action bar asks at each step. |
+| [UI plan](plan.md) | Where the replay, seed, backup and theme features go in the interface, in phases. |
 | [Colors](colors.md) | The color families and tokens, the rules that keep colors apart, the checker, and theme packs. The [palette page](palette.html) shows them (development only). |
 
 ## How the interface is built

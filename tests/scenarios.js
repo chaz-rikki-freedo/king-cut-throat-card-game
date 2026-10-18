@@ -82,7 +82,7 @@ function expect(name, ok, detail) {
     expect('Discard game shows only on the card with a game', JSON.stringify(r.icons) === JSON.stringify(['discard-free']), r.icons);
     expect('Discard game asks first; Keep it keeps the game', r.discardAsk === 'Discard your Free play game?' && r.discardKept, r);
     expect('the game ends', r.stop === 'game-over', r.stop);
-    expect('the end buttons for Free play', JSON.stringify(r.buttons) === JSON.stringify(['View table', 'New Game', 'Replay Seed', 'Menu']), r.buttons);
+    expect('the end buttons for Free play', JSON.stringify(r.buttons) === JSON.stringify(['Watch', 'Try again', 'New deal', 'Export']), r.buttons);
     expect('the save slot is cleared', r.slotCleared);
     expect('the replay code rebuilds the same end', r.replayOk);
     expect('the result is recorded', r.stats && r.stats.played === 1 && r.stats.won === (r.winner === 0 ? 1 : 0), r.stats);
@@ -151,10 +151,10 @@ function expect(name, ok, detail) {
     expect('the game ends', r.stop === 'game-over', r.stop);
     if (r.won) {
       expect('a win clears wave 1 and opens wave 2', r.waves.cleared.includes(1) && r.waves.unlocked === 2 && r.tries === 1, r.waves);
-      expect('the wave note and buttons for a win', /Wave 1 cleared/.test(r.note) && r.buttons.includes('Next wave'), [r.note, r.buttons]);
+      expect('the wave note and buttons for a win', /Wave 1 cleared/.test(r.note) && JSON.stringify(r.buttons) === JSON.stringify(['Watch', 'Try again', 'New deal', 'Export', 'Next wave']), [r.note, r.buttons]);
     } else {
       expect('a loss counts a try and clears nothing', !r.waves.cleared.length && r.tries === 1, r.waves);
-      expect('the wave note and buttons for a loss', /not cleared/.test(r.note) && r.buttons.includes('Try again'), [r.note, r.buttons]);
+      expect('the wave note and buttons for a loss', /not cleared/.test(r.note) && JSON.stringify(r.buttons) === JSON.stringify(['Watch', 'Try again', 'New deal', 'Export']), [r.note, r.buttons]);
     }
     expect('the replay code is a Waves game, wave 1', r.replay);
     expect('the result is recorded', r.stats && r.stats.played === 1, r.stats);
