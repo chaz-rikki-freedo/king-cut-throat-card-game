@@ -11,7 +11,8 @@
     "stress": "node stress.js all 4",
     "soak": "node soak.js 4 3",
     "dynamic": "node dynamic.js",
-    "test": "node typecheck.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node stress.js all 4"
+    "watch": "node watch.js",
+    "test": "node typecheck.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node watch.js && node stress.js all 4"
   },
   "devDependencies": {
     "playwright": "^1.64.0",

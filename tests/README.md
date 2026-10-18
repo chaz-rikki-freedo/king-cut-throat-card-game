@@ -23,6 +23,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node forfeit.js` | Waves tries through the menu buttons and questions: leaving a game in hand 1 is free; from hand 2, **Discard** or **Play wave** counts one try and the question says so, also for a saved wave game while Free play runs; a cleared wave and a game the AI played in cost none. | about 7 s |
 | `node scenarios.js` | Two full games through the real controls (Free play, then Waves wave 1): seat swap and log colors, reload and resume, the questions the app asks, end buttons, results, wave progress, replay codes, the Skip button in a Showdown between the two bots, an old save, and the Your seat setting (the AI seat never carries over). | 2–5 min |
 | `node dynamic.js` | Dynamic mode through the controls: the menu card, the seat dialog and the header, a reload and Resume (the easing is worked out again from the moves), the end (results, the replay code with mode 3 and its META, the review and the profile, backups), **Replay Seed** (the same game from the old snapshot, after the review changed the profile), and a game where the AI played your seat (adds nothing). Also checks the fitted estimate in `index.html` against `data/handvalue-fit.json`. | about 30 s |
+| `node watch.js` | The replay viewer through the real controls: **Watch** at the end of a game, Previous hand, Back, Forward, Next hand (a redeal is the same hand) and Play, the end result, Exit back to the results with the game and its log as they were, the Watch icon in Your profile and Escape, the `?replay=` link (used once; a bad code opens the menu with a note), and the Advanced UI. | about 30 s |
 | `node dynamic.js rates 80 4` | Not a default check. Bot games that measure Dynamic's fast path: how often it catches a player who throws away their best cards within 3 visible hands, and how often it fires for players at ladder rows 4, 6 and 8. Fails under an 80% catch rate or over 3% false alarms. | about 40 s |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
@@ -35,7 +36,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 
 The last four scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
-`npm test` runs `typecheck.js`, `selftest.js`, `sw.js`, `scenarios.js`, `dynamic.js` and `stress.js all 4`.
+`npm test` runs `typecheck.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js` and `stress.js all 4`.
 
 GitHub Actions has two workflows:
 
