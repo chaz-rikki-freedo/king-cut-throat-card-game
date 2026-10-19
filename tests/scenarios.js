@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* UI scenarios, played through the real controls: two full games (Free play and Waves), reload and resume,
+/* UI scenarios, played through the real controls: the About screen, two full games (Free play and Waves), reload and resume,
    the questions the app asks, the Skip button, the seat-swap log colors, an old save and the Your seat setting.
    Your seat is played by the fast AI, by clicks. Exit code 1 on a failed check. */
 'use strict';
@@ -14,13 +14,40 @@ function expect(name, ok, detail) {
 
 (async () => {
   const srv = await serve(), browser = await launch();
-  /* The scenarios drive the classic table: Settings → Game → Interface → Flat. */
-  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
+  const { page, errors } = await openPage(browser, srv.url);
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   const reload = () => page.reload();
   try {
-    console.log('Game 1: Free play');
+    console.log('The About screen');
     let r = await step(`
+      const shown = id => !q('#' + id).hidden;
+      const out = { launch: shown('about') && !shown('table') && !shown('info') };
+      click('#overlay [data-action="just-enter"]'); await sleep(20);
+      out.idle = shown('about') && !shown('table') && !overlayOpen();
+      out.build = q('#aboutBuild').textContent === q('#setBuild').textContent && /^Build /.test(q('#aboutBuild').textContent);
+      out.credit = q('#about .about-credit').textContent.replace(/\\s+/g, ' ').trim();
+      out.kings = document.querySelectorAll('#aboutKings .about-king').length;
+      click('#about [data-action="about-rules"]'); await sleep(20);
+      out.rules = !!q('#overlay .rules') && overlayOpen();
+      click('#overlay .rules .sheet-top [data-action="close-overlay"]'); await sleep(20);
+      out.rulesBack = !overlayOpen() && shown('about');
+      click('#about [data-action="toggle-settings"]'); await sleep(20);
+      out.settings = !q('#settingsPanel').hidden;
+      click('#settingsPanel [data-action="toggle-settings"]'); await sleep(20);
+      click('#about [data-action="menu"]'); await sleep(20);
+      out.menu = !!q('#overlay .menu') && overlayOpen();
+      return out;`);
+    expect('at launch the menu opens over the About screen', r.launch, r);
+    expect('closing the menu leaves the About screen, not an empty table', r.idle, r);
+    expect('the About screen names the build, as Settings does', r.build, r);
+    expect('the About screen credits the original design', r.credit === 'Original game design by C.R.F.B. 2009–2011', r.credit);
+    expect('kings drift behind the About card', r.kings > 0, r.kings);
+    expect('Rules opens from the About screen and closes back to it', r.rules && r.rulesBack, r);
+    expect('the Settings icon opens Settings', r.settings, r);
+    expect('Menu opens the menu', r.menu, r);
+
+    console.log('Game 1: Free play');
+    r = await step(`
       const out = { launch: q('#overlay h2') && q('#overlay h2').textContent };
       speed('fast'); click('[data-action="new-free"]'); await sleep(50);
       while (!q('#overlay .swap')) await sleep(10);
@@ -32,7 +59,7 @@ function expect(name, ok, detail) {
       click('[data-action="swap-new"]'); await sleep(20);
       out.bots = app.ui.personas.slice(1);
       out.newOpponents = !!q('#overlay .swap') && !out.bots.some(x => first.includes(x));
-      out.atSwap = { hand: app.state.handNumber, cards: app.state.hands[0].length, dealer: app.state.dealer, prompt: q('.prompt') && q('.prompt').textContent };
+      out.atSwap = { hand: app.state.handNumber, cards: app.state.hands[0].length, dealer: app.state.dealer, status: q('#liveStatus').textContent, about: !q('#about').hidden };
       click('[data-action="swap-preview"]'); await sleep(20);
       out.colors = Array.from(q('#gameLog li').querySelectorAll('span[class^="p"]')).every(x => app.state.players[Number(x.className.slice(1))].name === x.textContent);
       click('[data-action="swap-done"]');
@@ -45,7 +72,7 @@ function expect(name, ok, detail) {
     expect('Back from the seat dialog opens the menu with no game and nothing saved', r.back.menu && r.back.mode === null && !r.back.saved, r.back);
     expect('New opponents seats two other opponents', r.newOpponents, r);
     expect('the seat dialog shows before the dealer is drawn: no dealer, no cards', r.atSwap.hand === 0 && r.atSwap.cards === 0 && r.atSwap.dealer === null, r.atSwap);
-    expect('behind the seat dialog, the table says Choosing seats', r.atSwap.prompt === 'Choosing seats.', r.atSwap);
+    expect('behind the seat dialog, the table says Choosing seats', r.atSwap.status === 'Choosing seats.' && !r.atSwap.about, r.atSwap);
     expect('seat swap changes the seats', r.botsAfter[0] === r.bots[1] && r.botsAfter[1] === r.bots[0], r);
     expect('after a swap, each name in the log has its seat color', r.colors);
     expect('play reaches hand 2', r.stop === 'stop', r.stop);
@@ -132,7 +159,7 @@ function expect(name, ok, detail) {
       out.chip = q('#modeChip').textContent; out.swap = !!q('#overlay .swap');
       await drive(() => app.state.phase === P.TRICK_PLAY);
       allowSeatAI(true);
-      click('.seat-toggle'); await sleep(50);
+      await waitFor('.seat-toggle'); click('.seat-toggle'); await sleep(50);
       out.ask = askOpen() && q('#askTitle').textContent;
       click('[data-action="ask-cancel"]'); await sleep(50);
       allowSeatAI(false);
@@ -391,11 +418,11 @@ function expect(name, ok, detail) {
       KCT.App.newGame(77, 1); await sleep(20);
       const off = { tag: !!q('.seat-toggle'), label: !!q('#seat0 .tag.you') };
       allowSeatAI(true); await sleep(20);
-      click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20);
+      await waitFor('.seat-toggle'); click('.seat-toggle'); await sleep(20); if (askOpen()) click('[data-action="ask-ok"]'); await sleep(20);
       const handed = app.ui.autoplay && app.humanSeatWasAutoplayed;
       allowSeatAI(false); await sleep(20);
       const back = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed, tag: !!q('.seat-toggle') };
-      allowSeatAI(true); click('.seat-toggle'); await sleep(20);
+      allowSeatAI(true); await waitFor('.seat-toggle'); click('.seat-toggle'); await sleep(20);
       KCT.App.newGame(78, 1); await sleep(20);
       const next = { autoplay: app.ui.autoplay, assisted: app.humanSeatWasAutoplayed };
       return { off, handed, back, next };`);
@@ -414,7 +441,7 @@ function expect(name, ok, detail) {
       // A free-play game handed to the AI at once, played for up to 120 moves or to its end.
       async function run(seed) {
         KCT.App.newGame(seed);
-        click('.seat-toggle');
+        await waitFor('.seat-toggle'); click('.seat-toggle');
         const v = app.state.version, t0 = Date.now();
         while (Date.now() - t0 < 60000 && !app.state.gameOver && app.state.version < v + 120) await sleep(20);
         const st = app.state;
@@ -436,30 +463,28 @@ function expect(name, ok, detail) {
     r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
 
-    console.log('Advanced: in your Showdown, the Outside cell shows the discards as mini cards');
+    console.log('In your Showdown, the Outside cell shows the discards as mini cards');
     r = await step(`
-      const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
       const want = () => { const sd = app.state.showdown; return !!sd && sd.active && sd.participants.includes(0) && !sd.pendingDiscard[0] && app.state.phase === P.SHOWDOWN_PLAY; };
-      speed('fast');
+      /* Instant: no motion, so the search is quick. */
+      speed('instant');
       for (let seed = 1; seed < 40 && !want(); seed++) { KCT.App.newGame(seed); await drive(() => want() || app.state.gameOver, 60000); }
       const out = { found: want() };
       if (out.found) {
-        app.timerFn = null; mode('advanced'); await sleep(400);
+        app.timerFn = null; await sleep(400);
         const val = q('#info .out .val');
         out.minis = val ? val.querySelectorAll('.micro, .mc').length : -1;
         out.mine = val && val.querySelector('.micro') ? val.querySelector('.micro').getAttribute('aria-label') || val.querySelector('.micro [aria-label]').getAttribute('aria-label') : null;
         out.count = !!q('#info .val[data-count]');
-        mode('flat');
       }
       return out;`);
     expect('the Outside cell keeps the mini cards (not the rank as a count)', r.found && r.minis === 2 && !!r.mine && !r.count, r);
 
-    console.log('Advanced: the play area explains itself on your move');
+    console.log('The play area explains itself on your move');
     r = await step(`
-      const mode = m => { const s = q('#setUIMode'); s.value = m; s.dispatchEvent(new Event('change')); };
       const title = () => q('#table > .panel .ptitle') && q('#table > .panel .ptitle').textContent;
       const mine = () => KCT.Engine.actors(app.state).includes(0);
-      mode('advanced'); speed('fast');
+      speed('fast');
       KCT.App.newGame(4242);
       const out = {};
       out.discard = await drive(() => app.state.phase === P.DISCARD && mine());
@@ -485,7 +510,6 @@ function expect(name, ok, detail) {
         const t0 = Date.now(); while (slots() && Date.now() - t0 < 5000) await sleep(20);
         out.afterPlay = slots();
       }
-      mode('flat');
       return out;`);
     expect('your discard: the kitty and the outside pile open what they are', r.discard === 'stop' && r.kitty && /^Kitty/.test(r.kittyTitle) && /^Outside pile/.test(r.outsideTitle), r);
     expect('a picked card turns the explanations off; unpicking it turns them on', r.picked && r.unpicked, r);
@@ -496,7 +520,9 @@ function expect(name, ok, detail) {
     console.log('One tab: a newer tab stops the older one');
     r = await step(`
       KCT.App.newGame(777, 1); speed('fast'); app.ui.autoplay = true;
-      const v = app.state.version; await sleep(1500);
+      /* The table's motion paces the moves: wait until a few have been made. */
+      const v = app.state.version, t0 = Date.now();
+      while (app.state.version - v <= 3 && Date.now() - t0 < 6000) await sleep(50);
       return app.state.version - v;`);
     expect('the game plays before a second tab opens', r > 3, r);
     const tab2 = await page.context().newPage();

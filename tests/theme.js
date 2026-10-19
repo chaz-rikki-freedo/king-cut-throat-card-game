@@ -14,7 +14,7 @@ function expect(name, ok, detail) {
 
 (async () => {
   const srv = await serve(), browser = await launch();
-  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
+  const { page, errors } = await openPage(browser, srv.url);
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   /* The theme as the page has it: the felt and a bot color the color pack changes, and the browser bar color. */
   const now = () => step(`

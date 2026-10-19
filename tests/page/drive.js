@@ -5,6 +5,8 @@ const A = KCT.App, app = A.app, P = KCT.Engine.P;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const q = sel => document.querySelector(sel);
 const click = sel => { const el = q(sel); if (!el) throw new Error('no element ' + sel); el.click(); };
+/* Waits up to ms for an element: the table's motion can hold a redraw for a moment. */
+const waitFor = async (sel, ms = 3000) => { const t0 = Date.now(); while (!q(sel) && Date.now() - t0 < ms) await sleep(10); return q(sel); };
 const overlayOpen = () => !q('#overlay').hidden;
 const askOpen = () => !q('#askLayer').hidden;
 /* Settings → Your seat: the Human/AI tag works only while this is on (a reload turns it off). */
@@ -30,6 +32,11 @@ function humanStep() {
   const st = app.state;
   if (!KCT.Engine.actors(st).includes(0) || app.ui.autoplay) return false;
   const a = KCT.AI.fastAction(st, 0);
+  /* The table's motion can hold a redraw for a moment: wait until the controls for this move are drawn. */
+  const need = { DISCARD: () => a.cards.map(id => '#hand button[data-card="' + id + '"]').concat('[data-action="confirm-discard"]'), EXCHANGE: () => a.cards.map(id => '#hand button[data-card="' + id + '"]').concat('[data-action="confirm-exchange"]'),
+    SHOWDOWN_DISCARD: () => ['#hand button[data-card="' + a.card + '"]', '[data-action="confirm-sd-discard"]'], SHOWDOWN_LEAD: () => ['[data-action="sd-lead"][data-seat="' + a.leader + '"]'],
+    BID: () => ['[data-action="bid-' + (a.accept ? 'accept' : 'pass') + '"]'], NAME: () => [a.suit ? '[data-action="name-suit"][data-suit="' + a.suit + '"]' : '[data-action="name-pass"]'], PLAY: () => ['#hand button[data-card="' + a.card + '"]'] }[a.type];
+  if (need && !need().every(sel => q(sel))) return true;
   human.actions[a.type + (a.type === 'BID' ? (a.accept ? ':accept' : ':pass') : a.type === 'NAME' ? (a.suit ? ':name' : ':pass') : '')] = (human.actions[a.type + (a.type === 'BID' ? (a.accept ? ':accept' : ':pass') : a.type === 'NAME' ? (a.suit ? ':name' : ':pass') : '')] || 0) + 1;
   const card = id => click('#hand button[data-card="' + id + '"]');
   switch (a.type) {

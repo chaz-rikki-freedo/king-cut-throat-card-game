@@ -1,6 +1,7 @@
 #!/bin/sh
-# Publishes the app: copies the app files from main to gh-pages and stamps the build
-# (the short main commit and its date) into the BUILD constant in index.html.
+# Publishes the app: copies the app files from main to gh-pages, stamps the build
+# (the short main commit and its date) into the BUILD constant in index.html, and removes
+# the comments from the published index.html (tools/strip-comments.js, from main too).
 #
 # Usage: tools/publish.sh [--dry-run] [message]
 #   message    added to the commit, for example "0.6.35: the build shows in Settings".
@@ -38,6 +39,11 @@ if [ "$(grep -cxF "$placeholder" "$work/index.html")" != 1 ]; then
 fi
 sed -i.bak "s/^const BUILD = Object.freeze({ commit: 'dev', date: '' });\$/$stamp/" "$work/index.html"
 rm -f "$work/index.html.bak"
+
+# The published page carries no comments. The source on main keeps them.
+git show origin/main:tools/strip-comments.js > "$work/.strip-comments.js"
+node "$work/.strip-comments.js" "$work/index.html"
+rm -f "$work/.strip-comments.js"
 
 cd "$work"
 git add -A -- $files

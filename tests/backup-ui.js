@@ -14,7 +14,7 @@ function expect(name, ok, detail) {
 
 (async () => {
   const srv = await serve(), browser = await launch();
-  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
+  const { page, errors } = await openPage(browser, srv.url);
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kct-backup-'));
   /* The time a game was saved changes with each save of the same game. */

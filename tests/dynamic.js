@@ -24,7 +24,7 @@ function expect(name, ok, detail) {
 
 async function checks() {
   const srv = await serve(), browser = await launch();
-  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
+  const { page, errors } = await openPage(browser, srv.url);
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   try {
     console.log('Fitted hand estimate');

@@ -13,7 +13,7 @@ function expect(name, ok, detail) {
 
 (async () => {
   const srv = await serve(), browser = await launch();
-  const { page, errors } = await openPage(browser, srv.url, { uiMode: 'flat' });
+  const { page, errors } = await openPage(browser, srv.url);
   const step = (src, arg) => run(page, src, arg, ['drive.js']);
   try {
     console.log('Watch at the end of a game');
@@ -87,12 +87,12 @@ function expect(name, ok, detail) {
 
     r = await step(`
       click('#overlay [data-action="close-overlay"]');
-      click('.actionbar [data-action="replay-watch"]'); await sleep(50);
+      click('#center .pile-act [data-action="replay-watch"]'); await sleep(50);
       const watching = !!q('.watch-ctl');
       click('#modeChip'); await sleep(50);
-      return { watching, dialog: overlayOpen(), ends: !!q('.actionbar [data-action="replay-watch"]') };
+      return { watching, dialog: overlayOpen(), ends: !!q('#center .pile-act [data-action="replay-watch"]') };
     `);
-    expect('Watch from the action bar returns to the table, not the results', r.watching && !r.dialog && r.ends, r);
+    expect('Watch from the table returns to the table, not the results', r.watching && !r.dialog && r.ends, r);
 
     console.log('Your profile: the Watch icon');
     r = await step(`
@@ -130,17 +130,11 @@ function expect(name, ok, detail) {
     r = await step(`await sleep(50); return { menu: overlayOpen() && !!q('#overlay .mcard'), note: (q('#overlay .wave-note') || {}).textContent || '' };`);
     expect('a code that does not decode opens the menu with a note', r.menu && /replay link/.test(r.note), r);
 
-    console.log('The Advanced UI');
-    await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
-    r = await step(`
-      await sleep(50);
-      const s = JSON.parse(localStorage.getItem('kct.settings')); s.uiMode = 'advanced'; localStorage.setItem('kct.settings', JSON.stringify(s));
-      return true;
-    `);
+    console.log('The controls on the table');
     await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
     r = await step(`
       await sleep(100);
-      const out = { adv: document.body.classList.contains('adv'), ctl: !!q('#center .pile-act .watch-ctl') };
+      const out = { ctl: !!q('#center .pile-act .watch-ctl') };
       speed('fast');
       click('[data-action="watch-fwd"]'); await sleep(30); click('[data-action="watch-fwd"]'); await sleep(30); click('[data-action="watch-fwd"]');
       await sleep(1500);
@@ -150,9 +144,9 @@ function expect(name, ok, detail) {
       out.end = app.state.gameOver;
       return out;
     `);
-    expect('the controls sit on the table', r.adv && r.ctl, r);
+    expect('the controls sit on the table', r.ctl, r);
     expect('the deal shows your cards', r.cards > 0, r.cards);
-    expect('Next hand reaches the end in the Advanced UI', r.end === true, r.end);
+    expect('Next hand reaches the end', r.end === true, r.end);
 
     console.log('Discards: raised first, then sent');
     await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
@@ -206,17 +200,15 @@ function expect(name, ok, detail) {
       out.back = read();
       return out;
     `;
-    for (const ui of ['flat', 'advanced']) {
-      await page.goto(srv.url);
-      await run(page, `const s = JSON.parse(localStorage.getItem('kct.settings')); s.uiMode = '${ui}'; localStorage.setItem('kct.settings', JSON.stringify(s));`, null, []);
+    {
       await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
       r = await step('await sleep(100);' + seatCheck);
-      expect(ui + ': from your seat, West on the left and East on the right', r.you.bottom === 'You' && r.you.left === r.west && r.you.right === r.east && r.you.ids.join() === 'seat0,seat1,seat2', r.you);
-      expect(ui + ': East\'s seat moves to the bottom, you to the left, West to the right', r.asEast.bottom === r.east && r.asEast.left === 'You' && r.asEast.right === r.west && r.asEast.ids.join() === 'seat2,seat0,seat1', r.asEast);
-      expect(ui + ': the bottom shows East\'s own hand', r.asEast.hand === r.eastHand && r.asEast.hand !== r.you.hand, [r.asEast.hand, r.eastHand]);
-      expect(ui + ': West\'s seat: West at the bottom, East on the left, you on the right', r.asWest.bottom === r.west && r.asWest.left === r.east && r.asWest.right === 'You' && r.asWest.hand === r.westHand, r.asWest);
-      expect(ui + ': tapping your seat brings you back', r.back.bottom === 'You' && r.back.ids.join() === 'seat0,seat1,seat2', r.back);
-      expect(ui + ': the focus goes to Play after a seat change', r.playFocus === 'watch-play', r.playFocus);
+      expect('from your seat, West on the left and East on the right', r.you.bottom === 'You' && r.you.left === r.west && r.you.right === r.east && r.you.ids.join() === 'seat0,seat1,seat2', r.you);
+      expect('East\'s seat moves to the bottom, you to the left, West to the right', r.asEast.bottom === r.east && r.asEast.left === 'You' && r.asEast.right === r.west && r.asEast.ids.join() === 'seat2,seat0,seat1', r.asEast);
+      expect('the bottom shows East\'s own hand', r.asEast.hand === r.eastHand && r.asEast.hand !== r.you.hand, [r.asEast.hand, r.eastHand]);
+      expect('West\'s seat: West at the bottom, East on the left, you on the right', r.asWest.bottom === r.west && r.asWest.left === r.east && r.asWest.right === 'You' && r.asWest.hand === r.westHand, r.asWest);
+      expect('tapping your seat brings you back', r.back.bottom === 'You' && r.back.ids.join() === 'seat0,seat1,seat2', r.back);
+      expect('the focus goes to Play after a seat change', r.playFocus === 'watch-play', r.playFocus);
     }
   } catch (e) {
     failed++;

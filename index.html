@@ -39,7 +39,7 @@ button{font:inherit;color:inherit}
    the trump and hand chips go to a second row. --header-h (set by the controller) places the toasts below it. */
 .topbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem 0.75rem;padding:0.5rem 1rem;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 0.125rem 0.625rem rgba(0,0,0,.35)}
 .brand{margin:0;font-weight:800;letter-spacing:.02em;font-size:1.125rem;white-space:nowrap}
-.game-chips{flex:1 1 auto;min-width:0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:0.625rem}
+
 .tools{display:flex;align-items:center;gap:0.375rem;margin-left:auto}
 .icon-btn{display:inline-grid;place-items:center;width:2.5rem;height:2.5rem;padding:0;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);cursor:pointer;flex:none}
 .icon-btn:hover{background:rgba(255,255,255,.18)}
@@ -68,7 +68,7 @@ button{font:inherit;color:inherit}
 .watch-btn:disabled{opacity:.35;cursor:default}
 /* Play is gold, the color of the main action; the step buttons stay blue. */
 .watch-btn[data-action="watch-play"]{color:var(--gold)}
-.actionbar .watch-ctl{margin:0 auto}
+
 /* In the replay viewer a seat's figure and name are one button: watch from that seat. The arrow says so. */
 .seat-sit{display:inline-flex;align-items:center;gap:0.375rem;padding:0.125rem 0.375rem 0.125rem 0;border:0;border-radius:0.5rem;background:none;color:inherit;font:inherit;cursor:pointer;min-width:0}
 .seat-sit:hover{background:rgba(255,255,255,.08)}
@@ -85,9 +85,7 @@ button{font:inherit;color:inherit}
 .speed-pick svg{width:1.25rem;height:1.25rem;flex:none}
 .speed-pick select{background:transparent;color:var(--ink);border:0;font:inherit;font-size:0.875rem;padding:0.25rem 0.125rem;cursor:pointer;outline:none}
 .speed-pick option{background:var(--felt-edge);color:var(--ink)}
-@media (max-width:899px){
-  .game-chips{order:10;flex-basis:100%;justify-content:flex-start}
-}
+
 @media (max-width:599px){ .topbar{padding:0.5rem 0.75rem;gap:0.5rem} }
 @media (max-width:479px){ .brand{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)} }
 @media (max-width:359px){ .mode-chip .of{display:none} }
@@ -115,11 +113,10 @@ button.mode-chip:focus-visible{outline:0.125rem solid var(--ink);outline-offset:
 .btn.suit.red{color:var(--red)}
 .btn.suit:disabled{text-decoration:line-through}
 select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.3125rem 0.375rem}
-.trump-chip{display:inline-flex;align-items:center;gap:0.375rem;padding:0.25rem 0.625rem;border-radius:62.4375rem;background:var(--panel-strong);font-weight:700;white-space:nowrap}
-.trump-chip .sym{font-size:1.25rem;line-height:1}
+
+
 .sym.red{color:var(--pip-red)}
 .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:0.75rem;padding:0.75rem 1rem 1.5rem;max-width:93.75rem;margin:0 auto}
-@media (min-width:1150px){.layout{grid-template-columns:minmax(0,1fr) 18.75rem}}
 .table{position:relative;display:grid;gap:0.625rem;grid-template-columns:minmax(0,1fr) minmax(0,2.3fr) minmax(0,1fr);grid-template-areas:"west center east" "me me me";background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%);border-radius:1.125rem;padding:0.75rem;border:1px solid rgba(255,255,255,.08);transition:background .4s}
 .table.showdown{background:radial-gradient(ellipse at center,var(--felt-showdown) 0%,var(--felt-showdown-edge) 100%)}
 @media (max-width:720px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"west east" "center center" "me me";padding:0.5rem}}
@@ -197,41 +194,41 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .tag.seat-toggle{cursor:pointer;user-select:none}.tag.you{background:#7a5c13}
 .tag.dealer{background:#ece6d4;color:#222}.tag.caller{background:var(--gold);color:var(--gold-ink)}
 .tag.receiver{background:#5e7d5e}.tag.mediator{background:#8e5aa8}.tag.duelist{background:#c2185b}
-.score-row{display:flex;align-items:baseline;gap:0.625rem}
+
 .score{font-size:1.875rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.score small{font-size:0.8125rem;font-weight:600;color:var(--muted)}
+
 .score.flash{animation:flash 1.3s ease-out}
 @keyframes flash{0%{color:var(--gold);transform:scale(1.25)}100%{color:inherit;transform:scale(1)}}
-.tricks{font-size:0.8125rem;color:var(--muted)}
-.tricks b{color:var(--ink)}
+
+
 .backs{display:flex;flex-wrap:wrap;gap:0;min-height:1.5rem}
 .mini-back{width:0.9375rem;height:1.375rem;border-radius:0.1875rem;margin-right:-0.25rem;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.1875rem,#93303d 0.1875rem 0.375rem)}
-.bubble{align-self:flex-start;background:var(--card);color:var(--black);font-weight:700;font-size:0.8125rem;border-radius:0.625rem;padding:0.1875rem 0.625rem;position:relative}
-.bubble.pass{background:#d9d9d9}.bubble.call{background:var(--gold);color:var(--gold-ink)}
+
+
 .discard-note{font-size:0.75rem;color:var(--muted)}
 .center{grid-area:center;display:flex;flex-direction:column;gap:0.625rem;min-width:0;align-items:stretch}
-.banner{text-align:center;font-weight:900;letter-spacing:.18em;font-size:1.25rem;padding:0.375rem;border-radius:0.625rem;background:#c2185b;color:#fff;box-shadow:0 0.125rem 0.625rem rgba(0,0,0,.35)}
-.banner small{display:block;font-weight:600;letter-spacing:.02em;font-size:0.8125rem}
-.piles{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem;align-items:flex-end}
-.pile{display:flex;flex-direction:column;align-items:center;gap:0.25rem;font-size:0.75rem;color:var(--muted)}
-.pile-cards{display:flex;align-items:flex-end;min-height:calc(var(--cw-small)*1.4)}
-.pile-cards .card{--w:var(--cw-small)}
-.pile-cards .card + .card{margin-left:calc(var(--cw-small)*-.62)}
-.tucked{transform:rotate(90deg) translateX(10%);opacity:.85;margin-left:calc(var(--cw-small)*-.2)!important}
-.blocked-x{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--cw-small)*.7);color:rgba(198,40,40,.75);font-weight:900;pointer-events:none}
-.trump-big{display:flex;flex-direction:column;align-items:center;font-size:0.75rem;color:var(--muted)}
-.trump-big .sym{font-size:calc(var(--cw-small)*.9);line-height:1.1;color:var(--ink)}
-.trump-big .sym.red{color:var(--pip-red)}
+
+
+
+
+
+
+
+
+
+
+
+
 .trick{position:relative;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto;gap:0.375rem 0.75rem;align-items:center;justify-items:center;min-height:calc(var(--cw)*2.2);background:rgba(0,0,0,.14);border-radius:0.875rem;padding:0.625rem}
-.trick-label{grid-column:2;grid-row:1;font-size:0.75rem;color:var(--muted);text-align:center;align-self:start}
+
 .slot{display:flex;flex-direction:column;align-items:center;gap:0.1875rem;font-size:0.75rem;color:var(--muted);min-width:var(--cw)}
 .slot-1{grid-column:1;grid-row:1 / span 2}
 .slot-2{grid-column:3;grid-row:1 / span 2}
 .slot-0{grid-column:2;grid-row:2}
 .slot .empty{width:var(--cw);height:calc(var(--cw)*1.4);border:0.125rem dashed rgba(255,255,255,.18);border-radius:calc(var(--cw)*.09)}
 .slot.win .card{box-shadow:0 0 0 0.25rem var(--gold),0 0.375rem 1rem rgba(0,0,0,.45)}
-.slot.win .who{color:var(--gold);font-weight:800}
-.lead-mark{color:var(--accent)}
+
+
 .summary{background:var(--panel-strong);border-radius:0.875rem;padding:0.875rem 1rem;text-align:center}
 .summary h3{margin:0 0 0.5rem;font-size:1.125rem}
 .summary table{margin:0.5rem auto;border-collapse:collapse;font-variant-numeric:tabular-nums}
@@ -243,20 +240,20 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .summary table.stats td,.summary table.stats th{padding:0.1875rem 0.375rem}
 .summary table.stats th{font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .summary table.stats td:first-child{text-align:left}
-.hand-chip{font-size:0.75rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.status{text-align:center;font-weight:600;min-height:1.4em}
-.lasttrick{display:flex;justify-content:center;align-items:center;gap:0.375rem;font-size:0.75rem;color:var(--muted);flex-wrap:wrap}
-.lasttrick .card{--w:1.875rem}
-.lasttrick .card .c-tl{font-size:0.5625rem}
-.lasttrick .card .c-br,.lasttrick .card .c-tag,.lasttrick .card .c-joker{display:none}
-.lasttrick .card .c-mid{font-size:0.9375rem}
-.lasttrick .card.win-mini{box-shadow:0 0 0 0.125rem var(--gold)}
+
+
+
+
+
+
+
+
 .me{grid-area:me;background:var(--panel);border-radius:0.875rem;padding:0.625rem;display:flex;flex-direction:column;gap:0.5rem;border:0.125rem solid transparent;min-width:0}
 .me.turn{border-color:var(--gold);box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25)}
 .me-head{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem 0.875rem}
-.actionbar{display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;justify-content:center;min-height:2.625rem;padding:0.375rem;background:rgba(0,0,0,.18);border-radius:0.625rem;text-align:center}
-.actionbar .prompt{font-weight:700;width:100%}
-.actionbar .hint{font-size:0.8125rem;color:var(--muted);width:100%}
+
+
+
 .hand{display:flex;flex-wrap:wrap;justify-content:center;gap:0.375rem;padding:0.875rem 0.25rem 0.25rem;min-height:calc(var(--cw)*1.4 + 1.125rem)}
 .card{--w:var(--cw);width:var(--w);height:calc(var(--w)*1.4);border-radius:calc(var(--w)*.09);background:var(--card);color:var(--black);position:relative;box-shadow:0 1px 0.1875rem rgba(0,0,0,.45);border:1px solid var(--card-edge);font-weight:800;flex:none;user-select:none;padding:0;overflow:hidden;transition:transform .12s ease, box-shadow .12s ease, opacity .12s}
 .card.red{color:var(--red)}
@@ -285,14 +282,14 @@ button.card{cursor:pointer}
 .hand .card.legal:hover,.hand .card.selectable:hover{transform:translateY(-0.5rem)}
 .hand .card.selected{transform:translateY(-0.875rem);box-shadow:0 0 0 0.1875rem var(--accent),0 0.375rem 0.875rem rgba(0,0,0,.5)}
 .hand .card:disabled,.hand .card[aria-disabled="true"]{opacity:.38;filter:grayscale(.55);cursor:not-allowed}
-body.adv .hand .card[aria-disabled="true"]{cursor:help}
+.hand .card[aria-disabled="true"]{cursor:help}
 .hand .card.bidding:disabled{opacity:1;filter:none;cursor:default}
 .hand .card.legal{box-shadow:0 0 0 0.125rem var(--accent),0 0.125rem 0.375rem rgba(0,0,0,.45)}
 .hand .card.legal.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.125rem var(--accent),0 0.125rem 0.375rem rgba(0,0,0,.45)}
-.card.enter{animation:enter .28s ease-out}
-@keyframes enter{from{transform:translateY(0.875rem) scale(.92);opacity:0}to{transform:none;opacity:1}}
-.logpanel{background:var(--felt-edge);border-radius:0.875rem;padding:0.625rem 0.75rem;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:12.5rem;max-height:80vh}
-.logpanel h2{font-size:0.875rem;margin:0 0 0.375rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+
+
+
 .gamelog{list-style:none;margin:0;padding:0.5rem 0.625rem;overflow:auto;overscroll-behavior:contain;font-size:0.8125rem;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:0.625rem;box-shadow:inset 0 0.125rem 0.375rem rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
 .gamelog li{padding:0.1875rem 0}
 .gamelog li.k{color:var(--gold);font-weight:700}
@@ -325,11 +322,11 @@ body.adv .hand .card[aria-disabled="true"]{cursor:help}
 .gamelog .pip-black{color:#000}
 /* A micro card's suit is drawn like a card's (SUIT_SVG), at one width for every suit. */
 .micro .m-suit{display:inline-block;width:.7em;height:auto;vertical-align:-.08em;fill:currentColor}
-.toasts{position:fixed;top:calc(var(--header-h,3.5rem) + 0.5rem);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:0.375rem;z-index:40;pointer-events:none;width:min(92vw,26.25rem)}
-.toast{background:var(--gold);color:var(--gold-ink);font-weight:800;border-radius:0.625rem;padding:0.5rem 0.875rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.4);text-align:center;animation:toast 2.6s ease forwards}
-.toast.neg{background:#ffcdd2;color:#5b0d0d}
-.toast.info{background:#e3f2fd;color:#0d2a44}
-@keyframes toast{0%{opacity:0;transform:translateY(-0.5rem)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+
+
+
+
+
 /* The King point (+1): over everything at the screen's center, tilted, green fading to clear from top to bottom,
    with a green stroke, weathered: a grime speckle in the fill (SVG noise) and a mask of noise that chips the fill and
    the stroke (large chips and fine pits).
@@ -500,290 +497,312 @@ body.set-open{overflow:hidden}
 .ask table.data-cmp td:first-child{color:var(--muted)}
 .update-note{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem;padding:0.625rem 0.875rem;border-radius:0.75rem;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 0.5rem 1.5rem rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 2rem)}
 .update-note[hidden]{display:none}
-/* ---- Advanced UI (Settings → Game). A minimal table: tags, numbers and circles in the seats, the shared
-   facts in one information strip, every action button in the play area, and motion that shows each move.
-   Every rule below needs body.adv, except the parts that the Advanced UI adds to the page (hidden without it)
-   and the This hand box of the profile dialog (with Table memory, standard table only). ---- */
-.topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden]{display:none!important}
-.persona .p-hand{align-self:stretch;text-align:left;background:rgba(0,0,0,.25);border-radius:0.625rem;padding:0.625rem 1rem;border:1px solid rgba(242,193,78,.35)}
-.persona .p-hand .lab{display:block;font-size:0.625rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:0.375rem;font-weight:800}
-.persona .p-hand dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.875rem;font-size:0.875rem}
-.persona .p-hand dt{color:var(--muted)}
-.persona .p-hand dd{margin:0}
-.persona .p-hand .pip-red{color:var(--pip-red)}
-body.adv .speed-pick{position:relative}
-body.adv .speed-pick select{display:block!important;position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
-body.adv .trick .card.enter{animation:none!important}
-body.adv .trick .slot .card{transition:none!important}
-body.adv #fx{position:fixed;inset:0;pointer-events:none;z-index:30}
-body.adv #fx > *{position:fixed!important;margin:0!important;box-sizing:border-box}
-body.adv #fx .olayer,body.adv #fx .olayer .card{animation:none!important}
-body.adv .tpips i.on.wait{background:transparent!important;border-color:rgba(255,255,255,.45)!important}
-body.adv .tpips i{transition:background-color .15s,border-color .15s}
+/* ---- The table: tags, numbers and circles in the seats, the shared facts in one information strip, every
+   action button in the play area, and motion that shows each move. ---- */
+.topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden],.table[hidden],.about[hidden]{display:none!important}
+
+
+
+
+
+
+.speed-pick{position:relative}
+.speed-pick select{display:block!important;position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+
+.trick .slot .card{transition:none!important}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
+#fx > *{position:fixed!important;margin:0!important;box-sizing:border-box}
+#fx .olayer,#fx .olayer .card{animation:none!important}
+.tpips i.on.wait{background:transparent!important;border-color:rgba(255,255,255,.45)!important}
+.tpips i{transition:background-color .15s,border-color .15s}
 /* A redraw rebuilds the circles filled, then empties a held one at once: only the fill when the sweep lands fades. */
-body.adv .tpips i.wait{transition:none}
-body.adv #trumpChip,body.adv #handChip,body.adv .trick-label,body.adv .who,body.adv .status,body.adv .prompt,body.adv .actionbar .hint,body.adv .score small,body.adv .center .piles,body.adv .center .lasttrick{display:none!important}
-body.adv .actionbar:not(:has(.btn)){display:none}
-body.adv .seat .discard-note,body.adv .hand .hint{display:none!important}
-body.adv .speed-pick select{display:none}
-body.adv .speed-pick{padding:0 0.625rem}
+.tpips i.wait{transition:none}
+
+
+
+.speed-pick select{display:none}
+.speed-pick{padding:0 0.625rem}
 /* The information strip is the last row of the sticky header, so trump and the score facts stay in view. */
-body.adv .game-chips{display:none}
-body.adv .info{order:20;flex:1 1 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:stretch;gap:0.375rem;background:rgba(0,0,0,.22);border-radius:0.75rem;padding:0.375rem}
-body.adv .info .cell{display:flex;flex-direction:column;justify-content:flex-start;gap:0.125rem;padding:0.25rem 0.625rem;border-radius:0.5rem;background:rgba(255,255,255,.04);min-width:0}
-body.adv .info .lab{font-size:0.625rem;line-height:0.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.info{order:20;flex:1 1 100%;min-width:0;display:flex;flex-wrap:wrap;align-items:stretch;gap:0.375rem;background:rgba(0,0,0,.22);border-radius:0.75rem;padding:0.375rem}
+.info .cell{display:flex;flex-direction:column;justify-content:flex-start;gap:0.125rem;padding:0.25rem 0.625rem;border-radius:0.5rem;background:rgba(255,255,255,.04);min-width:0}
+.info .lab{font-size:0.625rem;line-height:0.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 /* Every cell has the same two rows, a label and a value: the labels line up and the strip keeps its height when
    the Trump cell comes and goes. */
-body.adv .info .val{font-size:0.9375rem;font-weight:700;display:flex;align-items:center;gap:0.375rem;white-space:nowrap;min-height:1.375rem;line-height:1.375rem}
-body.adv .info .pip{font-size:1.625rem;line-height:1.375rem;color:var(--pip-red);text-align:center}
-body.adv .info .latest{flex:1 1 11.25rem}
-body.adv .info .latest .val{font-weight:400;font-size:0.875rem}
-body.adv .info .info-part{display:contents}
-body.adv .info ul.gamelog{all:unset;display:block}
-body.adv .info ul.gamelog li{list-style:none;padding:0}
-body.adv .hand{min-height:0!important}
+.info .val{font-size:0.9375rem;font-weight:700;display:flex;align-items:center;gap:0.375rem;white-space:nowrap;min-height:1.375rem;line-height:1.375rem}
+.info .pip{font-size:1.625rem;line-height:1.375rem;color:var(--pip-red);text-align:center}
+.info .latest{flex:1 1 11.25rem}
+.info .latest .val{font-weight:400;font-size:0.875rem}
+.info .info-part{display:contents}
+.info ul.gamelog{all:unset;display:block}
+.info ul.gamelog li{list-style:none;padding:0}
+.hand{min-height:0!important}
 @media (max-width:720px){
-  body.adv .info{gap:0.25rem;padding:0.25rem}
-  body.adv .info .cell{padding:0.1875rem 0.5rem}
-  body.adv .info .latest{order:6;flex:1 1 100%}
+  .info{gap:0.25rem;padding:0.25rem}
+  .info .cell{padding:0.1875rem 0.5rem}
+  .info .latest{order:6;flex:1 1 100%}
   /* The Latest line keeps to one line here: a long line shows its short form (shortLine), and "…" ends anything
      still too long. A move's two lines show one after the other. */
-  body.adv .info .latest .val{line-height:1.125rem;height:1.125rem;min-height:0;min-width:0;display:block;flex:1 1 auto}
-  body.adv .info .latest .val li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  body.adv .info .muted{flex:1 1 0}
+  .info .latest .val{line-height:1.125rem;height:1.125rem;min-height:0;min-width:0;display:block;flex:1 1 auto}
+  .info .latest .val li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .info .muted{flex:1 1 0}
 }
-body.adv .info .muted .val{font-weight:600;font-size:0.8125rem;color:var(--muted)}
-body.adv .center{justify-content:center}
-body.adv .trick{grid-template-rows:0 auto!important}
-body.adv .score{font-size:2.875rem!important}
-body.adv .seat-name{font-size:1.3125rem!important}
-body.adv .seat-east .seat-head{flex-direction:row-reverse}
-body.adv .seat-east{align-items:flex-end}
-body.adv .seat .seat-head{order:0}
-body.adv .seat .tagbox{order:1}
-body.adv .seat .backs{order:2}
-body.adv .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
-body.adv .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
-body.adv .info .latest{min-width:0}
-@media (min-width:721px){body.adv .info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}}
-body.adv .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.25rem;width:100%;min-height:2.75rem}
-body.adv .seat-east .tagbox{direction:rtl}
+.info .muted .val{font-weight:600;font-size:0.8125rem;color:var(--muted)}
+.center{justify-content:center}
+.trick{grid-template-rows:0 auto!important}
+.score{font-size:2.875rem!important}
+.seat-name{font-size:1.3125rem!important}
+.seat-east .seat-head{flex-direction:row-reverse}
+.seat-east{align-items:flex-end}
+.seat .seat-head{order:0}
+.seat .tagbox{order:1}
+.seat .backs{order:2}
+.seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
+.seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.info .latest{min-width:0}
+@media (min-width:721px){.info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}}
+.tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.25rem;width:100%;min-height:2.75rem}
+.seat-east .tagbox{direction:rtl}
 /* Every tag has one width: a third of a bot seat's tag row (--tag-w, set by Fit), in your row too. */
-body.adv .tagbox .tag{margin:0;flex:0 0 var(--tag-w,4.5rem);height:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.625rem;padding:0 0.125rem;overflow:hidden;white-space:nowrap;direction:ltr}
-body.adv .seat{position:relative}
-body.adv .me .tagbox{width:auto;min-height:1.25rem;flex:0 1 auto}
+.tagbox .tag{margin:0;flex:0 0 var(--tag-w,4.5rem);height:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.625rem;padding:0 0.125rem;overflow:hidden;white-space:nowrap;direction:ltr}
+.seat{position:relative}
+.me .tagbox{width:auto;min-height:1.25rem;flex:0 1 auto}
 @media (max-width:720px){
-  body.adv .tagbox .tag{font-size:0.5625rem;letter-spacing:0}
-  body.adv .me .tagbox{flex:1 1 12.5rem;min-height:1.25rem}
+  .tagbox .tag{font-size:0.5625rem;letter-spacing:0}
+  .me .tagbox{flex:1 1 12.5rem;min-height:1.25rem}
 }
-body.adv .trick{perspective:56.25rem;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:1rem 0.625rem 0.875rem!important}
-body.adv .trick .slot{transform-style:preserve-3d}
-body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
-body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
-body.adv .trick .slot{position:relative}
-body.adv .trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
-body.adv .trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
-body.adv .trick .slot .empty{background:none;border-color:transparent}
-body.adv .trick .slot-1 .empty,body.adv .trick .slot-2 .empty{visibility:hidden}
-body.adv .trick{min-height:0!important}
-body.adv .trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(1.875rem);box-shadow:-0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(1.875rem);box-shadow:0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .trick .slot-0 .card,body.adv .trick .slot-0 .empty{transform:rotateX(22deg) translateZ(1.875rem)}
-body.adv .trick .slot-0 .card{box-shadow:0 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .c-tag.king{background:#f2c14e;color:#1b1b1b}
-body.adv .info .hand.wide{flex:0 0 auto;min-width:8.75rem}
-body.adv .info .out .val{gap:0.5rem}
-body.adv .minis{display:inline-flex}
-body.adv .mc{width:0.875rem;height:1.25rem;border-radius:0.125rem;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.125rem,#93303d 0.125rem 0.25rem);display:inline-grid;place-items:center;font-size:0.5rem;font-weight:800;line-height:1}
-body.adv .mc + .mc{margin-left:0.1875rem}
-body.adv .table.showdown .not-sd{background:var(--felt-edge)!important}
-body.adv .skip-top{height:2.5rem;padding:0 0.75rem;font-size:0.875rem}
-body.adv .seat-west,body.adv .seat-east{align-self:stretch}
-body.adv .table{grid-template-columns:minmax(9.375rem,.85fr) minmax(0,2.3fr) minmax(9.375rem,.85fr)!important}
+.trick{perspective:56.25rem;perspective-origin:50% 120%;min-height:calc(var(--cw)*2.7)!important;padding:1rem 0.625rem 0.875rem!important}
+.trick .slot{transform-style:preserve-3d}
+.trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.22);width:var(--w);height:calc(var(--w)*1.4);transition:transform .3s}
+.trick .slot .card,.trick .slot .empty{--w:calc(var(--cw)*1.5)!important}
+.trick .slot{position:relative}
+.trick .slot-1{justify-self:end;margin-right:calc(var(--cw)*-.22)}
+.trick .slot-2{justify-self:start;margin-left:calc(var(--cw)*-.22)}
+.trick .slot .empty{background:none;border-color:transparent}
+.trick .slot-1 .empty,.trick .slot-2 .empty{visibility:hidden}
+.trick{min-height:0!important}
+.trick .slot-1 .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(1.875rem);box-shadow:-0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
+.trick .slot-2 .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(1.875rem);box-shadow:0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
+.trick .slot-0 .card,.trick .slot-0 .empty{transform:rotateX(22deg) translateZ(1.875rem)}
+.trick .slot-0 .card{box-shadow:0 1.125rem 1.375rem rgba(0,0,0,.5)}
+.c-tag.king{background:#f2c14e;color:#1b1b1b}
+.info .hand.wide{flex:0 0 auto;min-width:8.75rem}
+.info .out .val{gap:0.5rem}
+.minis{display:inline-flex}
+.mc{width:0.875rem;height:1.25rem;border-radius:0.125rem;border:1px solid #f5f2e9;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.125rem,#93303d 0.125rem 0.25rem);display:inline-grid;place-items:center;font-size:0.5rem;font-weight:800;line-height:1}
+.mc + .mc{margin-left:0.1875rem}
+.table.showdown .not-sd{background:var(--felt-edge)!important}
+.skip-top{height:2.5rem;padding:0 0.75rem;font-size:0.875rem}
+.seat-west,.seat-east{align-self:stretch}
+.table{grid-template-columns:minmax(9.375rem,.85fr) minmax(0,2.3fr) minmax(9.375rem,.85fr)!important}
 @media (max-width:720px){
-  body.adv .table{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .table{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
 }
-body.adv .center{justify-content:safe center}
-body.adv }
-
-
-.me{justify-content:flex-start}
-body.adv .me .hand{flex-wrap:wrap;gap:0.375rem;padding-top:0.625rem}
-body.adv .me .hand .card{flex:none}
+.center{justify-content:safe center}
+.me .hand{flex-wrap:wrap;gap:0.375rem;padding-top:0.625rem}
+.me .hand .card{flex:none}
 /* The hand keeps room for its largest size (--hand-rows, set by Fit), so the table keeps one height for the whole hand. */
-body.adv .me .hand{min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 0.375rem + 0.875rem)!important}
-body.adv .layout{padding-bottom:0.75rem}
-body.adv .center{position:relative}
-body.adv .center{position:relative;padding-top:3.625rem!important;padding-bottom:0.375rem;min-height:calc(var(--cw)*2.85 + 5.25rem)}
-body.adv .trick{padding-bottom:3.25rem!important}
-body.adv .summary table.stats td:first-child{white-space:nowrap;font-size:1.125rem;font-weight:800;text-align:left}
-body.adv .summary table.stats td:last-child{font-size:1.625rem;font-weight:800;line-height:1.1}
+.me .hand{min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 0.375rem + 0.875rem)!important}
+.layout{padding-bottom:0.75rem}
+.center{position:relative}
+.center{position:relative;padding-top:3.625rem!important;padding-bottom:0.375rem;min-height:calc(var(--cw)*2.85 + 5.25rem)}
+.trick{padding-bottom:3.25rem!important}
+.summary table.stats td:first-child{white-space:nowrap;font-size:1.125rem;font-weight:800;text-align:left}
+.summary table.stats td:last-child{font-size:1.625rem;font-weight:800;line-height:1.1}
 /* The side cards sit at the top of the trick and yours sits lower, with no empty band above them. */
-body.adv .trick .slot-1,body.adv .trick .slot-2{align-self:start}
-body.adv .trick .slot-0{margin-top:calc(var(--cw)*.75 - 0.375rem)}
-body.adv .center:not(:has(.trick)){padding-bottom:3.625rem!important}
-body.adv .kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.875rem;min-height:calc(var(--cw)*2.85)}
-body.adv .kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
-body.adv .kitty-spot{--kw:var(--cw)}
+.trick .slot-1,.trick .slot-2{align-self:start}
+.trick .slot-0{margin-top:calc(var(--cw)*.75 - 0.375rem)}
+.center:not(:has(.trick)){padding-bottom:3.625rem!important}
+.kitty-spot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.875rem;min-height:calc(var(--cw)*2.85)}
+.kitty-spot .piles-row{display:flex;align-items:center;justify-content:center;gap:calc(var(--kw)*.5)}
+.kitty-spot{--kw:var(--cw)}
 /* --kstep: how far each kitty card lies right of the one under it, in card widths. */
-body.adv .kpile{--kstep:.2925;position:relative;width:calc(var(--kw)*(1 + 2 * var(--kstep)));height:calc(var(--kw)*1.4)}
-body.adv .kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 0.125rem 0.3125rem rgba(0,0,0,.45);transform-origin:50% 90%}
-body.adv .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.375rem,#93303d 0.375rem 0.75rem);border:0.125rem solid #f5f2e9;z-index:3}
-body.adv .center > .pile-act{position:absolute;bottom:0.625rem;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
+.kpile{--kstep:.2925;position:relative;width:calc(var(--kw)*(1 + 2 * var(--kstep)));height:calc(var(--kw)*1.4)}
+.kpile .card{position:absolute;top:0;--w:var(--kw);box-shadow:0 0.125rem 0.3125rem rgba(0,0,0,.45);transform-origin:50% 90%}
+.kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.375rem,#93303d 0.375rem 0.75rem);border:0.125rem solid #f5f2e9;z-index:3}
+.center > .pile-act{position:absolute;bottom:0.625rem;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 /* Your move in a few words: one spot in every phase, just above the action buttons (or where they would be). */
-body.adv .center > .yourmove{position:absolute;bottom:3.4375rem;left:50%;transform:translateX(-50%);z-index:9;font-size:0.9375rem;font-weight:700;line-height:1.125rem;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 0.1875rem rgba(0,0,0,.6)}
-body.adv .center > .yourmove.wait{visibility:hidden}
-body.adv .pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
+.center > .yourmove{position:absolute;bottom:3.4375rem;left:50%;transform:translateX(-50%);z-index:9;font-size:0.9375rem;font-weight:700;line-height:1.125rem;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 0.1875rem rgba(0,0,0,.6)}
+.center > .yourmove.wait{visibility:hidden}
+.pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
-body.adv .center > .pile-act.seats{flex-direction:row}
+.center > .pile-act.seats{flex-direction:row}
 /* The end buttons take the table's width, so they can wrap instead of running off a phone's screen. */
-body.adv .center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
+.center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
 /* Under the hand result they sit in the flow, as wide as the result: the same 0.625rem above and below them. */
-body.adv .center:has(> .summary) > .pile-act.ends{position:static;flex:none}
-body.adv .center:has(> .summary > .pile-act.ends),body.adv .center:has(> .summary ~ .pile-act.ends){padding-bottom:0.625rem!important}
+.center:has(> .summary) > .pile-act.ends{position:static;flex:none}
+.center:has(> .summary > .pile-act.ends),.center:has(> .summary ~ .pile-act.ends){padding-bottom:0.625rem!important}
 /* On a phone the Advanced table has room for one row of equal buttons. */
 @media (max-width:480px){
-  body.adv .pile-act.ends .end-btns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none;gap:0.5rem}
-  body.adv .pile-act.ends .end-btns [data-action="next-wave"]{grid-column:auto}
-  body.adv .pile-act.ends .end-btns .btn{padding:0.5rem 0.25rem;font-size:0.875rem;line-height:1.15;white-space:normal}
+  .pile-act.ends .end-btns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none;gap:0.5rem}
+  .pile-act.ends .end-btns [data-action="next-wave"]{grid-column:auto}
+  .pile-act.ends .end-btns .btn{padding:0.5rem 0.25rem;font-size:0.875rem;line-height:1.15;white-space:normal}
 }
-body.adv .pile-act .btn{font-size:0.9375rem;padding:0.5rem 1.125rem;white-space:nowrap;flex:none}
-body.adv .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
-body.adv .table > .seat,body.adv .table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
-body.adv .table.showdown > .seat,body.adv .table.showdown > .me{background:linear-gradient(var(--panel),var(--panel)),var(--felt-showdown-edge)!important}
-body.adv .table > .center{z-index:1}
-body.adv .table > .center.lift{z-index:6}
-body.adv .outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
-body.adv .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
+.pile-act .btn{font-size:0.9375rem;padding:0.5rem 1.125rem;white-space:nowrap;flex:none}
+.outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
+.table > .seat,.table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
+.table.showdown > .seat,.table.showdown > .me{background:linear-gradient(var(--panel),var(--panel)),var(--felt-showdown-edge)!important}
+.table > .center{z-index:1}
+.table > .center.lift{z-index:6}
+.outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
+.outpile .olayer .card{animation:ofan var(--ms) ease-out both}
 @keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
 @keyframes ofan{0%{transform:translateX(var(--fx)) rotate(var(--fan))}60%{transform:translateX(calc(var(--fx) * .6)) rotate(calc(var(--fan) * .6))}100%{transform:translate(calc(var(--fx) * .12),0) rotate(calc(var(--fan) * .3))}}
 @media (prefers-reduced-motion:reduce){
-  body.adv .outpile .olayer,body.adv .outpile .olayer .card{animation:none}
+  .outpile .olayer,.outpile .olayer .card{animation:none}
 }
-body.adv .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.4)}
-body.adv .outpile.empty{border:0.125rem dashed var(--muted);border-radius:calc(var(--cw)*.12)}
-body.adv .logpanel h2{display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
-/* The Latest cell, the toasts and the Latest Scroll are one thing in the Advanced UI. Each new line drops in from
-   above, exactly the size of the cell, and becomes the Latest line. The cell opens the Latest Scroll below the
-   strip, in the header, so it pushes the table down; the side panel goes. */
-body.adv .logpanel{display:none}
-body.adv .layout{grid-template-columns:minmax(0,1fr)!important}
-body.adv .info .latest{position:relative;flex-direction:row;align-items:center;justify-content:flex-start;gap:0.5rem;cursor:pointer}
-body.adv .info .latest:hover{background:rgba(255,255,255,.08)}
-body.adv .info .latest:focus-visible{outline:0.125rem solid var(--gold);outline-offset:1px}
-body.adv .drop-ind{flex:none;font-size:0.8125rem;line-height:1;color:var(--muted);transition:transform .2s}
-body.adv .latest[aria-expanded="true"] .drop-ind{transform:rotate(180deg)}
-body.adv .latest-drop{position:absolute;left:0;right:0;top:0;min-height:100%;z-index:2;display:flex;align-items:center;gap:0.5rem;padding:inherit;border-radius:0.5rem;pointer-events:none;
+.outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.4)}
+.outpile.empty{border:0.125rem dashed var(--muted);border-radius:calc(var(--cw)*.12)}
+
+/* The Latest cell and the Latest Scroll are one thing. Each new line drops in from above, exactly the size of the
+   cell, and becomes the Latest line. The cell opens the Latest Scroll below the strip, in the header, so it pushes
+   the table down. */
+.info .latest{position:relative;flex-direction:row;align-items:center;justify-content:flex-start;gap:0.5rem;cursor:pointer}
+.info .latest:hover{background:rgba(255,255,255,.08)}
+.info .latest:focus-visible{outline:0.125rem solid var(--gold);outline-offset:1px}
+.drop-ind{flex:none;font-size:0.8125rem;line-height:1;color:var(--muted);transition:transform .2s}
+.latest[aria-expanded="true"] .drop-ind{transform:rotate(180deg)}
+.latest-drop{position:absolute;left:0;right:0;top:0;min-height:100%;z-index:2;display:flex;align-items:center;gap:0.5rem;padding:inherit;border-radius:0.5rem;pointer-events:none;
   background:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04)),linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45)}
-body.adv .latest-drop .drop-ind{visibility:hidden}
-body.adv .logdrop{order:21;flex:1 1 100%;min-width:0;display:flex}
-body.adv #gameLog{display:flex;flex-direction:column;height:10rem;max-height:none}
-body.adv{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:0.875rem;--card-micro:2.5rem}
-body.adv .trick .slot .card,body.adv .trick .slot .empty{--w:var(--card-big)!important}
-body.adv .hand .card{--w:var(--card-normal)}
-body.adv .kitty-spot{--kw:var(--card-big)!important}
-body.adv .mini-back{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
-body.adv .mc{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
-body.adv .gamelog .p0,body.adv .gamelog .p1,body.adv .gamelog .p2,body.adv .gamelog .card-tag,body.adv .micro{display:inline-block;box-sizing:border-box;width:var(--card-micro);text-align:center;padding:0;line-height:1.35;border-radius:0.25rem;white-space:nowrap;vertical-align:baseline}
-body.adv .micro{background:#fff;color:#1b1b1b;font-weight:800;font-size:0.8125rem}
-body.adv .micro .rank{color:#6b6b6b}
-body.adv .micro .pip-red{color:#d32f2f}
-body.adv .micro .pip-black{color:#000}
-body.adv .micro + .micro,body.adv .micro + .mc,body.adv .mc + .micro{margin-left:0.25rem}
-body.adv .tpips{display:flex;gap:0.25rem;order:4;min-height:0.875rem;align-items:center}
-body.adv .seat-east .tpips{align-self:flex-end;flex-direction:row-reverse}
-body.adv .tpips i{flex:none;width:0.75rem;height:0.75rem;border-radius:50%;border:0.0938rem solid rgba(255,255,255,.45)}
-body.adv .tpips i.on{background:var(--ink);border-color:var(--ink)}
-body.adv .me > .tpips{order:9;align-self:center}
-body.adv .sscore{font-size:1.625rem!important;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)!important}
-body.adv .summary table.stats td:last-child{color:var(--ink)!important}
-body.adv .center{padding-top:0.625rem!important}
-body.adv .table.showdown .not-sd{background:var(--panel)!important}
-body.adv .tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
+.latest-drop .drop-ind{visibility:hidden}
+.logdrop{order:21;flex:1 1 100%;min-width:0;display:flex}
+#gameLog{display:flex;flex-direction:column;height:10rem;max-height:none}
+body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:0.875rem;--card-micro:2.5rem}
+.trick .slot .card,.trick .slot .empty{--w:var(--card-big)!important}
+.hand .card{--w:var(--card-normal)}
+.kitty-spot{--kw:var(--card-big)!important}
+.mini-back{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+.mc{width:var(--card-tiny)!important;height:calc(var(--card-tiny)*1.45)!important}
+.gamelog .p0,.gamelog .p1,.gamelog .p2,.gamelog .card-tag,.micro{display:inline-block;box-sizing:border-box;width:var(--card-micro);text-align:center;padding:0;line-height:1.35;border-radius:0.25rem;white-space:nowrap;vertical-align:baseline}
+.micro{background:#fff;color:#1b1b1b;font-weight:800;font-size:0.8125rem}
+.micro .rank{color:#6b6b6b}
+.micro .pip-red{color:#d32f2f}
+.micro .pip-black{color:#000}
+.micro + .micro,.micro + .mc,.mc + .micro{margin-left:0.25rem}
+.tpips{display:flex;gap:0.25rem;order:4;min-height:0.875rem;align-items:center}
+.seat-east .tpips{align-self:flex-end;flex-direction:row-reverse}
+.tpips i{flex:none;width:0.75rem;height:0.75rem;border-radius:50%;border:0.0938rem solid rgba(255,255,255,.45)}
+.tpips i.on{background:var(--ink);border-color:var(--ink)}
+.me > .tpips{order:9;align-self:center}
+.sscore{font-size:1.625rem!important;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)!important}
+.summary table.stats td:last-child{color:var(--ink)!important}
+.center{padding-top:0.625rem!important}
+.table.showdown .not-sd{background:var(--panel)!important}
+.tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
 /* Tags are flat badges; only the one you can click (Human/AI, with the Your seat setting on) is raised like a button. */
-body.adv .tagbox .tag{border-radius:62.4375rem;font-weight:800;letter-spacing:.03em}
-body.adv .tagbox .tag.seat-toggle{box-shadow:0 1px 0.125rem rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
-body.adv .tagbox .tag.seat-toggle:hover{filter:brightness(1.15)}
+.tagbox .tag{border-radius:62.4375rem;font-weight:800;letter-spacing:.03em}
+.tagbox .tag.seat-toggle{box-shadow:0 1px 0.125rem rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+.tagbox .tag.seat-toggle:hover{filter:brightness(1.15)}
 /* Tags, scores and hand backs open what they mean (adv-info): a pointer, a hover and a focus ring, no button look. */
-body.adv .tagbox .tag.tappable,body.adv .sscore.tappable,body.adv .backs.tappable{cursor:pointer}
-body.adv .tagbox .tag.tappable:hover,body.adv .sscore.tappable:hover{filter:brightness(1.2)}
-body.adv .backs.tappable{align-self:flex-start;border-radius:0.25rem}
-body.adv .backs.tappable:hover{outline:1px solid rgba(255,255,255,.35);outline-offset:0.125rem}
-body.adv .tagbox .tag.tappable:focus-visible,body.adv .sscore.tappable:focus-visible,body.adv .backs.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-body.adv .tagbox .tag.open,body.adv .sscore.open,body.adv .backs.open{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-body.adv .panel p{margin:0.25rem 0;line-height:1.4}
-body.adv .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-body.adv .panel .pnote{color:var(--muted);font-size:0.75rem}
-body.adv .seat .seat-head .seat-name{flex:none;overflow:visible}
+.tagbox .tag.tappable,.sscore.tappable,.backs.tappable{cursor:pointer}
+.tagbox .tag.tappable:hover,.sscore.tappable:hover{filter:brightness(1.2)}
+.backs.tappable{align-self:flex-start;border-radius:0.25rem}
+.backs.tappable:hover{outline:1px solid rgba(255,255,255,.35);outline-offset:0.125rem}
+.tagbox .tag.tappable:focus-visible,.sscore.tappable:focus-visible,.backs.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.tagbox .tag.open,.sscore.open,.backs.open{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.panel p{margin:0.25rem 0;line-height:1.4}
+.panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.panel .pnote{color:var(--muted);font-size:0.75rem}
+.seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
-  body.adv .sscore{font-size:1.375rem!important}
+  .sscore{font-size:1.375rem!important}
 }
-body.adv .seat-east{align-items:stretch!important}
-body.adv .seat-east .seat-head{flex-direction:row!important}
-body.adv .seat-east .tagbox{direction:ltr!important}
-body.adv .seat-east .tpips{align-self:flex-start!important;flex-direction:row!important}
-body.adv .seat .backrow{order:3;display:flex;align-self:flex-start;margin:0!important;padding:0 0 0 0!important;min-height:calc(var(--card-tiny)*1.45)}
-body.adv .seat .backrow .mini-back{margin-right:-0.375rem!important}
-body.adv .seat .tpips{order:4}
-body.adv .tagbox .tag{font-size:0.5938rem!important;letter-spacing:0!important;padding:0 0.1875rem!important}
-body.adv .info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:0.125rem}
-body.adv .pile-act .btn.sym-btn{min-width:2.875rem;padding:0.5rem 0.75rem;font-size:1.25rem;line-height:1}
-body.adv .pile-act .btn.sym-btn.blocked{opacity:.4}
+.seat-east{align-items:stretch!important}
+.seat-east .seat-head{flex-direction:row!important}
+.seat-east .tagbox{direction:ltr!important}
+.seat-east .tpips{align-self:flex-start!important;flex-direction:row!important}
+.seat .backrow{order:3;display:flex;align-self:flex-start;margin:0!important;padding:0 0 0 0!important;min-height:calc(var(--card-tiny)*1.45)}
+.seat .backrow .mini-back{margin-right:-0.375rem!important}
+.seat .tpips{order:4}
+.tagbox .tag{font-size:0.5938rem!important;letter-spacing:0!important;padding:0 0.1875rem!important}
+.info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:0.125rem}
+.pile-act .btn.sym-btn{min-width:2.875rem;padding:0.5rem 0.75rem;font-size:1.25rem;line-height:1}
+.pile-act .btn.sym-btn.blocked{opacity:.4}
 @media (max-width:720px){
-  body.adv .pile-act{gap:0.375rem}
-  body.adv .pile-act .btn{padding:0.5rem 0.75rem}
+  .pile-act{gap:0.375rem}
+  .pile-act .btn{padding:0.5rem 0.75rem}
 }
-body.adv .tappable{cursor:pointer}
-body.adv .info .cell.tappable{box-shadow:inset 0 -0.125rem 0 rgba(255,255,255,.18);cursor:pointer}
-body.adv .info .cell.tappable:hover{background:rgba(255,255,255,.08)}
-body.adv .info .cell.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:1px}
-body.adv .info .cell.tappable.open{box-shadow:0 0 0 0.125rem var(--gold)!important}
-body.adv .tpips.tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
-body.adv #center .slot.tappable,body.adv #center .kpile.tappable,body.adv #center .outpile.tappable{cursor:help}
-body.adv #center .tappable:focus-visible,body.adv #center .tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
-body.adv .panel{position:absolute;z-index:30;min-width:11.25rem;max-width:18.75rem;background:var(--page);border:1px solid rgba(255,255,255,.18);border-radius:0.75rem;padding:0.625rem 0.75rem;box-shadow:0 0.625rem 1.625rem rgba(0,0,0,.55);font-size:0.8125rem}
-body.adv .panel .ptitle{display:block;margin-bottom:0.375rem;font-size:0.8125rem;letter-spacing:.04em}
-body.adv .panel .prow{display:flex;align-items:center;gap:0.25rem;margin:0.25rem 0}
-body.adv .panel .tn{width:1.125rem;color:var(--muted);font-weight:800}
-body.adv .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
-body.adv .panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.adv .panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
-body.adv .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
-body.adv .panel dt{color:var(--muted)}
-body.adv .panel dd{margin:0}
-body.adv .panel .pip-red{color:var(--pip-red)}
-body.adv .panel .pvoid{display:flex;align-items:center;gap:0.5rem;margin:0.125rem 0 0}
-body.adv .panel .vpip{font-size:1.375rem;line-height:1;color:var(--ink)}
-body.adv .panel .vpip.pip-red{color:var(--pip-red)}
-body.adv .panel .vpip.none{color:var(--muted);font-weight:400}
-body.adv .panel p{margin:0.125rem 0;color:var(--muted)}
-body.adv .persona .habit{background:#4a5a6a;border-color:transparent!important;color:#fff;box-shadow:0 1px 0.125rem rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
-body.adv .trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),0 1.125rem 1.375rem rgba(0,0,0,.5)!important}
+.tappable{cursor:pointer}
+.info .cell.tappable{box-shadow:inset 0 -0.125rem 0 rgba(255,255,255,.18);cursor:pointer}
+.info .cell.tappable:hover{background:rgba(255,255,255,.08)}
+.info .cell.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:1px}
+.info .cell.tappable.open{box-shadow:0 0 0 0.125rem var(--gold)!important}
+.tpips.tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
+#center .slot.tappable,#center .kpile.tappable,#center .outpile.tappable{cursor:help}
+#center .tappable:focus-visible,#center .tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
+.panel{position:absolute;z-index:30;min-width:11.25rem;max-width:18.75rem;background:var(--page);border:1px solid rgba(255,255,255,.18);border-radius:0.75rem;padding:0.625rem 0.75rem;box-shadow:0 0.625rem 1.625rem rgba(0,0,0,.55);font-size:0.8125rem}
+.panel .ptitle{display:block;margin-bottom:0.375rem;font-size:0.8125rem;letter-spacing:.04em}
+.panel .prow{display:flex;align-items:center;gap:0.25rem;margin:0.25rem 0}
+.panel .tn{width:1.125rem;color:var(--muted);font-weight:800}
+.panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
+.panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
+.panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
+.panel dt{color:var(--muted)}
+.panel dd{margin:0}
+.panel .pip-red{color:var(--pip-red)}
+.panel .pvoid{display:flex;align-items:center;gap:0.5rem;margin:0.125rem 0 0}
+.panel .vpip{font-size:1.375rem;line-height:1;color:var(--ink)}
+.panel .vpip.pip-red{color:var(--pip-red)}
+.panel .vpip.none{color:var(--muted);font-weight:400}
+.panel p{margin:0.125rem 0;color:var(--muted)}
+.persona .habit{background:#4a5a6a;border-color:transparent!important;color:#fff;box-shadow:0 1px 0.125rem rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+.trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),0 1.125rem 1.375rem rgba(0,0,0,.5)!important}
 /* A trump in the trick keeps the gold inner border it has in your hand, under the table's shadows and the winner's rings. */
-body.adv .trick .slot-1 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),-0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .trick .slot-2 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .trick .slot-0 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 1.125rem 1.375rem rgba(0,0,0,.5)}
-body.adv .trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),0 1.125rem 1.375rem rgba(0,0,0,.5)!important}
-body.adv .trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(3.75rem)}
-body.adv .trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(3.75rem)}
-body.adv .trick .slot-0.win .card{transform:rotateX(22deg) translateZ(3.75rem)}
-body.adv .tag.turn{background:#2e7d32;color:#fff}
-body.adv .tag.led{background:#00838f;color:#fff}
+.trick .slot-1 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),-0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
+.trick .slot-2 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0.625rem 1.125rem 1.375rem rgba(0,0,0,.5)}
+.trick .slot-0 .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 1.125rem 1.375rem rgba(0,0,0,.5)}
+.trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),0 1.125rem 1.375rem rgba(0,0,0,.5)!important}
+.trick .slot-1.win .card{transform:rotateX(22deg) rotateY(16deg) rotateZ(-14deg) translateZ(3.75rem)}
+.trick .slot-2.win .card{transform:rotateX(22deg) rotateY(-16deg) rotateZ(14deg) translateZ(3.75rem)}
+.trick .slot-0.win .card{transform:rotateX(22deg) translateZ(3.75rem)}
+.tag.turn{background:#2e7d32;color:#fff}
+.tag.led{background:#00838f;color:#fff}
 @media (max-width:720px){
-  body.adv .tagbox .tag{font-size:0.5rem!important;padding:0 1px!important}
+  .tagbox .tag{font-size:0.5rem!important;padding:0 1px!important}
 }
 /* On a phone the table keeps its spacing tight: less room above and below the table, the seats and your hand. */
 @media (max-width:720px){
-  body.adv .layout{padding-top:0.375rem;padding-bottom:0.375rem}
-  body.adv .table{padding:0.375rem;gap:0.375rem}
-  body.adv .seat{padding-top:0.375rem;padding-bottom:0.375rem}
-  body.adv .me{padding-bottom:0.375rem}
-  body.adv .me .hand{padding-top:0.375rem;min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 0.375rem + 0.625rem)!important}
+  .layout{padding-top:0.375rem;padding-bottom:0.375rem}
+  .table{padding:0.375rem;gap:0.375rem}
+  .seat{padding-top:0.375rem;padding-bottom:0.375rem}
+  .me{padding-bottom:0.375rem}
+  .me .hand{padding-top:0.375rem;min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 0.375rem + 0.625rem)!important}
 }
 /* Under a hand result the empty hands keep no room: no row of backs in a bot seat, no hand in yours (an empty hand
    has no id="hand"), and the tag rows take only the tags they hold. */
-body.adv .table:has(> .center > .summary) .seat .backrow:empty,body.adv .table:has(> .center > .summary) .me .hand:not(#hand){display:none}
-body.adv .table:has(> .center > .summary) .tagbox{min-height:0}
+.table:has(> .center > .summary) .seat .backrow:empty,.table:has(> .center > .summary) .me .hand:not(#hand){display:none}
+.table:has(> .center > .summary) .tagbox{min-height:0}
+/* The About screen: the empty table, when no game is loaded. Kings drift up through the felt behind its card, each
+   at its own pace and sway (aboutKings sets --x, --s, --o, --d, --sw, --r, --drift and --delay; --y for reduced motion). */
+.about{position:relative;overflow:hidden;display:grid;place-items:center;min-height:calc(100vh - 5.5rem);min-height:calc(100dvh - 5.5rem);padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%);border-radius:1.125rem;border:1px solid rgba(255,255,255,.08)}
+.about-kings{position:absolute;inset:0;container-type:size;pointer-events:none}
+.about-king{position:absolute;left:var(--x);top:100%;font-size:var(--s);line-height:1;opacity:var(--o);animation:about-rise var(--d) linear var(--delay) infinite;will-change:transform}
+.about-king > span{display:block;animation:about-sway var(--sw) ease-in-out var(--delay) infinite alternate}
+@keyframes about-rise{from{transform:translateY(0)}to{transform:translateY(calc(-100cqh - 100%))}}
+@keyframes about-sway{from{transform:translateX(calc(var(--drift) * -1)) rotate(calc(var(--r) * -1))}to{transform:translateX(var(--drift)) rotate(var(--r))}}
+@media (prefers-reduced-motion:reduce){
+  .about-king,.about-king > span{animation:none}
+  .about-king{top:var(--y)}
+}
+.about-card{position:relative;z-index:1;width:min(100%,27rem);display:flex;flex-direction:column;align-items:center;gap:0.875rem;padding:2rem 1.75rem 1.25rem;text-align:center;background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:1rem;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem)}
+.about-card p{margin:0}
+.about-suits{display:flex;gap:0.75rem;font-size:1.375rem;line-height:1;color:var(--ink)}
+.about-suits .red{color:var(--pip-red)}
+.about-title{margin:0;font-size:2.25rem;font-weight:900;letter-spacing:.01em;line-height:1.1;color:var(--gold)}
+.about-tag{max-width:22rem;color:var(--muted)}
+.about-btns{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-top:0.25rem}
+.about-btns .btn{min-width:7rem;min-height:2.75rem;font-weight:700}
+.about-btns .icon-btn{width:2.75rem;height:2.75rem}
+.about-credit{margin-top:0.5rem!important;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);align-self:stretch;font-size:0.875rem}
+.about-credit span{display:block;margin-bottom:0.125rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.about-credit b{color:var(--ink);letter-spacing:.06em}
+.about-build{font-size:0.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:720px){
+  .about{min-height:calc(100vh - 4.75rem);min-height:calc(100dvh - 4.75rem);padding:1rem 0.75rem}
+  .about-card{padding:1.5rem 1rem 1rem}
+  .about-title{font-size:1.875rem}
+}
 </style>
 <!-- Theme packs (Settings → Game → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
@@ -829,10 +848,6 @@ window.kctTheme = (() => {
   <button class="icon-btn" type="button" data-action="menu" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <h1 class="brand">King Cut-Throat</h1>
   <button type="button" class="mode-chip" id="modeChip" data-action="mode-results" hidden></button>
-  <div class="game-chips">
-    <span class="trump-chip" id="trumpChip">Trump: —</span>
-    <span class="hand-chip" id="handChip"></span>
-  </div>
   <div class="tools">
     <span class="skip-slot" id="skipSlot" hidden></span>
     <label class="speed-pick" title="Game speed">
@@ -855,25 +870,35 @@ window.kctTheme = (() => {
     </div>
     <div class="info-part" id="infoB"></div>
   </section>
-  <div class="logdrop" id="logDrop" aria-label="Latest Scroll" hidden></div>
+  <div class="logdrop" id="logDrop" aria-label="Latest Scroll" hidden><ol class="gamelog" id="gameLog"></ol></div>
 </header>
 
 <div class="layout">
-  <main class="table" id="table">
+  <section class="about" id="about" aria-labelledby="aboutTitle">
+    <div class="about-kings" id="aboutKings" aria-hidden="true"></div>
+    <div class="about-card">
+      <p class="about-suits" aria-hidden="true"><span>♠</span><span class="red">♥</span><span>♣</span><span class="red">♦</span></p>
+      <h2 class="about-title" id="aboutTitle">King Cut-Throat</h2>
+      <p class="about-tag">A three-player trick-taking card game. Every player for themselves; first to 10 points wins.</p>
+      <div class="about-btns">
+        <button class="btn primary" type="button" data-action="menu">Menu</button>
+        <button class="btn" type="button" data-action="about-rules">Rules</button>
+        <button class="icon-btn" type="button" data-action="toggle-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg></button>
+      </div>
+      <p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p>
+      <p class="about-build" id="aboutBuild">Build dev</p>
+    </div>
+  </section>
+  <main class="table" id="table" hidden>
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
     <section class="me" id="seat0"></section>
   </main>
-  <aside class="logpanel">
-    <h2>Latest Scroll</h2>
-    <ol class="gamelog" id="gameLog"></ol>
-  </aside>
 </div>
 
 
 <div class="sr" id="liveStatus" aria-live="polite"></div>
-<div class="toasts" id="toasts" aria-live="assertive"></div>
 <div class="overlay" id="overlay" hidden></div>
 <div class="overlay ask-layer" id="askLayer" hidden></div>
 <div class="overlay stale-layer" id="staleLayer" hidden></div>
@@ -904,8 +929,6 @@ window.kctTheme = (() => {
       </div>
       <h3 class="set-head">Table</h3>
       <div class="set-card" id="setInterface">
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setUIMode">Interface</label><span class="set-desc">Advanced: a minimal table for players who know the rules. Flat: the classic table.</span></span>
-          <select id="setUIMode"><option value="advanced">Advanced</option><option value="normal" disabled>Normal (coming soon)</option><option value="flat">Flat</option><option value="guided" disabled>Guided (coming soon)</option></select></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Table memory</span><span class="set-desc">Show what everyone has seen this hand: bids, voids, trumps and Kings played.</span></span><input class="sw" type="checkbox" id="setMemory"></label>
       </div>
       <h3 class="set-head">House rules</h3>
@@ -3928,9 +3951,6 @@ const Render = (() => {
     'You' + (paren || '') + ' ' + (YOU_VERB[w] || w) + rest.replace(/\band ([a-z]+)\b/g, (x, v) => 'and ' + (YOU_VERB[v] || v)));
 
 
-  /* The turned card by name; a Joker that took a suit (house rule) adds it: "Joker ♠". */
-  const turnedName = v => R.shortName(v.flipped) + (v.jokerSuit ? ' ' + R.SYMBOL[v.jokerSuit] : '');
-
   function cardHTML(id, trump, opts) {
     const o = opts || {};
     const c = R.card(id);
@@ -3947,33 +3967,14 @@ const Render = (() => {
     const inner = c.isJoker
       ? '<span class="c-tl">★' + (js ? suitSVG(js, 'c-suit ' + R.COLOR[js]) : '') + '</span><span class="c-mid">★</span><span class="c-joker">JOKER</span>'
       : '<span class="c-tl">' + c.rank + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + sym + '</span>';
-    /* The Advanced UI tags every King, the card that scores when it wins a trick. */
-    const king = adv && !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
+    /* Every King is tagged: the card that scores when it wins a trick. */
+    const king = !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
     const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
     if (o.button) {
       return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + (o.inert ? ' aria-disabled="true"' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
     }
     return '<div class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '" role="img" aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</div>';
   }
-  const backHTML = () => '<div class="card back" aria-hidden="true"></div>';
-
-  /* auto: the AI is playing the human seat. canToggle: the human seat's tag toggles it (Settings → Game). */
-  function badges(v, p, auto, canToggle) {
-    const b = [];
-    if (v.players[p].human && canToggle) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
-    else if (v.players[p].human) b.push('<span class="tag ' + (auto ? 'ai' : 'you') + '">' + (auto ? 'AI' : 'Human') + '</span>');
-    else b.push('<span class="tag ai">AI</span>');
-    /* In a Showdown the Dealer tag moves to the mediator, who deals it. */
-    if ((v.showdown ? v.showdown.mediator : v.dealer) === p) b.push('<span class="tag dealer" title="Dealer">Dealer</span>');
-    if (v.caller === p && v.trump) b.push('<span class="tag caller" title="Named trump">Namer</span>');
-    if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) b.push('<span class="tag receiver" title="Received the kitty cards">Kitty</span>');
-    if (v.showdown) {
-      if (v.showdown.mediator === p) b.push('<span class="tag mediator">Mediator</span>');
-      else b.push('<span class="tag duelist">Showdown</span>');
-    }
-    return b.join('');
-  }
-
   /* The mediator's choice (house rule): one button for each Showdown player. */
   const leadButtonsHTML = v => v.showdown.participants.slice().sort((a, b) => a - b).map(p => '<button class="btn primary" type="button" data-action="sd-lead" data-seat="' + p + '">' + nameOf(v, p) + ' leads</button>').join('');
   /* A pending discard can be made now: in a game of rules version 2, only by the player whose turn it is. */
@@ -3990,24 +3991,6 @@ const Render = (() => {
   const canDiscard = (v, p, pending) => !!pending && (v.discardTurn == null || v.discardTurn === p);
   /* Whose move it is: the Engine's actors, carried in the view. */
   const isTurn = (v, p) => !v.gameOver && v.actors.includes(p);
-
-  function bidBubble(v, p) {
-    if (![P.BID1, P.BID2, P.EXCHANGE].includes(v.phase)) return '';
-    const mine = v.bidLog.filter(b => b.player === p && b.round === v.round);
-    const last = mine[mine.length - 1];
-    if (!last) return '';
-    if (last.action === 'pass') return '<div class="bubble pass">Pass</div>';
-    if (last.action === 'accept') return '<div class="bubble call">Accepts ' + R.SYMBOL[v.trump] + '</div>';
-    return '<div class="bubble call">Names ' + R.SYMBOL[last.suit] + ' ' + R.SUIT_NAME[last.suit] + '</div>';
-  }
-
-  function tricksLine(v, p) {
-    if (v.showdown && v.showdown.active) {
-      if (!v.showdown.participants.includes(p)) return '<div class="tricks">Mediating · main hand: <b>' + v.tricksWon[p] + '</b></div>';
-      return '<div class="tricks">Showdown tricks: <b>' + v.showdown.tricksWon[p] + '</b> · main: ' + v.tricksWon[p] + '</div>';
-    }
-    return '<div class="tricks">Tricks this hand: <b>' + v.tricksWon[p] + '</b></div>';
-  }
 
   /* A personality's figure: a small button that opens its profile, or a large picture. */
   const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + escHTML(x.id) + '" aria-label="About ' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
@@ -4044,78 +4027,6 @@ const Render = (() => {
 
   /* A bot's King point is held back while its +1 flies to the seat (App kingPop): the score changes when it lands. */
   const held = (ctx, p) => (ctx.ui && ctx.ui.scoreHold[p]) || 0;
-  function seatHTML(v, p, ctx) {
-    const flash = ctx.flashSeats.has(p) && !held(ctx, p) ? ' flash' : '';
-    let backs = '';
-    for (let i = 0; i < v.handCounts[p]; i++) backs += '<span class="mini-back"></span>';
-    let note = '';
-    const pend = (pending, k) => !pending ? 'Discarded ' + k + ' ✓' : canDiscard(v, p, pending) ? 'Choosing ' + k + ' discard' + (k > 1 ? 's' : '') + '…' : 'Waiting to discard…';
-    if (v.phase === P.DISCARD) note = '<div class="discard-note">' + pend(v.pendingDiscard[p], D_OPEN) + '</div>';
-    if (v.phase === P.SHOWDOWN_DISCARD && v.showdown.participants.includes(p)) note = '<div class="discard-note">' + pend(v.showdown.pendingDiscard[p], D_SD) + '</div>';
-    return '<div class="seat-head">' + nameHTML(v, p, ctx.ui) + badges(v, p) + '</div>' +
-      '<div class="score-row"><span class="score' + flash + '">' + boardScore(v.scores[p] - held(ctx, p)) + '<small> / ' + WIN + '</small></span></div>' +
-      tricksLine(v, p) +
-      '<div class="backs" role="img" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + note + bidBubble(v, p);
-  }
-
-  function pilesHTML(v) {
-    const parts = [];
-    if (v.kittyCount > 0) {
-      let cards = '';
-      const showFlip = v.flipped && (v.phase === P.BID1 || v.phase === P.BID2);
-      const backsN = showFlip ? v.kittyCount - 1 : v.kittyCount;
-      for (let i = 0; i < backsN; i++) cards += backHTML();
-      if (showFlip) {
-        if (v.flippedBlocked) cards += '<div class="tucked" style="position:relative">' + cardHTML(v.flipped, null) + '<span class="blocked-x">✕</span></div>';
-        else cards = cardHTML(v.flipped, null, { cls: ['enter'] }) + cards;
-      }
-      const label = showFlip ? (v.flippedBlocked ? 'Kitty · ' + R.SUIT_NAME[v.flippedSuit] + ' blocked' : 'Kitty · turned ' + turnedName(v)) : 'Kitty (' + v.kittyCount + ')';
-      parts.push('<div class="pile"><div class="pile-cards">' + cards + '</div><div>' + label + '</div></div>');
-    }
-    if (v.outsideCount > 0) {
-      parts.push('<div class="pile"><div class="pile-cards">' + backHTML() + '</div><div>Outside pile (' + v.outsideCount + ')</div></div>');
-    }
-    if (v.trump) {
-      parts.push('<div class="trump-big"><span class="sym' + (R.COLOR[v.trump] === 'red' ? ' red' : '') + '">' + R.SYMBOL[v.trump] + '</span><div>Trump: ' + R.SUIT_NAME[v.trump] + '</div></div>');
-    }
-    if (v.flipped && v.phase !== P.BID1 && v.phase !== P.BID2 && v.phase !== P.JOKER_VOID && !(v.showdown && v.showdown.active)) {
-      parts.push('<div class="pile"><div>Turned card: <b>' + turnedName(v) + '</b></div></div>');
-    }
-    return parts.length ? '<div class="piles">' + parts.join('') + '</div>' : '';
-  }
-
-  function trickHTML(v, ctx) {
-    const done = trickDone(v) || (finalTrick(v) && !v.trick.plays.length);
-    const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
-    const winner = done && v.lastTrick ? v.lastTrick.winner : null;
-    const leader = plays.length ? plays[0].player : v.trick.leader;
-    const number = done && v.lastTrick ? v.lastTrick.number : v.trickNumber;
-    const leadSuit = done && v.lastTrick ? v.lastTrick.leadSuit : v.trick.leadSuit;
-    let label = (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + number + ' of ' + v.totalTricks;
-    if (leadSuit) label += '<br>Led: ' + symHTML(leadSuit);
-    let html = '<div class="trick"><div class="trick-label">' + label + '</div>';
-    for (const p of [...around(v), v.seat]) {
-      if (!v.activePlayers.includes(p)) {
-        html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + '"><div class="who">' + nameOf(v, p) + ' · mediator</div></div>';
-        continue;
-      }
-      const play = plays.find(x => x.player === p);
-      const win = winner === p;
-      const who = nameOf(v, p) + (leader === p ? ' <span class="lead-mark">(lead)</span>' : '') + (win ? ' — wins' : '');
-      const cardPart = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
-      html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + (win ? ' win' : '') + '"><div class="who">' + who + '</div>' + cardPart + '</div>';
-    }
-    return html + '</div>';
-  }
-
-  function lastTrickHTML(v) {
-    if (!v.lastTrick || trickDone(v) || v.phase === P.GAME_OVER) return '';
-    if (!Engine.PLAY_PHASES.includes(v.phase)) return '';
-    const lt = v.lastTrick;
-    const cards = lt.plays.map(x => cardHTML(x.card, v.trump, { cls: x.player === lt.winner ? ['win-mini'] : [] })).join('');
-    return '<div class="lasttrick">Last trick (' + nameOf(v, lt.winner) + ' won' + (lt.king ? ', +1 King' : '') + '):' + cards + '</div>';
-  }
-
   const OUTCOME_TEXT = {
     CLEAR_WINNER: 'Most tricks', NAMER_SWEEP: 'Namer sweep (all 7)', NON_NAMER_SWEEP: 'Non-namer sweep (all 7)', SHOWDOWN: 'Tie 3–3–1: Showdown'
   };
@@ -4143,19 +4054,13 @@ const Render = (() => {
     const n = p => nameOf(v, p);
     const st = v.handStats, hs = v.handSummary;
     const sd = opts.showdown ? hs.showdown : null;
-    const role = p => {
-      const r = [];
-      if (hs && p === hs.caller) r.push('namer');
-      if (hs && p === hs.mediator) r.push('mediator');
-      return (r.length ? ' (' + r.join(', ') + ')' : '') + (v.gameOver && p === v.winner ? ' 🏆' : '');
-    };
     const head = ['Player', 'Tricks'];
     if (sd) head.push('SD tricks');
     if (!opts.preShowdown) head.push(sd ? 'SD pts' : 'Hand pts');
     head.push('King pts', 'Score');
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
-      /* The Advanced UI names each player in their color; the tags already show the roles. */
-      const c = [adv ? '<span style="color:var(--name' + p + ')">' + n(p) + '</span>' + (v.gameOver && p === v.winner ? ' 🏆' : '') : n(p) + role(p), hs.tricks[p]];
+      /* Each player is named in their color; the tags already show the roles. */
+      const c = ['<span style="color:var(--name' + p + ')">' + n(p) + '</span>' + (v.gameOver && p === v.winner ? ' 🏆' : ''), hs.tricks[p]];
       if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
       if (!opts.preShowdown) c.push(signedPointsHTML(sd ? st.pts[p].showdown : st.pts[p].hand));
       c.push(signedPointsHTML(st.pts[p].king), scoreText(v.scores[p]));
@@ -4235,68 +4140,6 @@ const Render = (() => {
     }
   }
 
-  function actionBarHTML(v, ui, ctx) {
-    const you = v.seat;
-    const n = p => nameOf(v, p);
-    const sel = ui.selected.size;
-    const L = Engine.seatAfter(you);
-    /* ui.watch: the replay viewer's controls, in place of every game button (set by the controller). */
-    if (ui.watch) return ui.watch;
-    /* ui.endButtons: the game-over buttons for the current mode (set by the controller). */
-    if (v.gameOver) return '<div class="prompt">Game over — ' + n(v.winner) + ' wins.</div>' + (ui.endButtons || '');
-    if (v.phase === P.SETUP && v.seating) return '<div class="prompt">Choosing seats.</div>';
-    if (v.phase === P.SETUP) return '<div class="prompt">No game is running.</div><button class="btn primary" type="button" data-action="menu">Choose a game</button>';
-    /* Skip only where you have long to wait with nothing to do: a Showdown between the two bots. With the AI in your
-       seat, that also covers your pick of the leader as the mediator (house rule). */
-    const skipHTML = () => '<div class="hint">' + statusText(v) + '</div><button class="btn" type="button" data-action="skip">Skip ▶</button>';
-    if (ui.autoplay && isTurn(v, you)) return ctx.waiting && botShowdown(v) ? skipHTML() : '';
-    switch (v.phase) {
-      case P.DISCARD:
-        if (v.pendingDiscard[you]) {
-          const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
-          return '<div class="prompt">Choose ' + D_OPEN + ' cards to discard face-down to the outside pile (' + sel + '/' + D_OPEN + ').' + wait + '</div><div class="hint">Trump is not known yet. The outside pile is used again only in a Showdown.</div><button class="btn primary" type="button" data-action="confirm-discard"' + (sel === D_OPEN && now ? '' : ' disabled') + '>Discard ' + D_OPEN + '</button>';
-        }
-        break;
-      case P.BID1:
-        if (v.bidTurn === you) {
-          const s = v.flippedSuit;
-          return '<div class="prompt">Accept ' + suitLabel(s) + ' as trump?</div><div class="hint">If you accept, the ' + R.shortName(v.flipped) + ' goes to ' + n(L) + ' (your left), who then discards 1. The other 2 kitty cards go to the outside pile.</div><button class="btn primary" type="button" data-action="bid-accept">Accept ' + R.SYMBOL[s] + '</button><button class="btn" type="button" data-action="bid-pass">Pass</button>';
-        }
-        break;
-      case P.BID2:
-        if (v.bidTurn === you) {
-          const blocked = v.flippedSuit;
-          const btns = R.SUITS.map(s => '<button class="btn suit ' + R.COLOR[s] + '" type="button" data-action="name-suit" data-suit="' + s + '"' + (s === blocked ? ' disabled title="Blocked: this suit was turned down"' : '') + '>' + R.SYMBOL[s] + ' ' + R.SUIT_NAME[s] + '</button>').join('');
-          const lastNote = v.dealer === you ? ' If you pass too, the hand is abandoned.' : '';
-          return '<div class="prompt">Round 2: name a trump suit or pass.</div><div class="hint">If you name a suit, the 2 face-down kitty cards go to ' + n(L) + ' (your left), who then discards 2.' + lastNote + '</div>' + btns + '<button class="btn" type="button" data-action="name-pass">Pass</button>';
-        }
-        break;
-      case P.EXCHANGE:
-        if (v.receiver === you) return '<div class="prompt">' + n(v.caller) + ' named ' + suitLabel(v.trump) + '. You receive ' + v.received.map(R.shortName).join(', ') + '. Discard ' + v.exchangeCount + ' (' + sel + '/' + v.exchangeCount + ').</div><button class="btn primary" type="button" data-action="confirm-exchange"' + (sel === v.exchangeCount ? '' : ' disabled') + '>Discard ' + v.exchangeCount + '</button>';
-        break;
-      case P.SHOWDOWN_DISCARD:
-        if (v.showdown.pendingDiscard[you]) {
-          const now = canDiscard(v, you, true), wait = now ? '' : ' ' + n(v.discardTurn) + ' discards first.';
-          return '<div class="prompt">Showdown: discard ' + D_SD + ' of your ' + Engine.C.SHOWDOWN_DEAL + ' cards (' + sel + '/' + D_SD + '). Trump is ' + suitLabel(v.trump) + '.' + wait + '</div><button class="btn primary" type="button" data-action="confirm-sd-discard"' + (sel === D_SD && now ? '' : ' disabled') + '>Discard ' + D_SD + '</button>';
-        }
-        break;
-      case P.SHOWDOWN_LEAD:
-        if (v.showdown.mediator === you) return '<div class="prompt">You mediate. Pick the Showdown player who leads the first trick.</div>' + leadButtonsHTML(v);
-        break;
-      case P.TRICK_PLAY:
-      case P.SHOWDOWN_PLAY:
-        if (v.currentPlayer === you) {
-          const must = v.trick.leadSuit && v.legal.length < v.hand.length;
-          return '<div class="prompt">Your turn: ' + (v.trick.plays.length ? 'play a card.' : 'lead a card.') + '</div>' + (must ? '<div class="hint">You must follow ' + suitLabel(v.trick.leadSuit) + '. Cards that you cannot play are disabled.</div>' : (v.trick.leadSuit ? '<div class="hint">You have no ' + R.SUIT_NAME[v.trick.leadSuit] + ': play any card.</div>' : ''));
-        }
-        break;
-      default: break;
-    }
-    if (CONTINUE_LABEL[v.phase]) return '<button class="btn primary" type="button" data-action="continue">' + continueLabel(v) + '</button>';
-    if (ctx.waiting && botShowdown(v)) return skipHTML();
-    return '<div class="hint">' + statusText(v) + '</div>';
-  }
-
   function handHTML(v, ui) {
     const you = v.seat;
     const sorted = R.sortHand(v.hand, v.trump);
@@ -4306,43 +4149,32 @@ const Render = (() => {
       if (discardNeed(v, you)) mode = 'select';
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
-    if (!sorted.length) return '<div class="hand"><div class="hint">' + (v.showdown && v.showdown.active && !v.showdown.participants.includes(you) ? 'You are the mediator. Watch the Showdown.' : 'No cards in hand.') + '</div></div>';
+    if (!sorted.length) return '<div class="hand"></div>';
     const cards = sorted.map(id => {
       const isNew = v.received.includes(id) && ph === P.EXCHANGE;
       if (mode === 'select') return cardHTML(id, v.trump, { button: true, cls: ['selectable'].concat(ui.selected.has(id) ? ['selected'] : []), isNew });
       if (mode === 'play') {
         const legal = v.legal.includes(id);
-        /* In the Advanced UI an unplayable card stays clickable: the click says why it cannot be played. */
-        if (!legal && adv) return cardHTML(id, v.trump, { button: true, inert: true, cls: ['illegal'] });
-        return cardHTML(id, v.trump, { button: true, disabled: !legal, cls: legal ? ['legal'] : ['illegal'] });
+        /* An unplayable card stays clickable: the click says why it cannot be played. */
+        if (!legal) return cardHTML(id, v.trump, { button: true, inert: true, cls: ['illegal'] });
+        return cardHTML(id, v.trump, { button: true, cls: ['legal'] });
       }
-      /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In the Advanced
-         UI's round 2, on your call, a card you click says which button names its suit. */
+      /* While the bidding runs you study your hand: it stays bright, though no card can be picked. In round 2, on
+         your call, a card you click says which button names its suit. */
       const bidding = ph === P.REVEAL || ph === P.BID1 || ph === P.BID2 || !!ui.watch;   /* the replay viewer shows the hand bright too */
       /* The replay viewer raises a discard's cards before they go (ui.selected). */
       if (ui.watch && ui.selected.has(id)) return cardHTML(id, v.trump, { button: true, disabled: true, cls: ['idle', 'bidding', 'selected'], isNew });
-      if (adv && ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay && !ui.watch) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
+      if (ph === P.BID2 && v.bidTurn === you && !v.gameOver && !ui.autoplay && !ui.watch) return cardHTML(id, v.trump, { button: true, cls: ['idle', 'bidding', 'namehint'], isNew });
       return cardHTML(id, v.trump, { button: true, disabled: true, cls: bidding ? ['idle', 'bidding'] : ['idle'], isNew });
     }).join('');
     return '<div class="hand" id="hand">' + cards + '</div>';
   }
 
-  /* Small counter in the top bar: hand number, and the trick number while tricks are played. */
-  function handChipText(v) {
-    if (!v.handNumber) return '';
-    let t = handLabel(v);
-    if (v.trickNumber > 0 && v.trick && trickInPlay(v)) {
-      t += ' · ' + (v.showdown && v.showdown.active ? 'Showdown trick ' : 'Trick ') + v.trickNumber + '/' + v.totalTricks;
-    }
-    return t;
-  }
-
-  /* ---- Advanced UI (Settings → Game): the same View, drawn as a minimal table. Seats show tags, numbers
-     and circles; the information strip (#info, in the header) holds what every player shares; the action buttons sit at the
-     bottom of the play area; Skip moves to the top bar. Motion is Fx's (section 7b). ---- */
-  let adv = false;   // true while render() draws the Advanced UI (cardHTML adds the KING tag then)
+  /* ---- The table: seats show tags, numbers and circles; the information strip (#info, in the header) holds what
+     every player shares; the action buttons sit at the bottom of the play area; Skip sits in the top bar. Motion is
+     Fx's (section 7b). ---- */
   let jokerSuit = /** @type {string | null} */ (null);   // the hand's turned-up Joker suit, set by render() for cardHTML
-  const advKey = { seats: '', info: '' };
+  let drawnKey = '';
 
   /* A text-sized card: rank and suit on white, as in the log. */
   function microHTML(id, joker) {
@@ -4511,7 +4343,7 @@ const Render = (() => {
     const b = [];
     if (ui.watch) return '<div class="pile-act ends">' + ui.watch + '</div>';
     if (v.gameOver) b.push(ui.endButtons || '');
-    else if (v.phase === P.SETUP) { if (!v.seating) b.push('<button class="btn primary" type="button" data-action="menu">Choose a game</button>'); }
+    else if (v.phase === P.SETUP) { /* no buttons: the About screen covers an empty table, and a new game chooses seats */ }
     else if (!(ui.autoplay && isTurn(v, you))) {
       switch (v.phase) {
         case P.DISCARD: if (v.pendingDiscard[you]) b.push('<button class="btn primary" type="button" data-action="confirm-discard"' + (sel === D_OPEN && canDiscard(v, you, true) ? '' : ' disabled') + '>Discard ' + D_OPEN + '</button>'); break;
@@ -4560,14 +4392,13 @@ const Render = (() => {
     return html + advButtonsHTML(v, ui, ctx);
   }
 
-  /* Draws the Advanced UI. A redraw that changes nothing is skipped (the game redraws the same table several
-     times in a row, and each redraw would restart the motion); the enter and flash marks count only once. */
-  function renderAdvanced(v, ui, ctx) {
+  /* Draws the table. A redraw that changes nothing is skipped (the game redraws the same table several times in a
+     row, and each redraw would restart the motion); the enter and flash marks count only once. */
+  function render(v, ui, ctx) {
+    placeSeats(v.seat);
+    jokerSuit = v.jokerSuit || null;
     ctx.ui = ui;
-    const table = $('table');
-    table.classList.toggle('showdown', sdShown(v));
-    $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
-    $('handChip').textContent = handChipText(v);
+    $('table').classList.toggle('showdown', sdShown(v));
     const said = statusText(v), live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
     const order = Fx.discardOrder(v);
@@ -4575,11 +4406,10 @@ const Render = (() => {
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
     const skip = ctx.waiting && botShowdown(v) && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
-    if (key === advKey.seats) return false;
-    advKey.seats = key;
+    if (key === drawnKey) return false;
+    drawnKey = key;
     Fx.capture();
     for (const [el, h] of parts) el.innerHTML = h;
-    $('info').hidden = false;
     const slot = $('skipSlot'); slot.innerHTML = skip; slot.hidden = !skip;
     for (const p of around(v)) {
       const el = $('seat' + p);
@@ -4593,65 +4423,15 @@ const Render = (() => {
     Fx.after(v, ui);
     return true;
   }
-  /* Leaving the Advanced UI: its parts go, and the next draw is a full one. */
-  function leaveAdvanced() {
-    advKey.seats = '';
-    $('info').hidden = true; $('infoA').innerHTML = $('infoB').innerHTML = '';
-    $('skipSlot').hidden = true; $('skipSlot').innerHTML = '';
-    for (const id of ['seat0', 'seat1', 'seat2']) $(id).classList.remove('not-sd');
-    Fx.reset();
-  }
-
-  function render(v, ui, ctx) {
-    adv = !!ui.advanced;
-    placeSeats(v.seat);
-    jokerSuit = v.jokerSuit || null;
-    if (adv) return renderAdvanced(v, ui, ctx);
-    if (advKey.seats) leaveAdvanced();
-    const table = $('table');
-    table.classList.toggle('showdown', sdShown(v));
-    $('trumpChip').innerHTML = v.trump ? 'Trump: ' + suitLabel(v.trump) : 'Trump: —';
-    $('handChip').textContent = handChipText(v);
-    ctx.ui = ui;
-    for (const p of around(v)) {
-      const el = $('seat' + p);
-      el.innerHTML = seatHTML(v, p, ctx);
-      el.classList.toggle('turn', isTurn(v, p));
-      el.classList.toggle('out', !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(p)));
-    }
-    let center = '';
-    if (sdShown(v)) {
-      const parts = v.showdown.participants.map(p => nameOf(v, p)).join(' vs ');
-      center += '<div class="banner">SHOWDOWN<small>' + parts + ' · mediator: ' + nameOf(v, v.showdown.mediator) + '</small></div>';
-    }
-    center += pilesHTML(v);
-    const summary = summaryText(v, ui);
-    if (summary) center += summary;
-    else if (trickInPlay(v) || finalTrick(v)) center += trickHTML(v, ctx);
-    center += '<div class="status">' + statusText(v) + '</div>' + lastTrickHTML(v);
-    $('center').innerHTML = center;
-    /* Screen readers hear only the status line, from one stable live region. */
-    const said = $('center').querySelector('.status').textContent, live = $('liveStatus');
-    if (live && live.textContent !== said) live.textContent = said;
-
-    const me = $('seat' + v.seat);
-    const flash = ctx.flashSeats.has(v.seat) ? ' flash' : '';
-    const mine = v.players[v.seat].human && ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
-    const meName = meNameHTML(v, ui);
-    me.innerHTML = '<div class="me-head">' + meName + badges(v, v.seat, ui.autoplay, ui.allowSeatAI) + (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') +
-      '<span class="score' + flash + '">' + boardScore(v.scores[v.seat]) + '<small> / ' + WIN + '</small></span>' + tricksLine(v, v.seat) + bidBubble(v, v.seat) + '</div>' +
-      '<div class="actionbar">' + youText(actionBarHTML(v, ui, ctx)) + '</div>' + handHTML(v, ui);
-    me.classList.toggle('turn', isTurn(v, v.seat));
-  }
 
   return Object.freeze({ render, ledTrick, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
 })();
 
 /* ---------------------------------------------------------------------
-   7b. FX — the motion of the Advanced UI. Each move shows where the cards
+   7b. FX — the motion of the table. Each move shows where the cards
    go: the deal round the table, the discards onto the outside pile, the
    kitty, each trick card from its seat, the sweep to the trick winner, the
-   collect of a thrown-in hand. Render.renderAdvanced calls capture() just
+   collect of a thrown-in hand. Render.render calls capture() just
    before it redraws (the outgoing table is still on screen) and after()
    once the new table is drawn. Every motion is timed from when its cards
    first showed, so a redraw part way through resumes it. A count (the
@@ -5135,7 +4915,7 @@ const Fx = (() => {
   /* The time until the table's motion ends (ms): the longest running or waiting animation on the table or in the
      effects layer. The controller waits for it before the next step shows. An endless animation does not count. */
   function busyFor() {
-    if (!ms() || !document.body.classList.contains('adv')) return 0;
+    if (!ms()) return 0;
     let w = 0;
     for (const a of document.getAnimations()) {
       const el = a.effect && /** @type {KeyframeEffect} */ (a.effect).target;
@@ -5145,7 +4925,7 @@ const Fx = (() => {
     }
     return Math.min(w, 4000);
   }
-  /* Leaving the Advanced UI, or a new game: nothing in flight, nothing remembered. */
+  /* A new game, or the empty table: nothing in flight, nothing remembered. */
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
     clearTimeout(liftTimer); clearTimeout(moveTimer); const c = q('#center'); if (c) c.classList.remove('lift');
@@ -5184,9 +4964,6 @@ const App = (() => {
      Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code.
      jokerFlip: '' (redeal) or the suit a turned-up Joker takes (Engine.JOKER_FLIPS). */
   const HOUSE = { mediatorLead: true, politePlay: true, jokerFlip: '' };
-  /* The interfaces of Settings → Game → Interface, each with the table it draws. Normal and Guided are not built
-     yet (their options are disabled); Flat draws the classic table for now. */
-  const UI_MODES = { advanced: { advanced: true }, normal: { advanced: true }, flat: { advanced: false }, guided: { advanced: true } };
   const app = {
     state: null,
     /* mode: 'waves', 'free', 'dynamic', or null when no game is running (the empty table). */
@@ -5196,10 +4973,9 @@ const App = (() => {
     dyn: /** @type {any} */ (null),
     said: /** @type {Record<number, boolean>} */ ({}),
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
-    /* uiMode: Settings → Game → Interface (UI_MODES). advanced: true while that mode draws the Advanced UI.
-       felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
+    /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what every player has seen this hand. All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', uiMode: 'advanced', advanced: true, felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -5459,7 +5235,7 @@ const App = (() => {
     if (saveFailReported) return;
     saveFailReported = true;
     Logger.log('SAVE_FAILED', { key });
-    note('This browser is not saving your games, progress or settings. If you close the page, they are lost.', 'neg');
+    note('This browser is not saving your games, progress or settings. If you close the page, they are lost.');
   }
   /* An error that nothing caught, in this page's own script (not an extension's). A drawing error inside a game
      timer would otherwise stop the game without a word. Each one goes to the event log (when it is on); the player
@@ -5613,7 +5389,7 @@ const App = (() => {
     } catch (e) {
       slots.clear(mode);
       enterIdle();
-      note('The saved game could not be loaded.', 'neg');
+      note('The saved game could not be loaded.');
       return false;
     }
     addLog('Game resumed.', '');
@@ -5629,30 +5405,13 @@ const App = (() => {
     app.ui.speed = value;
     schedule();
   }
-  /* The Advanced UI shows the speed as its icon only: the tooltip names the current speed. */
+  /* The speed shows as its icon only: the tooltip names the current speed. */
   function syncSpeedTitle() {
     const sel = $('speedSel');
-    sel.closest('.speed-pick').title = app.ui.advanced ? 'Speed: ' + sel.options[sel.selectedIndex].text : 'Game speed';
+    sel.closest('.speed-pick').title = 'Speed: ' + sel.options[sel.selectedIndex].text;
   }
 
-  /* ---- Interface (Settings): the interface (UI_MODES) and Table memory. ---- */
-  function setUIMode(mode) {
-    if (!UI_MODES[mode]) mode = 'advanced';
-    app.ui.uiMode = mode;
-    $('setUIMode').value = mode;
-    setAdvanced(UI_MODES[mode].advanced);
-  }
-  function setAdvanced(on) {
-    app.ui.advanced = on;
-    document.body.classList.toggle('adv', on);
-    placeLog();
-    closePanel();
-    Fx.reset();
-    $('gameLog').scrollTop = $('gameLog').scrollHeight;
-    syncSpeedTitle();
-    if (app.state) draw([]);
-    saveSettings();
-  }
+  /* ---- Theme and Table memory (Settings → Game). ---- */
   /* Theme: a felt tile for each felt pack, drawn in that felt, and the color pack's switch. */
   function syncTheme() {
     $('setFelt').innerHTML = Object.entries(Theme.packs.felts).map(([id, p]) =>
@@ -5673,13 +5432,6 @@ const App = (() => {
     closePanel();
     saveSettings();
   }
-  /* The Latest Scroll's home: the side panel, or in the Advanced UI the dropdown under the information strip. */
-  function placeLog() {
-    const ol = $('gameLog'), home = app.ui.advanced ? $('logDrop') : document.querySelector('.logpanel');
-    if (ol.parentElement !== home) home.appendChild(ol);
-    if (!app.ui.advanced) openLog(false);
-    showLatest(true);
-  }
   /* The Latest cell opens and closes the dropdown. It pushes the table down, so a popup placed under the strip closes. */
   function openLog(open) {
     $('logDrop').hidden = !open;
@@ -5687,7 +5439,7 @@ const App = (() => {
     if (open) { closePanel(); $('gameLog').scrollTop = $('gameLog').scrollHeight; }
   }
   const toggleLog = () => openLog($('logDrop').hidden);
-  /* The Advanced UI's popups: the Outside cell lists your discards, a player's trick circles list the tricks they won
+  /* The table's popups: the Outside cell lists your discards, a player's trick circles list the tricks they won
      this hand. One at a time; a click elsewhere, or a change on the table, closes it. */
   function closePanel() {
     const p = document.querySelector('#table > .panel'); if (p) p.remove();
@@ -5741,7 +5493,7 @@ const App = (() => {
     }
     anchor.classList.add('open');
   }
-  /* The information popups of the Advanced UI (adv-info): what a strip cell, a tag, a score or a hand of backs means.
+  /* The information popups (adv-info): what a strip cell, a tag, a score or a hand of backs means.
      With Settings → Table memory on, they add what every player at the table has seen, counted for you: the AI keeps
      the same facts (see its Knowledge settings). Never a card that someone holds unseen. Returns [title, body]. */
   function infoPanel(v, kind, seat, anchor) {
@@ -5890,18 +5642,6 @@ const App = (() => {
   }
   /* A seat's bids this hand, as every player heard them. */
   const bidsText = (v, seat) => v.bidLog.filter(b => b.player === seat).map(b => b.round === 1 ? (b.action === 'accept' ? 'accepted' : 'passed') + ' round 1' : (b.action === 'name' ? 'named ' + R.SYMBOL[b.suit] : 'passed') + ' round 2');
-  /* Profiles in the standard table, with Table memory on: during a hand, a seated player's profile adds their bids
-     and the suits they are void of, as every player at the table has seen them. A profile is who the player is; in
-     the Advanced UI, these facts are in the popup of the player's hand of backs instead (one place each). */
-  function thisHandHTML(id) {
-    const st = app.state, seat = app.ui.personas.indexOf(id);
-    if (!app.ui.memory || app.ui.advanced || !app.mode || !st || !st.handNumber || seat < 0) return '';
-    const v = buildView(st, HUMAN);
-    const bids = bidsText(v, seat);
-    const voids = v.voids[seat] || [];
-    const vd = voids.length ? voids.map(s => '<b' + (R.COLOR[s] === 'red' ? ' class="pip-red"' : '') + '>' + R.SYMBOL[s] + '</b>').join(' ') : 'none yet';
-    return '<div class="p-hand"><span class="lab">This hand</span><dl><dt>Bids</dt><dd>' + (bids.join(' · ') || 'none yet') + '</dd><dt>Void of</dt><dd>' + vd + '</dd></dl></div>';
-  }
 
   /* A yes/no question in the game's own style (never the browser's dialog). The game waits while it is open.
      Resolves true for the OK button, false for Cancel, Escape or a click outside it.
@@ -6028,7 +5768,7 @@ const App = (() => {
           Logger.log('AI_ERROR', { seat: p, phase: view.phase, step: i, error });
         }
         /* Only a broken game state gets here: no legal move exists. */
-        toast('The game cannot continue: no legal move for ' + app.state.players[p].name + '.', 'neg');
+        note('The game cannot continue: no legal move for ' + app.state.players[p].name + '.');
       });
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
@@ -6069,7 +5809,7 @@ const App = (() => {
      the game state is already ahead. Redraws in the meantime wait with it. */
   let heldDraw = 0, heldEvents = [], drawnVersion = -1;
   function draw(events) {
-    const fresh = !app.state || app.state.version < drawnVersion || !app.ui.advanced;   // a new game, or no motion
+    const fresh = !app.state || app.state.version < drawnVersion;   // a new game: no motion
     if (heldDraw && !fresh) { heldEvents.push(...events); return; }
     if (heldDraw) { clearTimeout(heldDraw); heldDraw = 0; heldEvents = []; }
     if (!fresh && app.state.version > drawnVersion && drawnVersion >= 0) {
@@ -6088,12 +5828,13 @@ const App = (() => {
       if (e.type === 'SCORE_CHANGED' && e.delta !== 0) ctx.flashSeats.add(e.player);
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
     }
+    syncAbout();
     if (Render.render(v, ui, ctx)) closePanel();
     syncModeUI();
     Fit.update();
   }
 
-  /* In the Advanced UI the cards also fit the window's height: --cw (the card width, set by the window's width)
+  /* The cards also fit the window's height: --cw (the card width, set by the window's width)
      gets smaller, down to Fit.MIN, until the table fits under the header, so a phone needs no scrolling.
      If the table does not fit even then, the page scrolls. The hand keeps room for 10 cards. While the window
      and the header stay the same, the cards can only get smaller (a row of tags that wraps), never larger,
@@ -6111,7 +5852,7 @@ const App = (() => {
       const root = document.documentElement, hand = $('hand'), drop = $('logDrop');
       const u = parseFloat(getComputedStyle(root).fontSize) / 16 || 1;
       MIN = 40 * u; GAP = 6 * u; PAD = 8 * u;
-      const on = app.ui.advanced && !!hand && !!$('seat1').firstElementChild;
+      const on = !!hand && !!$('seat1').firstElementChild;
       /* --tag-w: every tag is a third of a bot seat's tag row, so your tags match the bots' at any width. */
       const box = on && /** @type {HTMLElement | null} */ (document.querySelector('.seat .tagbox'));
       if (box) root.style.setProperty('--tag-w', (box.clientWidth - 2 * (parseFloat(getComputedStyle(box).columnGap) || 0)) / 3 + 'px');
@@ -6186,6 +5927,25 @@ const App = (() => {
   const beatenCount = (/** @type {any} */ results, mode = 'free') => { const won = (results.modeOpponents || {})[mode] || {}; return PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length; };
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
      shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
+  /* The About screen stands in for the empty table: no game is loaded and no replay is shown. */
+  function syncAbout() {
+    const idle = !app.mode && !watch;
+    $('about').hidden = !idle;
+    $('table').hidden = idle;
+    $('info').hidden = idle;
+    if (idle) openLog(false);
+  }
+  /* The About screen's kings, placed at random: each drifts up at its own pace, swaying, mostly faint. */
+  function aboutKings() {
+    const r = (lo, hi) => lo + Math.random() * (hi - lo), N = 14;
+    $('aboutKings').innerHTML = Array.from({ length: N }, (_, i) => {
+      const near = i % 4 === 0, d = r(36, 64);
+      const vars = { '--x': (i + r(0.1, 0.9)) / N * 100 + '%', '--y': r(4, 88) + '%', '--s': (near ? r(3, 4.5) : r(1.5, 2.75)) + 'rem', '--o': near ? r(0.12, 0.18) : r(0.07, 0.14),
+        '--d': d + 's', '--delay': -r(0, d) + 's', '--sw': r(4, 8) + 's', '--r': r(6, 16) + 'deg', '--drift': r(0.5, 1.5) + 'rem' };
+      const style = Object.entries(vars).map(([k, x]) => k + ':' + (typeof x === 'number' ? x.toFixed(2) : x)).join(';');
+      return '<span class="about-king" style="' + style + '"><span>' + (i % 3 === 1 ? '👑' : '🤴') + '</span></span>';
+    }).join('');
+  }
   function syncModeUI() {
     const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
     const chip = $('modeChip');
@@ -6214,7 +5974,7 @@ const App = (() => {
     for (const [id, text] of Object.entries(houseNotes())) { const note = $(id); note.hidden = !text; note.textContent = text; }
   }
 
-  /* ---- Narration: public events -> human-readable log + toasts ---- */
+  /* ---- Narration: public events -> the human-readable log (the Latest Scroll) ---- */
   /* Latest Scroll highlights: each phrase gets its own color (see .hl-* styles). */
   /** @type {[RegExp, string][]} */
   const LOG_HIGHLIGHTS = [
@@ -6288,7 +6048,7 @@ const App = (() => {
     ol.scrollTop = keep;
     showLatest(true);
   }
-  /* The Latest cell (Advanced UI): the newest line of the Latest Scroll, trick headings left out. A new line drops in
+  /* The Latest cell: the newest line of the Latest Scroll, trick headings left out. A new line drops in
      from above the window, exactly the size of the cell, and becomes the Latest line. The newest line wins: a line
      still falling lands at once. Instant speed, reduced motion, or still (a redraw of the log) set it in place.
      An app note (text that is not a game event) drops in the same way but stays out of the log.
@@ -6312,7 +6072,7 @@ const App = (() => {
   /* Phones keep the Latest cell to one line (see the CSS). A line too long for it shows its short form; the Latest
      Scroll keeps the full text. Each pattern matches a log line as narrate writes it, before "You" verbs agree. */
   const PHONE = matchMedia('(max-width:720px)');
-  const oneLine = () => app.ui.advanced && PHONE.matches;
+  const oneLine = () => PHONE.matches;
   /** @type {[RegExp, string][]} */
   const SHORT_LINES = [
     [/^(Hand \d+(?: \(redeal\))?): (\S+) deals 10 cards to each player and 3 to the kitty\.$/, '$1: $2 deals.'],
@@ -6367,7 +6127,7 @@ const App = (() => {
     if (falling && falling.html === html && !still) return;
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
     const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
-    if (still || !html || !ms || !app.ui.advanced || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }
+    if (still || !html || !ms || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }
     const box = document.createElement('div');
     box.className = 'latest-drop';
     box.setAttribute('aria-hidden', 'true');
@@ -6377,12 +6137,9 @@ const App = (() => {
     const me = falling = { anim, html };
     anim.finished.catch(() => {}).then(() => { box.remove(); if (falling === me) { falling = null; set(); } });
   }
-  /* A note from the app, not the game: the Latest cell in the Advanced UI, a toast otherwise. */
-  function note(text, cls) {
-    if (app.ui.advanced) showLatest(false, escHTML(text));
-    else toast(text, cls);
-  }
-  /* A King point: a large green +1 hangs over everything, every time, in both tables. Yours then drops toward your
+  /* A note from the app, not the game: it drops into the Latest cell, as a log line does. */
+  function note(text) { showLatest(false, escHTML(text)); }
+  /* A King point: a large green +1 hangs over everything, every time. Yours then drops toward your
      seat and dissolves; a bot's flies into that bot's seat and shrinks into its score, so it is clear who scored. Its
      length follows the game speed (Instant uses Fast's: it holds nothing up). */
   function kingPop(p) {
@@ -6428,18 +6185,7 @@ const App = (() => {
     }
     el.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
   }
-  /* The classic UI's toasts. The Advanced UI has none: its log lines drop into the Latest cell. */
-  function toast(text, cls) {
-    if (app.ui.advanced) return;
-    const t = document.createElement('div');
-    t.className = 'toast' + (cls ? ' ' + cls : '');
-    t.textContent = Render.youText(text);
-    const box = $('toasts');
-    box.appendChild(t);
-    while (box.children.length > 3) box.removeChild(box.firstChild);
-    setTimeout(() => t.remove(), 2700);
-  }
-  /* Each score reason: log, the words after a score change in the log and toasts; end, how a game ended ("by ..."). */
+  /* Each score reason: log, the words after a score change in the log; end, how a game ended ("by ..."). */
   const REASON = {
     KING: { log: 'King won a trick', end: 'a King won a trick' },
     SHOWDOWN_KING: { log: 'King won a Showdown trick', end: 'a King won a Showdown trick' },
@@ -6452,20 +6198,18 @@ const App = (() => {
   function narrate(e) {
     const st = app.state;
     const n = p => st.players[p].name;
-    /* A jump in the replay viewer narrates many moves at once: no toasts then. */
-    const pop = (text, cls) => { if (!hush) toast(text, cls); };
     switch (e.type) {
       case 'DEAL': addLog(handLabel(st) + ': ' + n(e.dealer) + ' deals 10 cards to each player and 3 to the kitty.', 'h gap'); break;
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED':
-        if (e.jokerSuit) { addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h'); pop('Joker turned — ' + R.SYMBOL[e.jokerSuit] + ' ' + R.SUIT_NAME[e.jokerSuit], 'info'); }
+        if (e.jokerSuit) addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h');
         else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind');
         break;
-      case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); pop('Joker turned — redeal', 'info'); break;
+      case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
-      case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); pop(n(e.player) + ' accepts ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
-      case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); pop(n(e.player) + ' names ' + R.SYMBOL[e.suit] + ' trump', 'info'); break;
+      case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
+      case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
       case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', 'ind'); break;
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
@@ -6474,19 +6218,16 @@ const App = (() => {
         break;
       case 'CARD_PLAYED': addLog(n(e.player) + ' played ' + R.shortName(e.card) + '.', 'play', e.showdown); break;
       case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': addLog(n(e.winner) + ' wins ' + (e.type === 'SHOWDOWN_TRICK_WON' ? 'Showdown ' : '') + 'trick ' + e.number + ' with ' + R.shortName(e.card) + '.', '', e.type === 'SHOWDOWN_TRICK_WON'); break;
-      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); if (!hush) kingPop(e.player); pop('♔ +1 ' + n(e.player) + ' — ' + R.shortName(e.card) + ' wins the trick!'); break;
+      case 'KING_SCORED': addLog('♔ +1 to ' + n(e.player) + ': ' + R.shortName(e.card) + ' won the trick.', 'k ind', e.showdown); if (!hush) kingPop(e.player); break;
       case 'SCORE_CHANGED':
         if (e.reason !== 'KING' && e.reason !== 'SHOWDOWN_KING') {
           const sign = e.delta > 0 ? '+' + e.delta : (e.delta < 0 ? '−' + (-e.delta) : (e.requested < 0 ? '−0' : '0'));
           addLog(sign + ' to ' + n(e.player) + ' (' + REASON[e.reason].log + (e.requested < 0 && e.delta === 0 ? ', already at 0' : '') + '). Score: ' + Render.scoreText(e.score) + '.', e.delta < 0 || e.requested < 0 ? 's ind' : 'k ind', e.reason === 'SHOWDOWN_WIN' || e.reason === 'SHOWDOWN_LOSS');
-          pop(sign + ' ' + n(e.player) + ' — ' + REASON[e.reason].log, e.requested < 0 ? 'neg' : '');
         }
         break;
       case 'HAND_SCORED': addLog('Hand tricks: ' + st.players.map((p, i) => p.name + ' ' + e.tricks[i]).join(', ') + '.', 'h gap'); break;
       case 'SHOWDOWN_STARTED':
         addLog('SHOWDOWN! ' + n(e.participants[0]) + ' and ' + n(e.participants[1]) + ' tied 3–3. ' + n(e.mediator) + ' is the mediator.', 's gap', true);
-        /* The Advanced UI has no Showdown banner: its toast names the two players and the mediator. */
-        pop('SHOWDOWN!', 'neg');
         break;
       case 'SHOWDOWN_DEAL': addLog(n(e.mediator) + ' shuffles the 12 outside cards. ' + n(e.mediator) + ' deals 6 to each Showdown player.', 's', true); break;
       case 'SHOWDOWN_DISCARD': addLog(n(e.player) + ' discards 1.', 'ind', true); break;
@@ -6515,8 +6256,8 @@ const App = (() => {
     const sd = v.showdown && v.showdown.active;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
       const k = st.pts[p].king;
-      /* The Advanced UI names each player in their color, as the hand result does. */
-      const name = app.ui.advanced ? '<span style="color:var(--name' + p + ')">' + n(p) + '</span>' : n(p);
+      /* Each player is named in their color, as the hand result does. */
+      const name = '<span style="color:var(--name' + p + ')">' + n(p) + '</span>';
       return '<tr><td>' + name + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
     }).join('');
     return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
@@ -6928,7 +6669,7 @@ const App = (() => {
     if (!ev) { checkInstall(); return; }
     install.prompt = null;
     ev.prompt();
-    ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') note('Install cancelled.', 'info'); checkInstall(); }).catch(() => checkInstall());
+    ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') note('Install cancelled.'); checkInstall(); }).catch(() => checkInstall());
     if (app.menuOpen) showMenu(app.menuLaunch);
   }
   /* Lists what the browser needs for an install, as this browser sees it. */
@@ -7074,9 +6815,10 @@ const App = (() => {
   }
 
   /* The rules open from the menu; Back returns to it (the game stays paused). */
-  function showRules() {
+  /* back: what the Back button does (the menu's Rules returns to the menu; the About screen's closes). */
+  function showRules(back = 'menu-back') {
     const ov = $('overlay');
-    ov.innerHTML = sheetHTML('rules', 'Rules', '<h2>King Cut-Throat — quick rules</h2>', 'menu-back') + '<ul>' +
+    ov.innerHTML = sheetHTML('rules', 'Rules', '<h2>King Cut-Throat — quick rules</h2>', back) + '<ul>' +
       '<li>3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.</li>' +
       '<li>33-card deck: 7–A in four suits plus the Joker. Deal: 3 each, 3 to the kitty, 4 each, 3 each.</li>' +
       '<li>Trump order: Joker, Right Bower (Jack of trump), Left Bower (other Jack of the same color, counts as trump), A, K, Q, 10, 9, 8, 7.</li>' +
@@ -7308,7 +7050,7 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
       case 'skip': skip(); break;
-      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x).replace('<div class="p-dials">', thisHandHTML(x.id) + '<div class="p-dials">'); $('overlay').hidden = false; } break; }
+      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
       case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
@@ -7327,6 +7069,7 @@ const App = (() => {
       case 'mode-results': if (watch) watchExit(); else showResults(); break;
       case 'menu': showMenu(false); break;
       case 'menu-rules': showRules(); break;
+      case 'about-rules': showRules('close-overlay'); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
       case 'close-menu': closeMenu(); break;
       case 'just-enter': app.menuOpen = false; $('overlay').hidden = true; enterIdle(); break;
@@ -7349,7 +7092,7 @@ const App = (() => {
       case 'replay-watch': {
         const row = el.hasAttribute('data-at') ? replays.list().find(x => String(x.at) === el.getAttribute('data-at')) : null;
         const code = el.hasAttribute('data-at') ? row && row.code : endCode;
-        if (code && !watchGame(code, row ? 'profile' : 'end')) note('This game cannot be shown.', 'neg');
+        if (code && !watchGame(code, row ? 'profile' : 'end')) note('This game cannot be shown.');
         break;
       }
       case 'watch-prev': case 'watch-back': case 'watch-fwd': case 'watch-next': case 'watch-play': {
@@ -7582,7 +7325,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -7592,10 +7335,6 @@ const App = (() => {
     if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
     if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
     if (x.logging === true) Logger.enabled = true;
-    /* Settings → Game → Advanced UI (a switch, before the Interface dropdown) is now the Interface dropdown: off was the classic table, now Flat. */
-    if (typeof x.uiMode !== 'string' && typeof x.advancedUI === 'boolean') app.ui.uiMode = x.advancedUI ? 'advanced' : 'flat';
-    if (typeof x.uiMode === 'string' && UI_MODES[x.uiMode]) app.ui.uiMode = x.uiMode;
-    app.ui.advanced = UI_MODES[app.ui.uiMode].advanced;
     /* The theme boot script applied the saved theme already: keep what it applied (unknown names became Classic). */
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
@@ -7609,7 +7348,8 @@ const App = (() => {
 
   function init() {
     SuitText.watch(document.body);
-    $('setBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
+    $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
+    aboutKings();
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
       if (TabLock.stale) {
@@ -7662,10 +7402,6 @@ const App = (() => {
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
     loadSettings();
-    document.body.classList.toggle('adv', app.ui.advanced);
-    placeLog();
-    $('setUIMode').value = app.ui.uiMode;
-    $('setUIMode').addEventListener('change', () => setUIMode($('setUIMode').value));
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
     syncTheme();
@@ -7691,11 +7427,8 @@ const App = (() => {
       if (ev.error instanceof Error && (!file || file === location.href.split('#')[0])) reportPageError(ev.error);
     });
     window.addEventListener('unhandledrejection', ev => { if (ev.reason instanceof Error) reportPageError(ev.reason); });
-    /* The header can wrap to two rows; the toasts sit just below it. */
-    const setHeaderH = () => { document.documentElement.style.setProperty('--header-h', $('topbar').offsetHeight + 'px'); Fit.update(); };
-    setHeaderH();
-    if (window.ResizeObserver) new ResizeObserver(setHeaderH).observe($('topbar'));
-    else window.addEventListener('resize', setHeaderH);
+    /* The header can wrap to two rows: the cards fit the room under it. */
+    if (window.ResizeObserver) new ResizeObserver(() => Fit.update()).observe($('topbar'));
     window.addEventListener('resize', () => Fit.update());
     const speed = $('speedSel');
     speed.value = app.ui.speed;
