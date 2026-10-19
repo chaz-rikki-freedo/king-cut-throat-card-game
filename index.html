@@ -775,6 +775,10 @@ body.adv .tag.led{background:#00838f;color:#fff}
   body.adv .me{padding-bottom:0.375rem}
   body.adv .me .hand{padding-top:0.375rem;min-height:calc(var(--hand-rows,1) * var(--cw) * 1.4 + (var(--hand-rows,1) - 1) * 0.375rem + 0.625rem)!important}
 }
+/* Under a hand result the empty hands keep no room: no row of backs in a bot seat, no hand in yours (an empty hand
+   has no id="hand"), and the tag rows take only the tags they hold. */
+body.adv .table:has(> .center > .summary) .seat .backrow:empty,body.adv .table:has(> .center > .summary) .me .hand:not(#hand){display:none}
+body.adv .table:has(> .center > .summary) .tagbox{min-height:0}
 </style>
 <!-- Theme packs (Settings → Game → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
