@@ -1,6 +1,6 @@
 # UI plan: replays, seeds, backup and themes
 
-Status: **agreed**, in phases. Phases 1 to 4 are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
+Status: **agreed**, in phases. All five phases are built. This page records where each feature that the code already has, but the interface does not show, goes in the interface. Give a new part a name in the [vocabulary](vocabulary.md) before you build it.
 
 ## Principles
 
@@ -72,12 +72,14 @@ No Copy code and no paste box: a full backup is about 16 KB of text, too long to
 
 ### Themes (phase 5)
 
-**Settings → Game → Table** gets a **Theme** list, saved in `kct.settings`. First:
+**Settings → Game → Theme**, the first setting of the Game tab, saved in `kct.settings` (`felt`, `colors`):
 
-1. Make the colors in [Not yet tokens](colors.md#not-yet-tokens) into tokens. A pack changes only tokens.
-2. Fix the known problems of the default palette in normal vision.
-3. Load a pack: embedded JSON that sets the tokens on `:root` and `<meta name="theme-color">`. `palette.js --pack` checks each pack in CI.
-4. First packs: Felt (the default), High contrast and Color-blind safe.
+- **Felt:** a tile for each felt pack, drawn in that felt: Classic (the default green), Spring (lilac), Summer (sea teal), Fall (russet, with a navy Showdown felt) and Winter (slate). A felt sets the surface tokens: the page, the felt, its edge, the panels (`--sheet`) and the muted text.
+- **Color-blind safe colors:** a switch that lays the `colorblind` color pack over any felt. It sets the names, the mode chips and the selection so that no pair collides with deuteranopia or protanopia; with it on, none of the known color-blind problems remain.
+- The packs are JSON in the head (`#themePacks`). A small script there (`#themeBoot`) applies the saved theme before the page draws and sets `<meta name="theme-color">`; the game script calls the same `apply`.
+- `palette.js` checks every felt, alone and with every color pack, in CI (see [colors.md](colors.md#theme-packs)).
+- The surfaces that were written as colors (the profile tooltip, the Advanced UI panels, the empty out-pile) now use tokens, so they follow the felt. The Settings panel keeps its own dark palette under every theme.
+- No High contrast theme (not wanted).
 
 ## Phases
 
@@ -87,7 +89,7 @@ No Copy code and no paste box: a full backup is about 16 KB of text, too long to
 | 2 | The replay viewer from your seat: Watch turns on, a Watch icon on the Last games rows, and the `?replay=` link. |
 | 3 | Watch from another seat in the viewer (tap a seat). |
 | 4 | The backup UI. |
-| 5 | Themes. |
+| 5 | Themes: the felts (Classic and the four seasons) and Color-blind safe colors. |
 
 ## Not in this plan
 

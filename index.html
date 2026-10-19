@@ -175,7 +175,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .pf-legend{display:flex;flex-wrap:wrap;gap:0.375rem 1rem;font-size:0.75rem;color:var(--muted);margin-top:0.375rem}
 .pf-legend i{display:inline-block;width:0.625rem;height:0.625rem;border-radius:0.125rem;margin-right:0.375rem;vertical-align:-0.0625rem}
 .pf-legend i.line{height:0.125rem;width:0.875rem;border-radius:0.0625rem;vertical-align:0.1875rem;background:var(--ink)}
-.pf-tip{position:absolute;z-index:2;pointer-events:none;background:#0b2416;border:1px solid rgba(255,255,255,.2);border-radius:0.5rem;padding:0.375rem 0.625rem;font-size:0.75rem;line-height:1.35;white-space:pre-line;box-shadow:0 0.375rem 1rem rgba(0,0,0,.4);max-width:15rem}
+.pf-tip{position:absolute;z-index:2;pointer-events:none;background:var(--page);border:1px solid rgba(255,255,255,.2);border-radius:0.5rem;padding:0.375rem 0.625rem;font-size:0.75rem;line-height:1.35;white-space:pre-line;box-shadow:0 0.375rem 1rem rgba(0,0,0,.4);max-width:15rem}
 .pf-tip::first-line{font-weight:700;font-size:0.8125rem}
 .profile table{margin:0.25rem 0}
 .profile td.num,.profile th.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -382,6 +382,15 @@ body.set-open{overflow:hidden}
 .settings .set-card > :last-child{border-bottom:0}
 .settings label.set-row{cursor:pointer}
 .settings .set-row-wide{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--s2)}
+/* Theme → Felt: one tile per felt pack, a radio each, drawn in that felt. */
+.settings .felt-grid{grid-column:1 / -1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s2)}
+.settings .felt-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s1);cursor:pointer;font-size:0.8125rem;color:var(--muted)}
+.settings .felt-radio{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.settings .felt-swatch{display:grid;place-items:center;width:100%;aspect-ratio:4/3;border-radius:0.5rem;background:radial-gradient(ellipse at center,var(--tile-felt) 0%,var(--tile-edge) 100%);border:0.1875rem solid var(--tile-edge)}
+.settings .felt-card{width:26%;aspect-ratio:5/7;border-radius:0.1875rem;background:var(--card);box-shadow:0 1px 0.125rem rgba(0,0,0,.4)}
+.settings .felt-radio:checked + .felt-swatch{outline:0.1875rem solid var(--gold);outline-offset:0.125rem}
+.settings .felt-radio:focus-visible + .felt-swatch{outline:0.1875rem solid var(--accent);outline-offset:0.125rem}
+.settings .felt-radio:checked ~ .felt-name{color:var(--ink);font-weight:700}
 .settings .set-row-wide .install-check{grid-column:1 / -1;grid-row:2}
 .settings .set-row-wide .set-btns{grid-column:2;grid-row:1}
 .settings .set-row-end{display:flex;justify-content:flex-end;min-height:0;padding:var(--s2) 0 var(--s3)}
@@ -650,7 +659,7 @@ body.adv .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
   body.adv .outpile .olayer,body.adv .outpile .olayer .card{animation:none}
 }
 body.adv .outpile .card{position:absolute;left:0;top:0;--w:var(--kw);box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.4)}
-body.adv .outpile.empty{border:0.125rem dashed #8fa79a;border-radius:calc(var(--cw)*.12)}
+body.adv .outpile.empty{border:0.125rem dashed var(--muted);border-radius:calc(var(--cw)*.12)}
 body.adv .logpanel h2{display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
 /* The Latest cell, the toasts and the Latest Scroll are one thing in the Advanced UI. Each new line drops in from
    above, exactly the size of the cell, and becomes the Latest line. The cell opens the Latest Scroll below the
@@ -730,7 +739,7 @@ body.adv .info .cell.tappable.open{box-shadow:0 0 0 0.125rem var(--gold)!importa
 body.adv .tpips.tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
 body.adv #center .slot.tappable,body.adv #center .kpile.tappable,body.adv #center .outpile.tappable{cursor:help}
 body.adv #center .tappable:focus-visible,body.adv #center .tappable.open{outline:0.125rem solid var(--gold);outline-offset:0.1875rem;border-radius:0.5rem}
-body.adv .panel{position:absolute;z-index:30;min-width:11.25rem;max-width:18.75rem;background:#0b2a1a;border:1px solid rgba(255,255,255,.18);border-radius:0.75rem;padding:0.625rem 0.75rem;box-shadow:0 0.625rem 1.625rem rgba(0,0,0,.55);font-size:0.8125rem}
+body.adv .panel{position:absolute;z-index:30;min-width:11.25rem;max-width:18.75rem;background:var(--page);border:1px solid rgba(255,255,255,.18);border-radius:0.75rem;padding:0.625rem 0.75rem;box-shadow:0 0.625rem 1.625rem rgba(0,0,0,.55);font-size:0.8125rem}
 body.adv .panel .ptitle{display:block;margin-bottom:0.375rem;font-size:0.8125rem;letter-spacing:.04em}
 body.adv .panel .prow{display:flex;align-items:center;gap:0.25rem;margin:0.25rem 0}
 body.adv .panel .tn{width:1.125rem;color:var(--muted);font-weight:800}
@@ -757,6 +766,44 @@ body.adv .tag.led{background:#00838f;color:#fff}
   body.adv .tagbox .tag{font-size:0.5rem!important;padding:0 1px!important}
 }
 </style>
+<!-- Theme packs (Settings → Game → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
+     tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
+<script type="application/json" id="themePacks">
+{"felts":{
+  "classic":{"name":"Classic","tokens":{}},
+  "spring":{"name":"Spring","tokens":{"--page":"#24172a","--felt":"#553a5e","--felt-edge":"#3a2742","--sheet":"#3a2741","--muted":"#d9c9dd","--felt-showdown":"#1d4f4f","--felt-showdown-edge":"#123535"}},
+  "summer":{"name":"Summer","tokens":{"--page":"#062a34","--felt":"#0e5566","--felt-edge":"#093a47","--sheet":"#093844","--muted":"#b9d3d9"}},
+  "fall":{"name":"Fall","tokens":{"--page":"#2f180a","--felt":"#6b3a1c","--felt-edge":"#4a2712","--sheet":"#55301a","--muted":"#dcc8b4","--felt-showdown":"#283a6b","--felt-showdown-edge":"#1a2648"}},
+  "winter":{"name":"Winter","tokens":{"--page":"#131f2d","--felt":"#2d4560","--felt-edge":"#1d2f43","--sheet":"#243a52","--muted":"#c3cfdb"}}
+},"colors":{
+  "colorblind":{"name":"Color-blind safe","tokens":{"--name0":"#55ebe0","--bot-vex":"#fe7f9d","--bot-doc":"#9eb2fe","--bot-ace":"#0bebb1","--bot-mei":"#ffa7d2","--bot-gus":"#c2e0fe","--bot-lou":"#f4a95e","--bot-viv":"#9babb6","--bot-tex":"#ceac90","--bot-kit":"#dce860","--bot-zen":"#c5d0cb","--name1":"#adf52e","--name2":"#a4b2ff","--mode-free":"#b5cefe","--mode-dynamic":"#ac95f1","--mode-waves":"#3d8dab","--accent":"#7ebee6","--mode-free-ink":"#0e1116","--mode-dynamic-ink":"#0e1116","--mode-waves-ink":"#0e1116"}}
+}}
+</script>
+<script id="themeBoot">
+/* Applies the saved theme before the page draws, so the default felt never flashes. The game script uses
+   window.kctTheme to change it. */
+window.kctTheme = (() => {
+  const packs = JSON.parse(document.getElementById('themePacks').textContent);
+  const root = document.documentElement, names = new Set();
+  for (const group of [packs.felts, packs.colors]) for (const p of Object.values(group)) for (const k of Object.keys(p.tokens)) names.add(k);
+  const css = getComputedStyle(root), defaults = {};
+  for (const k of names) defaults[k] = css.getPropertyValue(k).trim();
+  /* Unknown names fall back to the Classic felt and no color pack. Returns the theme applied. */
+  function apply(felt, colors) {
+    const f = packs.felts[felt] ? felt : 'classic', c = packs.colors[colors] ? colors : '';
+    const t = Object.assign({}, packs.felts[f].tokens, c ? packs.colors[c].tokens : {});
+    for (const k of names) { if (t[k]) root.style.setProperty(k, t[k]); else root.style.removeProperty(k); }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t['--felt-edge'] || defaults['--felt-edge']);
+    return { felt: f, colors: c };
+  }
+  const tokenOf = (felt, k) => (packs.felts[felt] && packs.felts[felt].tokens[k]) || defaults[k];
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('kct.settings') || 'null'); } catch (e) { /* no storage: the Classic felt */ }
+  apply(saved && saved.felt, saved && saved.colors);
+  return { packs, apply, tokenOf };
+})();
+</script>
 </head>
 <body>
 <header class="topbar" id="topbar">
@@ -830,6 +877,12 @@ body.adv .tag.led{background:#00838f;color:#fff}
   </header>
   <div class="set-body">
     <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
+      <h3 class="set-head">Theme</h3>
+      <div class="set-card" id="setTheme">
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
+          <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
+      </div>
       <h3 class="set-head">Table</h3>
       <div class="set-card" id="setInterface">
         <div class="set-row"><span class="set-text"><label class="set-name" for="setUIMode">Interface</label><span class="set-desc">Advanced: a minimal table for players who know the rules. Flat: the classic table.</span></span>
@@ -5094,6 +5147,10 @@ const Fx = (() => {
    --------------------------------------------------------------------- */
 const App = (() => {
   const R = Rules, P = Engine.P;
+  /** The theme packs and the boot script's apply (the script before the page draws, in the head).
+      @type {{ packs: { felts: Record<string, { name: string, tokens: Record<string, string> }>, colors: Record<string, { name: string, tokens: Record<string, string> }> },
+        apply(felt: string, colors: string): { felt: string, colors: string }, tokenOf(felt: string, token: string): string }} */
+  const Theme = /** @type {any} */ (window).kctTheme;
   const DELAYS = {
     slow: { ai: 1200, trick: 2300, sys: 600 },
     normal: { ai: 650, trick: 1400, sys: 350 },
@@ -5121,8 +5178,9 @@ const App = (() => {
     said: /** @type {Record<number, boolean>} */ ({}),
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* uiMode: Settings → Game → Interface (UI_MODES). advanced: true while that mode draws the Advanced UI.
+       felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what every player has seen this hand. All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', uiMode: 'advanced', advanced: true, memory: false, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', uiMode: 'advanced', advanced: true, felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -5574,6 +5632,20 @@ const App = (() => {
     $('gameLog').scrollTop = $('gameLog').scrollHeight;
     syncSpeedTitle();
     if (app.state) draw([]);
+    saveSettings();
+  }
+  /* Theme: a felt tile for each felt pack, drawn in that felt, and the color pack's switch. */
+  function syncTheme() {
+    $('setFelt').innerHTML = Object.entries(Theme.packs.felts).map(([id, p]) =>
+      '<label class="felt-tile" style="--tile-felt:' + Theme.tokenOf(id, '--felt') + ';--tile-edge:' + Theme.tokenOf(id, '--felt-edge') + '">' +
+      '<input class="felt-radio" type="radio" name="felt" value="' + id + '"' + (id === app.ui.felt ? ' checked' : '') + '>' +
+      '<span class="felt-swatch" aria-hidden="true"><span class="felt-card"></span></span><span class="felt-name">' + escHTML(p.name) + '</span></label>').join('');
+    /** @type {HTMLInputElement} */ ($('setColorBlind')).checked = app.ui.colors === 'colorblind';
+  }
+  function setTheme(felt, colors) {
+    const t = Theme.apply(felt, colors);
+    app.ui.felt = t.felt; app.ui.colors = t.colors;
+    syncTheme();
     saveSettings();
   }
   function setMemory(on) {
@@ -7491,7 +7563,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, uiMode: app.ui.uiMode, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -7505,6 +7577,9 @@ const App = (() => {
     if (typeof x.uiMode !== 'string' && typeof x.advancedUI === 'boolean') app.ui.uiMode = x.advancedUI ? 'advanced' : 'flat';
     if (typeof x.uiMode === 'string' && UI_MODES[x.uiMode]) app.ui.uiMode = x.uiMode;
     app.ui.advanced = UI_MODES[app.ui.uiMode].advanced;
+    /* The theme boot script applied the saved theme already: keep what it applied (unknown names became Classic). */
+    if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
+    if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
     /* Profiles → Show this hand's bids and voids (up to 0.6.14) is now part of Table memory. */
     if (typeof x.memory !== 'boolean' && x.thisHand === true) app.ui.memory = true;
     if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
@@ -7574,6 +7649,9 @@ const App = (() => {
     $('setUIMode').addEventListener('change', () => setUIMode($('setUIMode').value));
     $('setMemory').checked = app.ui.memory;
     $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
+    syncTheme();
+    $('setFelt').addEventListener('change', ev => { const r = /** @type {HTMLInputElement} */ (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
+    $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt, /** @type {HTMLInputElement} */ ($('setColorBlind')).checked ? 'colorblind' : ''));
     $('backupFile').addEventListener('change', () => {
       const input = /** @type {HTMLInputElement} */ ($('backupFile')), file = input.files && input.files[0];
       input.value = '';

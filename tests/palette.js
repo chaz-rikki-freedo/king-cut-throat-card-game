@@ -1,7 +1,7 @@
 /* The color checker (docs/ui/colors.md). No browser: it reads index.html and the registry, docs/ui/palette.json.
 
    node palette.js               checks the game's colors; exits with code 1 when a check fails
-   node palette.js --pack f.json  checks a theme pack: its tokens over the defaults, with no known problems allowed
+   node palette.js --pack f.json  checks a theme pack file: its tokens over the defaults (see packProblems)
    node palette.js --write-doc   rewrites the generated tables in docs/ui/colors.md from the registry
 
    The checks:
@@ -13,7 +13,9 @@
      simulated color blindness in the registry.
    - Contrast: each text and background pair has at least its WCAG contrast ratio.
    - Known problems: a failing pair passes only while it is listed under known, and a listed pair that no longer
-     fails must be removed, so the list stays true. A theme pack has no known problems.
+     fails must be removed, so the list stays true.
+   - Theme packs: the packs embedded in index.html (#themePacks): every felt alone, and every felt with every color
+     pack (see packProblems).
 
    The palette page (docs/ui/palette.html) loads this file too, for the same color math and checks: only main()
    uses Node. */
@@ -95,8 +97,13 @@ function contrast(c1, c2) {
 
 /* ---- Reading the game ---- */
 const COLOR_RE = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g;
-/** The color tokens declared in the CSS ({ name, value, scope }), and every other color written in index.html. */
+/** The color tokens declared in the CSS ({ name, value, scope }), every other color written in index.html, and the
+    embedded theme packs (#themePacks: { felts, colors }), whose colors are not stray. */
 function readGame(html) {
+  const packRe = /<script type="application\/json" id="themePacks">([\s\S]*?)<\/script>/;
+  const pm = packRe.exec(html);
+  const packs = pm ? JSON.parse(pm[1]) : { felts: {}, colors: {} };
+  if (pm) html = html.slice(0, pm.index) + ' '.repeat(pm[0].length) + html.slice(pm.index + pm[0].length);
   const css = html.slice(0, html.indexOf('</style>'));
   const tokens = [], decl = /([^{}]+)\{([^{}]*)\}/g, prop = /(--[\w-]+)\s*:\s*([^;]+)/g;
   let m, p;
@@ -117,7 +124,7 @@ function readGame(html) {
   for (const [a, b] of spans) code = code.slice(0, a) + ' '.repeat(b - a) + code.slice(b);
   const stray = new Map();
   for (const x of code.match(COLOR_RE) || []) if (parse(x)) { const k = norm(x); stray.set(k, (stray.get(k) || 0) + 1); }
-  return { tokens, stray };
+  return { tokens, stray, packs };
 }
 
 /* ---- The checks ---- */
@@ -164,6 +171,25 @@ function problems(reg, values) {
   return out;
 }
 
+/** The problems of a theme: its tokens laid over the defaults. A theme may keep a known problem of the defaults only
+    when it changes neither color of the pair; a strict theme (a color pack) may keep none. Returns the problems
+    that fail, as text, and the problems for tokens that are not tokens or values that are not colors.
+    @param {Map<string, string>} defaults @param {Record<string, string>} tokens */
+function packProblems(reg, defaults, tokens, strict) {
+  const out = [], values = new Map(defaults), known = new Set(reg.known.map(k => k.key));
+  for (const [name, v] of Object.entries(tokens)) {
+    if (!values.has(name)) out.push(name + ' is not a token');
+    else if (!parse(v)) out.push(name + ': ' + v + ' is not a color');
+    else values.set(name, norm(v));
+  }
+  if (out.length) return out;
+  for (const p of problems(reg, values)) {
+    if (!strict && known.has(p.key) && !(p.a in tokens) && !(p.b in tokens)) continue;
+    out.push(p.check + ': ' + p.a + ' / ' + p.b + (p.vision === 'normal' ? '' : ' (' + p.vision + ')') + ': ' + p.text);
+  }
+  return out;
+}
+
 /* ---- The generated tables in colors.md ---- */
 function tokenTable(reg) {
   const rows = reg.tokens.map(t => '| `' + t.name + '` | ' + t.family + ' | `' + t.value + '` | ' + t.job + ' |');
@@ -195,12 +221,7 @@ function main(argv) {
   if (argv[0] === '--pack') {
     const pack = JSON.parse(fs.readFileSync(path.resolve(argv[1]), 'utf8'));
     console.log('Theme pack: ' + (pack.name || argv[1]));
-    for (const [name, v] of Object.entries(pack.tokens || {})) {
-      if (!values.has(name)) fail(name + ' is not a token');
-      else if (!parse(v)) fail(name + ': ' + v + ' is not a color');
-      else values.set(name, norm(v));
-    }
-    for (const p of problems(reg, values)) fail(p.check + ': ' + p.a + ' / ' + p.b + (p.vision === 'normal' ? '' : ' (' + p.vision + ')') + ': ' + p.text);
+    for (const p of packProblems(reg, values, pack.tokens || {}, !!pack.strict)) fail(p);
     note(reg.untokenized.length + ' colors in the game are not tokens yet, so no theme can change them.');
     console.log(fails.length ? 'FAIL: ' + fails.length + ' problem(s)' : 'OK: the pack has no collisions');
     return fails.length ? 1 : 0;
@@ -238,6 +259,15 @@ function main(argv) {
   for (const k of reg.known) if (!found.some(p => p.key === k.key)) fail('known "' + k.key + '" passes now: remove it from known');
   note(found.length + ' problems, ' + reg.known.length + ' of them known');
 
+  console.log('Theme packs');
+  const felts = Object.entries(game.packs.felts || {}), colorPacks = Object.entries(game.packs.colors || {});
+  if (!felts.length) fail('index.html has no felt packs (#themePacks)');
+  for (const [id, f] of felts) {
+    for (const p of packProblems(reg, values, f.tokens, false)) fail('felt ' + id + ': ' + p);
+    for (const [cid, c] of colorPacks) for (const p of packProblems(reg, values, { ...f.tokens, ...c.tokens }, true)) fail('felt ' + id + ' with ' + cid + ': ' + p);
+  }
+  note(felts.length + ' felts, ' + colorPacks.length + ' color pack(s): every felt alone and with every color pack');
+
   console.log('Docs');
   const doc = fs.readFileSync(DOC_FILE, 'utf8');
   if (withTables(doc, reg) !== doc) fail('colors.md is out of date: run node palette.js --write-doc');
@@ -246,6 +276,6 @@ function main(argv) {
   return fails.length ? 1 : 0;
 }
 if (typeof module !== 'undefined') {
-  module.exports = { parse, norm, deltaE, deltaELab, contrast, seenAs, readGame, problems, levelOf, VISION, LEVELS };
+  module.exports = { parse, norm, deltaE, deltaELab, contrast, seenAs, readGame, problems, packProblems, levelOf, VISION, LEVELS };
   if (require.main === module) process.exitCode = main(process.argv.slice(2));
 }
