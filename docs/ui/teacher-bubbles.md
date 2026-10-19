@@ -11,7 +11,7 @@ Status: built. Revised 2026-10-19.
 - **Ten puzzles past the basics,** found in real bot games by a search, each with exactly one right move.
 - **Bots as teachers.** A strong bot teaches from West, and a learner asks from East. Every line is in the bot's own voice, and short.
 - **Lessons keep nothing a game keeps:** no saved game, no results, no replay, no wave try. Only `kct.lessons`, the lessons done.
-- **A font of its own.** Lessons and the lobby use a hand-written font (Patrick Hand), so it's always clear when you are training.
+- **A voice, not a new look.** Only the teachers' spoken lines use a font of their own, a book serif (Libre Baskerville), so a line reads as someone talking. Everything else looks exactly as it does in a game: lessons get players used to the real table.
 
 ## Entry: the lobby
 
@@ -107,7 +107,7 @@ One bubble shows at a time, in order. Every line also goes into the Latest Scrol
 
 **Access.** A stop bubble is a dialog labeled with the speaker's name. Focus moves to its main button, so Enter or Space presses it. An aside is a status line, read politely. With reduced motion, the bubble appears without its grow animation.
 
-**The font.** Lessons and the lobby use Patrick Hand by Patrick Wagesreiter (SIL Open Font License 1.1), embedded as a 24 KB Latin subset, so it works offline. Cards, dialogs, the menu, Settings and the Latest Scroll keep the game's own font.
+**The font.** Only the spoken line in a bubble uses its own font: Libre Baskerville by Impallari Type (SIL Open Font License 1.1), a book serif made for reading on screen, embedded as a 20 KB Latin subset, so it works offline. It marks the line as a voice. The bubble's name, its buttons and the whole table keep the game's font, so what a player learns looks exactly like what they will play.
 
 ## The menu
 

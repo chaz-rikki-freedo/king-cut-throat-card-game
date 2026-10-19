@@ -41,9 +41,11 @@ const LESSON = `
     let r = await step(`
       await sleep(300);
       return { menu: overlayOpen(), talk: !!q('#talk'), start: !!talkBtn('training-start'), who: q('#talk .speaker') && q('#talk .speaker').textContent,
-        font: document.body.classList.contains('lesson'), mode: app.mode, choose: !!q('#center [data-action="menu"]') };`);
+        voice: getComputedStyle(q('#talk p')).fontFamily, table: getComputedStyle(q('#seat1 .seat-name') || document.body).fontFamily,
+        mode: app.mode, choose: !!q('#center [data-action="menu"]') };`);
     expect('a first launch opens on the lobby, not the menu', !r.menu && r.mode === null, r);
-    expect('Ace offers Training in a bubble, in the training font', r.talk && r.start && r.who === 'Ace' && r.font, r);
+    expect('Ace offers Training in a bubble', r.talk && r.start && r.who === 'Ace', r);
+    expect('only the dialogue has the lesson font; the table keeps the game\'s font', /Lesson Voice/.test(r.voice) && !/Lesson Voice/.test(r.table), r);
     expect('the table still offers Choose a game', r.choose, r);
 
     r = await step(`
