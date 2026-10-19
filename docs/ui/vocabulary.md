@@ -1,5 +1,7 @@
 # UI vocabulary
 
+> **Status.** The Flat (classic) table is removed: the Advanced table is the only one. The parts that only Flat drew no longer exist in `index.html`: the trump and hand chips, the status line, the action bar (prompt and hint), bid bubbles, discard notes, the Showdown banner, the kitty and outside piles as `.pile` (with `.tucked` and `.blocked-x`), the big trump symbol, the trick label and the who lines, the last-trick row, the side panel `aside.logpanel` (`#gameLog` now lives in `#logDrop`), the toasts (`#toasts`, `.toast`), the **This hand** box of a profile, and the Interface setting. Rows below that name them describe the removed table. When no game is loaded, the **About screen** (`#about`) replaces the empty table.
+
 Each table lists the parts of one region. The terms are in the order in which they appear on the screen, from top to bottom and from left to right.
 
 **Code anchor** is the `id`, class or `data-action` in `index.html` that draws or handles the part. **Kind** is the text kind of the part. The UI levels use it to choose what to show (see [UI levels](levels.md)).
