@@ -101,7 +101,37 @@ function finish(spec, hands, kitty, script) {
       if (!r.error) console.log('   phase ' + r.phase + ', trump ' + r.trump + ', your hand ' + r.hand.join(' ') + (r.legal ? '\n   legal ' + r.legal.join(' ') : '') + (r.answers ? '\n   ' + r.answers.join(' · ') : ''));
     }
     if (process.argv.includes('--json')) console.log(JSON.stringify(res.map(r => r.pz), null, 1));
+    /* --write NAME: replace the list NAME (TRAINING or PUZZLES) in index.html with these puzzles. */
+    const w = process.argv.indexOf('--write');
+    if (w > 0) {
+      if (res.some(r => r.error)) throw new Error('not written: a puzzle does not load');
+      writeList(process.argv[w + 1], res.map(r => r.pz));
+    }
   } finally { await browser.close(); srv.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });
+
+/* The puzzles as the game's source code: single quotes, one field group per line. */
+const js = v => typeof v === 'string' ? "'" + v.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"
+  : Array.isArray(v) ? '[' + v.map(js).join(', ') + ']'
+  : v && typeof v === 'object' ? '{ ' + Object.entries(v).map(([k, x]) => k + ': ' + js(x)).join(', ') + ' }' : String(v);
+function source(pz) {
+  const L = ['  {', '    format: 2, id: ' + js(pz.id) + ', kind: ' + js(pz.kind) + ', title: ' + js(pz.title) + ',', '    teachers: ' + js(pz.teachers) + ',',
+    '    prompt: ' + js(pz.prompt) + ',', '    lesson: ' + js(pz.lesson) + ',',
+    '    goal: ' + js(pz.goal) + ', dealer: ' + pz.dealer + ', scores: ' + js(pz.scores) + ',' + (pz.tips ? ' tips: ' + js(pz.tips) + ',' : '') + (pz.seed !== undefined ? ' seed: ' + pz.seed + ',' : ''),
+    '    deal: {', '      hands: [', pz.deal.hands.map(h => '        ' + js(h)).join(',\n'), '      ],', '      kitty: ' + js(pz.deal.kitty), '    },',
+    pz.script.length ? '    script: [\n' + pz.script.map(a => '      ' + js(a)).join(',\n') + '\n    ]' + (pz.say ? ',' : '') : '    script: []' + (pz.say ? ',' : '')];
+  if (pz.say) L.push('    say: {\n' + Object.entries(pz.say).map(([k, v]) => '      ' + k + ': ' + js(v)).join(',\n') + '\n    }');
+  L.push('  }');
+  return L.join('\n');
+}
+function writeList(name, list) {
+  if (!/^(TRAINING|PUZZLES)$/.test(name || '')) throw new Error('--write TRAINING or --write PUZZLES');
+  const file = path.join(__dirname, '..', 'index.html'), html = fs.readFileSync(file, 'utf8');
+  const head = 'const ' + name + ' = Object.freeze([', start = html.indexOf(head), end = html.indexOf('\n]);', start);
+  if (start < 0 || end < 0) throw new Error(name + ' not found in index.html');
+  const body = list.length ? '\n' + list.map(source).join(',\n') : '';
+  fs.writeFileSync(file, html.slice(0, start + head.length) + body + html.slice(end));
+  console.log('wrote ' + list.length + ' puzzles to ' + name + ' in index.html');
+}
 
 module.exports = { build };

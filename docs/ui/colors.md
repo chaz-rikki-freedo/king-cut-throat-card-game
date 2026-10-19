@@ -143,6 +143,8 @@ Generated from `palette.json`.
 | `--mode-dynamic-ink` | mode | `#1c1240` | Text on the Dynamic chip. |
 | `--mode-waves` | mode | `#0e7490` | The Waves chip. |
 | `--mode-waves-ink` | mode | `#ecfeff` | Text on the Waves chip. |
+| `--mode-lesson` | mode | `#e0d4c0` | The Training and Puzzles chip. |
+| `--mode-lesson-ink` | mode | `#2a1a08` | Text on the Training and Puzzles chip. |
 | `--bot-vex` | bot | `#ff7a7a` | Vex's name, wherever it shows. |
 | `--bot-doc` | bot | `#9db0ff` | Doc's name, wherever it shows. |
 | `--bot-ace` | bot | `#5fdc8f` | Ace's name, wherever it shows. |

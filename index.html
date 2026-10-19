@@ -22,7 +22,7 @@
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
-  --mode-free:#7cc4ff; --mode-free-ink:#07233a; --mode-dynamic:#b9a3ff; --mode-dynamic-ink:#1c1240; --mode-waves:#0e7490; --mode-waves-ink:#ecfeff;
+  --mode-free:#7cc4ff; --mode-free-ink:#07233a; --mode-dynamic:#b9a3ff; --mode-dynamic-ink:#1c1240; --mode-waves:#0e7490; --mode-waves-ink:#ecfeff; --mode-lesson:#e0d4c0; --mode-lesson-ink:#2a1a08;
   --bot-vex:#ff7a7a; --bot-doc:#9db0ff; --bot-ace:#5fdc8f; --bot-mei:#ff9fd0; --bot-gus:#5cb8ff;
   --bot-lou:#ffad5c; --bot-viv:#c99bff; --bot-tex:#d9a874; --bot-kit:#d8e45a; --bot-zen:#cfd8dc;
   --cw:clamp(2.875rem, 8.6vw, 5.125rem);
@@ -95,6 +95,7 @@ button{font:inherit;color:inherit}
 .mode-chip.waves{background:var(--mode-waves);color:var(--mode-waves-ink)}
 .mode-chip.free{background:var(--mode-free);color:var(--mode-free-ink)}
 .mode-chip.dynamic{background:var(--mode-dynamic);color:var(--mode-dynamic-ink)}
+.mode-chip.lesson{background:var(--mode-lesson);color:var(--mode-lesson-ink)}
 .mode-chip.replay{background:rgba(255,255,255,.18);color:var(--ink)}
 .mode-chip.replay .x{margin-left:0.375rem;opacity:.8}
 button.mode-chip{border:0;font-family:inherit;cursor:pointer;min-height:1.75rem}
@@ -767,6 +768,34 @@ body.adv .tag.led{background:#00838f;color:#fff}
 @media (max-width:720px){
   body.adv .tagbox .tag{font-size:0.5rem!important;padding:0 1px!important}
 }
+/* ---- Training and Puzzles (docs/ui/teacher-bubbles.md) ----
+   The training font marks a lesson and the lobby: Patrick Hand by Patrick Wagesreiter, SIL Open Font License 1.1
+   (Latin subset, from Google Fonts), embedded so it works offline. Cards, dialogs and Settings keep the game's font. */
+@font-face{font-family:"Training Hand";font-style:normal;font-weight:400;font-display:swap;src:url(data:font/woff2;base64,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) format("woff2")}
+body.lesson{font-family:"Training Hand",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:1.0625rem}
+body.lesson .card,body.lesson .micro,body.lesson .overlay,body.lesson .settings,body.lesson .gamelog{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body.lesson .card{font-size:0.9375rem}
+/* The teacher bubble: a popup with a speaker. Wide screens: in the speaker's seat panel, the tail up at the seat.
+   Phones: a row under the seats, which moves the table down. */
+.talk{position:absolute;z-index:25;background:var(--page);color:var(--ink);border:0.125rem solid var(--who);border-radius:0.75rem;box-shadow:0 0.625rem 1.625rem rgba(0,0,0,.55);line-height:1.35;animation:talkIn .15s ease-out;transform-origin:1.5rem 0}
+.talk::before{content:"";position:absolute;top:-0.6875rem;left:1.25rem;width:1.125rem;height:0.625rem;background:var(--who);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.talk .speaker{display:block;padding:0.4375rem 0.75rem 0;font-size:0.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--who)}
+.talk p{margin:0.1875rem 0.75rem 0.5rem;font-size:1.0625rem}
+.talk .acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:0.5rem;padding:0 0.625rem 0.625rem}
+.talk .acts .btn{white-space:nowrap}
+.talk.aside{pointer-events:none;opacity:.97}
+@keyframes talkIn{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.talk{animation:none}}
+.hand .card.taught{box-shadow:0 0 0 0.1875rem var(--gold),0 0 1.25rem var(--gold)!important;transform:translateY(-0.5rem)}
+@media (max-width:720px){
+  .table.talking{grid-template-areas:"west east" "talk talk" "center center" "me me"}
+  .table.talking > .talk{grid-area:talk;position:relative;left:auto;top:auto;width:auto;margin-top:0.375rem}
+  .talk.from2::before{left:auto;right:1.25rem}
+}
+.lesson-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0.5rem}
+.lesson-list .btn{width:100%;text-align:left;display:flex;gap:0.625rem;align-items:center}
+.lesson-list .ln{display:inline-block;min-width:1.5rem;text-align:center;font-weight:800;color:var(--muted)}
+.lesson-list .btn.done{opacity:.85}
 </style>
 <!-- Theme packs (Settings → Game → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
@@ -2548,15 +2577,15 @@ const TRAINING = Object.freeze([
     goal: { type: 'winTrick' }, dealer: 0, scores: [0, 0, 0],
     deal: {
       hands: [
-        ['KS', '8S', 'AD', '10D', '7D', '9C', '8C', '9H', '9D', '10H'],
+        ['AS', '8S', 'AD', '10D', '7D', '9C', '8C', '9H', '9D', '10H'],
         ['QS', '10S', 'AH', 'KH', 'QH', 'AC', 'KC', 'JS', 'JH', 'JD'],
-        ['9S', '8H', '10C', 'QC', 'KD', 'QD', '7S', 'JC', 'AS', 'JK']
+        ['9S', '8H', '10C', 'QC', 'KD', 'QD', '7S', 'JC', 'KS', 'JK']
       ],
       kitty: ['7H', '7C', '8D']
     },
     script: [
       { type: 'DISCARD', player: 1, cards: ['JS', 'JH', 'JD'] },
-      { type: 'DISCARD', player: 2, cards: ['JC', 'AS', 'JK'] },
+      { type: 'DISCARD', player: 2, cards: ['JC', 'KS', 'JK'] },
       { type: 'DISCARD', player: 0, cards: ['9H', '9D', '10H'] },
       { type: 'BID', player: 1, accept: true },
       { type: 'EXCHANGE', player: 2, cards: ['7S'] },
@@ -2564,7 +2593,7 @@ const TRAINING = Object.freeze([
       { type: 'PLAY', player: 2, card: '9S' }
     ],
     say: {
-      intro: [['west', 'Spades led. You must follow: your other cards are dimmed.'], ['east', 'So the highest spade wins?']],
+      intro: [['east', 'Spades led. What can you play?'], ['west', 'Only a spade: the rest are dimmed. The highest spade wins.']],
       hint: [['west', 'Your highest spade.']],
       failed: [['west', '{QS} beats {8S}. Try the higher spade.']]
     }
@@ -2593,7 +2622,7 @@ const TRAINING = Object.freeze([
       { type: 'PLAY', player: 2, card: '7S' }
     ],
     say: {
-      intro: [['west', 'Hearts are trump. No spades? Then any card goes.'], ['east', 'Even against her Ace?']],
+      intro: [['east', 'No spades left. Now what?'], ['west', 'Any card goes. Hearts are trump: a trump beats every other suit.']],
       hint: [['west', 'Any heart.']],
       failed: [['west', 'Only a trump beats my {AS}.']]
     }
@@ -2656,7 +2685,7 @@ const TRAINING = Object.freeze([
       { type: 'PLAY', player: 0, card: 'AD' }
     ],
     say: {
-      intro: [['west', 'My {KD} lost: no point. Your lead, champ.'], ['east', '{AC} is gone. So your {KC} can\'t lose?']],
+      intro: [['east', 'Oh no. Is the {AC} still out?'], ['west', 'Gone in trick 1. My {KD} lost: no point. A King that wins pays +1, champ.']],
       hint: [['west', 'The KING tag.']],
       failed: [['east', 'Oh no. No King, no point.']]
     }
@@ -2686,7 +2715,7 @@ const TRAINING = Object.freeze([
       { type: 'PLAY', player: 2, card: '7C' }
     ],
     say: {
-      intro: [['west', 'You\'re at 9. One point ends it.'], ['east', 'Mid-hand? Deal \'em again!']],
+      intro: [['east', 'Nine points? Deal \'em again!'], ['west', 'One point ends it. Even mid-trick.']],
       hint: [['west', 'Trump with a King.']],
       failed: [['west', 'Trick\'s yours. Point isn\'t.']]
     }
@@ -2711,7 +2740,7 @@ const TRAINING = Object.freeze([
       { type: 'DISCARD', player: 2, cards: ['8H', '9C', '10C'] }
     ],
     say: {
-      intro: [['west', '{9H} turned. Count your hearts. Bowers count.'], ['east', 'Just call it!']],
+      intro: [['east', 'Just call it!'], ['west', '{9H} turned up. Count your hearts first. Bowers count.']],
       hint: [['west', 'Five trumps.']],
       failed: [['west', 'Five trumps. That\'s a call.']]
     }
@@ -2732,7 +2761,8 @@ const TRAINING = Object.freeze([
     },
     script: [],
     say: {
-      intro: [['west', 'A whole hand now. I\'ll say a word when it helps.']]
+      intro: [['west', 'A whole hand now. I\'ll say a word when it helps.']],
+      solved: [['west', 'Most tricks: +1. All seven: +2 for the caller, +3 for anyone else.']]
     }
   }
 ]);
@@ -5712,7 +5742,9 @@ const App = (() => {
     /** @type {(() => void) | null} */
     timerFn: null,
     /* The AI settings that the bots used in this game (see trackBotSettings). */
-    botSettings: blankBotSettings()
+    botSettings: blankBotSettings(),
+    /* The lesson being played (Training or Puzzles), or null: see startLesson. */
+    lesson: /** @type {any} */ (null)
   };
   /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
@@ -5753,6 +5785,8 @@ const App = (() => {
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
     const w = Waves.get(wave);
     const pool = w ? [w.west, w.east] : seedTable(s);
+    app.lesson = null;
+    closeTalk();
     app.mode = w ? 'waves' : opts && opts.mode === 'dynamic' ? 'dynamic' : 'free';
     app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
     app.said = {};
@@ -5791,11 +5825,218 @@ const App = (() => {
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
+    app.lesson = null;
+    closeTalk();
     Fx.reset();
-    seatBots(null, null);
     clearLog();
+    lobby();
     draw([]);
     maybeOfferUpdate();
+  }
+
+  /* ---- Training and Puzzles (docs/ui/teacher-bubbles.md) ----
+     A lesson is a puzzle in format 2 (Puzzles.load) played on the real table. Two personalities sit as teachers and
+     speak in bubbles from their seats: the teacher West, the learner East. A lesson keeps nothing a game keeps: no
+     save slot, no results, no replay code, no wave try. Its only storage is kct.lessons, the lessons done.
+     Training is seven lessons, from following suit to a whole hand. Finishing it opens Puzzles, the fourth mode. */
+  const LESSON_LISTS = Object.freeze({ training: TRAINING, puzzles: PUZZLES });
+  const lessonStore = jsonStore(localStore('kct.lessons'));
+  const lessons = {
+    /** @returns {{ done: string[] }} */
+    get() { const x = lessonStore.load(); return { done: x && Array.isArray(x.done) ? x.done.filter(id => typeof id === 'string') : [] }; },
+    mark(/** @type {string} */ id) { const x = lessons.get(); if (x.done.includes(id)) return; x.done.push(id); if (!lessonStore.save(x)) reportSaveFail('kct.lessons'); },
+    trainingDone() { const d = lessons.get().done; return TRAINING.every(p => d.includes(p.id)); },
+    /* The first lesson of a list not done yet (0 when all are). */
+    next(/** @type {string} */ list) { const d = lessons.get().done, i = LESSON_LISTS[list].findIndex(p => !d.includes(p.id)); return i < 0 ? 0 : i; },
+    count(/** @type {string} */ list) { const d = lessons.get().done; return LESSON_LISTS[list].filter(p => d.includes(p.id)).length; }
+  };
+  const isLessonMode = (/** @type {string | null} */ m) => m === 'training' || m === 'puzzles';
+
+  /* The teacher bubble: one at a time, from West or East. A stop bubble waits for a button, or for your move; an
+     aside fades. Each line also goes into the Latest Scroll, so a missed one can be read again. */
+  const talk = { queue: /** @type {any[]} */ ([]), cur: /** @type {any} */ (null), timer: /** @type {any} */ (0) };
+  const TALK_SEAT = Object.freeze({ west: 1, east: 2 });
+  const cardText = (/** @type {string} */ text) => text.replace(/\{(\w+)\}/g, (m, id) => R.ALL_IDS.includes(id) ? R.shortName(id) : m);
+  const lineHTML = (/** @type {string} */ text) => escHTML(text).replace(/\{(\w+)\}/g, (m, id) => R.ALL_IDS.includes(id) ? Render.microHTML(id, 'Jkr') : m);
+  /** Queues lines ([seat, text]). o.buttons ([action, label], the first is the main one) go on the last bubble; a
+      stop bubble without them gets Next. o.aside: no buttons, it fades. */
+  function sayLines(/** @type {string[][]} */ lines, o = /** @type {{ buttons?: string[][], aside?: boolean }} */ ({})) {
+    lines.forEach((l, i) => talk.queue.push({ seat: TALK_SEAT[l[0]] || 1, text: l[1], aside: !!o.aside, buttons: i === lines.length - 1 ? o.buttons || null : null }));
+    if (!talk.cur) nextTalk();
+  }
+  function nextTalk() {
+    clearTimeout(talk.timer);
+    talk.cur = talk.queue.shift() || null;
+    renderTalk();
+  }
+  function closeTalk() {
+    clearTimeout(talk.timer);
+    talk.queue = []; talk.cur = null;
+    renderTalk();
+  }
+  function renderTalk() {
+    const table = $('table'), t = talk.cur;
+    let el = $('talk');
+    table.classList.toggle('talking', !!t);
+    if (!t) { if (el) el.remove(); placeTalk(); Fit.update(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'talk'; table.appendChild(el); }
+    const x = PERSONA_BY_ID[app.ui.personas[t.seat]];
+    const name = x ? x.name : app.state.players[t.seat].name;
+    const btns = t.aside ? '' : (t.buttons || [['talk-next', 'Next']]).map((b, i) => '<button class="btn' + (i === 0 ? ' primary' : '') + '" type="button" data-action="' + b[0] + '">' + b[1] + '</button>').join('');
+    el.className = 'talk from' + t.seat + (t.aside ? ' aside' : '');
+    el.setAttribute('role', t.aside ? 'status' : 'dialog');
+    el.setAttribute('aria-label', name);
+    el.style.setProperty('--who', x ? 'var(--bot-' + x.id + ')' : 'var(--name' + t.seat + ')');
+    el.innerHTML = '<b class="speaker">' + escHTML(name) + '</b><p>' + lineHTML(t.text) + '</p>' + (btns ? '<div class="acts">' + btns + '</div>' : '');
+    addLog(name + ': “' + cardText(t.text) + '”', 'ind');
+    placeTalk();
+    Fit.update();
+    if (t.aside) talk.timer = setTimeout(nextTalk, 3200);
+    else { const b = el.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
+  }
+  /* Wide screens: the bubble sits in the speaker's seat panel, under what the panel shows, its tail up at the seat.
+     Phones: a row of its own under the seats (CSS); the table moves down and the window fit shrinks the cards.
+     The hint's card glows in your hand while the lesson waits for it. */
+  function placeTalk() {
+    for (const c of document.querySelectorAll('#seat0 .taught')) c.classList.remove('taught');
+    const L = app.lesson, point = L && !L.verdict ? L.point : null;
+    if (point) { const c = document.querySelector('#seat0 [data-card="' + point + '"]'); if (c) c.classList.add('taught'); }
+    const el = $('talk'), t = talk.cur;
+    if (!el || !t) return;
+    if (innerWidth <= 720) { el.style.left = el.style.top = el.style.width = ''; return; }
+    const seat = $('seat' + t.seat), last = seat.lastElementChild, tb = $('table').getBoundingClientRect(), r = seat.getBoundingClientRect();
+    const below = last ? last.getBoundingClientRect().bottom : r.top + r.height / 3;
+    el.style.left = (r.left - tb.left + 8) + 'px';
+    el.style.width = (r.width - 16) + 'px';
+    el.style.top = (below - tb.top + 14) + 'px';
+  }
+
+  /* The empty table is the lobby: two teachers sit down and offer the next lesson, instead of a table where nothing
+     happens. Ace hosts Training; once it is done, Mei and Vex host Puzzles. */
+  function lobby() {
+    const done = lessons.trainingDone();
+    if (!done) {
+      seatBots('ace', 'kit');
+      const n = lessons.count('training');
+      sayLines([['west', n ? 'Back for more, champ? Lesson ' + (lessons.next('training') + 1) + ' of ' + TRAINING.length + ' is next.' : 'Training night, champ. Seven short lessons, then a real hand.']],
+        { buttons: [['training-start', n ? 'Continue training' : 'Start training']] });
+      return;
+    }
+    seatBots('mei', 'vex');
+    const n = lessons.count('puzzles'), all = PUZZLES.length;
+    const line = !all ? 'Training done. You know the game.' : n === all ? 'All ' + all + ' puzzles solved. 👑' : 'Puzzles: ' + n + ' of ' + all + ' solved. Next one?';
+    sayLines([['west', line]], { buttons: all ? [['puzzles-open', n === all ? 'Puzzles' : 'Next puzzle']] : [['training-replay', 'Training again']] });
+  }
+
+  /** Starts lesson i of a list. how: 'retry' (the prompt only) or 'hint' (the hint, with its card glowing). */
+  function startLesson(/** @type {string} */ list, /** @type {number} */ i, /** @type {string} */ how = '') {
+    const item = LESSON_LISTS[list] && LESSON_LISTS[list][i];
+    if (!item) { enterIdle(); return; }
+    const ld = Puzzles.load(item);
+    if (!ld.ok) { note('This lesson could not load: ' + /** @type {any} */ (ld).error, 'neg'); enterIdle(); return; }
+    dropWatch();
+    clearTimer();
+    runReview();
+    closeTalk();
+    closePanel();
+    const tries = how && app.lesson && app.lesson.item === item ? app.lesson.tries + 1 : 0;
+    app.mode = list;
+    app.dyn = null;
+    app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.ui.autoplay = false;
+    app.humanSeatWasAutoplayed = false;
+    app.seatSwapPending = false;
+    app.botSettings = blankBotSettings();
+    app.ui.endButtons = '';
+    app.ui.scoreHold = {};
+    app.state = ld.state;
+    app.lesson = { list, i, item, start: structuredClone(ld.state), verdict: null, tries, said: {}, point: null };
+    resetDraw();
+    seatBots(item.teachers.west, item.teachers.east);
+    app.ui.selected.clear();
+    clearLog();
+    app.menuOpen = false;
+    $('overlay').hidden = true;
+    hideUpdateNote();
+    addLog(modeName(list) + ' ' + (i + 1) + ' of ' + LESSON_LISTS[list].length + ': ' + item.title + '. ' + item.prompt, 'h');
+    draw([]);
+    const go = [['talk-close', 'Play']];
+    if (how === 'hint') {
+      const ans = Puzzles.answers(item.goal, ld.state, ld.state), win = ans && ans.find(x => x.wins);
+      app.lesson.point = win && win.action.card || null;
+      sayLines(item.say && item.say.hint || [['west', 'Look again.']], { buttons: go });
+    } else if (how === 'retry') {
+      sayLines([['west', 'Again: ' + item.prompt.charAt(0).toLowerCase() + item.prompt.slice(1)]], { buttons: go });
+    } else {
+      /* The teacher West gives the task: it ends the intro, on its own bubble when the learner spoke last. */
+      const intro = item.say && item.say.intro ? item.say.intro.map(l => l.slice()) : [];
+      const last = intro[intro.length - 1];
+      if (last && last[0] === 'west' && item.goal.type !== 'playHand') last[1] += ' ' + item.prompt;
+      else if (item.goal.type !== 'playHand') intro.push(['west', item.prompt]);
+      sayLines(intro, { buttons: go });
+    }
+    schedule();
+  }
+  /* The judge, after each step of a lesson. Returns the verdict when it is decided, else null (and the guided hand's
+     remarks on what just happened). */
+  function judgeLesson(action, events) {
+    const L = app.lesson, j = Puzzles.judge(L.item.goal, L.start, app.state, action);
+    if (j.verdict !== 'open') { L.verdict = j; L.point = null; return j; }
+    if (L.item.tips !== 'guided') return null;
+    for (const e of events) {
+      if (e.type === 'KING_SCORED' && !L.said.king) { L.said.king = true; sayLines([['east', e.player === HUMAN ? 'A King won: +1 for you!' : 'Kings pay. +1 on the spot.']], { aside: true }); }
+      if (e.type === 'SHOWDOWN_STARTED' && !L.said.showdown) { L.said.showdown = true; sayLines([['west', 'Three, three and one: a Showdown. The two tied play five more tricks.']], { buttons: [['talk-close', 'OK']] }); }
+    }
+    return null;
+  }
+  /* What a failed lesson says when it has no lines of its own, by the judge's reason. */
+  const FAIL_TEXT = Object.freeze({ lostTrick: 'That trick went elsewhere.', outOfReach: 'Too few tricks left for that now.', handOver: 'The hand ended first.', gameOver: 'Someone else reached 10.', otherChoice: 'Not the best choice here.' });
+  function showVerdict() {
+    const L = app.lesson;
+    if (!L || !L.verdict) return;
+    const item = L.item, list = LESSON_LISTS[L.list], last = L.i === list.length - 1;
+    closeTalk();
+    if (L.verdict.verdict === 'solved') {
+      lessons.mark(item.id);
+      const lines = (item.say && item.say.solved || []).concat([['west', item.lesson]]);
+      if (L.list === 'training' && last) {
+        lines.push(['west', 'Training done 🎓 Puzzles are open in the menu.']);
+        sayLines(lines, { buttons: [['play-first-wave', 'Play a game'], ['puzzles-open', 'Puzzles']] });
+      } else if (last) sayLines(lines, { buttons: [['lesson-list', 'All ' + modeName(L.list).toLowerCase()], ['menu', 'Menu']] });
+      else sayLines(lines, { buttons: [['lesson-next', 'Next'], ['lesson-again', 'Again']] });
+    } else {
+      const lines = item.say && item.say.failed ? item.say.failed : [['west', FAIL_TEXT[L.verdict.reason] || 'Not this time.']];
+      sayLines(lines, { buttons: [['lesson-retry', 'Try again'], ['lesson-hint', 'Hint']] });
+    }
+    syncModeUI();
+  }
+  /* The guided hand's tips: one word on your move, the first time each step comes up. Your move closes it. */
+  function coach() {
+    const L = app.lesson;
+    if (!L || L.verdict || L.item.tips !== 'guided') return;
+    const st = app.state, left = st.players[1].name;
+    let key = '', text = '';
+    switch (st.phase) {
+      case P.DISCARD: key = 'discard'; text = 'Discard 3, face down. Keep high cards and your longest suit.'; break;
+      case P.BID1: key = 'bid1'; text = '{' + st.flippedId + '} turned up. Accept: ' + R.SUIT_NAME[R.card(st.flippedId).suit || 'S'] + ' are trump, and ' + left + ' takes the {' + st.flippedId + '}. Or pass.'; break;
+      case P.BID2: key = 'bid2'; text = 'Round 2: name another suit, or pass.'; break;
+      case P.EXCHANGE: key = 'exchange'; text = 'The kitty came to you. Discard back to 7.'; break;
+      case P.TRICK_PLAY: key = st.trick.plays.length ? 'follow' : 'lead'; text = key === 'lead' ? 'Your lead: any card.' : 'Follow the suit led if you can.'; break;
+      case P.SHOWDOWN_DISCARD: key = 'sdDiscard'; text = 'Discard 1. Then five tricks decide the Showdown.'; break;
+      default: return;
+    }
+    if (L.said[key]) return;
+    L.said[key] = true;
+    sayLines([['west', text]], { buttons: [['talk-close', 'OK']] });
+  }
+  /* The lessons of a list, each with its mark: open any one. Puzzles open once Training is done. */
+  function showLessons(/** @type {string} */ list) {
+    const l = LESSON_LISTS[list], d = lessons.get().done;
+    const rows = l.map((p, i) => '<li><button class="btn' + (d.includes(p.id) ? ' done' : '') + '" type="button" data-action="lesson-pick" data-list="' + list + '" data-i="' + i + '">' +
+      '<span class="ln">' + (i + 1) + '</span> ' + escHTML(p.title) + (d.includes(p.id) ? ' <span aria-label="done">✓</span>' : '') + '</button></li>').join('');
+    const ov = $('overlay');
+    ov.innerHTML = sheetHTML('lessons', modeName(list), '<h2>' + modeName(list) + '</h2>') + '<ol class="lesson-list">' + rows + '</ol></div></div>';
+    ov.hidden = false;
   }
 
   function act(action) {
@@ -5803,10 +6044,15 @@ const App = (() => {
     if (TabLock.stale) return { ok: false, error: 'another tab is more current', events: [] };
     const res = Engine.dispatch(app.state, action);
     if (!res.ok) { draw([]); return res; }
+    /* Your move answers a teacher's bubble (an aside fades on its own). */
+    if (app.lesson && action.player === HUMAN && talk.cur && !talk.cur.aside) closeTalk();
     if (app.state.gameOver && res.events.some(e => e.type === 'GAME_ENDED')) finishGame();
     for (const e of res.events) narrate(e);
     if (app.dyn && Dynamic.handEnded(res.events, app.state)) dynamicHand();
+    /* A lesson: the judge after every step. Its first verdict ends the lesson once the table is still. */
+    const decided = app.lesson && !app.lesson.verdict ? judgeLesson(action, res.events) : null;
     draw(res.events);
+    if (decided) { clearTimer(); later(Math.max(DELAYS[app.ui.speed].trick, 300), showVerdict); return res; }
     /* schedule draws again (for the Skip button): it gets the events too, so the card and score animations stay. */
     schedule(res.events);
     saveGame();
@@ -5901,6 +6147,8 @@ const App = (() => {
 
   /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
   function finishGame() {
+    /* A lesson that ends the game (First to 10) keeps nothing: no results, no replay, no wave. */
+    if (app.lesson) return;
     const won = app.state.winner === HUMAN;
     if (app.wave.n) {
       const counts = waveCounts();
@@ -5935,6 +6183,7 @@ const App = (() => {
   /* Saves the running game to its mode's slot after every action. Finished games are not kept.
      A save that the browser refuses is reported through SaveWatch (see reportSaveFail). */
   function saveGame() {
+    if (app.lesson) return;
     /* A game still choosing seats has not begun: Back leaves the mode's saved game as it was. */
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
@@ -6078,6 +6327,8 @@ const App = (() => {
     clearTimer();
     runReview();
     try {
+      app.lesson = null;
+      closeTalk();
       app.mode = mode;
       app.ui.scoreHold = {};
       app.state = JSON.parse(JSON.stringify(s.state));
@@ -6492,6 +6743,8 @@ const App = (() => {
     /* The game waits while the menu or a question is open. It stops when another tab is more current. */
     if (app.menuOpen || askDone || TabLock.stale) return;
     if (!app.mode) { draw(ev); return; }
+    /* A lesson stops at its verdict: the table stays as it ended. */
+    if (app.lesson && app.lesson.verdict) { draw(ev); return; }
     /* A game can end mid-trick (a King point reaches 10). The table shows the final play first, for the trick-end
        wait (at least Normal's, Instant aside), before the game-over dialog covers it. A click on the table opens it
        at once. */
@@ -6513,6 +6766,10 @@ const App = (() => {
            failure (a throw or an action that the Engine refuses) falls through to a simpler move:
            the planner, then the fallback move, then a plain legal move from the rules alone. */
         const tries = [() => AI.decide(view, cfg), () => AI.fallbackAction(view, cfg), () => plainAction(app.state, p)];
+        /* A puzzle's opponents play the best defence (a search of the open hands), or the bot's own move when no
+           move stops you. A guided hand is a real hand: the bots play as themselves. */
+        const L = app.lesson;
+        if (L && L.item.goal.type !== 'playHand') tries.unshift(() => /** @type {any} */ (Puzzles.defend(L.item.goal, L.start, app.state) || AI.decide(view, cfg)));
         for (let i = 0; i < tries.length; i++) {
           let action = null, error = null;
           try { action = tries[i](); error = Engine.validate(app.state, action); } catch (e) { console.error(e); error = String(e instanceof Error ? e.message : e); }
@@ -6522,6 +6779,8 @@ const App = (() => {
         /* Only a broken game state gets here: no legal move exists. */
         toast('The game cannot continue: no legal move for ' + app.state.players[p].name + '.', 'neg');
       });
+    } else if (actors.includes(HUMAN) && app.lesson) {
+      coach();
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
       if (!sys) return;
@@ -6583,6 +6842,7 @@ const App = (() => {
     if (Render.render(v, ui, ctx)) closePanel();
     syncModeUI();
     Fit.update();
+    placeTalk();
   }
 
   /* In the Advanced UI the cards also fit the window's height: --cw (the card width, set by the window's width)
@@ -6662,7 +6922,7 @@ const App = (() => {
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
   /* Whether the bots play their personalities: always in a wave (they set its difficulty) and in Dynamic (it eases
      each bot from its personality), else as the switch says. */
-  const personasOn = (a = app) => a.usePersonas || inWaves(a) || a.mode === 'dynamic';
+  const personasOn = (a = app) => a.usePersonas || inWaves(a) || a.mode === 'dynamic' || !!a.lesson;
   /* The Settings notes for the running game's house rules: note id -> its text, or '' when the setting matches. */
   function houseNotes(a = app) {
     /** @type {Record<string, string>} */
@@ -6679,12 +6939,15 @@ const App = (() => {
   /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
      shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
   function syncModeUI() {
-    const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
+    const waves = inWaves(), L = app.lesson, ownBots = waves || app.mode === 'dynamic' || !!L;
     const chip = $('modeChip');
-    chip.innerHTML = watch ? 'Replay<span class="x" aria-hidden="true">✕</span>' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
-    chip.className = 'mode-chip' + (watch ? ' replay' : app.mode ? ' ' + app.mode : '');
+    chip.innerHTML = watch ? 'Replay<span class="x" aria-hidden="true">✕</span>' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>'
+      : L ? modeName(L.list) + ' ' + (L.i + 1) + '<span class="of"> of ' + LESSON_LISTS[L.list].length + '</span>' : app.mode ? modeName(app.mode) : '';
+    chip.className = 'mode-chip' + (watch ? ' replay' : L ? ' lesson' : app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode && !watch;
-    chip.title = watch ? 'Exit the replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    chip.title = watch ? 'Exit the replay' : L ? 'All the lessons' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    /* Training's own font marks a lesson, and the lobby on the empty table. */
+    document.body.classList.toggle('lesson', !watch && (!!L || !app.mode));
     if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
@@ -7091,7 +7354,8 @@ const App = (() => {
       tail('waves', p.cleared.length + ' of ' + p.total + ' cleared'), menuButton('play-wave', 'Play wave'));
     /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
     html += card('free', 'Free play', '', tail('free', 'Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length), menuButton('new-free', 'New game'));
-    html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
+    html += lessonCardHTML(launch);
+    html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('training-replay', 'Training', { title: 'The seven lessons, from the start' }) +
       (install.prompt ? menuButton('install-app', 'Install', { title: 'Play it from your home screen, also offline' }) : '') + '</div>';
     html += '</div></div>';
     const ov = $('overlay');
@@ -7102,14 +7366,26 @@ const App = (() => {
     maybeOfferUpdate();
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
+  /* The fourth mode's card: Training until it is done, then Puzzles. Its goal is the lessons done. */
+  function lessonCardHTML(launch) {
+    const list = lessons.trainingDone() ? 'puzzles' : 'training', all = LESSON_LISTS[list], n = lessons.count(list);
+    const L = app.lesson, now = !!L && L.list === list;
+    const first = now ? 'Playing now · ' + escHTML(L.item.title) : n ? (n === all.length ? 'All ' + n + ' done' + (list === 'puzzles' ? ' 👑' : '') : 'Next: ' + escHTML(all[lessons.next(list)].title)) : list === 'training' ? 'New to the game? Start here' : 'Training done';
+    const main = list === 'training' ? menuButton('training-start', n ? 'Continue' : 'Start', { primary: launch && !slots.last() }) : menuButton('puzzles-open', all.length ? 'Play puzzle' : 'Puzzles', { disabled: !all.length });
+    return '<section class="mcard" data-mode="' + list + '"><div class="mhead"><h3 class="mode-chip lesson">' + modeName(list) + '</h3>' +
+      '<button class="mtail" type="button" data-action="lesson-list" data-list="' + list + '" title="All the lessons">' + n + ' of ' + all.length + (list === 'puzzles' ? ' solved' : ' done') + '</button></div>' +
+      '<p class="mstat"><span>' + first + '</span><span>' + MODE_TAGLINE[list] + '</span></p><div class="mbtns">' +
+      menuButton(now ? 'close-menu' : 'resume-lesson', 'Resume', { primary: now, disabled: !now }) + main + '</div></section>';
+  }
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
   /* A mode's unfinished game: the one being played, or the saved one. null: none. */
   function unfinished(mode) {
     return app.mode === mode && gameOn() ? app.state : (slots.get(mode) || { state: null }).state;
   }
-  const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
+  const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : mode === 'training' ? 'Training' : mode === 'puzzles' ? 'Puzzles' : 'Free play';
   /* A mode card's second line when it has no game. */
-  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables',
+    training: 'Seven short lessons, then a real hand', puzzles: 'Positions past the basics' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* The note in the questions below when leaving the game costs a try (forfeitWave). */
   const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
@@ -7208,10 +7484,12 @@ const App = (() => {
     watch = {
       cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
-      back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
+      back: { lesson: app.lesson, state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
     ov.hidden = true;
     app.menuOpen = false;
+    app.lesson = null;
+    closeTalk();
     app.mode = null; app.dyn = null; app.ui.autoplay = false;
     app.wave = { n: null, wasOpenAtStart: false, result: null };
     app.state = watch.cur.state;
@@ -7354,7 +7632,7 @@ const App = (() => {
     const w = watch, b = w.back;
     clearTimeout(w.timer);
     watch = null;
-    app.state = b.state; app.mode = b.mode; app.wave = b.wave; app.dyn = b.dyn; app.ui.autoplay = b.autoplay;
+    app.state = b.state; app.mode = b.mode; app.wave = b.wave; app.dyn = b.dyn; app.ui.autoplay = b.autoplay; app.lesson = b.lesson;
     seatBots(b.personas[1], b.personas[2]);
     app.ui.personas[HUMAN] = b.personas[HUMAN];
     app.ui.selected.clear();
@@ -7816,7 +8094,27 @@ const App = (() => {
         showProfile('[data-action="profile-sort"][data-table="' + which + '"][data-key="' + key + '"]');
         break;
       }
-      case 'mode-results': if (watch) watchExit(); else showResults(); break;
+      case 'mode-results': if (watch) watchExit(); else if (app.lesson) showLessons(app.lesson.list); else showResults(); break;
+      case 'talk-next': nextTalk(); break;
+      case 'talk-close': nextTalk(); break;
+      case 'training-start': startLesson('training', lessons.next('training')); break;
+      case 'training-replay': startLesson('training', 0); break;
+      case 'puzzles-open': if (PUZZLES.length && lessons.trainingDone()) startLesson('puzzles', lessons.next('puzzles')); else enterIdle(); break;
+      case 'lesson-next': if (app.lesson) startLesson(app.lesson.list, app.lesson.i + 1); break;
+      case 'lesson-again': if (app.lesson) startLesson(app.lesson.list, app.lesson.i); break;
+      case 'lesson-retry': if (app.lesson) startLesson(app.lesson.list, app.lesson.i, 'retry'); break;
+      case 'lesson-hint': if (app.lesson) startLesson(app.lesson.list, app.lesson.i, 'hint'); break;
+      case 'lesson-list': showLessons(el.getAttribute('data-list') || (app.lesson ? app.lesson.list : 'training')); break;
+      case 'lesson-pick': {
+        const list = el.getAttribute('data-list') || 'training';
+        if (list === 'training' || lessons.trainingDone()) startLesson(list, Number(el.getAttribute('data-i')) || 0);
+        break;
+      }
+      case 'play-first-wave': {
+        const n = Waves.progress().unlocked;
+        confirmReplace('waves').then(yes => yes ? startMode('waves', undefined, n) : showMenu(false));
+        break;
+      }
       case 'menu': showMenu(false); break;
       case 'menu-rules': showRules(); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
@@ -8188,7 +8486,7 @@ const App = (() => {
     setHeaderH();
     if (window.ResizeObserver) new ResizeObserver(setHeaderH).observe($('topbar'));
     else window.addEventListener('resize', setHeaderH);
-    window.addEventListener('resize', () => Fit.update());
+    window.addEventListener('resize', () => { Fit.update(); placeTalk(); });
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     syncSpeedTitle();
@@ -8260,10 +8558,14 @@ const App = (() => {
     } else if (!badLink && (seed !== undefined || Waves.get(wave))) {
       /* Like New game in the menu: a begun unfinished game of that mode is lost only if you agree. */
       confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave); else showMenu(true); });
-    } else showMenu(true);
+    } else if (!newPlayer()) showMenu(true);
     /* Another tab can take the mark while this one loads. */
     if (TabLock.stale) showStale(); else TabLock.check();
   }
+
+  /* A first launch: no saved game, no finished game, no lesson, no setting ever saved. It opens on the lobby (Ace
+     offers Training), not the menu. */
+  const newPlayer = () => !MODES.some(m => slots.get(m)) && !replays.list().length && !lessons.get().done.length && !settingsStore.load();
 
   /* Results live in two stores: the counts (stats) and the last games (replays), which Your profile and the seats
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */

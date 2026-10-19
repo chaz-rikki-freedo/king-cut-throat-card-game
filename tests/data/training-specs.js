@@ -6,7 +6,7 @@ module.exports = [
     id: 'follow-suit', title: 'Follow suit', teachers: { west: 'mei', east: 'kit' },
     dealer: 0, caller: 1, turned: '7H',
     hands7: [
-      ['KS', '8S', 'AD', '10D', '7D', '9C', '8C'],
+      ['AS', '8S', 'AD', '10D', '7D', '9C', '8C'],
       ['QS', '10S', 'AH', 'KH', 'QH', 'AC', 'KC'],
       ['9S', '7H', '8H', '10C', 'QC', 'KD', 'QD']
     ],
@@ -15,7 +15,7 @@ module.exports = [
     lesson: 'Follow the suit that was led. The highest card of that suit wins.',
     goal: { type: 'winTrick' },
     say: {
-      intro: [['west', 'Spades led. You must follow: your other cards are dimmed.'], ['east', 'So the highest spade wins?']],
+      intro: [['east', 'Spades led. What can you play?'], ['west', 'Only a spade: the rest are dimmed. The highest spade wins.']],
       hint: [['west', 'Your highest spade.']],
       failed: [['west', '{QS} beats {8S}. Try the higher spade.']]
     }
@@ -33,7 +33,7 @@ module.exports = [
     lesson: 'No card of the suit led? Play any card. Trump beats every other suit, even an Ace.',
     goal: { type: 'winTrick' },
     say: {
-      intro: [['west', 'Hearts are trump. No spades? Then any card goes.'], ['east', 'Even against her Ace?']],
+      intro: [['east', 'No spades left. Now what?'], ['west', 'Any card goes. Hearts are trump: a trump beats every other suit.']],
       hint: [['west', 'Any heart.']],
       failed: [['west', 'Only a trump beats my {AS}.']]
     }
@@ -69,7 +69,7 @@ module.exports = [
     lesson: 'A King that wins a trick scores +1 at once. A King that loses scores nothing.',
     goal: { type: 'kingPoint' },
     say: {
-      intro: [['west', 'My {KD} lost: no point. Your lead, champ.'], ['east', '{AC} is gone. So your {KC} can\'t lose?']],
+      intro: [['east', 'Oh no. Is the {AC} still out?'], ['west', 'Gone in trick 1. My {KD} lost: no point. A King that wins pays +1, champ.']],
       hint: [['west', 'The KING tag.']],
       failed: [['east', 'Oh no. No King, no point.']]
     }
@@ -87,7 +87,7 @@ module.exports = [
     lesson: 'First to 10 points wins at once, even in the middle of a trick.',
     goal: { type: 'kingPoint' },
     say: {
-      intro: [['west', 'You\'re at 9. One point ends it.'], ['east', 'Mid-hand? Deal \'em again!']],
+      intro: [['east', 'Nine points? Deal \'em again!'], ['west', 'One point ends it. Even mid-trick.']],
       hint: [['west', 'Trump with a King.']],
       failed: [['west', 'Trick\'s yours. Point isn\'t.']]
     }
@@ -106,7 +106,7 @@ module.exports = [
     lesson: 'Call when you hold enough trump. Your left-hand player takes the turned card: that is the price of calling.',
     goal: { type: 'decide', accept: [{ type: 'BID', player: 0, accept: true }] },
     say: {
-      intro: [['west', '{9H} turned. Count your hearts. Bowers count.'], ['east', 'Just call it!']],
+      intro: [['east', 'Just call it!'], ['west', '{9H} turned up. Count your hearts first. Bowers count.']],
       hint: [['west', 'Five trumps.']],
       failed: [['west', 'Five trumps. That\'s a call.']]
     }
@@ -126,7 +126,8 @@ module.exports = [
     goal: { type: 'playHand' },
     tips: 'guided',
     say: {
-      intro: [['west', 'A whole hand now. I\'ll say a word when it helps.']]
+      intro: [['west', 'A whole hand now. I\'ll say a word when it helps.']],
+      solved: [['west', 'Most tricks: +1. All seven: +2 for the caller, +3 for anyone else.']]
     }
   }
 ];

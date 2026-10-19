@@ -198,6 +198,18 @@
    "job": "Text on the Waves chip."
   },
   {
+   "name": "--mode-lesson",
+   "family": "mode",
+   "value": "#e0d4c0",
+   "job": "The Training and Puzzles chip."
+  },
+  {
+   "name": "--mode-lesson-ink",
+   "family": "mode",
+   "value": "#2a1a08",
+   "job": "Text on the Training and Puzzles chip."
+  },
+  {
    "name": "--bot-vex",
    "family": "bot",
    "value": "#ff7a7a",
@@ -310,7 +322,8 @@
   "modes": [
    "--mode-free",
    "--mode-dynamic",
-   "--mode-waves"
+   "--mode-waves",
+   "--mode-lesson"
   ],
   "signals": [
    "--gold",
@@ -552,6 +565,13 @@
    "on": [
     "--sheet",
     "--panel@--felt"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--mode-lesson-ink",
+   "on": [
+    "--mode-lesson"
    ],
    "min": 4.5
   }
