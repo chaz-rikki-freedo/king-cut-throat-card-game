@@ -2238,26 +2238,56 @@ const Replay = (() => {
    --------------------------------------------------------------------- */
 /**
  * @typedef {{ type: string, accept?: (Decision & { cards?: string[] })[], min?: number }} PuzzleGoal
+ * @typedef {[string, string]} PuzzleLine  a seat ('west' or 'east') and a line; {JD} in the text is a card
+ * @typedef {{ intro?: PuzzleLine[], hint?: PuzzleLine[], solved?: PuzzleLine[], failed?: PuzzleLine[] }} PuzzleTalk
  * @typedef {{ format: number, id: string, title: string, prompt: string, lesson: string, goal: PuzzleGoal,
- *   seed?: number, dealer: number, scores: number[], deal: { hands: string[][], kitty: string[] }, script: Decision[] }} Puzzle
+ *   seed?: number, dealer: number, scores: number[], deal: { hands: string[][], kitty: string[] }, script: Decision[],
+ *   kind?: string, teachers?: { west: string, east: string }, say?: PuzzleTalk, tips?: string }} Puzzle
  */
 const Puzzles = (() => {
   const R = Rules, P = Engine.P, C = Engine.C;
-  const FORMAT = 1;
-  const KEYS = Object.freeze(['format', 'id', 'title', 'prompt', 'lesson', 'goal', 'seed', 'dealer', 'scores', 'deal', 'script']);
-  const OPTIONAL = Object.freeze(['seed']);
-  /* The goal types and the fields each one takes. The judge (next step) reads them; the loader checks their shape. */
-  const GOALS = Object.freeze({ winTrick: [], tricks: ['min'], score: ['min'], winGame: [], decide: ['accept'] });
+  /* Format 2 adds who teaches and what they say (kind, teachers, say) and the coach tips of a guided hand (tips). */
+  const FORMAT = 2;
+  const KEYS1 = Object.freeze(['format', 'id', 'title', 'prompt', 'lesson', 'goal', 'seed', 'dealer', 'scores', 'deal', 'script']);
+  const KEYS2 = Object.freeze(KEYS1.concat(['kind', 'teachers', 'say', 'tips']));
+  const OPTIONAL = Object.freeze(['seed', 'say', 'tips']);
+  const KINDS = Object.freeze(['lesson', 'puzzle']);
+  const TALK = Object.freeze(['intro', 'hint', 'solved', 'failed']);
+  /* The goal types and the fields each one takes. The judge reads them; the loader checks their shape.
+     kingPoint: a King of yours wins the trick in progress. playHand: play the hand out (a guided hand; it can't fail). */
+  const GOALS = Object.freeze({ winTrick: [], tricks: ['min'], score: ['min'], winGame: [], decide: ['accept'], kingPoint: [], playHand: [] });
   const DEAL_SIZE = C.DEAL_PACKETS.reduce((a, b) => a + b, 0);
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const isText = x => typeof x === 'string' && x.trim() !== '';
+  /* The cards named in a line: {JD} is the Jack of Diamonds. */
+  const cardRefs = (/** @type {string} */ text) => Array.from(text.matchAll(/\{(\w+)\}/g), m => m[1]);
 
   /** The first problem in a puzzle's data, or null. Checks the shape only, not the script. @param {any} p @returns {string | null} */
   function shapeError(p) {
     if (!isObj(p)) return 'a puzzle must be an object';
+    if (p.format !== 1 && p.format !== FORMAT) return 'format must be 1 or ' + FORMAT;
+    const KEYS = p.format === 1 ? KEYS1 : KEYS2;
     for (const k of Object.keys(p)) if (!KEYS.includes(k)) return 'unknown field ' + k;
     for (const k of KEYS) if (!(k in p) && !OPTIONAL.includes(k)) return 'missing field ' + k;
-    if (p.format !== FORMAT) return 'format must be ' + FORMAT;
+    if (p.format === FORMAT) {
+      if (!KINDS.includes(p.kind)) return 'kind must be ' + KINDS.join(' or ');
+      const t = p.teachers;
+      if (!isObj(t) || Object.keys(t).join() !== 'west,east' || !PERSONA_BY_ID[t.west] || !PERSONA_BY_ID[t.east] || t.west === t.east) return 'teachers must be { west, east }: two different personality ids';
+      if ('say' in p) {
+        if (!isObj(p.say)) return 'say must be an object';
+        for (const k of Object.keys(p.say)) {
+          if (!TALK.includes(k)) return 'say has no part ' + k;
+          const lines = p.say[k];
+          if (!Array.isArray(lines) || !lines.length) return 'say.' + k + ' must be a list of lines';
+          for (const l of lines) {
+            if (!Array.isArray(l) || l.length !== 2 || (l[0] !== 'west' && l[0] !== 'east') || !isText(l[1])) return 'say.' + k + ': a line is [\'west\' or \'east\', text]';
+            const bad = cardRefs(l[1]).find(id => !R.ALL_IDS.includes(id));
+            if (bad) return 'say.' + k + ': unknown card {' + bad + '}';
+          }
+        }
+      }
+      if ('tips' in p && !(p.tips === 'guided' && p.goal && p.goal.type === 'playHand')) return 'tips must be \'guided\', with the goal playHand';
+    }
     if (typeof p.id !== 'string' || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(p.id)) return 'id must be lowercase words joined by hyphens';
     for (const k of ['title', 'prompt', 'lesson']) if (!isText(p[k])) return k + ' must be text';
     if ('seed' in p && !(Number.isInteger(p.seed) && p.seed >= 0 && p.seed <= 0xffffffff)) return 'seed must be a 32-bit unsigned integer';
@@ -2359,6 +2389,10 @@ const Puzzles = (() => {
       case 'score':
         if (g.min > C.WIN_SCORE) return 'goal.min is more than ' + C.WIN_SCORE + ' points';
         return st.scores[0] < g.min ? null : 'goal score is met before the puzzle starts';
+      case 'kingPoint':
+        return Engine.PLAY_PHASES.includes(st.phase) && st.hands[0].some(id => R.isKing(id)) ? null : 'goal kingPoint needs a trick in progress and a King in your hand';
+      case 'playHand':
+        return HAND_OVER.includes(st.phase) ? 'goal playHand needs a hand to play' : null;
       case 'decide':
         for (const a of g.accept) {
           const err = Engine.validate(st, a);
@@ -2414,6 +2448,16 @@ const Puzzles = (() => {
       case 'winGame':
         if (st.gameOver) return st.winner === 0 ? solved : failed('gameOver');
         return HAND_OVER.includes(st.phase) ? failed('handOver') : open;
+      case 'kingPoint': {
+        const sd = inShowdown(start), kings = sd ? 'sdKings' : 'kings';
+        if (st.handStats[kings][0].length > start.handStats[kings][0].length) return solved;
+        const before = (sd ? start.showdown : start).trickWinners.length;
+        const now = sd ? st.showdown.trickWinners : st.trickWinners;
+        if (now.length > before) return failed('lostTrick');
+        return lostGame ? failed('gameOver') : open;
+      }
+      case 'playHand':
+        return HAND_OVER.includes(st.phase) ? solved : open;
       case 'decide':
         if (!action || action.player !== 0) return open;
         return g.accept.some(a => sameDecision(a, action)) ? solved : failed('otherChoice');
@@ -2421,37 +2465,280 @@ const Puzzles = (() => {
     }
   }
 
-  return Object.freeze({ FORMAT, GOALS, shapeError, load, stackDeal, judge, sameDecision });
+  /* ---- The search: which moves force the goal, against the best defence. The hands are open: every seat sees
+     every card. It plays trick play and the Showdown (discards, lead), never the bidding. The opponents work
+     together against your goal. A search that would visit more than LIMIT positions stops (null), so the loader
+     keeps puzzles small. ---- */
+  const LIMIT = 250000;
+  const TOO_BIG = 'search too big';
+  /* The moves of the seat to act, in a phase the search plays; null in any other phase. */
+  /** @param {GameState} st @returns {Decision[] | null} */
+  function movesOf(st) {
+    const p = Engine.actors(st)[0];
+    if (p === undefined) return null;
+    if (Engine.PLAY_PHASES.includes(st.phase)) return R.legalCards(st.hands[p], st.trick.leadSuit, st.trump).map(card => ({ type: 'PLAY', player: p, card }));
+    if (st.phase === P.SHOWDOWN_DISCARD) return st.hands[p].map(card => ({ type: 'SHOWDOWN_DISCARD', player: p, card }));
+    if (st.phase === P.SHOWDOWN_LEAD) return st.showdown.participants.map(leader => ({ type: 'SHOWDOWN_LEAD', player: p, leader }));
+    return null;
+  }
+  /* One move, then the system steps after it, judged after each: { verdict } when decided, or { state }. */
+  function advance(g, start, st, a) {
+    const s = structuredClone(st);
+    if (!Engine.dispatch(s, a).ok) throw new Error('search: move refused');
+    let j = judge(g, start, s, a);
+    for (let sys = Engine.systemAction(s); j.verdict === 'open' && sys; sys = Engine.systemAction(s)) {
+      Engine.dispatch(s, sys);
+      j = judge(g, start, s, null);
+    }
+    return j.verdict === 'open' ? { state: s } : { verdict: j.verdict };
+  }
+  function wins(g, start, st, ctx) {
+    if (++ctx.nodes > LIMIT) throw new Error(TOO_BIG);
+    const ms = movesOf(st);
+    if (!ms) return false;
+    const mine = Engine.actors(st)[0] === 0;
+    for (const a of ms) {
+      const r = advance(g, start, st, a);
+      const ok = r.verdict ? r.verdict === 'solved' : wins(g, start, r.state, ctx);
+      if (mine && ok) return true;
+      if (!mine && !ok) return false;
+    }
+    return !mine;
+  }
+  /* Each of your moves now, and whether it forces the goal: [{ action, wins }], or null when the search is too big
+     or it isn't your move in a phase the search plays. */
+  /** @param {PuzzleGoal} g @param {GameState} start @param {GameState} st */
+  function answers(g, start, st) {
+    const ms = Engine.actors(st)[0] === 0 ? movesOf(st) : null;
+    if (!ms) return null;
+    const ctx = { nodes: 0 };
+    try {
+      return ms.map(action => { const r = advance(g, start, st, action); return { action, wins: r.verdict ? r.verdict === 'solved' : wins(g, start, r.state, ctx) }; });
+    } catch (e) { if (e instanceof Error && e.message === TOO_BIG) return null; throw e; }
+  }
+  /* An opponent's move that stops the goal (the best defence), or null when every move lets it through, or the
+     search is too big: the caller then plays the bot's own move. */
+  /** @param {PuzzleGoal} g @param {GameState} start @param {GameState} st @returns {Decision | null} */
+  function defend(g, start, st) {
+    const ms = Engine.actors(st)[0] !== 0 ? movesOf(st) : null;
+    if (!ms) return null;
+    const ctx = { nodes: 0 };
+    try {
+      for (const a of ms) {
+        const r = advance(g, start, st, a);
+        if (r.verdict ? r.verdict === 'failed' : !wins(g, start, r.state, ctx)) return a;
+      }
+    } catch (e) { if (!(e instanceof Error && e.message === TOO_BIG)) throw e; }
+    return null;
+  }
+
+  return Object.freeze({ FORMAT, GOALS, shapeError, load, stackDeal, judge, sameDecision, answers, defend, cardRefs });
 })();
 
-/* The lessons, in order. Each one must load (self-test 'puzzles'). See docs/puzzles.md. */
+/* Training: the seven lessons, in order, from the table to a whole hand (docs/ui/teacher-bubbles.md). Each lesson is
+   a puzzle in format 2. The readable source is tests/data/training-specs.js, built with tests/puzzlekit.js. The
+   self-test 'puzzles' loads each one and checks that its answer wins and a wrong move fails. */
 /** @type {readonly Puzzle[]} */
-const PUZZLES = Object.freeze([
+const TRAINING = Object.freeze([
   {
-    format: 1, id: 'left-bower', title: 'The Left Bower',
-    prompt: 'Hearts are trump. Win this trick.',
-    lesson: 'The Jack of the other suit of the same color is the Left Bower. It is trump, the third-highest card.',
-    goal: { type: 'winTrick' },
-    dealer: 0, scores: [0, 0, 0],
+    format: 2, id: 'follow-suit', kind: 'lesson', title: 'Follow suit',
+    teachers: { west: 'mei', east: 'kit' },
+    prompt: 'Win the trick.',
+    lesson: 'Follow the suit that was led. The highest card of that suit wins.',
+    goal: { type: 'winTrick' }, dealer: 0, scores: [0, 0, 0],
     deal: {
       hands: [
-        ['JD', '9H', 'AD', '10D', '8D', 'KC', 'QC', '7C', '8C', '9C'],
-        ['AS', 'KS', 'QS', '10S', '9S', 'KH', '10H', '8S', '7S', '10C'],
-        ['QH', '8H', 'AC', 'JC', 'KD', 'QD', '9D', '7D', 'JH', 'AH']
+        ['KS', '8S', 'AD', '10D', '7D', '9C', '8C', '9H', '9D', '10H'],
+        ['QS', '10S', 'AH', 'KH', 'QH', 'AC', 'KC', 'JS', 'JH', 'JD'],
+        ['9S', '8H', '10C', 'QC', 'KD', 'QD', '7S', 'JC', 'AS', 'JK']
       ],
-      kitty: ['7H', 'JS', 'JK']
+      kitty: ['7H', '7C', '8D']
     },
     script: [
-      { type: 'DISCARD', player: 1, cards: ['8S', '7S', '10C'] },
-      { type: 'DISCARD', player: 2, cards: ['JH', 'AH', '7D'] },
-      { type: 'DISCARD', player: 0, cards: ['7C', '8C', '9C'] },
+      { type: 'DISCARD', player: 1, cards: ['JS', 'JH', 'JD'] },
+      { type: 'DISCARD', player: 2, cards: ['JC', 'AS', 'JK'] },
+      { type: 'DISCARD', player: 0, cards: ['9H', '9D', '10H'] },
       { type: 'BID', player: 1, accept: true },
-      { type: 'EXCHANGE', player: 2, cards: ['9D'] },
+      { type: 'EXCHANGE', player: 2, cards: ['7S'] },
+      { type: 'PLAY', player: 1, card: 'QS' },
+      { type: 'PLAY', player: 2, card: '9S' }
+    ],
+    say: {
+      intro: [['west', 'Spades led. You must follow: your other cards are dimmed.'], ['east', 'So the highest spade wins?']],
+      hint: [['west', 'Your highest spade.']],
+      failed: [['west', '{QS} beats {8S}. Try the higher spade.']]
+    }
+  },
+  {
+    format: 2, id: 'trump', kind: 'lesson', title: 'Trump',
+    teachers: { west: 'mei', east: 'kit' },
+    prompt: 'Win the trick.',
+    lesson: 'No card of the suit led? Play any card. Trump beats every other suit, even an Ace.',
+    goal: { type: 'winTrick' }, dealer: 0, scores: [0, 0, 0],
+    deal: {
+      hands: [
+        ['8H', 'AD', 'KD', 'QD', 'AC', 'KC', '10C', '9S', '10S', '10D'],
+        ['AS', 'QS', 'AH', 'KH', 'QH', '9C', '8C', 'JS', 'JH', 'JD'],
+        ['7S', '9H', '10H', 'JC', '9D', '8D', '7D', 'QC', 'KS', 'JK']
+      ],
+      kitty: ['7H', '7C', '8S']
+    },
+    script: [
+      { type: 'DISCARD', player: 1, cards: ['JS', 'JH', 'JD'] },
+      { type: 'DISCARD', player: 2, cards: ['QC', 'KS', 'JK'] },
+      { type: 'DISCARD', player: 0, cards: ['9S', '10S', '10D'] },
+      { type: 'BID', player: 1, accept: true },
+      { type: 'EXCHANGE', player: 2, cards: ['7D'] },
+      { type: 'PLAY', player: 1, card: 'AS' },
+      { type: 'PLAY', player: 2, card: '7S' }
+    ],
+    say: {
+      intro: [['west', 'Hearts are trump. No spades? Then any card goes.'], ['east', 'Even against her Ace?']],
+      hint: [['west', 'Any heart.']],
+      failed: [['west', 'Only a trump beats my {AS}.']]
+    }
+  },
+  {
+    format: 2, id: 'left-bower', kind: 'lesson', title: 'The bowers',
+    teachers: { west: 'mei', east: 'kit' },
+    prompt: 'Win the trick.',
+    lesson: 'Trump order: Joker, Right Bower (J of trump), Left Bower (the other Jack of that color), then A, K, Q…',
+    goal: { type: 'winTrick' }, dealer: 0, scores: [0, 0, 0],
+    deal: {
+      hands: [
+        ['JD', '9H', 'AD', '10D', '8D', 'KC', 'QC', '8S', '8C', '9D'],
+        ['AS', 'KS', 'QS', '10S', '9S', 'KH', '10H', '9C', '10C', 'JS'],
+        ['QH', '8H', 'AC', 'JC', 'KD', 'QD', '7S', 'JH', 'AH', 'JK']
+      ],
+      kitty: ['7H', '7D', '7C']
+    },
+    script: [
+      { type: 'DISCARD', player: 1, cards: ['9C', '10C', 'JS'] },
+      { type: 'DISCARD', player: 2, cards: ['JH', 'AH', 'JK'] },
+      { type: 'DISCARD', player: 0, cards: ['8S', '8C', '9D'] },
+      { type: 'BID', player: 1, accept: true },
+      { type: 'EXCHANGE', player: 2, cards: ['7S'] },
       { type: 'PLAY', player: 1, card: 'AS' },
       { type: 'PLAY', player: 2, card: 'QH' }
-    ]
+    ],
+    say: {
+      intro: [['east', 'I trumped with {QH}. Beat that.'], ['west', 'Read your tags. LEFT ♥ means that Jack is a heart now.']],
+      hint: [['west', 'The tag says LEFT ♥.']],
+      failed: [['west', '{JD} counts as a heart, above the Ace.']]
+    }
+  },
+  {
+    format: 2, id: 'king-points', kind: 'lesson', title: 'King points',
+    teachers: { west: 'ace', east: 'lou' },
+    prompt: 'Score a King point.',
+    lesson: 'A King that wins a trick scores +1 at once. A King that loses scores nothing.',
+    goal: { type: 'kingPoint' }, dealer: 2, scores: [0, 0, 0],
+    deal: {
+      hands: [
+        ['10C', 'KC', 'AD', '9S', '8S', '7D', '10D', '9H', '9D', '10S'],
+        ['AC', 'QC', 'KD', 'AH', 'KH', 'QH', 'JH', '10H', 'JS', 'JD'],
+        ['8C', '9C', 'QD', '8H', 'AS', 'KS', '7S', 'JC', 'QS', 'JK']
+      ],
+      kitty: ['7H', '7C', '8D']
+    },
+    script: [
+      { type: 'DISCARD', player: 0, cards: ['9H', '9D', '10S'] },
+      { type: 'DISCARD', player: 1, cards: ['10H', 'JS', 'JD'] },
+      { type: 'DISCARD', player: 2, cards: ['JC', 'QS', 'JK'] },
+      { type: 'BID', player: 0, accept: false },
+      { type: 'BID', player: 1, accept: true },
+      { type: 'EXCHANGE', player: 2, cards: ['7S'] },
+      { type: 'PLAY', player: 0, card: '10C' },
+      { type: 'PLAY', player: 1, card: 'AC' },
+      { type: 'PLAY', player: 2, card: '8C' },
+      { type: 'PLAY', player: 1, card: 'KD' },
+      { type: 'PLAY', player: 2, card: 'QD' },
+      { type: 'PLAY', player: 0, card: 'AD' }
+    ],
+    say: {
+      intro: [['west', 'My {KD} lost: no point. Your lead, champ.'], ['east', '{AC} is gone. So your {KC} can\'t lose?']],
+      hint: [['west', 'The KING tag.']],
+      failed: [['east', 'Oh no. No King, no point.']]
+    }
+  },
+  {
+    format: 2, id: 'first-to-ten', kind: 'lesson', title: 'First to 10',
+    teachers: { west: 'vex', east: 'tex' },
+    prompt: 'Win the game.',
+    lesson: 'First to 10 points wins at once, even in the middle of a trick.',
+    goal: { type: 'kingPoint' }, dealer: 0, scores: [9, 8, 7],
+    deal: {
+      hands: [
+        ['KH', 'AD', 'KD', 'QS', 'JS', '10S', '7S', '9S', '9C', '10D'],
+        ['AC', 'KC', 'QC', 'AS', 'KS', '8D', '7D', '10C', 'JH', 'JD'],
+        ['7C', '9H', 'AH', 'QH', '10H', '9D', '8S', 'JC', 'QD', 'JK']
+      ],
+      kitty: ['7H', '8H', '8C']
+    },
+    script: [
+      { type: 'DISCARD', player: 1, cards: ['10C', 'JH', 'JD'] },
+      { type: 'DISCARD', player: 2, cards: ['JC', 'QD', 'JK'] },
+      { type: 'DISCARD', player: 0, cards: ['9S', '9C', '10D'] },
+      { type: 'BID', player: 1, accept: false },
+      { type: 'BID', player: 2, accept: true },
+      { type: 'EXCHANGE', player: 0, cards: ['7S'] },
+      { type: 'PLAY', player: 1, card: 'AC' },
+      { type: 'PLAY', player: 2, card: '7C' }
+    ],
+    say: {
+      intro: [['west', 'You\'re at 9. One point ends it.'], ['east', 'Mid-hand? Deal \'em again!']],
+      hint: [['west', 'Trump with a King.']],
+      failed: [['west', 'Trick\'s yours. Point isn\'t.']]
+    }
+  },
+  {
+    format: 2, id: 'calling', kind: 'lesson', title: 'Calling trump',
+    teachers: { west: 'doc', east: 'tex' },
+    prompt: 'Call or pass?',
+    lesson: 'Call when you hold enough trump. Your left-hand player takes the turned card: that is the price of calling.',
+    goal: { type: 'decide', accept: [{ type: 'BID', player: 0, accept: true }] }, dealer: 2, scores: [0, 0, 0],
+    deal: {
+      hands: [
+        ['JH', 'JD', 'AH', 'KH', '10H', 'AS', 'QC', '7S', '8C', '7D'],
+        ['AC', 'KC', 'JC', '9S', '10S', 'QS', 'KD', 'QD', '8D', '7C'],
+        ['AD', '10D', '9D', 'JS', 'KS', '8S', '9C', '10C', 'QH', '8H']
+      ],
+      kitty: ['9H', '7H', 'JK']
+    },
+    script: [
+      { type: 'DISCARD', player: 0, cards: ['7S', '8C', '7D'] },
+      { type: 'DISCARD', player: 1, cards: ['7C', '8D', '9S'] },
+      { type: 'DISCARD', player: 2, cards: ['8H', '9C', '10C'] }
+    ],
+    say: {
+      intro: [['west', '{9H} turned. Count your hearts. Bowers count.'], ['east', 'Just call it!']],
+      hint: [['west', 'Five trumps.']],
+      failed: [['west', 'Five trumps. That\'s a call.']]
+    }
+  },
+  {
+    format: 2, id: 'first-hand', kind: 'lesson', title: 'Your first hand',
+    teachers: { west: 'zen', east: 'kit' },
+    prompt: 'Play a hand.',
+    lesson: 'That is the game: discard, call, play seven tricks. First to 10 wins.',
+    goal: { type: 'playHand' }, dealer: 2, scores: [0, 0, 0], tips: 'guided',
+    deal: {
+      hands: [
+        ['JH', 'AH', 'KH', '9H', 'AS', 'KC', 'QC', '8S', '7D', '8D'],
+        ['AC', '10C', '9C', 'QS', 'JS', 'KD', 'QD', '9D', '7C', '10S'],
+        ['AD', '10D', 'JD', 'KS', '9S', '7S', 'JC', '8C', 'QH', '10H']
+      ],
+      kitty: ['8H', '7H', 'JK']
+    },
+    script: [],
+    say: {
+      intro: [['west', 'A whole hand now. I\'ll say a word when it helps.']]
+    }
   }
 ]);
+/* Puzzles: past the basics, for players who want more. Opened by finishing Training. */
+/** @type {readonly Puzzle[]} */
+const PUZZLES = Object.freeze([]);
 
 /* ---------------------------------------------------------------------
    5. VIEW — the information boundary. Each seat sees only public data
@@ -8639,11 +8926,32 @@ const SelfTest = (() => {
 
     safeRun('puzzles', () => {
       const L = p => Puzzles.load(p);
-      for (const p of PUZZLES) {
+      const ALL = TRAINING.concat(PUZZLES), BOWER = TRAINING.find(x => x.id === 'left-bower');
+      for (const p of ALL) {
         const r = L(p);
         check('lesson ' + p.id + ' loads', r.ok, r.ok ? '' : /** @type {any} */ (r).error);
         if (!r.ok) continue;
         check('lesson ' + p.id + ': your move, all 33 cards placed, no replay code', Engine.actors(r.state).includes(0) && !Engine.audit(r.state).length && !r.state.decisions);
+        /* A trick lesson teaches: against the best defence, at least one move wins and at least one fails. A decide
+           lesson leaves a wrong choice open: some legal decision is not in accept. */
+        const ans = Puzzles.answers(p.goal, r.state, r.state);
+        if (ans) check('lesson ' + p.id + ': a move wins and a move fails', ans.some(x => x.wins) && ans.some(x => !x.wins), ans.map(x => x.action.card + (x.wins ? '+' : '-')));
+        else if (p.goal.type === 'decide') check('lesson ' + p.id + ': a wrong choice is open', r.state.phase === P.BID1 ? p.goal.accept.length === 1 : true);
+        else check('lesson ' + p.id + ': only a guided hand has no search', p.goal.type === 'playHand', p.goal.type);
+        if (p.say) for (const part of Object.values(p.say)) for (const [, text] of part) check('lesson ' + p.id + ': cards in the lines exist', Puzzles.cardRefs(text).every(id => R.ALL_IDS.includes(id)), text);
+      }
+      check('training has 7 lessons, ending with a guided hand', TRAINING.length === 7 && TRAINING[6].goal.type === 'playHand' && TRAINING[6].tips === 'guided');
+      /* The search plays the defence: in lesson 1, the opponents have no move left (both played), so the search
+         answers for you; from a lead, defend finds a card that stops the goal when one exists. */
+      const kp = L(TRAINING.find(x => x.id === 'king-points'));
+      if (kp.ok) {
+        const st = structuredClone(kp.state);
+        D(st, { type: 'PLAY', player: 0, card: '9S' });
+        const d = Puzzles.defend({ type: 'kingPoint' }, kp.state, st);
+        check('defend returns a legal move for the seat to act', !!d && !Engine.validate(st, d), d);
+        D(st, d);
+        const ve = Puzzles.judge({ type: 'kingPoint' }, kp.state, st, d);
+        check('a wrong lead is judged as soon as the trick ends, or stays open until then', ve.verdict === 'open' || ve.verdict === 'failed', ve);
       }
       /* The stacked deal must leave the state as the real DEAL step does. */
       const real = Engine.createGame(7, ['You', 'West', 'East']);
@@ -8660,14 +8968,14 @@ const SelfTest = (() => {
       const fresh = L({ format: 1, id: 'deal-only', title: 'T', prompt: 'P', lesson: 'L', goal: { type: 'tricks', min: 4 }, dealer: 2, scores: [0, 0, 0], deal, script: [] });
       check('a deal with an empty script starts at your discard (dealer West of you)', fresh.ok && fresh.state.phase === P.DISCARD, fresh);
       /* Lesson 1 teaches one card: only the Left Bower wins the trick. */
-      const one = L(PUZZLES[0]);
+      const one = L(BOWER);
       if (one.ok) {
         const st = one.state, legal = R.legalCards(st.hands[0], st.trick.leadSuit, st.trump);
         const wins = legal.filter(c => R.getTrickWinner(st.trick.plays.concat([{ player: 0, card: c }]), st.trump).player === 0);
         eq('Left Bower lesson: only the Jack of Diamonds wins', wins, ['JD']);
       }
       /* Each broken puzzle is refused with a reason, never an exception. */
-      const base = PUZZLES[0];
+      const base = BOWER;
       const bad = (name, change, want) => {
         const p = JSON.parse(JSON.stringify(base));
         change(p);
@@ -8676,7 +8984,7 @@ const SelfTest = (() => {
       };
       bad('an unknown field', p => { p.extra = 1; }, 'unknown field extra');
       bad('a missing field', p => { delete p.goal; }, 'missing field goal');
-      bad('another format', p => { p.format = 2; }, 'format');
+      bad('another format', p => { p.format = 3; }, 'format');
       bad('a card dealt twice', p => { p.deal.kitty[2] = 'AS'; }, 'dealt twice');
       bad('an unknown card', p => { p.deal.kitty[2] = 'XX'; }, 'unknown card');
       bad('a short hand', p => { p.deal.hands[0].pop(); }, '10 cards');
@@ -8701,11 +9009,11 @@ const SelfTest = (() => {
         const verdicts = R.legalCards(st0.hands[0], st0.trick.leadSuit, st0.trump).map(c => {
           const st = JSON.parse(JSON.stringify(st0)), a = { type: 'PLAY', player: 0, card: c };
           D(st, a);
-          return c + ':' + Puzzles.judge(PUZZLES[0].goal, st0, st, a).verdict;
+          return c + ':' + Puzzles.judge(BOWER.goal, st0, st, a).verdict;
         });
         eq('judge: only JD solves lesson 1', verdicts.filter(x => x.endsWith(':solved')), ['JD:solved']);
         check('judge: every other card fails at once', verdicts.every(x => x.endsWith(':solved') || x.endsWith(':failed')), verdicts);
-        eq('judge: open before any move', Puzzles.judge(PUZZLES[0].goal, st0, st0, null), { verdict: 'open' });
+        eq('judge: open before any move', Puzzles.judge(BOWER.goal, st0, st0, null), { verdict: 'open' });
       }
       check('decisions match with the cards in any order', Puzzles.sameDecision({ type: 'DISCARD', player: 0, cards: ['AS', 'KS', '7H'] }, { type: 'DISCARD', player: 0, cards: ['7H', 'AS', 'KS'] }) &&
         !Puzzles.sameDecision({ type: 'DISCARD', player: 0, cards: ['AS', 'KS', '7H'] }, { type: 'DISCARD', player: 0, cards: ['AS', 'KS', '8H'] }) &&
@@ -8728,7 +9036,7 @@ const SelfTest = (() => {
       let runs = 0, wrong = [];
       for (const scores of [[0, 0, 0], [8, 7, 9]]) {
         for (const g of goals) {
-          const pz = Object.assign(JSON.parse(JSON.stringify(PUZZLES[0])), { scores, goal: g });
+          const pz = Object.assign(JSON.parse(JSON.stringify(BOWER)), { scores, goal: g });
           const ld = L(pz);
           if (!ld.ok) { if (!(g.type === 'score' && scores[0] >= g.min)) wrong.push('load ' + g.type + ': ' + /** @type {any} */ (ld).error); continue; }
           for (let game = 0; game < 12; game++) {
@@ -9418,7 +9726,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Puzzles, PUZZLES, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Puzzles, TRAINING, PUZZLES, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
