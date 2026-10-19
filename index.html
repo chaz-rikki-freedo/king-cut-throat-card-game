@@ -276,7 +276,9 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .t-suit{position:relative;display:inline-block;width:.66em;line-height:1;vertical-align:-.08em}
 .t-svg{display:block;width:100%;height:auto;fill:currentColor}
 .t-char{position:absolute;inset:0;opacity:0;overflow:hidden;line-height:1;text-align:center;pointer-events:none}
-.c-tag{position:absolute;top:58%;left:50%;transform:translate(-50%,60%);font-size:calc(var(--w)*.13);background:var(--gold);color:var(--gold-ink);padding:1px 0.25rem;border-radius:0.1875rem;letter-spacing:.03em;white-space:nowrap}
+/* One place for every card: over the foot of the center pip, clear of the corner indexes and the JOKER word at every card size.
+   The side padding scales with the card so the widest tag (LEFT ♠) fits between the indexes on a phone. */
+.c-tag{position:absolute;top:50%;left:50%;transform:translate(-50%,60%);font-size:calc(var(--w)*.13);background:var(--gold);color:var(--gold-ink);padding:1px calc(var(--w)*.04);border-radius:0.1875rem;white-space:nowrap}
 .c-new{position:absolute;top:3%;right:4%;font-size:calc(var(--w)*.12);background:var(--accent);color:#07233a;padding:0 0.1875rem;border-radius:0.1875rem}
 .card.back{background:repeating-linear-gradient(45deg,#7a1f2b 0 0.375rem,#93303d 0.375rem 0.75rem);border:0.125rem solid #f5f2e9}
 button.card{cursor:pointer}
@@ -981,7 +983,7 @@ window.kctTheme = (() => {
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
    this file to gh-pages; any other copy shows "Build dev". Not related to RULES_VERSION or the
    replay-code VERSION. */
-const BUILD = Object.freeze({ commit: 'b58b243', date: '2026-10-18' });
+const BUILD = Object.freeze({ commit: '25a7bad', date: '2026-10-18' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
