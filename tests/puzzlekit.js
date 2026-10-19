@@ -127,10 +127,12 @@ function source(pz) {
 function writeList(name, list) {
   if (!/^(TRAINING|PUZZLES)$/.test(name || '')) throw new Error('--write TRAINING or --write PUZZLES');
   const file = path.join(__dirname, '..', 'index.html'), html = fs.readFileSync(file, 'utf8');
-  const head = 'const ' + name + ' = Object.freeze([', start = html.indexOf(head), end = html.indexOf('\n]);', start);
+  const head = 'const ' + name + ' = Object.freeze([', start = html.indexOf(head);
+  /* An empty list is written on one line: Object.freeze([]). */
+  const end = html.startsWith(']);', start + head.length) ? start + head.length : html.indexOf('\n]);', start);
   if (start < 0 || end < 0) throw new Error(name + ' not found in index.html');
   const body = list.length ? '\n' + list.map(source).join(',\n') : '';
-  fs.writeFileSync(file, html.slice(0, start + head.length) + body + html.slice(end));
+  fs.writeFileSync(file, html.slice(0, start + head.length) + body + (list.length && html.startsWith(']);', end) ? '\n' : '') + html.slice(end));
   console.log('wrote ' + list.length + ' puzzles to ' + name + ' in index.html');
 }
 

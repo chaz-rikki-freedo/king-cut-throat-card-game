@@ -110,6 +110,41 @@ const LESSON = `
     await page.reload();
     r = await step(`await sleep(300); return { menu: overlayOpen(), lobbyHost: q('#talk .speaker') && q('#talk .speaker').textContent };`);
     expect('after Training, a launch opens the menu; the lobby behind it is hosted by Mei', r.menu && r.lobbyHost === 'Mei', r);
+
+    console.log('Puzzles');
+    r = await step(`
+      speed('fast');
+      click('#overlay [data-action="puzzles-open"]'); await sleep(50);
+      const out = { mode: app.mode, id: lesson().item.id };
+      await toPlay();
+      /* A wrong move: the opponents defend, and the puzzle fails. */
+      click(answer(false));
+      out.wrong = await until(() => verdict() === 'failed' && !!talkBtn('lesson-retry'), 30000);
+      out.verdict = verdict();
+      click('#talk [data-action="lesson-retry"]'); await sleep(50);
+      await toPlay();
+      out.solved = [];
+      for (let n = 0; n < KCT.PUZZLES.length; n++) {
+        const id = lesson().item.id;
+        /* Each of your moves: one that still forces the goal; the opponents answer with the best defence. */
+        while (!verdict()) {
+          if (KCT.Engine.actors(app.state).includes(0) && !app.timerFn) { await toPlay(); click(answer(true)); }
+          await sleep(30);
+        }
+        out.solved.push(id + ':' + verdict());
+        await until(() => !!talkBtn('lesson-next') || !!talkBtn('lesson-list'));
+        if (talkBtn('lesson-next')) { click('#talk [data-action="lesson-next"]'); await sleep(50); await toPlay(); }
+      }
+      out.count = JSON.parse(localStorage.getItem('kct.lessons')).done.length;
+      out.slots = localStorage.getItem('kct.slots');
+      click('#talk [data-action="menu"]'); await sleep(50);
+      out.tail = q('#overlay .mcard[data-mode="puzzles"] .mtail').textContent;
+      click('#overlay [data-action="close-menu"]'); await sleep(50);
+      return out;`);
+    expect('Puzzles opens on puzzle 1', r.mode === 'puzzles' && r.id === 'win-cheaply', r);
+    expect('a wrong move fails a puzzle against the best defence', r.wrong, r);
+    expect('all ten puzzles are solved by their answers', r.solved.length === 10 && r.solved.every(x => x.endsWith(':solved')), r.solved);
+    expect('the menu counts 10 of 10 solved, and nothing is saved as a game', r.tail === '10 of 10 solved' && r.count === 17 && (r.slots === null || r.slots === '{}'), r);
     expect('no page errors', !errors.length, errors);
     await page.context().close();
 

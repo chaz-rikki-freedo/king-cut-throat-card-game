@@ -119,7 +119,7 @@ function expect(name, ok, detail) {
       click('#overlay .profile .sheet-top .set-close'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
-    expect('the menu: the Settings header, then Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
+    expect('the menu: the Settings header, then Dynamic, Waves, Free play and Training', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free","training"]', r);
     expect('with no game being played, the menu closes only from its header \u2715', JSON.stringify(r.exits) === '["header"]', r);
     expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
     expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
