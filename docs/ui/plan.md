@@ -93,4 +93,4 @@ No Copy code and no paste box: a full backup is about 16 KB of text, too long to
 
 ## Not in this plan
 
-The UI levels (Normal, Guided) and the Tutorial. See [UI levels](levels.md).
+The UI levels (Normal, Guided). See [UI levels](levels.md). The Tutorial is built as Training and Puzzles: see [Training and Puzzles](teacher-bubbles.md).

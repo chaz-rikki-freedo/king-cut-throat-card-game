@@ -4,9 +4,9 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 ## Menu
 
-Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
+Each launch opens on the menu, except the very first: a new player (no saved game, no finished game, no lesson, no setting saved) opens on the lobby, where Ace offers **Training** (see **Training and Puzzles**). To open the menu during a game, click **☰** in the header (the game waits).
 
-The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and a row of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu has the same header as **Settings**: **King Cut-Throat** (at launch with a saved game, **Welcome back**), then **✕** to close it. On a phone it fills the screen.
+The menu has a card for each mode, **Dynamic**, **Waves**, **Free play** and **Training** (once Training is done, **Puzzles**), and a row of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu has the same header as **Settings**: **King Cut-Throat** (at launch with a saved game, **Welcome back**), then **✕** to close it. On a phone it fills the screen.
 
 The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. Its **✕** returns to the menu.
 
@@ -19,9 +19,10 @@ Your profile, a bot's profile, the results pop-up and Rules have the same header
 | **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
 | **Rules** | The quick rules. **✕** returns to the menu. |
-| **Tutorial** | Coming soon (disabled). |
+| **Start**, **Continue** (Training) or **Play puzzle** (Puzzles) | The next lesson not done yet. The card's goal (**3 of 7 done**, **4 of 10 solved**) opens the list of lessons; any one can be played again. |
+| **Training** | Plays Training again from lesson 1. |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
-| **✕** (header) | Closes the menu. At launch, the table stays empty: the menu, Settings and the profiles work, and **Choose a game** opens the menu. |
+| **✕** (header) | Closes the menu. At launch, the table shows the lobby: two bots offer the next lesson, and **Choose a game** opens the menu. |
 
 A link with `?replay=` and a replay code opens that game in the replay viewer (see **Watch a game**). A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed`, `wave` and `replay` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
@@ -30,7 +31,7 @@ A link with `?replay=` and a replay code opens that game in the replay viewer (s
 The header stays at the top of the window, and the page scrolls under it. From left to right:
 
 - **☰** opens the menu (games and Rules).
-- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
+- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play**, **Dynamic**, **Training N of 7** or **Puzzles N of 10**. The mode is a button that opens your results for that mode (see **Results pop-up**), or in a lesson, the list of lessons. With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
 - **Settings** (the sliders icon).
@@ -53,6 +54,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
+- **Lessons done** (`kct.lessons`): the Training lessons and puzzles you have solved. Lessons keep nothing else: no saved game, no results, no replay, no wave try.
 - **Dynamic profile** (`kct.profile`): your bidding and discards across games, which set where a Dynamic game starts (see **Dynamic**). A game where the AI played your seat adds nothing. Resetting results (`KCT.App.stats.reset()`) does not clear it.
 
 If the browser refuses to save any of these (storage full or blocked), a note says so once per page load. The data then lasts until the page closes.
@@ -274,6 +276,22 @@ KCT.App.slots.get('free')          // the saved Free play game ('dynamic', 'wave
 KCT.App.newGame(undefined, undefined, { mode: 'dynamic' })   // a new Dynamic game
 KCT.App.profile.get()              // the Dynamic profile
 KCT.App.app.dyn.e                  // the easing of the running Dynamic game: 0 (normal) to 1 (the floor)
+```
+
+## Training and Puzzles
+
+Training teaches the table and the rules in seven short lessons, then a real hand. Finishing it opens **Puzzles**, the fourth mode: ten positions past the basics. In every lesson, two bots sit at the table as teachers and speak in speech bubbles from their seats, in their own voices. Lessons and the lobby use a hand-written font, so it is always clear when you are training. The design, the screenshots and the teaching methods are in [docs/ui/teacher-bubbles.md](docs/ui/teacher-bubbles.md). The format and the search are in [docs/puzzles.md](docs/puzzles.md).
+
+- **The lobby.** The table with no game seats two hosts. Before Training is done, Ace and Kit: **Start training** (or **Continue training**). After, Mei and Vex: **Next puzzle**.
+- **A lesson.** One or two bubbles, then you play. The header chip counts the lessons (**Training 3 of 7**, **Puzzles 4 of 10**) and opens their list. A wrong move fails the lesson at once, also when it only lets the defence stop you a few tricks later: **Try again**, or **Hint** (the right card glows in your hand). Your move closes any bubble.
+- **Training:** follow suit, trump, the bowers, King points, first to 10, calling trump, then a whole hand against Zen and Kit, with a word from Zen at each new step. The end offers **Play a game** (your highest open wave) and **Puzzles**.
+- **Puzzles:** win cheaply, a lost trick, which King, Kings pay, guard the suits, Bower last, spend their trump, Joker last, guard your King, the last trump. Each one has exactly one right move, and the opponents play the best defence.
+- **Saved:** only `kct.lessons`. A lesson that ends the game (First to 10) counts no result.
+
+```js
+KCT.TRAINING, KCT.PUZZLES                    // the lessons, in order
+KCT.Puzzles.load(KCT.PUZZLES[0])             // the start position
+KCT.Puzzles.answers(goal, start, state)      // which of your moves win against the best defence
 ```
 
 ## Dynamic

@@ -65,4 +65,4 @@ These parts protect the player or the data. Every level shows them, in full word
 - Whether the level is saved in `kct.settings` with the other settings. If it is, a backup holds it.
 - The default level for a new player, and whether the launch menu asks for one.
 - Whether Waves sets a level (for example, Guided in the first waves).
-- Whether the Tutorial item uses the Guided level.
+- Whether Training (the Tutorial, see [teacher-bubbles.md](teacher-bubbles.md)) uses the Guided level. Today it runs in your Interface setting.

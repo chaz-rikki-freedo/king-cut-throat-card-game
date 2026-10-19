@@ -38,7 +38,8 @@ function expect(name, ok, detail) {
     expect('a note names the saved file', (await page.textContent('#setDataNote')).includes(dl.suggestedFilename()));
 
     console.log('Restore: confirm, Cancel');
-    await step(`click('[data-action="toggle-settings"]'); q('#overlay').hidden = true; KCT.App.newGame(77); await drive(); q('#overlay').hidden = true; return true;`);
+    /* The game's Dynamic review runs a frame after its end: run it now, so it can't change the data mid-check. */
+    await step(`click('[data-action="toggle-settings"]'); q('#overlay').hidden = true; KCT.App.newGame(77); await drive(); q('#overlay').hidden = true; KCT.App.runReview(); return true;`);
     const changed = await kct();
     expect('a later game changed the data', changed['kct.stats'] !== before['kct.stats']);
     await openData();

@@ -1,7 +1,7 @@
 # Runs the fast checks (tests/README.md) on each pull request and each push to main:
-# the type check, the color check, the in-page self-tests, the service worker check, the Waves tries check and the stress sections
-# at small sizes.
-# About a minute in all.
+# the type check, the color check, the in-page self-tests, the service worker check, the Waves tries check, Training and
+# Puzzles through the controls, and the stress sections at small sizes.
+# About three minutes in all.
 # The UI scenarios and the soak are slow: they run in the Tests workflow (test.yml) instead.
 name: Checks
 on:
@@ -33,4 +33,5 @@ jobs:
       - run: node selftest.js
       - run: node sw.js
       - run: node forfeit.js
+      - run: node training.js
       - run: node stress.js all 4

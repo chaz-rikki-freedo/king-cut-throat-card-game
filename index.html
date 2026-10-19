@@ -789,9 +789,14 @@ body.lesson .card{font-size:0.9375rem}
 .hand .card.taught{box-shadow:0 0 0 0.1875rem var(--gold),0 0 1.25rem var(--gold)!important;transform:translateY(-0.5rem)}
 @media (max-width:720px){
   .table.talking{grid-template-areas:"west east" "talk talk" "center center" "me me"}
-  .table.talking > .talk{grid-area:talk;position:relative;left:auto;top:auto;width:auto;margin-top:0.375rem}
+  .table.talking > .talk{grid-area:talk;position:relative;left:auto;top:auto;width:auto;margin-top:0.375rem;display:grid;grid-template-columns:1fr auto;align-items:end}
+  .talk .speaker{grid-column:1 / -1;padding-top:0.3125rem}
+  .talk p{margin:0.125rem 0.625rem 0.4375rem;font-size:1rem}
+  .talk .acts{padding:0 0.5rem 0.4375rem;flex-wrap:nowrap}
   .talk.from2::before{left:auto;right:1.25rem}
 }
+/* A lesson that has its verdict stays as it ended: Next hand and the like are in the bubble instead. */
+body.lesson-over [data-action="continue"]{display:none}
 .lesson-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0.5rem}
 .lesson-list .btn{width:100%;text-align:left;display:flex;gap:0.625rem;align-items:center}
 .lesson-list .ln{display:inline-block;min-width:1.5rem;text-align:center;font-weight:800;color:var(--muted)}
@@ -6306,7 +6311,7 @@ const App = (() => {
     placeTalk();
     Fit.update();
     if (t.aside) talk.timer = setTimeout(nextTalk, 3200);
-    else { const b = el.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
+    else if ($('overlay').hidden) { const b = el.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
   }
   /* Wide screens: the bubble sits in the speaker's seat panel, under what the panel shows, its tail up at the seat.
      Phones: a row of its own under the seats (CSS); the table moves down and the window fit shrinks the cards.
@@ -7365,6 +7370,7 @@ const App = (() => {
     chip.title = watch ? 'Exit the replay' : L ? 'All the lessons' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
     /* Training's own font marks a lesson, and the lobby on the empty table. */
     document.body.classList.toggle('lesson', !watch && (!!L || !app.mode));
+    document.body.classList.toggle('lesson-over', !!(L && L.verdict));
     if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
@@ -8493,7 +8499,8 @@ const App = (() => {
       case 'bid-pass': act({ type: 'BID', player: HUMAN, accept: false }); break;
       case 'name-suit': act({ type: 'NAME', player: HUMAN, suit: el.getAttribute('data-suit') }); break;
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
-      case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
+      /* A lesson that has its verdict stays as it ended: its buttons are in the bubble. */
+      case 'continue': { const sys = Engine.systemAction(app.state); if (sys && !(app.lesson && app.lesson.verdict)) act(sys); break; }
       case 'skip': skip(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x).replace('<div class="p-dials">', thisHandHTML(x.id) + '<div class="p-dials">'); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
