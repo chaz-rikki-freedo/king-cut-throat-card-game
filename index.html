@@ -277,6 +277,8 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .t-svg{display:block;width:100%;height:auto;fill:currentColor}
 .t-char{position:absolute;inset:0;opacity:0;overflow:hidden;line-height:1;text-align:center;pointer-events:none}
 .c-tag{position:absolute;top:58%;left:50%;transform:translate(-50%,60%);font-size:calc(var(--w)*.13);background:var(--gold);color:var(--gold-ink);padding:1px 0.25rem;border-radius:0.1875rem;letter-spacing:.03em;white-space:nowrap}
+/* On the Joker the tag sits higher, over the foot of the star, so it never covers the JOKER word. */
+.card.joker .c-tag{top:50%}
 .c-new{position:absolute;top:3%;right:4%;font-size:calc(var(--w)*.12);background:var(--accent);color:#07233a;padding:0 0.1875rem;border-radius:0.1875rem}
 .card.back{background:repeating-linear-gradient(45deg,#7a1f2b 0 0.375rem,#93303d 0.375rem 0.75rem);border:0.125rem solid #f5f2e9}
 button.card{cursor:pointer}
