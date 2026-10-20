@@ -183,7 +183,32 @@ The ten personalities are meant to feel like ten different people at the table. 
 2. **No bot plays a deliberate wrong card.** All ten try to win a trick they can win more than 90% of the time, and most often with the cheapest card that wins.
 3. **Ties go to the weakest card.** `KCT.App.explain(n)` shows options with the same value, and every bot then plays the weakest one. That is one shared habit, not ten.
 
-Next steps: habits that act on every trick, reads of card play (public information only), deliberate wrong plays, and bots that are sometimes fooled by them.
+### Habits, reads and feints (steps 3a to 3c, 2026-10-20)
+
+Each step was measured with `node tests/habits.js 1 4` and `node tests/roundrobin.js 4 4 1` (480 games, the same seeds each time). Each bot plays 144 games, so a change under about 8 points is within noise.
+
+- **3a, habits:** each bot likes some plays when its best cards are about equal, within its habit strength (0 to 5% win chance per card).
+- **3b, reads:** each bot reads the other players' public plays (a lead means length, a King led means no Ace, a throw-off means short), believed in proportion to its credulity.
+- **3c, feints and wariness:** bots play against type, within their habit strength, and a caught feint lowers belief in that player for the rest of the hand.
+
+| Habit | Baseline spread | After 3c |
+|---|---|---|
+| Leads from the longest suit | 4 | 29 |
+| Leads from the shortest suit | 4 | 28 |
+| Leads trump | 9 | 30 |
+| Wins with the cheapest winner | 4 | 25 |
+| Second hand plays its lowest | 15 | 31 |
+| Trumps in when void | 11 | 38 |
+
+| Group | Step 2 | 3a | 3b | 3c |
+|---|---|---|---|---|
+| Shark and Club | 42 to 51% | 42 to 54% | 40 to 56% | 40 to 58% |
+| Casual | 24 to 27% | 24 to 25% | 24 to 27% | 26 to 27% |
+| Novice | 13 to 17% | 13 to 19% | 15 to 16% | 13 to 17% |
+
+The three strength groups stay apart at every step. **Mei** climbed from 49% to 58%: Mei has no habits and no feints, so as the other bots take on small, chosen costs, the one bot that plays straight gains in their place. The game is zero-sum, so the pack is not stronger. Decision (2026-10-20): keep Mei as is, the counter who never feints.
+
+Next steps: the Dynamic upgrade (easing the way people are weak, reading the player's card play, choosing the opponents), then Waves measured again.
 
 ## Proposals
 
