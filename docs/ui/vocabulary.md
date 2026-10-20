@@ -199,7 +199,8 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Profile name | `.persona h2` | L | The name, in its color. |
 | Quote | `.p-quote` | D | The personality's saying. |
 | Play hint | `.p-hint` | D | How the personality plays. |
-| Dials | `.p-dials`, `.pips` | D | "Card sense" and "Nerve", 1 to 4 pips each. |
+| Dials | `.p-dials`, `.pips` | D | "Card sense", "Nerve", "Reads you" and "Feints", 0 to 4 pips each. |
+| Habits line | `.p-ways` | D | The bot's card habits in a few words, such as "Leads trump · wins big · Kings early". |
 | Habit badge | `.habit` | D | "Set in their ways", for a personality with human habits. |
 
 ### 3.4a Your profile

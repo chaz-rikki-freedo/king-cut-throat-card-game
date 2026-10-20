@@ -140,6 +140,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .persona .pips{display:inline-flex;gap:0.25rem}
 .persona .pips b{width:1.125rem;height:0.375rem;border-radius:0.1875rem;background:rgba(255,255,255,.14)}
 .persona .pips b.on{background:var(--gold)}
+.persona .p-ways{grid-column:1 / -1;color:var(--ink)}
 .persona .habit{grid-column:1 / -1;justify-self:start;font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:0.125rem 0.5rem;border-radius:62.4375rem;border:1px solid rgba(255,255,255,.3);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.seat-face{transition:none}}
 /* Your profile: your results from this browser. Filter row, figure tiles, the Last games chart, sortable tables. */
@@ -4445,7 +4446,17 @@ const Render = (() => {
     return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
       '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
+      '<span>Reads you</span>' + pips(Math.round(4 * (x.credulity || 0))) + '<span>Feints</span>' + pips(Math.round(4 * (x.feint || 0))) +
+      (habitWords(x) ? '<span class="p-ways">' + escHTML(habitWords(x)) + '</span>' : '') +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
+  }
+  /* A bot's card habits in a few words, for its profile. */
+  function habitWords(x) {
+    const h = x.habits || {};
+    const W = { lead: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, win: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
+      void: { ruff: 'trumps in', low: 'throws low' }, kings: { early: 'Kings early', late: 'Kings late' } };
+    const w = /** @type {string[]} */ (['lead', 'win', 'void', 'kings'].map(k => /** @type {any} */ (W)[k][/** @type {any} */ (h)[k]]).filter(Boolean));
+    return w.length ? w.join(' · ').replace(/^./, c => c.toUpperCase()) : '';
   }
 
   /* A bot's King point is held back while its +1 flies to the seat (App kingPop): the score changes when it lands. */
@@ -6837,7 +6848,7 @@ const App = (() => {
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
   /* A mode card's second line when it has no game. */
-  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Full-strength opponents; tune each seat in Settings', dynamic: 'Opponents for your level, who ease off as you learn', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* The note in the questions below when leaving the game costs a try (forfeitWave). */
   const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
