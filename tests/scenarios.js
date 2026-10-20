@@ -278,7 +278,7 @@ function expect(name, ok, detail) {
       click('[data-action="swap-done"]');
       click('[data-action="toggle-settings"]'); await sleep(20);`);
     const keys = [];
-    for (const [id, key] of [['setTabBots', 'Enter'], ['setTabExpert', ' ']]) {
+    for (const [id, key] of [['setTabBots', 'Enter'], ['setTabTools', ' ']]) {
       await page.focus('#' + id);
       /* A spy in place of the game timer: a skip calls it, and no real move can happen meanwhile. */
       await step(`clearTimeout(app.timer); app.timer = 1; window.__skipped = false; app.timerFn = () => { window.__skipped = true; };`);
@@ -313,7 +313,7 @@ function expect(name, ok, detail) {
       /* The plain name that older builds kept. */
       StorageGate.locked = true; localStorage.setItem('kct.setTab', 'Bots');
       return out;`);
-    expect('the tab is kept as JSON and a backup works', r.tab === '"Expert"' && r.size > 0, r);
+    expect('the tab is kept as JSON and a backup works', r.tab === '"Tools"' && r.size > 0, r);
     await reload();
     r = await step(`
       const out = { tab: localStorage.getItem('kct.setTab') };
@@ -438,7 +438,9 @@ function expect(name, ok, detail) {
         while (Date.now() - t0 < 60000 && !app.state.gameOver && app.state.version < v + 120) await sleep(20);
         const st = app.state;
         return { seat: app.ui.personas[0], table: app.ui.personas.slice(1), auto: app.ui.autoplay,
-          game: JSON.stringify([st.version, st.handNumber, st.scores, st.hands, st.gameOver, st.winner]) };
+          /* The same game: the same first decisions. The loop checks every 20 ms, so a fast game can stop a move or two
+             later; the state there is not a fair test. */
+          game: JSON.stringify(st.decisions.slice(0, 50)), moves: st.decisions.length };
       }
       pick('');
       const a = await run(31337), b = await run(31337);
@@ -447,7 +449,7 @@ function expect(name, ok, detail) {
       pick(free); const d = await run(31337);
       return { a, b, c, d, free, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seats[0].who };`);
     expect('From the seed: the AI has your seat, as a personality not at the table', r.a.auto && r.a.seat && !r.a.table.includes(r.a.seat), r.a);
-    expect('From the seed: a replayed seed gives the same personality and the same game', r.a.seat === r.b.seat && r.a.game === r.b.game, { a: r.a, b: r.b });
+    expect('From the seed: a replayed seed gives the same personality and the same game', r.a.moves >= 50 && r.a.seat === r.b.seat && r.a.game === r.b.game, { a: r.a, b: r.b });
     expect('a chosen personality that sits West or East: the seed picks, as with From the seed', r.c.seat === r.a.seat && r.c.game === r.a.game, r.c);
     expect('a chosen personality that is free: your seat gets it', r.d.seat === r.free, { d: r.d, free: r.free });
     expect('the settings keep the chosen personality', r.saved === r.free, r.saved);
