@@ -147,6 +147,7 @@ The record left only tuning open. The build uses these values, in `Dynamic.TUNE`
 | Small-sample priors | 10 points, 5 calls, 10 bids | Pull a short record toward normal play: an even score share, 45% failed calls, no bid errors. |
 | Failed calls | +0.25 at most | Added to the slow target from 45% failed calls, in full at 80%. |
 | Bid errors | +0.25 at most | Added to the slow target, in full at 25% of bids. |
+| Card-play slips | normal 2%, full at +6%, weight +0.25, prior 60 plays | Added in step 4c (2026-10-20). A slip is a King thrown under the winning card, a last card winning with more than it takes, or a dead trump, each while another card could go. 2% is about the Casual bots' rate (`node tests/habits.js`). |
 | Bid-error cut-offs | below 1.2, at 4.2 or more | A call on a fitted hand value below 1.2, or a pass on one of 4.2 or more. |
 | Read pace | Shark 2, Club 3, Casual 4, Novice 6 | Weak visible hands a bot sees before its read line (see [banter.md](banter.md)). |
 
@@ -215,8 +216,8 @@ Next steps: the Dynamic upgrade, then Waves measured again.
 These change decisions on issue #117:
 
 1. **Opponents by level (4a, done).** A new player meets no Shark; one at most while the starting easing is above 0.2. A pair that shares no bot with the last Dynamic game comes first.
-2. **Easing adds human-style weakness (4b).** The measured hunch ladder stays. On top of it, as the easing rises, the bots believe your plays more, follow their habits more plainly, and stop feinting and guarding.
-3. **Your card play (4c).** The post-game review also counts card-play slips, which feed the slow easing, and Your profile shows your card habits beside each bot's.
+2. **Easing adds human-style weakness (4b, done).** The measured hunch ladder stays. On top of it, as the easing rises, the bots believe your plays more, follow their habits more plainly, and stop feinting and guarding.
+3. **Your card play (4c, done).** The post-game review also counts card-play slips, which feed the slow easing, and Your profile shows your card habits beside the bots'.
 
 ## Proposals
 

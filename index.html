@@ -3735,7 +3735,8 @@ const AI = (() => {
  * @typedef {{ me: number, all: number }} DynShare
  * @typedef {{ n: number, failed: number }} DynCalls
  * @typedef {{ n: number, errors: number }} DynBids
- * @typedef {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, mark: boolean }} DynSnapshot
+ * @typedef {{ n: number, slips: number }} DynPlays
+ * @typedef {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, plays?: DynPlays, mark: boolean }} DynSnapshot
  */
 const Dynamic = (() => {
   const R = Rules, P = Engine.P, C = Engine.C;
@@ -3763,11 +3764,15 @@ const Dynamic = (() => {
        FAIL_PRIOR calls at FAIL_NORMAL failed, BID_PRIOR bids with no error.
      - The slow target adds FAIL_WEIGHT × (failed calls above FAIL_NORMAL, full at +FAIL_SPAN) and
        BID_WEIGHT × (bid errors, full at BID_SPAN) to the score-share term.
+     - Card-play slips (step 4c): the slow target adds SLIP_WEIGHT × (the share of main-hand plays that slip, above
+       SLIP_NORMAL, full at +SLIP_SPAN). SLIP_PRIOR plays pull a short record toward SLIP_NORMAL, the Casual bots' rate
+       (tests/habits.js).
      - A bid error is a call with a fitted value below CALL_LOW, or a pass with one at PASS_HIGH or more. On the
        fitted scale the bid thresholds sit at about 1.9 to 2.3, and callers win half their hands at about 3.4 to 4.0. */
   const TUNE = Object.freeze({
     DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
-    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2
+    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2,
+    SLIP_NORMAL: 0.02, SLIP_SPAN: 0.06, SLIP_PRIOR: 60, SLIP_WEIGHT: 0.25
   });
   const clamp01 = x => Math.min(1, Math.max(0, x));
 
@@ -3855,8 +3860,10 @@ const Dynamic = (() => {
   const blankProfile = () => ({
     v: 1, hands: 0, games: 0,
     /* Decayed sums. share: points won by you and by everyone (Dynamic games only). calls: your calls, the failed ones
-       and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss. */
-    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 },
+       and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss.
+       plays: your main-hand card plays and the slips among them (Habits: a King thrown under, a wasted winner, a dead
+       trump; step 4c of the personality plan). */
+    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
     habits: { calls: 0, made: 0, value: 0 },
     /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
@@ -3868,11 +3875,12 @@ const Dynamic = (() => {
     if (!x || typeof x !== 'object' || x.v !== 1) return p;
     const o = (/** @type {any} */ y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
-    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits);
+    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
     p.share = { me: num(s.me), all: Math.max(num(s.all), num(s.me)) };
     p.calls = { n: num(c.n), failed: Math.min(num(c.failed), num(c.n)), value: num(c.value) };
     p.bids = { n: num(b.n), errors: Math.min(num(b.errors), num(b.n)) };
     p.discards = { n: num(d.n), loss: num(d.loss) };
+    p.plays = { n: num(pl.n), slips: Math.min(num(pl.slips), num(pl.n)) };
     p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
     p.mark = x.mark === true;
     p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
@@ -3881,26 +3889,33 @@ const Dynamic = (() => {
   /** The part of the profile that a game starts from, and that Replay Seed needs. @param {any} profile @returns {DynSnapshot} */
   function snapshotOf(profile) {
     const p = cleanProfile(profile);
-    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, mark: p.mark };
+    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, plays: { n: p.plays.n, slips: p.plays.slips }, mark: p.mark };
   }
-  /** A stored snapshot (a saved game or a replay code), or null when it is not one. @param {any} x @returns {DynSnapshot | null} */
+  /** A stored snapshot (a saved game or a replay code), or null when it is not one. A snapshot from before card-play
+      slips has no plays; it still starts the same game. @param {any} x @returns {DynSnapshot | null} */
   function cleanSnapshot(x) {
     if (!x || typeof x !== 'object' || !x.share || !x.calls || !x.bids || typeof x.mark !== 'boolean' || !Number.isInteger(x.h) || x.h < 0) return null;
     const ok = (/** @type {any} */ y) => typeof y === 'number' && isFinite(y) && y >= 0;
     if (![x.share.me, x.share.all, x.calls.n, x.calls.failed, x.bids.n, x.bids.errors].every(ok)) return null;
     if (x.share.me > x.share.all || x.calls.failed > x.calls.n || x.bids.errors > x.bids.n) return null;
-    return { h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors }, mark: x.mark };
+    if (x.plays !== undefined && (!x.plays || !ok(x.plays.n) || !ok(x.plays.slips) || x.plays.slips > x.plays.n)) return null;
+    /* The same key order as snapshotOf, so a snapshot compares equal after a round trip. */
+    return Object.assign({ h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors } },
+      x.plays !== undefined ? { plays: { n: x.plays.n, slips: x.plays.slips } } : {}, { mark: x.mark });
   }
 
-  /* ---- The slow path (decision 19): score share, failed calls and bid errors, weighted by the hands on record ---- */
-  /** @param {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids }} x @returns {number} */
+  /* ---- The slow path (decision 19): score share, failed calls, bid errors and card-play slips, weighted by the hands
+     on record ---- */
+  /** @param {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, plays?: DynPlays }} x @returns {number} */
   function slowTarget(x) {
     const T = TUNE;
     const share = (x.share.me + T.SHARE_EVEN * T.SHARE_PRIOR) / (x.share.all + T.SHARE_PRIOR);
     const fail = (x.calls.failed + T.FAIL_NORMAL * T.FAIL_PRIOR) / (x.calls.n + T.FAIL_PRIOR);
     const errors = x.bids.errors / (x.bids.n + T.BID_PRIOR);
+    const pl = x.plays || { n: 0, slips: 0 }, slips = (pl.slips + T.SLIP_NORMAL * T.SLIP_PRIOR) / (pl.n + T.SLIP_PRIOR);
     const e = clamp01((T.SHARE_EVEN - share) / (T.SHARE_EVEN - T.SHARE_FULL)) +
-      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN);
+      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN) +
+      T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
   /** The easing a game starts at: 1 when the profile is marked, else w × e_profile. @param {DynSnapshot} snap */
@@ -3935,7 +3950,7 @@ const Dynamic = (() => {
     const snap = cleanSnapshot(snapshot) || snapshotOf(null);
     const D = TUNE.DECAY;
     const t = {
-      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids,
+      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids, plays: snap.plays,
       e0: startEase(snap), e: startEase(snap), target: startEase(snap),
       /* Visible hands this game: weak (true) or not. fast: the fast path holds; quiet: visible hands since it fired. */
       visible: /** @type {boolean[]} */ ([]), fast: false, quiet: 0, hands: 0,
@@ -4018,15 +4033,23 @@ const Dynamic = (() => {
       }
     } catch (e) { return null; }
     const done = hands.filter(x => x.done);
+    /* Card-play slips (Habits) over the game's main-hand plays. */
+    const c = Habits.count(rec)[me];
+    const plays = { n: c.leads + c.follows + c.voids, slips: c.kingUnder + c.wasteWin + c.deadTrump };
     const losses = done.map(x => x.loss);
     let marked = false;
     for (let i = 2; i < losses.length; i++) if ([losses[i], losses[i - 1], losses[i - 2]].filter(x => x !== null && x > LOSS).length >= 2) marked = true;
-    return { hands: done, marked };
+    return { hands: done, marked, plays };
   }
   /** The profile after one reviewed game. Score share counts only Dynamic games (decision 13).
-      @param {any} profile @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+      @param {any} profile @param {{ hands: any[], marked: boolean, plays?: DynPlays }} rv @param {string | null} mode @param {number} [at] */
   function addGame(profile, rv, mode, at) {
     const p = cleanProfile(profile), D = TUNE.DECAY;
+    /* The game's m plays decay as m samples, each with the game's share of slips. */
+    if (rv.plays && rv.plays.n > 0) {
+      const m = rv.plays.n, keep = Math.pow(D, m), sum = (1 - keep) / (1 - D);
+      p.plays = { n: p.plays.n * keep + sum, slips: p.plays.slips * keep + sum * rv.plays.slips / m };
+    }
     for (const h of rv.hands) {
       p.hands++;
       if (h.loss !== null) p.discards = { n: p.discards.n * D + 1, loss: p.discards.loss * D + h.loss };
@@ -4050,7 +4073,7 @@ const Dynamic = (() => {
     let p = cleanProfile(js.load());
     return Object.freeze({
       get: () => JSON.parse(JSON.stringify(p)),
-      /** @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+      /** @param {{ hands: any[], marked: boolean, plays?: DynPlays }} rv @param {string | null} mode @param {number} [at] */
       add(rv, mode, at) { p = addGame(p, rv, mode, at); js.save(p); return JSON.parse(JSON.stringify(p)); },
       reset() { p = blankProfile(); js.save(p); }
     });
@@ -4137,7 +4160,7 @@ const Habits = (() => {
     'leads', 'leadTrump', 'leadKing', 'leadLong', 'leadShort', 'leadMulti', 'leadTop',
     'follows', 'canWin', 'wentFor', 'winCheap', 'heldBack', 'second', 'secondLow',
     'voids', 'canRuff', 'ruffed', 'discards', 'discardShort', 'discardLow',
-    'kings', 'kingTrick', 'kingsWon',
+    'kings', 'kingTrick', 'kingsWon', 'kingUnder', 'wasteWin', 'deadTrump',
     'bid1', 'call1', 'call1Value', 'pass1Value', 'bid2', 'call2', 'call2Value', 'pass2Value'
   ]);
   /* Each rate in plain words, in the order a report shows them. */
@@ -4147,6 +4170,7 @@ const Habits = (() => {
     winCheap: 'wins with the cheapest winner', secondLow: 'second hand plays its lowest', ruff: 'trumps in when void',
     discardShort: 'void: throws from the shortest side suit', discardLow: 'void: throws the lowest of that suit',
     kingTrick: 'average trick a King is played in', kingWon: 'Kings that win their trick',
+    slips: 'card-play slips (a King thrown under, a wasted winner, a dead trump)',
     call1: 'calls in round 1', call1Value: 'hand value at a round 1 call', pass1Value: 'hand value at a round 1 pass',
     call2: 'names trump in round 2', call2Value: 'hand value at a round 2 call', pass2Value: 'hand value at a round 2 pass'
   });
@@ -4184,11 +4208,19 @@ const Habits = (() => {
         c.canWin++;
         if (beats(card)) { c.wentFor++; if (card === winners[0]) c.winCheap++; } else c.heldBack++;
       }
+      /* Slips, plain from the seat's own view: a King played under the card that is already winning while another card
+         could go, or the last card of a trick winning with more than it takes (not a King, which scores). */
+      if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+      else if (plays.length === 2 && beats(card) && card !== winners[0] && !R.isKing(card)) c.wasteWin++;
       if (plays.length === 1 && legal.length > 1) { c.second++; if (legal.every(id => str(id) >= str(card))) c.secondLow++; }
       return;
     }
     c.voids++;
     if (legal.some(id => R.isTrump(id, trump))) { c.canRuff++; if (R.isTrump(card, trump)) c.ruffed++; }
+    /* Slips when void: a King thrown under the winning card, or a trump that cannot beat a higher trump already played,
+       while a side card could go. */
+    if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+    else if (R.isTrump(card, trump) && !beats(card) && legal.some(id => !R.isTrump(id, trump))) c.deadTrump++;
     if (R.isTrump(card, trump)) return;
     const side = Object.values(suitLengths({}, hand, trump, id => !R.isTrump(id, trump)));
     const mine = hand.filter(id => eff(id) === eff(card));
@@ -4256,6 +4288,7 @@ const Habits = (() => {
       secondLow: share(c.secondLow, c.second), ruff: share(c.ruffed, c.canRuff),
       discardShort: share(c.discardShort, c.discards), discardLow: share(c.discardLow, c.discards),
       kingTrick: share(c.kingTrick, c.kings), kingWon: share(c.kingsWon, c.kings),
+      slips: share(c.kingUnder + c.wasteWin + c.deadTrump, c.leads + c.follows + c.voids),
       call1: share(c.call1, c.bid1), call1Value: share(c.call1Value, c.call1), pass1Value: share(c.pass1Value, c.bid1 - c.call1),
       call2: share(c.call2, c.bid2), call2Value: share(c.call2Value, c.call2), pass2Value: share(c.pass2Value, c.bid2 - c.call2)
     };
@@ -7413,7 +7446,7 @@ const App = (() => {
           (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
-    html += habitsHTML();
+    html += habitsHTML() + cardPlayHTML();
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
     html += '<h3>By opponent</h3><p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
@@ -7434,6 +7467,23 @@ const App = (() => {
     return '<h3>Your bidding</h3><p class="pf-sub">From every game you played yourself, in every mode.</p><div class="pf-tiles">' +
       tile('Calls', h.calls) + tile('Calls made', pfPct(h.made / h.calls)) + tile('Usual hand at a call', (Math.round(h.value / h.calls * 10) / 10).toFixed(1) + ' <small>tricks</small>') + '</div>' +
       '<p class="pf-note">A call is made when you take the most tricks without a Showdown. The usual hand counts the tricks and Kings a hand like it wins on average.</p>';
+  }
+  /* Your card play beside the bots', from the finished games in Your profile (KCT.App.habits): a few habits and the
+     slips. Shown once you have finished a game yourself. */
+  function cardPlayHTML() {
+    const h = habits();
+    if (!h.yours) return '';
+    const ids = Object.keys(h.counts.bots), all = Habits.blank();
+    for (const id of ids) Habits.add(all, h.counts.bots[id]);
+    const bots = Habits.rates(all), you = h.you;
+    const rows = [['tries to win when it can', 'wentFor'], ['holds back when it could win', 'heldBack'], ['leads trump', 'leadTrump'], ['trumps in when void', 'ruff'], ['card-play slips', 'slips']];
+    const cell = (/** @type {number | null} */ v) => '<td class="num">' + (v === null ? '–' : Math.round(100 * v) + '%') + '</td>';
+    const kt = (/** @type {number | null} */ v) => '<td class="num">' + (v === null ? '–' : (Math.round(v * 10) / 10).toFixed(1)) + '</td>';
+    return '<h3>Your card play</h3><p class="pf-sub">From your last ' + h.yours + (h.yours === 1 ? ' game' : ' games') + ' played yourself, beside the bots in them (as themselves). Main hand only.</p>' +
+      '<table><thead><tr><th></th><th class="num">You</th><th class="num">Bots</th></tr></thead><tbody>' +
+      rows.map(([label, k]) => '<tr><td>' + label + '</td>' + cell(you[k]) + cell(bots[k]) + '</tr>').join('') +
+      '<tr><td>average trick a King is played in</td>' + kt(you.kingTrick) + kt(bots.kingTrick) + '</tr></tbody></table>' +
+      '<p class="pf-note">A slip is a King thrown under the card already winning, a last card that wins with more than it takes, or a trump that cannot beat a higher one already played, each while another card could go. Dynamic eases off a little more when your slips run above the bots\'.</p>';
   }
   /* Draws Your profile; keepFocus puts the focus back on the control that was used. */
   function showProfile(keepFocus) {
@@ -9246,6 +9296,15 @@ const SelfTest = (() => {
       eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
       const seat = A.dynamicTable(12345, 0.8, []);
       check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
+      /* 9. Card-play slips (step 4c): an old snapshot still works; slips above normal ease more; a game's plays decay as samples. */
+      const base = { h: 60, share: { me: 10, all: 30 }, calls: { n: 10, failed: 4 }, bids: { n: 20, errors: 0 }, mark: false };
+      eq('a snapshot from before slips is kept as it is', DY.cleanSnapshot(base), base);
+      eq('a snapshot with more slips than plays is refused', DY.cleanSnapshot(Object.assign({}, base, { plays: { n: 5, slips: 6 } })), null);
+      const at = (/** @type {number} */ rate) => DY.slowTarget(Object.assign({}, base, { plays: { n: 600, slips: 600 * rate } }));
+      check('slips at the normal rate change nothing; more slips ease more, up to the weight',
+        Math.abs(at(DY.TUNE.SLIP_NORMAL) - DY.slowTarget(base)) < 1e-9 && at(0.05) > at(DY.TUNE.SLIP_NORMAL) && at(0.5) <= at(0.05) + DY.TUNE.SLIP_WEIGHT + 1e-9, [DY.slowTarget(base), at(0.05), at(0.5)].join());
+      const pg = DY.addGame(DY.blankProfile(), { hands: [], marked: false, plays: { n: 50, slips: 5 } }, 'free');
+      check('a game adds its plays as decayed samples, its slips in proportion', pg.plays.n > 39 && pg.plays.n < 50 && Math.abs(pg.plays.slips / pg.plays.n - 0.1) < 1e-9, JSON.stringify(pg.plays));
     });
 
     /* --- Seat settings (Settings → Bots): a seat's tune over its personality, and results that skip a tuned bot. --- */
@@ -9336,6 +9395,7 @@ const SelfTest = (() => {
       check('every main-hand play is a lead, a follow or a void play, and every play counts at most once',
         seats.every(c => c.leads + c.follows + c.voids > 0) && seats.reduce((t, c) => t + c.leads + c.follows + c.voids, 0) <= plays, JSON.stringify(seats));
       check('each trick has one lead', tricks > 0 && seats.reduce((t, c) => t + c.follows + c.voids, 0) === 2 * tricks, 'leads ' + tricks);
+      check('slips are a few of the plays', seats.every(c => c.kingUnder + c.wasteWin + c.deadTrump <= c.leads + c.follows + c.voids), JSON.stringify(seats));
       check('each habit is counted only when it could come up', seats.every(c => c.wentFor + c.heldBack === c.canWin && c.winCheap <= c.wentFor && c.ruffed <= c.canRuff &&
         c.discards <= c.voids && c.leadTop <= c.leadMulti && c.call1 <= c.bid1 && c.call2 <= c.bid2 && c.kingsWon <= c.kings), JSON.stringify(seats));
       eq('rates with no chance are null', Object.values(Habits.rates(Habits.blank())).every(x => x === null), true);
