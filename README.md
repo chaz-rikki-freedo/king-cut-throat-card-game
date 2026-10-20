@@ -172,7 +172,7 @@ These fine-tune **Skill** for every bot. With **Personalities** on, or in a Wave
 
 | Control | What it does |
 |---|---|
-| **Event log** | Starts the timestamped event log (public information only), shown below it. |
+| **Event log** | Starts the timestamped event log (public information only), shown below it. `KCT.App.explain(n)` adds a line for each bot decision of a finished game (see **Console**). |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
 | **Clear log** | Clears the log and the test results. |
@@ -367,7 +367,14 @@ await KCT.App.backup.download()             // save all app data (also a game in
 await KCT.App.backup.toCode()               // the same as a text code (KCTS1-…)
 await KCT.App.backup.inspect(codeOrFile)    // what a backup holds; changes nothing
 await KCT.App.backup.restore(codeOrFile)    // REPLACES all app data on this device, then reloads (no undo)
+KCT.App.habits()                            // habit rates from the finished games in Your profile: yours and each bot's
+KCT.App.explain(0)                          // each bot decision of your latest finished game, made again, with its options
 ```
+
+`KCT.App.habits()` and `KCT.App.explain(n)` read only finished games, the last 20 in Your profile. They never read the running game.
+
+- `habits()` counts how each seat leads, follows, trumps in, throws off when void, plays its Kings and bids. `labels` names each rate in plain words. Your column leaves out games where the AI played your seat, and every column leaves out the Showdown's tricks.
+- `explain(n)` plays game `n` again (0 is the latest) and asks each bot to decide again, with the settings it played with. In Dynamic, the easing moves after each hand as it did in the game. Each decision lists how the bot decided (`plan`: play-outs, `forced`: one choice, `rule`: a fixed rule), its options with their value (its chance to win the game) and best plan, and `match`. A bot decides from what it could see and its settings alone, so `match` is true unless the Settings panel changed during a Free play game (`changed`). With the event log on, each decision is also one `AI_DECISION` line.
 
 `KCT.App.app.state` holds every hand, so use it for testing only.
 

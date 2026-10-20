@@ -2853,6 +2853,7 @@ const Backup = (() => {
  * @typedef {{ realTable: boolean, courage: string, leadPick: string }} Style
  * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
  * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
+ * @typedef {{ how: string, options: { choice: any, value: number, plan: string }[] }} AITrace
  */
 const AI = (() => {
   const R = Rules, P = Engine.P, WIN = Engine.C.WIN_SCORE;
@@ -3428,14 +3429,19 @@ const AI = (() => {
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
   const activePlans = cfg => (cfg.knowledge.showdownPlans ? PLANS : ['greedy']);
+  /* The trace that decide fills, or null. Only decide sets it; it never changes a decision. */
+  /** @type {AITrace | null} */
+  let tracing = null;
   /* bonus (optional): candidate => win chance (0..1) added to its value, such as the bid courage bias for a call. */
   function plan(view, cfg, candidates, toAction, n, bonus) {
-    if (candidates.length === 1) return candidates[0];
+    if (candidates.length === 1) { if (tracing) tracing.how = 'forced'; return candidates[0]; }
     const rng = rngFor(view);
     const worlds = sampleWorlds(view, Math.max(1, Math.round(n * cfg.thinking.worlds / SAMPLES.play)), rng, cfg);
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
+    if (tracing) tracing.how = 'plan';
     for (const cand of candidates) {
+      let candV = -Infinity, candPlan = '';
       for (const planName of activePlans(cfg)) {
         let total = 0;
         for (let i = 0; i < worlds.length; i++) {
@@ -3447,8 +3453,10 @@ const AI = (() => {
           total += outcome(s, view.seat, view.scores, cfg);
         }
         const v = total / worlds.length + (bonus ? bonus(cand) : 0);
+        if (v > candV) { candV = v; candPlan = planName; }
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
       }
+      if (tracing) tracing.options.push({ choice: cand, value: candV, plan: candPlan });
     }
     return best;
   }
@@ -3498,11 +3506,18 @@ const AI = (() => {
     }
   }
   /* Play-outs run the real Engine; keep them out of the event log.
-     The decision depends only on the view and cfg. @param {AIConfig} [cfg] */
-  function decide(view, cfg) {
+     The decision depends only on the view and cfg. trace (optional) gets how the decision was made: 'plan' (each
+     candidate's value and its best plan in options), 'forced' (one candidate) or 'rule' (a rule, no play-outs).
+     @param {AIConfig} [cfg] @param {AITrace} [trace] */
+  function decide(view, cfg, trace) {
     const was = Logger.enabled;
     Logger.enabled = false;
-    try { return decideInner(view, cfg || DEFAULT_CONFIG); } finally { Logger.enabled = was; }
+    tracing = trace ? { how: 'rule', options: [] } : null;
+    try {
+      const action = decideInner(view, cfg || DEFAULT_CONFIG);
+      if (trace && tracing) Object.assign(trace, tracing);
+      return action;
+    } finally { Logger.enabled = was; tracing = null; }
   }
   /* A simple legal action from the view alone, for when decide fails. The other hands are empty
      in this stand-in state, so it uses no hidden card. @param {AIConfig} [cfg] */
@@ -3917,6 +3932,196 @@ const SuitText = (() => {
     }).observe(root, { childList: true, subtree: true, characterData: true });
   }
   return Object.freeze({ draw, watch });
+})();
+
+/* ---------------------------------------------------------------------
+   6d. HABITS — how each seat plays, counted from finished games. It only
+   measures: it changes no decision, never runs during play, and no bot
+   reads it.
+   - count(rec): for each seat, how often a habit could come up and how
+     often the seat took it, in the bids and the main hand's tricks. A
+     Showdown's tricks are left out.
+   - rates(c): those counts as shares and averages (null with no chance).
+   - explain(rec, cfgOf, after): each bot decision again, with the AI's
+     trace. The AI decides from the view and its settings alone, so the
+     same game gives the same decision; match says that it did.
+   It reads finished games, so a trace shows no card that was still hidden
+   while the game ran.
+   --------------------------------------------------------------------- */
+const Habits = (() => {
+  const R = Rules, P = Engine.P;
+  const KEYS = Object.freeze([
+    'leads', 'leadTrump', 'leadKing', 'leadLong', 'leadShort', 'leadMulti', 'leadTop',
+    'follows', 'canWin', 'wentFor', 'winCheap', 'heldBack', 'second', 'secondLow',
+    'voids', 'canRuff', 'ruffed', 'discards', 'discardShort', 'discardLow',
+    'kings', 'kingTrick', 'kingsWon',
+    'bid1', 'call1', 'call1Value', 'pass1Value', 'bid2', 'call2', 'call2Value', 'pass2Value'
+  ]);
+  /* Each rate in plain words, in the order a report shows them. */
+  const LABELS = Object.freeze({
+    leadTrump: 'leads trump', leadKing: 'leads a King', leadLong: 'leads from the longest suit', leadShort: 'leads from the shortest suit',
+    leadTop: 'leads the top card of the suit (2 or more held)', wentFor: 'tries to win when it can', heldBack: 'holds back when it could win',
+    winCheap: 'wins with the cheapest winner', secondLow: 'second hand plays its lowest', ruff: 'trumps in when void',
+    discardShort: 'void: throws from the shortest side suit', discardLow: 'void: throws the lowest of that suit',
+    kingTrick: 'average trick a King is played in', kingWon: 'Kings that win their trick',
+    call1: 'calls in round 1', call1Value: 'hand value at a round 1 call', pass1Value: 'hand value at a round 1 pass',
+    call2: 'names trump in round 2', call2Value: 'hand value at a round 2 call', pass2Value: 'hand value at a round 2 pass'
+  });
+  /** @returns {Record<string, number>} */
+  const blank = () => Object.fromEntries(KEYS.map(k => [k, 0]));
+  /** Adds b's counts to a. @param {Record<string, number>} a @param {Record<string, number>} b */
+  function add(a, b) { for (const k of KEYS) a[k] += b[k] || 0; return a; }
+  /** @param {Record<string, number>} counts @param {string[]} hand @param {string} trump @param {(id: string) => boolean} [only] */
+  function suitLengths(counts, hand, trump, only) {
+    for (const id of hand) if (!only || only(id)) { const e = R.getEffectiveSuit(id, trump); counts[e] = (counts[e] || 0) + 1; }
+    return counts;
+  }
+
+  /** A main-hand card play by seat p, before it is played. @param {Record<string, number>} c @param {any} s @param {number} p @param {string} card */
+  function play(c, s, p, card) {
+    const trump = s.trump, hand = s.hands[p], plays = s.trick.plays, ls = s.trick.leadSuit;
+    const eff = (/** @type {string} */ id) => R.getEffectiveSuit(id, trump), str = (/** @type {string} */ id) => R.getCardStrength(id, trump);
+    const legal = R.legalCards(hand, ls, trump);
+    if (!plays.length) {
+      const lens = Object.values(suitLengths({}, hand, trump)), len = hand.filter(id => eff(id) === eff(card)).length;
+      c.leads++;
+      if (R.isTrump(card, trump)) c.leadTrump++;
+      if (R.isKing(card)) c.leadKing++;
+      if (len === Math.max(...lens)) c.leadLong++;
+      if (len === Math.min(...lens) && len < Math.max(...lens)) c.leadShort++;
+      if (len > 1) { c.leadMulti++; if (hand.every(id => eff(id) !== eff(card) || str(id) <= str(card))) c.leadTop++; }
+      return;
+    }
+    const best = R.getTrickWinner(plays, trump);
+    const beats = (/** @type {string} */ id) => R.compareCards(id, best.card, ls, trump) > 0;
+    if (hand.some(id => eff(id) === ls)) {
+      c.follows++;
+      const winners = legal.filter(beats).sort((a, b) => str(a) - str(b));
+      if (winners.length) {
+        c.canWin++;
+        if (beats(card)) { c.wentFor++; if (card === winners[0]) c.winCheap++; } else c.heldBack++;
+      }
+      if (plays.length === 1 && legal.length > 1) { c.second++; if (legal.every(id => str(id) >= str(card))) c.secondLow++; }
+      return;
+    }
+    c.voids++;
+    if (legal.some(id => R.isTrump(id, trump))) { c.canRuff++; if (R.isTrump(card, trump)) c.ruffed++; }
+    if (R.isTrump(card, trump)) return;
+    const side = Object.values(suitLengths({}, hand, trump, id => !R.isTrump(id, trump)));
+    const mine = hand.filter(id => eff(id) === eff(card));
+    c.discards++;
+    if (mine.length === Math.min(...side)) c.discardShort++;
+    if (mine.every(id => str(id) >= str(card))) c.discardLow++;
+  }
+  /** A bid by seat p, before it is made. Values are the game's hand value (AI.handValue). @param {Record<string, number>} c @param {any} s @param {number} p @param {Decision} d */
+  function bid(c, s, p, d) {
+    const hand = s.hands[p], turned = R.turnedSuit(s.flippedId, s.jokerSuit);
+    if (d.type === 'BID') {
+      const v = AI.handValue(hand, turned);
+      c.bid1++;
+      if (d.accept) { c.call1++; c.call1Value += v; } else c.pass1Value += v;
+      return;
+    }
+    c.bid2++;
+    if (d.suit) { c.call2++; c.call2Value += AI.handValue(hand, d.suit); }
+    else c.pass2Value += Math.max(...R.SUITS.filter(x => x !== turned).map(x => AI.handValue(hand, x)));
+  }
+  /** The Kings of a main-hand trick that just ended. @param {Record<string, number>[]} seats @param {any} trick the state's lastTrick */
+  function kings(seats, trick) {
+    for (const pl of trick.plays) {
+      if (!R.isKing(pl.card)) continue;
+      const c = seats[pl.player];
+      c.kings++; c.kingTrick += trick.number;
+      if (trick.winner === pl.player) c.kingsWon++;
+    }
+  }
+  /* A replayed game's Engine events stay out of the event log. @template T @param {() => T} fn @returns {T} */
+  function quiet(fn) {
+    const was = Logger.enabled;
+    Logger.enabled = false;
+    try { return fn(); } finally { Logger.enabled = was; }
+  }
+  /** The next decision a cursor will play, or null (MARK notes skipped). @param {any} cur */
+  function nextDecision(cur) {
+    return cur.record.decisions.slice(cur.decisionsUsed).find((/** @type {any} */ x) => x && x.type !== 'MARK') || null;
+  }
+
+  /** Habit counts for each seat of a game (a record or a code). Throws if the game does not replay.
+      @param {any} recOrCode @returns {Record<string, number>[]} */
+  function count(recOrCode) { return quiet(() => countInner(recOrCode)); }
+  /** @param {any} recOrCode */
+  function countInner(recOrCode) {
+    const seats = [blank(), blank(), blank()];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      if (d && d.type === 'PLAY' && s.phase === P.TRICK_PLAY) play(seats[d.player], s, d.player, d.card);
+      else if (d && (d.type === 'BID' || d.type === 'NAME')) bid(seats[d.player], s, d.player, d);
+      const step = cur.step();
+      if (!step) break;
+      if (step.events.some((/** @type {any} */ e) => e.type === 'TRICK_WON')) kings(seats, cur.state.lastTrick);
+    }
+    return seats;
+  }
+  const share = (/** @type {number} */ x, /** @type {number} */ n) => (n ? x / n : null);
+  /** The counts as rates (LABELS names them). @param {Record<string, number>} c @returns {Record<string, number | null>} */
+  function rates(c) {
+    return {
+      leadTrump: share(c.leadTrump, c.leads), leadKing: share(c.leadKing, c.leads), leadLong: share(c.leadLong, c.leads),
+      leadShort: share(c.leadShort, c.leads), leadTop: share(c.leadTop, c.leadMulti),
+      wentFor: share(c.wentFor, c.canWin), heldBack: share(c.heldBack, c.canWin), winCheap: share(c.winCheap, c.wentFor),
+      secondLow: share(c.secondLow, c.second), ruff: share(c.ruffed, c.canRuff),
+      discardShort: share(c.discardShort, c.discards), discardLow: share(c.discardLow, c.discards),
+      kingTrick: share(c.kingTrick, c.kings), kingWon: share(c.kingsWon, c.kings),
+      call1: share(c.call1, c.bid1), call1Value: share(c.call1Value, c.call1), pass1Value: share(c.pass1Value, c.bid1 - c.call1),
+      call2: share(c.call2, c.bid2), call2Value: share(c.call2Value, c.call2), pass2Value: share(c.pass2Value, c.bid2 - c.call2)
+    };
+  }
+
+  /* What a decision or a candidate chose, in one comparable form: a card, the cards (sorted), true or false, a suit
+     or null, or a seat. */
+  /** @param {any} d */
+  function choiceOf(d) {
+    switch (d.type) {
+      case 'DISCARD': case 'EXCHANGE': return d.cards.slice().sort();
+      case 'BID': return d.accept;
+      case 'NAME': return d.suit;
+      case 'SHOWDOWN_LEAD': return d.leader;
+      default: return d.card;
+    }
+  }
+  const key = (/** @type {any} */ x) => JSON.stringify(Array.isArray(x) ? x.slice().sort() : x);
+  /** Each decision that cfgOf gives settings for, made again with the AI's trace.
+      @param {any} recOrCode @param {(p: number) => AIConfig | null} cfgOf the settings seat p played with, or null to skip it
+      @param {(events: any[], state: GameState) => void} [after] called after each step (Dynamic moves its easing there) */
+  function explain(recOrCode, cfgOf, after) { return quiet(() => explainInner(recOrCode, cfgOf, after)); }
+  /** @param {any} recOrCode @param {(p: number) => AIConfig | null} cfgOf @param {(events: any[], state: GameState) => void} [after] */
+  function explainInner(recOrCode, cfgOf, after) {
+    const out = [];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      const cfg = d ? cfgOf(d.player) : null;
+      let entry = null;
+      if (d && cfg) {
+        /** @type {AITrace} */
+        const trace = { how: '', options: [] };
+        const a = AI.decide(buildView(s, d.player), cfg, trace);
+        const chosen = key(choiceOf(d)), opts = trace.options.map(o => ({ choice: o.choice, value: Math.round(o.value * 1000) / 1000, plan: o.plan }));
+        const mine = opts.find(o => key(o.choice) === chosen);
+        entry = {
+          hand: s.handNumber, trick: s.trickNumber, phase: s.phase, seat: d.player, chosen: choiceOf(d), how: trace.how,
+          plan: mine ? mine.plan : null, options: opts.sort((x, y) => y.value - x.value), match: !!a && a.type === d.type && key(choiceOf(a)) === chosen
+        };
+      }
+      const step = cur.step();
+      if (entry) out.push(entry);
+      if (!step) break;
+      if (after) after(step.events, cur.state);
+    }
+    return out;
+  }
+  return Object.freeze({ KEYS, LABELS, blank, add, count, rates, explain });
 })();
 
 /* ---------------------------------------------------------------------
@@ -5252,6 +5457,68 @@ const App = (() => {
       ok: 'Reload', cancel: 'Keep playing'
     }).then(yes => { if (yes) location.reload(); });
   }
+  /* ---- Habits: KCT.App.habits() and KCT.App.explain(n) from the console. They read the finished games in Your
+     profile (the last REPLAYS_MAX), never the running game. ---- */
+  /** The settings each bot seat of a finished record played with. Seat 0 is skipped: a person, or the AI for part of
+      the game at most. Dynamic's easing moves after each hand as it did in the game. @param {any} rec */
+  function recordSettings(rec) {
+    const m = rec.meta || {};
+    const personas = rec.mode === 'waves' || rec.mode === 'dynamic' || m['ai.personas'] === true;
+    const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(m['dyn.snap']))) : null;
+    const t = snap ? Dynamic.tracker(snap) : null;
+    const panel = typeof m['ai.hunches'] === 'number' ? AI.config(AI.DEFAULT_CONFIG, {
+      thinking: { worlds: m['ai.hunches'], playoutSkill: 1 - m['ai.brainFarts'] / 100 },
+      knowledge: Object.fromEntries(Object.keys(AI.KNOWLEDGE_DEFAULTS).map(k => [k, m['ai.know.' + k] === true])),
+      style: { courage: m['ai.courage'], realTable: m['ai.realTable'] === true }
+    }) : null;
+    return {
+      /** @param {number} p @returns {AIConfig | null} */
+      cfgOf(p) {
+        if (p === HUMAN) return null;
+        const x = personas ? PERSONA_BY_ID[rec.seats[p]] : null;
+        return x ? (t ? Dynamic.ease(x, t.e) : AI.personaConfig(x)) : panel;
+      },
+      /** @param {any[]} events @param {GameState} state */
+      after(events, state) { if (t && Dynamic.handEnded(events, state)) t.hand(buildView(state, 1)); },
+      /* The bots played with more than one panel config, so some traces may not match. */
+      changed: m['ai.changed'] === true
+    };
+  }
+  const round3 = (/** @type {number | null} */ x) => (x === null ? null : Math.round(x * 1000) / 1000);
+  /** Habit rates from the finished games in Your profile: yours (games where the AI never played your seat) and each
+      bot's. counts holds the raw counts. */
+  function habits() {
+    const you = Habits.blank(), /** @type {Record<string, Record<string, number>>} */ bots = {};
+    let games = 0, yours = 0, skipped = 0;
+    for (const e of replays.list()) {
+      const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
+      if (!seats) { skipped++; continue; }
+      games++;
+      if (!e.assisted) { yours++; Habits.add(you, seats[0]); }
+      for (const p of [1, 2]) { const id = rec.seats[p]; if (id) Habits.add(bots[id] || (bots[id] = Habits.blank()), seats[p]); }
+    }
+    const show = (/** @type {Record<string, number>} */ c) => Object.fromEntries(Object.entries(Habits.rates(c)).map(([k, v]) => [k, round3(v)]));
+    return { games, yours, skipped, labels: Habits.LABELS, you: show(you), bots: Object.fromEntries(Object.keys(bots).map(id => [id, show(bots[id])])), counts: { you, bots } };
+  }
+  /** Each bot decision of finished game n in Your profile (0 = the latest), made again with the AI's trace: how it
+      decided, each option's value (its chance to win the game) and best plan, and whether the trace matches the move
+      the bot made. With the event log on, it also writes one AI_DECISION line for each. @param {number} [n] */
+  function explain(n = 0) {
+    const e = replays.list()[n], rec = e && safe(() => Replay.decode(e.code));
+    if (!rec) return null;
+    const how = recordSettings(rec);
+    const list = Habits.explain(rec, p => how.cfgOf(p), (ev, st) => how.after(ev, st));
+    const text = (/** @type {any} */ x) => (Array.isArray(x) ? x.join('+') : String(x));
+    for (const x of list) {
+      Logger.log('AI_DECISION', {
+        hand: x.hand, trick: x.trick, phase: x.phase, seat: x.seat, chose: text(x.chosen), how: x.how, plan: x.plan,
+        options: x.options.slice(0, 6).map(o => text(o.choice) + ' ' + o.value + (o.plan === 'greedy' ? '' : ' ' + o.plan)).join(', '),
+        match: x.match
+      });
+    }
+    return { game: n, mode: rec.mode, seats: rec.seats, changed: how.changed, matched: list.filter(x => x.match).length, decisions: list };
+  }
+
   /* ---- Backup (docs/backup.md). Settings → Tools → Your data, and KCT.App.backup from the console. ---- */
   const backup = Object.freeze({
     /** The full client state now. The running game is saved first, so mid-game progress is in it.
@@ -7282,7 +7549,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', habits: 'Habits'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -7510,7 +7777,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, personasOn, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, personasOn, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -8673,6 +8940,42 @@ const SelfTest = (() => {
       eq('read pace: Sharks notice soonest, Novices last', ['vex', 'ace', 'gus', 'lou'].map(id => PERSONA_BY_ID[id].readPace), [2, 3, 4, 6]);
     });
 
+    /* --- Habits: the counts from a finished game, and the AI trace that explains each bot decision again.
+       tests/habits.js prints the report for all ten bots. --- */
+    safeRun('habits', () => {
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const g = Engine.createGame(4242, ['A', 'B', 'C']);
+      let traced = 0, same = 0;
+      for (let n = 0; !g.gameOver && n < 5000; n++) {
+        const act = Engine.actors(g);
+        let a = null;
+        if (act.length) {
+          const v = buildView(g, act[0]), trace = { how: '', options: [] };
+          a = AI.decide(v, cfgs[act[0]], trace);
+          traced++;
+          if (JSON.stringify(AI.decide(v, cfgs[act[0]])) === JSON.stringify(a) && ['plan', 'forced', 'rule'].includes(trace.how)) same++;
+        } else a = Engine.systemAction(g);
+        if (!a || !Engine.dispatch(g, a).ok) break;
+      }
+      check('a bot game finishes', g.gameOver);
+      eq('a trace never changes the decision, and names how it was made', same, traced);
+      const rec = Replay.fromState(g), seats = Habits.count(rec);
+      const tricks = seats.reduce((t, c) => t + c.leads, 0);
+      const plays = rec.decisions.filter(d => d.type === 'PLAY').length;
+      check('every main-hand play is a lead, a follow or a void play, and every play counts at most once',
+        seats.every(c => c.leads + c.follows + c.voids > 0) && seats.reduce((t, c) => t + c.leads + c.follows + c.voids, 0) <= plays, JSON.stringify(seats));
+      check('each trick has one lead', tricks > 0 && seats.reduce((t, c) => t + c.follows + c.voids, 0) === 2 * tricks, 'leads ' + tricks);
+      check('each habit is counted only when it could come up', seats.every(c => c.wentFor + c.heldBack === c.canWin && c.winCheap <= c.wentFor && c.ruffed <= c.canRuff &&
+        c.discards <= c.voids && c.leadTop <= c.leadMulti && c.call1 <= c.bid1 && c.call2 <= c.bid2 && c.kingsWon <= c.kings), JSON.stringify(seats));
+      eq('rates with no chance are null', Object.values(Habits.rates(Habits.blank())).every(x => x === null), true);
+      const ex = Habits.explain(rec, p => cfgs[p]);
+      eq('explain makes every decision again, the same as in the game', [ex.length, ex.filter(x => x.match).length], [traced, traced]);
+      const pl = ex.find(x => x.how === 'plan' && x.phase === Engine.P.TRICK_PLAY);
+      check('a planned card play lists its options, best first, with the chosen one among them',
+        !!pl && pl.options.length > 1 && pl.options.every((o, i) => i === 0 || o.value <= pl.options[i - 1].value) && pl.options.some(o => o.choice === pl.chosen), JSON.stringify(pl));
+      eq('explain skips a seat with no settings (a person)', Habits.explain(rec, p => (p === 0 ? null : cfgs[p])).some(x => x.seat === 0), false);
+    });
+
     /* --- Truly random: fresh seeds and house rules on every run (RNG.freshSeed), so each run tries new deals. A failure
        names its seed and rules: Engine.createGame(seed, undefined, Engine.RULES_VERSION, rules) plays it again. --- */
     safeRun('random games', () => {
@@ -8823,7 +9126,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

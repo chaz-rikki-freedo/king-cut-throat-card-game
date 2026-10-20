@@ -152,6 +152,39 @@ The record left only tuning open. The build uses these values, in `Dynamic.TUNE`
 
 `node tests/dynamic.js rates 80 4` measured the fast path in the build: it caught a new player who throws away their best cards within 3 visible hands in 90.9% of games, and fired on at most 1.4% of 3-hand windows for ladder rows 4, 6 and 8.
 
+## Habit report (2026-10-20)
+
+The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.
+
+**The plan, by mode:**
+
+- **Free play is the forge.** It will expose every setting for each seat, so a table can be tuned precisely.
+- **Dynamic is the marquee mode.** It will take only the settings proven in Free play, and it keeps its rules: never harder than normal, never adapting to your bluffs.
+- **Waves stays the measured ladder.** It is measured again whenever the bots change.
+
+**The tools.** `KCT.Habits` counts each seat's habits from a finished game: how it leads, follows, trumps in, throws off when void, plays its Kings and bids. `KCT.App.habits()` reports on the games in Your profile, and `KCT.App.explain(n)` replays each bot decision of a game with the options the bot weighed. `tests/habits.js` prints the report for all ten bots.
+
+**Baseline:** `node tests/habits.js 1 4` (120 games). Spread is the highest bot rate minus the lowest.
+
+| Habit | Lowest | Highest | Spread |
+|---|---|---|---|
+| Leads from its longest suit | 71% | 75% | 4 |
+| Wins with the cheapest winner | 87% | 92% | 4 |
+| Void: throws from the shortest side suit | 75% | 79% | 4 |
+| Tries to win when it can | 91% | 96% | 6 |
+| Leads trump | 33% | 41% | 9 |
+| Second hand plays its lowest | 48% | 63% | 15 |
+| Names trump in round 2 | 65% | 100% | 35 |
+| Calls in round 1 | 13% | 63% | 50 |
+
+**What it shows:**
+
+1. **The bots differ in their bids, but hardly in their card play.** Bid courage and Real table only act on the bids. Card play has no style setting, so most card habits spread 4 to 15 points across all ten bots.
+2. **No bot plays a deliberate wrong card.** All ten try to win a trick they can win more than 90% of the time, and most often with the cheapest card that wins.
+3. **Ties go to the weakest card.** `KCT.App.explain(n)` shows options with the same value, and every bot then plays the weakest one. That is one shared habit, not ten.
+
+Next steps: habits that act on every trick, reads of card play (public information only), deliberate wrong plays, and bots that are sometimes fooled by them.
+
 ## Proposals
 
 Each one gives us something we can check. The status of each is as of 2026-10-13.
