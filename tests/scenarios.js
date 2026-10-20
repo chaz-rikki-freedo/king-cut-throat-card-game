@@ -188,39 +188,35 @@ function expect(name, ok, detail) {
     expect('the mode chip opens Wave tries', r.popup === 'Wave tries', r.popup);
     expect('Skip never shows outside a bot Showdown', r.skip.shownElsewhere === 0, r.skip);
 
-    console.log('Personalities: a wave always uses them, and the switch says so');
+    console.log('Seat settings: West and East apply in Free play; a wave seats its bots as themselves');
     r = await step(`
-      const out = {}, sw = q('#setPersonas');
+      const out = {}, set = (id, v) => { const s = q(id); s.value = v; s.dispatchEvent(new Event('change', { bubbles: true })); };
+      set('#seat1-courage', 'bold');
       click('[data-action="menu"]'); await sleep(20);
       click('[data-action="new-free"]'); await sleep(50);
       while (!q('#overlay .swap')) await sleep(10);
       click('[data-action="swap-done"]'); await sleep(50);
       await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
-      sw.checked = false; sw.dispatchEvent(new Event('change')); await sleep(20);
-      out.free = [sw.checked, sw.disabled, app.usePersonas];
-      const cr = q('#setCourage'); cr.value = 'bold'; cr.dispatchEvent(new Event('change')); await sleep(20);
+      out.free = [JSON.stringify(app.ui.tunes[1]), A.botConfig(1).cfg.style.courage];
       click('[data-action="menu"]'); await sleep(20);
       q('#waveSel').value = '1'; click('[data-action="play-wave"]'); await sleep(50);
       if (askOpen()) { click('[data-action="ask-ok"]'); await sleep(50); }
-      out.wave = [sw.checked, sw.disabled, app.usePersonas, q('#setBotFields').classList.contains('set-off')];
-      out.waveCourage = q('#setCourage').value;
+      const own = KCT.PERSONAS.find(x => x.id === app.ui.personas[1]);
+      out.wave = [app.ui.tunes[1], q('#setWaveNote').hidden, JSON.stringify(A.botConfig(1).cfg) === JSON.stringify(KCT.AI.personaConfig(own))];
       await drive(() => app.state.phase === P.TRICK_PLAY, 20000);
-      out.bots = !!app.botSettings.personas && !app.botSettings.panel;
       click('[data-action="menu"]'); await sleep(20);
       click('[data-action="discard-waves"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
       click('[data-action="resume-free"]'); await sleep(50);
-      out.after = [sw.checked, sw.disabled, app.usePersonas];
-      out.afterCourage = q('#setCourage').value;
+      out.after = JSON.stringify(app.ui.tunes[1]);
+      out.saved = JSON.parse(localStorage.getItem('kct.settings') || '{}').seats[1];
+      set('#seat1-courage', '');
       click('[data-action="menu"]'); await sleep(20);
-      sw.checked = true; sw.dispatchEvent(new Event('change')); await sleep(20);
       click('[data-action="discard-free"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
       click('[data-action="close-menu"]'); await sleep(20);
       return out;`);
-    expect('Free play: the switch turns off', JSON.stringify(r.free) === '[false,false,false]', r.free);
-    expect('in a wave the switch shows on, locked, with the bot settings dimmed; Free play keeps its off', JSON.stringify(r.wave) === '[true,true,false,true]', r.wave);
-    expect('the wave bots play their personalities', r.bots === true, r.bots);
-    expect('back in Free play the switch shows its off again', JSON.stringify(r.after) === '[false,false,false]', r.after);
-    expect('in a wave the dimmed bot rows show the defaults, and Free play gets its own settings back', r.waveCourage === 'normal' && r.afterCourage === 'bold', [r.waveCourage, r.afterCourage]);
+    expect('Free play: West plays with its seat\'s change', JSON.stringify(r.free) === JSON.stringify(['{"courage":"bold"}', 'bold']), r.free);
+    expect('in a wave the bots play their personalities, and the Bots tab says so', JSON.stringify(r.wave) === '[null,false,true]', r.wave);
+    expect('back in Free play the game keeps its tune, and the settings keep it', r.after === '{"courage":"bold"}' && r.saved && r.saved.tune && r.saved.tune.courage === 'bold', r);
 
     console.log('Skip: a Showdown between the two bots');
     r = await step(`
@@ -303,17 +299,12 @@ function expect(name, ok, detail) {
     r = await step(`return arg.filter(ref => { let o = window; for (const k of ref.split('.')) { if (o == null) return false; if (!(k in Object(o))) return true; o = o[k]; } return false; });`, refs);
     expect('every KCT command named in the docs exists (' + refs.length + ')', refs.length > 20 && r.length === 0, r);
     r = await step(`
-      const keep = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, courage: app.ai.style.courage }, was = app.usePersonas;
-      app.usePersonas = false;
-      A.setSkillTier('shark'); const tier = q('#setTier').value;
-      A.setStyle({ courage: 'bold' }); const courage = q('#setCourage').value;
-      /* With Personalities on, the dimmed rows show the defaults, not the set that no bot plays. */
-      app.usePersonas = true; A.setStyle({ courage: 'bold' }); const dimmed = [q('#setTier').value, q('#setCourage').value];
-      app.usePersonas = was;
-      A.setThinking(keep.thinking); A.setKnowledge(keep.knowledge); A.setStyle({ courage: keep.courage });
-      return { tier, courage, dimmed };`);
-    expect('KCT.App.setSkillTier and setStyle move the panel controls', r.tier === 'shark' && r.courage === 'bold', r);
-    expect('with Personalities on, the dimmed bot rows show the defaults', r.dimmed[0] === 'casual' && r.dimmed[1] === 'normal', r);
+      const keep = JSON.parse(JSON.stringify(app.seats[2]));
+      A.setSeat(2, { who: 'mei', tune: { courage: 'bold', worlds: 5 } });
+      const shown = [q('#seat2-who').value, q('#seat2-courage').value, q('#seat2-worlds').value, q('#setSeatSum2').textContent];
+      A.setSeat(2, keep);
+      return { shown, back: JSON.stringify(app.seats[2]) === JSON.stringify(keep) };`);
+    expect('KCT.App.setSeat moves the seat controls', JSON.stringify(r.shown) === JSON.stringify(['mei', 'bold', '5', 'Mei · 2 changes']) && r.back, r);
 
     console.log('Backup: the Settings tab is kept as JSON, so a backup works after Settings has opened');
     r = await step(`
@@ -388,12 +379,13 @@ function expect(name, ok, detail) {
       KCT.App.newGame(5151); speed('fast');
       while (!q('#overlay .swap')) await sleep(10);
       click('[data-action="swap-done"]'); app.ui.autoplay = true;
-      /* Broken bot settings: the planner and the fallback move both throw (personalities off, Free play). */
-      const keep = app.ai; app.usePersonas = false; app.ai = {};
+      /* Broken bot settings: reading West's and East's tune throws, so the planner and the fallback move both fail. */
+      const keep = app.ui.tunes, bad = new Proxy({}, { get: (o, k) => { if (k === 'courage') throw new Error('broken settings'); } });
+      app.ui.tunes = [null, bad, bad];
       const v = app.state.version, t0 = Date.now();
       while (Date.now() - t0 < 40000 && !app.state.gameOver && app.state.handNumber < 2) await sleep(20);
       const out = { moved: app.state.version - v, hand: app.state.handNumber, audit: KCT.Engine.audit(app.state) };
-      app.ai = keep; app.usePersonas = true; app.ui.autoplay = false;
+      app.ui.tunes = keep; app.ui.autoplay = false;
       return out;`);
     expect('the game plays on past AI errors, with legal moves', r.hand >= 2 && r.audit.length === 0, r);
 
@@ -437,7 +429,7 @@ function expect(name, ok, detail) {
     console.log('Your seat: the AI personality comes from the setting or the seed, so a replayed seed gives the same game');
     r = await step(`
       allowSeatAI(true); speed('fast');
-      const pick = id => { const s = q('#setSeatPersona'); s.value = id; s.dispatchEvent(new Event('change')); };
+      const pick = id => { const s = q('#seat0-who'); s.value = id; s.dispatchEvent(new Event('change', { bubbles: true })); };
       // A free-play game handed to the AI at once, played for up to 120 moves or to its end.
       async function run(seed) {
         KCT.App.newGame(seed);
@@ -450,17 +442,17 @@ function expect(name, ok, detail) {
       }
       pick('');
       const a = await run(31337), b = await run(31337);
-      const atTable = a.table[0], free = [...q('#setSeatPersona').options].map(o => o.value).filter(Boolean).find(id => !a.table.includes(id) && id !== a.seat);
+      const atTable = a.table[0], free = [...q('#seat0-who').options].map(o => o.value).filter(Boolean).find(id => !a.table.includes(id) && id !== a.seat);
       pick(atTable); const c = await run(31337);
       pick(free); const d = await run(31337);
-      return { a, b, c, d, free, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
+      return { a, b, c, d, free, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seats[0].who };`);
     expect('From the seed: the AI has your seat, as a personality not at the table', r.a.auto && r.a.seat && !r.a.table.includes(r.a.seat), r.a);
     expect('From the seed: a replayed seed gives the same personality and the same game', r.a.seat === r.b.seat && r.a.game === r.b.game, { a: r.a, b: r.b });
     expect('a chosen personality that sits West or East: the seed picks, as with From the seed', r.c.seat === r.a.seat && r.c.game === r.a.game, r.c);
     expect('a chosen personality that is free: your seat gets it', r.d.seat === r.free, { d: r.d, free: r.free });
     expect('the settings keep the chosen personality', r.saved === r.free, r.saved);
     await reload();
-    r = await step(`return { value: q('#setSeatPersona').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seatPersona };`);
+    r = await step(`return { value: q('#seat0-who').value, saved: JSON.parse(localStorage.getItem('kct.settings') || '{}').seats[0].who };`);
     expect('after a reload, Settings shows the chosen personality', r.value && r.value === r.saved, r);
 
     console.log('In your Showdown, the Outside cell shows the discards as mini cards');

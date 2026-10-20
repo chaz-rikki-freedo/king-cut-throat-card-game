@@ -53,7 +53,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): Personalities, skill, bid courage, Real table, AI thinking and knowledge, Logging, and your seat's AI personality. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
+- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, and the Game tab's settings. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
@@ -80,7 +80,7 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has four tabs: **Game**, **Bots**, **Expert** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Game**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
 ### Game: Theme
 
@@ -115,17 +115,26 @@ All three settings are kept after a reload. A change to **Mediator picks the Sho
 
 **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code.
 
-**AI personality** (default **From the seed**): the personality the AI uses when it plays your seat. It can be changed only while **AI can play your seat** is on, and not once the AI has taken your seat in the running game (the game keeps that personality; the row says which). If you choose one that already sits West or East, or with **From the seed**, the seed picks one that is not at the table. The game keeps this setting after a reload.
+Who the AI plays as in your seat, and how it plays, is set in **Settings → Bots → Your seat**.
 
 ### Bots
 
-All bot settings apply to all bots and are kept after a reload. Switching **Personalities** on or off resets them (and the Expert tab) to their defaults, so the dimmed rows show the defaults, not an old custom set. **Defaults: Reset**, at the bottom of the tab, resets them all, with the Expert tab. In a Waves or Dynamic game, **Personalities** and the bot settings are dimmed and show the defaults: a wave always uses its personalities, and Dynamic eases each bot from its personality. The switch and your settings keep their values for Free play.
+The Bots tab has one group for each seat: **West**, **East** and **Your seat** (used when the AI plays your seat). Each group is collapsed; its header shows who sits there and how many changes it has. Inside, **Who sits** comes first, then three collapsed groups: **Skill**, **Style** and **Knowledge**.
 
-| Setting | What it does |
+- **Who sits** (default **From the seed**): the seed's pick, or always this bot. West and East can't both choose the same bot: the other seat goes back to the seed's pick. For your seat, a bot already at the table means the seed picks one that isn't.
+- Every other setting starts at **Its own**: the bot plays that part as its personality does. When the seat has a chosen bot, **Its own** names that bot's value, for example **Its own (Bold)**. Any other choice changes that one thing, and a gold dot marks the row.
+- A game takes the seat settings when it starts (your seat's when the AI first takes it), and keeps them. A change applies from your next game; under a seat, a note says what the running game seats there when it differs.
+- A setting stays with its bot: swapping West and East before a game swaps the bots with their changes.
+- West and East apply in Free play only. Waves and Dynamic seat their own bots, playing as themselves; the tab says so in those games. Your seat applies in every mode.
+- **Results:** a bot with any change is not itself, so a game against it counts for the mode, but not for that bot or for the table. Your profile marks such a game **(tuned)**.
+- **Reset this seat** sets one seat back to the seed's pick, playing as itself. **Defaults: Reset**, at the bottom of the tab, does so for every seat.
+- The seat settings are kept after a reload. Settings from before this version carry over: your seat's AI personality becomes its **Who sits**, and with **Personalities** off, the one set of bot settings becomes the changes for West and East.
+
+| Group | Settings |
 |---|---|
-| **Skill** | Sets AI thinking and AI knowledge together (the Expert tab). Shows **Custom** when you change them there. |
-| **Bid courage** | How readily the bots call trump in both bidding rounds. |
-| **Real table** | The bots play like a typical human table (see below). |
+| **Skill** | **Skill** sets hunches, brain farts and knowledge together, and shows **Custom** when they match no tier. **Hunches** and **Brain farts** fine-tune it (see below). |
+| **Style** | **Bid courage**, **Real table** and **Showdown pick** (see below and **Opponents**). |
+| **Knowledge** | The six knowledge switches (see below), each **Its own**, **On** or **Off**. |
 
 Skill tiers, weakest first:
 
@@ -138,19 +147,19 @@ Skill tiers, weakest first:
 
 Stronger tiers think longer before each move.
 
-Bid courage: **Timid**, **Cautious**, **Normal** (default), **Bold**. When a bot plans a bid, courage adds a fixed amount to the win chance of a call: −10%, −5%, 0, +5%. When a bot bids by rule (Real table, and the bots' model of the other seats), courage changes the hand value needed to call: +1.0, +0.5, 0, −0.4. In a test of 15 Casual games, the bots passed 72%, 64%, 61% and 48% of their bids.
+Bid courage: **Timid**, **Cautious**, **Normal**, **Bold**. When a bot plans a bid, courage adds a fixed amount to the win chance of a call: −10%, −5%, 0, +5%. When a bot bids by rule (Real table, and the bots' model of the other seats), courage changes the hand value needed to call: +1.0, +0.5, 0, −0.4. In a test of 15 Casual games, the bots passed 72%, 64%, 61% and 48% of their bids.
 
-**Real table** (off by default):
+**Real table:**
 
-- The bots pass more in both bidding rounds. They need 0.5 more hand value before they call trump (added to bid courage), and they bid by this rule instead of planning the bid.
+- The bot passes more in both bidding rounds: it bids by a rule instead of planning the bid, and bid courage sets the hand value it needs.
 - In the first discard, they pitch their lowest cards. Jacks and the Joker stay. On equal rank, the card from the shorter suit goes first.
 - When the bots read bids and play hands out in their heads, they expect the other seats to play the same way.
 
 On, the bots are weaker.
 
-### Expert: AI thinking and knowledge
+### Skill in detail: thinking and knowledge
 
-These fine-tune **Skill** for every bot. With **Personalities** on, or in a Waves or Dynamic game, they are dimmed, show the defaults and do not apply.
+These fine-tune **Skill** for one seat (Settings → Bots → a seat → **Skill** and **Knowledge**).
 
 **AI thinking.** Both settings change how long the bots think.
 
@@ -195,12 +204,12 @@ The game is drawn as a minimal table with no instructions, for players who know 
 
 ## Opponents
 
-Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game seats two of them, West and East. The seed picks them, so a replay meets the same two.
+Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game seats two of them, West and East. The seed picks them, unless Settings → Bots chooses who sits there (Free play), and a replay meets the same two.
 
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
 - Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
-- **Personalities** (Settings → Bots, on by default): each bot plays its own skill tier, bid courage, Real table setting and Showdown pick. Off: every bot plays with the Bots and Advanced settings. For a personality, bid courage alone sets how loose it bids; Real table does not add its extra 0.5.
+- Each bot plays its own skill tier, bid courage, Real table setting and Showdown pick. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
 |---|---|---|---|---|
@@ -221,14 +230,14 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 - **Fair**: the Showdown player who won the latest main trick leads, as without the house rule.
 - **Impulsive**: a random Showdown player leads.
 
-With Personalities off, a bot picks as Shrewd when **Watches score** is on, and as Fair when it is off.
+- **Auto** (Settings → Bots only): Shrewd when the bot's **Watches score** is on, Fair when it is off.
 
 ## Waves
 
 Eighteen fixed tables, easiest first. Each wave seats two personalities, West and East. Start a wave from the menu, the URL or the console.
 
 - The seat order is part of the wave. East gives you the trump gift when East calls, so a bold bot is easier on your right (East) than on your left (West).
-- A wave always uses its personalities, also when **Personalities** is off.
+- A wave always seats its own bots, playing as themselves: the West and East seat settings apply in Free play only.
 - A win clears the wave. A win on the highest open wave opens the next one. A loss changes nothing except the tries.
 - Each counted game on a wave that is not cleared yet adds one try. Click **Wave N of 18** in the header to see your tries.
 - Leaving a game also counts as a try from hand 2 on: a new game, another wave, a `?wave=` link or discarding the game. The question before you leave says so. During hand 1 you can leave for free: you have seen one deal and no one has scored. By hand 2, restarting whenever you fall behind would raise your win rate by about 6 percentage points, and by hand 7 by about 13 (3,000 bot games, waves 1 and 7). A game whose win would not count also costs no try. A reload resumes the game.
@@ -293,7 +302,7 @@ A mode for new players: the bots ease off while you learn, and tighten back to n
 
 ## AI plays your seat
 
-Turn on **Settings → Game → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the personality from **Settings → Game → AI personality**, or one that the seed picks (see **Your seat**). It keeps that personality for the rest of the game, however often you switch. With Personalities off, in Free play, the AI uses the bot settings for your seat, as it does for West and East.
+Turn on **Settings → Game → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the bot from **Settings → Bots → Your seat → Who sits**, or one that the seed picks, with that seat's changes. It keeps them for the rest of the game, however often you switch.
 
 The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Try again** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game.
 
@@ -352,15 +361,12 @@ c.seek(40); c.state                         // go to step 40 (forward or back) a
 
 ## Console
 
-The bot settings below are the same as the **Bots** and **Expert** tabs: the panel follows them, and they are kept after a reload. Like the panel, they apply to the bots only in Free play with **Personalities** off.
+`KCT.App.setSeat(p, { who, tune })` sets seat `p` (0: your seat, 1: West, 2: East) as Settings → Bots does, and returns it. `who` is a bot id, or `''` for the seed's pick. `tune` replaces the seat's changes: any of `courage`, `realTable`, `leadPick`, `worlds` (hunches), `playoutSkill` (1 minus brain farts) and `knowledge` (some or all of its switches); `null` clears them. The panel follows, and the settings are kept after a reload.
 
 ```js
 KCT.SelfTest.run({ games: 500 })            // tests, with 500 simulated games (default 40)
-KCT.App.setSkillTier('shark')               // novice, casual, club or shark
-KCT.App.setStyle({ courage: 'bold' })       // timid, cautious, normal or bold
-KCT.App.setStyle({ realTable: true })       // real-table bots
-KCT.App.setThinking({ worlds: 10, playoutSkill: 0.5 })
-KCT.App.setKnowledge({ bids: false })
+KCT.App.setSeat(1, { who: 'vex', tune: { courage: 'timid', worlds: 5 } })   // West: always Vex, timid, 5 hunches
+KCT.App.setSeat(2, { who: '', tune: null })  // East: the seed's pick, playing as itself
 KCT.App.newGame(123456)                     // new game with a given seed
 KCT.Engine.audit(KCT.App.app.state)         // [] means all 33 cards are accounted for
 await KCT.App.backup.download()             // save all app data (also a game in progress) as a .kct file
@@ -373,7 +379,7 @@ KCT.App.explain(0)                          // each bot decision of your latest 
 
 `KCT.App.habits()` and `KCT.App.explain(n)` read only finished games, the last 20 in Your profile. They never read the running game.
 
-- `habits()` counts how each seat leads, follows, trumps in, throws off when void, plays its Kings and bids. `labels` names each rate in plain words. Your column leaves out games where the AI played your seat, and every column leaves out the Showdown's tricks.
+- `habits()` counts how each seat leads, follows, trumps in, throws off when void, plays its Kings and bids. `labels` names each rate in plain words. Your column leaves out games where the AI played your seat, a bot's column leaves out games where it had changes from Settings → Bots, and every column leaves out the Showdown's tricks.
 - `explain(n)` plays game `n` again (0 is the latest) and asks each bot to decide again, with the settings it played with. In Dynamic, the easing moves after each hand as it did in the game. Each decision lists how the bot decided (`plan`: play-outs, `forced`: one choice, `rule`: a fixed rule), its options with their value (its chance to win the game) and best plan, and `match`. A bot decides from what it could see and its settings alone, so `match` is true unless the Settings panel changed during a Free play game (`changed`). With the event log on, each decision is also one `AI_DECISION` line.
 
 `KCT.App.app.state` holds every hand, so use it for testing only.

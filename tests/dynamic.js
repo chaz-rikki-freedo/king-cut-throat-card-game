@@ -48,7 +48,7 @@ async function checks() {
       speed('instant'); click('[data-action="new-dynamic"]'); await sleep(50);
       out.swap = !!q('#overlay .swap'); out.mode = app.mode; out.chip = q('#modeChip').textContent;
       out.e0 = app.dyn.e; out.snap = app.dyn.snap;
-      out.personasLocked = q('#setPersonas').disabled && !q('#setWaveNote').hidden;
+      out.personasLocked = !q('#setWaveNote').hidden;
       out.stop = await drive(() => app.state.handNumber >= 3 && KCT.Engine.actors(app.state).includes(0));
       out.version = app.state.version; out.e = app.dyn.e; out.hands = app.dyn.hands;
       out.slot = A.slots.get('dynamic'); out.slotSnap = out.slot && out.slot.dynamic; out.slot = !!out.slot;
@@ -61,7 +61,7 @@ async function checks() {
     expect('the menu has a Dynamic card with New game, and Resume off with no saved game', r.card && r.resumeOff, r);
     expect('Dynamic opens the seat dialog, and the header says Dynamic', r.swap && r.mode === 'dynamic' && r.chip === 'Dynamic', r);
     expect('a marked profile starts the game at full easing, from a snapshot of the profile', r.e0 === 1 && r.snap.mark === true && r.snap.h === 40, [r.e0, r.snap]);
-    expect('in Dynamic, the Personalities switch is locked on, with the note', r.personasLocked);
+    expect('in Dynamic, the Bots tab says the bots play as themselves', r.personasLocked);
     expect('play reaches hand 3 and saves the game with its snapshot', r.stop === 'stop' && r.slot && JSON.stringify(r.slotSnap) === JSON.stringify(r.snap), r);
     expect('no bot decision reads the profile during a game: both bots follow the game\'s one easing amount', r.sameCfg && r.cfgFromEase && r.e < 1, [r.sameCfg, r.cfgFromEase, r.e]);
     const mid = r;
