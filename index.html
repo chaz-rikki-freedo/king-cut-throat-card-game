@@ -121,6 +121,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .persona .pips{display:inline-flex;gap:0.25rem}
 .persona .pips b{width:1.125rem;height:0.375rem;border-radius:0.1875rem;background:rgba(255,255,255,.14)}
 .persona .pips b.on{background:var(--gold)}
+.persona .p-ways{grid-column:1 / -1;color:var(--ink)}
 .persona .habit{grid-column:1 / -1;justify-self:start;font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:0.125rem 0.5rem;border-radius:62.4375rem;border:1px solid rgba(255,255,255,.3);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.seat-face{transition:none}}
 .modal.profile{max-width:36rem;position:relative}
@@ -341,6 +342,21 @@ body.set-open{overflow:hidden}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
 .settings .set-off{opacity:.45;pointer-events:none}
+.settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
+.settings .seat-set{border:1px solid var(--set-line);border-radius:0.75rem;background:var(--set-card)}
+.settings .seat-set > summary,.settings .seat-sub > summary{display:flex;align-items:baseline;gap:var(--s3);cursor:pointer;list-style:none;padding:var(--s3) var(--s4);min-height:2.75rem}
+.settings .seat-set > summary::-webkit-details-marker,.settings .seat-sub > summary::-webkit-details-marker{display:none}
+.settings .seat-set > summary::before,.settings .seat-sub > summary::before{content:'▸';color:var(--gold);transition:transform .15s}
+.settings .seat-set[open] > summary::before,.settings .seat-sub[open] > summary::before{transform:rotate(90deg)}
+.settings .seat-set > summary:focus-visible,.settings .seat-sub > summary:focus-visible{outline:0.125rem solid var(--gold);outline-offset:-0.125rem;border-radius:0.75rem}
+.settings .seat-sum{color:var(--set-hint);font-size:0.8125rem;margin-left:auto;text-align:right}
+.settings .seat-body{display:flex;flex-direction:column;gap:var(--s2);padding:0 var(--s3) var(--s3)}
+.settings .seat-body > .set-card{background:none}
+.settings .seat-sub{border:1px solid var(--set-line);border-radius:0.75rem}
+.settings .seat-sub > summary{font-weight:700;padding:var(--s2) var(--s4);min-height:2.5rem}
+.settings .seat-sub > .set-card{border:0;border-top:1px solid var(--set-line);border-radius:0 0 0.75rem 0.75rem;background:none}
+.settings .seat-set .set-row.changed .set-name::after{content:' •';color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.settings .seat-set > summary::before,.settings .seat-sub > summary::before{transition:none}}
 .settings .btn-sm{padding:0.375rem 0.75rem;font-size:0.8125rem;min-height:2.25rem;margin:0}
 .settings .set-tests{padding:var(--s3) 0;border-bottom:1px solid var(--set-line);font-size:0.8125rem}
 .settings .set-tests .t-sum{font-size:0.9375rem;font-weight:800;margin-bottom:0.375rem}
@@ -779,7 +795,6 @@ window.kctTheme = (() => {
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
       <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
-      <button class="set-tab" type="button" role="tab" id="setTabExpert" aria-controls="setPaneExpert" data-action="set-tab" data-tab="Expert">Expert</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
     <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close settings">✕<span class="set-close-word"> Close</span></button>
@@ -808,43 +823,15 @@ window.kctTheme = (() => {
       <h3 class="set-head">Your seat</h3>
       <div class="set-card" id="setSeat">
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <div class="set-row" id="setSeatPersonaRow"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc" id="setSeatPersonaDesc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
+        <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
       </div>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
-      <div class="set-card" id="setPersonaRow">
-        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
-      </div>
-      <p class="k-hint set-note" id="setWaveNote" hidden>Waves and Dynamic always use their personalities, so these rows show the defaults. Your settings are kept and come back in Free play.</p>
-      <h3 class="set-head">Every bot</h3>
-      <div class="set-card" id="setBotFields">
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setTier">Skill</label><span class="set-desc">How well the bots play. Stronger bots think longer.</span></span>
-          <select id="setTier"><option value="novice">Novice</option><option value="casual">Casual</option><option value="club">Club player</option><option value="shark">Shark</option><option value="custom" disabled>Custom</option></select></div>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setCourage">Bid courage</label><span class="set-desc">How readily they call trump.</span></span>
-          <select id="setCourage"><option value="timid">Timid</option><option value="cautious">Cautious</option><option value="normal">Normal</option><option value="bold">Bold</option></select></div>
-        <label class="set-row"><span class="set-text"><span class="set-name">Real table</span><span class="set-desc">Human habits: pass more, pitch the lowest cards first.</span></span><input class="sw" type="checkbox" id="setRealTable"></label>
-      </div>
+      <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
+      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
+      <div class="seat-sets" id="setSeats"></div>
       <div class="set-card">
-        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Personalities on; Casual, Normal, no habits; Expert at its defaults.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
-      </div>
-    </section>
-    <section class="set-pane" id="setPaneExpert" role="tabpanel" aria-labelledby="setTabExpert" hidden>
-      <p class="k-hint set-note">Fine-tunes Skill for every bot. With Personalities on, it does not apply.</p>
-      <div id="setAdvanced">
-        <h3 class="set-head">AI thinking</h3>
-        <div class="set-card" id="setThinking">
-          <div class="set-row"><span class="set-text"><label class="set-name" for="setWorlds">Hunches</label><span class="set-desc">Guesses about the hidden cards per decision. Default 10.</span></span><input type="number" id="setWorlds" min="1" max="200" step="1" value="10"></div>
-          <div class="set-row"><span class="set-text"><label class="set-name" for="setSkill">Brain farts</label><span class="set-desc">How often a bot imagines a random card while it thinks. Default 30%.</span></span><span class="set-range"><input type="range" id="setSkill" min="0" max="100" step="10" value="30"><output id="setSkillOut">30%</output></span></div>
-        </div>
-        <h3 class="set-head">AI knowledge</h3>
-        <div class="set-card" id="setKnowledge">
-          <label class="set-row"><span class="set-text"><span class="set-name">Spots voids</span><span class="set-desc">Remembers who could not follow suit.</span></span><input class="sw" type="checkbox" data-knowledge="voids" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Remembers discards</span><span class="set-desc">Remembers the cards it put in the outside pile.</span></span><input class="sw" type="checkbox" data-knowledge="ownDiscards" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Plans showdowns</span><span class="set-desc">Also tries ducking and balancing, not only greedy play.</span></span><input class="sw" type="checkbox" data-knowledge="showdownPlans" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Reads bids</span><span class="set-desc">Takes each bid as a clue to that player's hand.</span></span><input class="sw" type="checkbox" data-knowledge="bids" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Watches score</span><span class="set-desc">Plays the race to 10 harder once a score passes 5.</span></span><input class="sw" type="checkbox" data-knowledge="scoreAware" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Tracks upcard</span><span class="set-desc">Follows where the turned card went.</span></span><input class="sw" type="checkbox" data-knowledge="turnedCard" checked></label>
-        </div>
+        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
@@ -875,7 +862,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'cfa0f26', date: '2026-10-19' });
+const BUILD = Object.freeze({ commit: '940fc5c', date: '2026-10-20' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1966,38 +1953,38 @@ function buildView(state, seat) {
   };
 }
 const PERSONAS = Object.freeze([
-  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
-  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
-  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
-  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
-  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
-  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
-  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
-  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
-  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
-  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
+  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', kings: 'early', slack: 0.01 }, credulity: 0.3, feint: 0.8, wariness: 0.6, quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
+  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { win: 'cheap', kings: 'late', slack: 0.01 }, credulity: 0.4, feint: 0.2, wariness: 0.9, quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
+  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.02 }, credulity: 0.6, feint: 0.4, wariness: 0.3, quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
+  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', habits: {}, credulity: 0.5, feint: 0, wariness: 0.8, quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
+  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', habits: { win: 'big', void: 'ruff', slack: 0.03 }, credulity: 0.8, feint: 0.3, wariness: 0.2, quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
+  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', habits: { win: 'duck', void: 'low', kings: 'late', slack: 0.03 }, credulity: 0.9, feint: 0, wariness: 0.1, quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
+  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { lead: 'long', win: 'duck', kings: 'late', slack: 0.02 }, credulity: 0.5, feint: 0.5, wariness: 0.6, quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
+  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', void: 'ruff', slack: 0.04 }, credulity: 0.7, feint: 0.6, wariness: 0.2, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
+  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.03 }, credulity: 1, feint: 0, wariness: 0.3, quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
+  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', habits: { lead: 'long', win: 'cheap', slack: 0.02 }, credulity: 0.6, feint: 0.2, wariness: 0.4, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, timid: 1, cautious: 2, normal: 3, bold: 4 });
 const WAVES = Object.freeze([
-  { west: 'kit', east: 'tex', youWin: 61, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
-  { west: 'kit', east: 'gus', youWin: 51, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
-  { west: 'zen', east: 'tex', youWin: 51, rematchOf: null, purpose: 'Practice. A table like real players.' },
-  { west: 'lou', east: 'gus', youWin: 49, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
-  { west: 'lou', east: 'zen', youWin: 47, rematchOf: null, purpose: 'Two calm players.' },
-  { west: 'viv', east: 'tex', youWin: 47, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
-  { west: 'kit', east: 'zen', youWin: 46, rematchOf: null, purpose: 'Two relaxed players.' },
-  { west: 'mei', east: 'tex', youWin: 40, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
-  { west: 'kit', east: 'ace', youWin: 37, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
-  { west: 'viv', east: 'gus', youWin: 37, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
-  { west: 'lou', east: 'vex', youWin: 35, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
-  { west: 'doc', east: 'ace', youWin: 29, rematchOf: null, purpose: 'Two strong bots.' },
-  { west: 'tex', east: 'mei', youWin: 24, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
-  { west: 'ace', east: 'doc', youWin: 21, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
-  { west: 'vex', east: 'lou', youWin: 18, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
-  { west: 'tex', east: 'viv', youWin: 18, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
-  { west: 'mei', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
-  { west: 'vex', east: 'doc', youWin: 7, rematchOf: null, purpose: 'Final boss.' }
+  { west: 'kit', east: 'tex', youWin: 53, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
+  { west: 'kit', east: 'gus', youWin: 41, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
+  { west: 'zen', east: 'tex', youWin: 45, rematchOf: null, purpose: 'Practice. A table like real players.' },
+  { west: 'lou', east: 'gus', youWin: 46, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
+  { west: 'lou', east: 'zen', youWin: 40, rematchOf: null, purpose: 'Two calm players.' },
+  { west: 'viv', east: 'tex', youWin: 36, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
+  { west: 'kit', east: 'zen', youWin: 39, rematchOf: null, purpose: 'Two relaxed players.' },
+  { west: 'mei', east: 'tex', youWin: 33, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
+  { west: 'kit', east: 'ace', youWin: 29, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
+  { west: 'viv', east: 'gus', youWin: 31, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
+  { west: 'lou', east: 'vex', youWin: 29, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
+  { west: 'doc', east: 'ace', youWin: 23, rematchOf: null, purpose: 'Two strong bots.' },
+  { west: 'tex', east: 'mei', youWin: 16, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
+  { west: 'ace', east: 'doc', youWin: 15, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
+  { west: 'vex', east: 'lou', youWin: 9, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
+  { west: 'tex', east: 'viv', youWin: 15, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
+  { west: 'mei', east: 'doc', youWin: 8, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
+  { west: 'vex', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Final boss.' }
 ].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
 function createWaveProgress(store, rand) {
   const blank = () => ({ unlocked: 1, cleared: [], tries: {} });
@@ -2115,15 +2102,16 @@ function cleanSlot(mode, s) {
   if (mode === 'waves' && !(Number.isInteger(waveN) && WAVES[waveN - 1])) return null;
   if (mode === 'waves' && (personas[1] !== WAVES[waveN - 1].west || personas[2] !== WAVES[waveN - 1].east)) return null;
   const b = s.ai && typeof s.ai === 'object' ? s.ai : {};
-  const panel = b.panel && typeof b.panel === 'object' ? AI.config(AI.DEFAULT_CONFIG, b.panel) : null;
+  const panel = !Array.isArray(s.tunes) && b.personas !== true && b.panel && typeof b.panel === 'object' ? AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, b.panel)) : null;
+  const tunes = Array.isArray(s.tunes) ? [0, 1, 2].map(k => AI.cleanTune(s.tunes[k])) : [null, panel, panel];
+  if (mode !== 'free' && (tunes[1] || tunes[2])) return null;
   const dynamic = mode === 'dynamic' ? Dynamic.cleanSnapshot(s.dynamic) : null;
   if (mode === 'dynamic' && !dynamic) return null;
   if (dynamic) { try { Dynamic.trace(dynamic, state); } catch (e) { return null; } }
   return {
     format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas, dynamic,
     wave: { n: waveN, open: w.open === true && Waves.isUnlocked(waveN) }, assisted: s.assisted === true, autoplay: s.autoplay === true,
-    swapDone: s.swapDone !== false, log: cleanLog(s.log),
-    ai: { personas: b.personas === true, panel: panel && { thinking: panel.thinking, knowledge: panel.knowledge, style: panel.style }, changed: b.changed === true }
+    swapDone: s.swapDone !== false, log: cleanLog(s.log), tunes, swapped: s.swapped === true
   };
 }
 function cleanLog(log) {
@@ -2169,7 +2157,7 @@ function cleanReplayEntry(e) {
   return {
     code: e.code, mode: MODES.includes(e.mode) ? e.mode : null, wave: Number.isInteger(e.wave) && WAVES[e.wave - 1] ? e.wave : null,
     west: seat(e.west), east: seat(e.east), winner: [0, 1, 2].includes(e.winner) ? e.winner : null, scores,
-    assisted: e.assisted === true, at: Number.isFinite(e.at) ? e.at : null
+    assisted: e.assisted === true, tuned: e.tuned === true, at: Number.isFinite(e.at) ? e.at : null
   };
 }
 function createReplays(store) {
@@ -2204,14 +2192,11 @@ function createStats(store) {
   }
   const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
   return Object.freeze({
-    record({ mode, west, east, won }) {
+    record({ mode, west, east, won, tuned = [false, false] }) {
       add(s.modes, mode, won);
-      add(s.tables, west + '/' + east, won);
-      add(s.opponents, west, won);
-      add(s.opponents, east, won);
+      if (!tuned[0] && !tuned[1]) add(s.tables, west + '/' + east, won);
       const mine = s.modeOpponents[mode] || (s.modeOpponents[mode] = {});
-      add(mine, west, won);
-      add(mine, east, won);
+      [west, east].forEach((id, i) => { if (!tuned[i]) { add(s.opponents, id, won); add(mine, id, won); } });
       js.save(s);
       return this.get();
     },
@@ -2359,7 +2344,12 @@ const AI = (() => {
     normal: Object.freeze({ offset: 0, bias: 0 }),
     bold: Object.freeze({ offset: -0.4, bias: 0.05 })
   });
-  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto' });
+  const HABITS = Object.freeze({
+    leadHabit: Object.freeze(['none', 'trump', 'long', 'short', 'kings']), winHabit: Object.freeze(['none', 'cheap', 'big', 'duck']),
+    voidHabit: Object.freeze(['none', 'ruff', 'low']), kingHabit: Object.freeze(['none', 'early', 'late'])
+  });
+  const MAX_SLACK = 0.05;
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0, feint: 0, wariness: 0 });
   const LEAD_PICKS = Object.freeze(['auto', 'shrewd', 'fair', 'impulsive']);
   const freezeConfig = (thinking, knowledge, style, persona) =>
     Object.freeze({ thinking: Object.freeze(thinking), knowledge: Object.freeze(knowledge), style: Object.freeze(style), persona });
@@ -2377,6 +2367,9 @@ const AI = (() => {
     if (typeof ps.realTable === 'boolean') style.realTable = ps.realTable;
     if (Object.prototype.hasOwnProperty.call(COURAGE, ps.courage)) style.courage = ps.courage;
     if (LEAD_PICKS.includes(ps.leadPick)) style.leadPick = ps.leadPick;
+    for (const key of Object.keys(HABITS)) if (HABITS[key].includes(ps[key])) style[key] = ps[key];
+    if (typeof ps.slack === 'number' && isFinite(ps.slack)) style.slack = Math.min(MAX_SLACK, Math.max(0, ps.slack));
+    for (const key of ['credulity', 'feint', 'wariness']) if (typeof ps[key] === 'number' && isFinite(ps[key])) style[key] = Math.min(1, Math.max(0, ps[key]));
     return freezeConfig(thinking, knowledge, style, typeof p.persona === 'boolean' ? p.persona : b.persona);
   }
   function withSkillTier(base, name) {
@@ -2392,7 +2385,41 @@ const AI = (() => {
     return 'custom';
   }
   function personaConfig(persona) {
-    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), { style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick }, persona: true });
+    const h = persona.habits || {};
+    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), {
+      style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick, leadHabit: h.lead, winHabit: h.win, voidHabit: h.void, kingHabit: h.kings, slack: h.slack, credulity: persona.credulity, feint: persona.feint, wariness: persona.wariness },
+      persona: true
+    });
+  }
+  function cleanTune(x) {
+    if (!x || typeof x !== 'object') return null;
+    const t = {};
+    if (Object.prototype.hasOwnProperty.call(COURAGE, x.courage)) t.courage = x.courage;
+    if (typeof x.realTable === 'boolean') t.realTable = x.realTable;
+    if (LEAD_PICKS.includes(x.leadPick)) t.leadPick = x.leadPick;
+    for (const key of Object.keys(HABITS)) if (HABITS[key].includes(x[key]))  (t)[key] = x[key];
+    if (typeof x.slack === 'number' && isFinite(x.slack)) t.slack = Math.min(MAX_SLACK, Math.max(0, x.slack));
+    for (const key of ['credulity', 'feint', 'wariness']) if (typeof x[key] === 'number' && isFinite(x[key]))  (t)[key] = Math.min(1, Math.max(0, x[key]));
+    if (typeof x.worlds === 'number' && isFinite(x.worlds)) t.worlds = Math.min(200, Math.max(1, Math.round(x.worlds)));
+    if (typeof x.playoutSkill === 'number' && isFinite(x.playoutSkill)) t.playoutSkill = Math.min(1, Math.max(0, x.playoutSkill));
+    const k = x.knowledge && typeof x.knowledge === 'object' ? Object.fromEntries(Object.keys(KNOWLEDGE_DEFAULTS).filter(key => typeof x.knowledge[key] === 'boolean').map(key => [key, x.knowledge[key]])) : {};
+    if (Object.keys(k).length) t.knowledge = k;
+    return Object.keys(t).length ? t : null;
+  }
+  function tunedConfig(persona, tune) {
+    const own = personaConfig(persona), t = cleanTune(tune);
+    if (!t) return own;
+    return config(own, {
+      thinking: { worlds: t.worlds, playoutSkill: t.playoutSkill }, knowledge: t.knowledge,
+      style: { courage: t.courage, realTable: t.realTable, leadPick: t.leadPick, leadHabit: t.leadHabit, winHabit: t.winHabit, voidHabit: t.voidHabit, kingHabit: t.kingHabit, slack: t.slack, credulity: t.credulity, feint: t.feint, wariness: t.wariness }
+    });
+  }
+  function tuneOf(cfg) {
+    const st = cfg.style;
+    return {
+      courage: st.courage, realTable: st.realTable, leadPick: st.leadPick, leadHabit: st.leadHabit, winHabit: st.winHabit, voidHabit: st.voidHabit, kingHabit: st.kingHabit,
+      slack: st.slack, credulity: st.credulity, feint: st.feint, wariness: st.wariness, worlds: cfg.thinking.worlds, playoutSkill: cfg.thinking.playoutSkill, knowledge: Object.assign({}, cfg.knowledge)
+    };
   }
   const REAL_TABLE_BID_BUMP = 0.5;
   const bidLimit = (cfg, key) => BID_THRESHOLDS[key] + (cfg.style.realTable && !cfg.persona ? REAL_TABLE_BID_BUMP : 0) + COURAGE[cfg.style.courage].offset;
@@ -2722,6 +2749,58 @@ const AI = (() => {
     }
     return w;
   }
+  const READS = Object.freeze({ lead: 0.3, leadTrump: 0.5, kingNoAce: 0.7, throwShort: 0.35, noRuff: 0.3 });
+  function readsOf(view) {
+    const trump = view.trump, eff = ( id) => R.getEffectiveSuit(id, trump);
+    const tricks = Engine.tricksOf(view).main;
+    if (view.phase === P.TRICK_PLAY && view.trick && view.trick.plays.length) tricks.push(view.trick.plays);
+    const out = [[], [], []];
+    out.caught = [0, 0, 0];
+    for (const t of tricks) {
+      const ls = eff(t[0].card);
+      t.forEach(( pl,  i) => {
+        const o = pl.player, s = eff(pl.card), mine = out[o];
+        const wrong = mine.filter(( r) => !r.caught && (
+          (r.kind === 'long' && i > 0 && ls === r.suit && s !== r.suit) ||
+          (r.kind === 'noAce' && !R.isTrump(pl.card, trump) && s === r.suit && R.card(pl.card).rank === 'A') ||
+          (r.kind === 'short' && i === 0 && s === r.suit) ||
+          (r.kind === 'noTrump' && R.isTrump(pl.card, trump))));
+        for (const r of wrong) { r.caught = true; out.caught[o]++; }
+        if (i === 0) {
+          if (ls === trump) mine.push({ kind: 'trump', suit: trump });
+          else {
+            mine.push({ kind: 'long', suit: ls });
+            if (R.isKing(pl.card)) mine.push({ kind: 'noAce', suit: ls });
+          }
+        } else if (s !== ls && !R.isTrump(pl.card, trump)) {
+          mine.push({ kind: 'short', suit: s });
+          if (ls !== trump) mine.push({ kind: 'noTrump', suit: trump });
+        }
+      });
+    }
+    return out;
+  }
+  function playWeight(view, w, cfg, reads) {
+    const k = cfg.style.credulity;
+    if (!k || view.showdown || !view.trump) return 1;
+    const trump = view.trump, eff = ( id) => R.getEffectiveSuit(id, trump);
+    const all = reads || readsOf(view);
+    let weight = 1;
+    for (let o = 0; o < 3; o++) {
+      if (o === view.seat || !all[o].length) continue;
+      const b = k * Math.pow(1 - cfg.style.wariness, all.caught[o]);
+      if (b <= 0) continue;
+      const hand = w.hands[o], count = ( s) => hand.filter(( id) => eff(id) === s).length;
+      for (const r of all[o]) {
+        if (r.kind === 'trump') weight *= Math.pow(1 + READS.leadTrump * b, count(trump));
+        else if (r.kind === 'long') weight *= Math.pow(1 + READS.lead * b, count(r.suit));
+        else if (r.kind === 'noAce') { if (hand.some(( id) => !R.isTrump(id, trump) && R.card(id).rank === 'A' && eff(id) === r.suit)) weight *= 1 - READS.kingNoAce * b; }
+        else if (r.kind === 'short') weight *= Math.pow(1 - READS.throwShort * b, count(r.suit));
+        else if (r.kind === 'noTrump') weight *= Math.pow(1 - READS.noRuff * b, count(trump));
+      }
+    }
+    return weight;
+  }
   function bidWeight(view, w, cfg) {
     if (view.showdown || !cfg.knowledge.bids) return 1;
     let weight = 1;
@@ -2759,11 +2838,12 @@ const AI = (() => {
     const lay = layout(view, c);
     const free = lay.cap.hands.reduce((x, y) => x + y, 0) + lay.cap.kitty + lay.cap.outside + lay.cap.sdDiscards;
     if (free !== lay.unknown.length) throw new Error('World layout mismatch: ' + free + ' slots, ' + lay.unknown.length + ' cards');
+    const reads = c.style.credulity && !view.showdown && view.trump ? readsOf(view) : null;
     const raw = [];
     for (let i = 0; i < n * SAMPLES.oversample && raw.length < n * SAMPLES.oversample; i++) {
       let w = null;
       for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng, c.knowledge);
-      if (w) raw.push({ w, weight: bidWeight(view, w, c) });
+      if (w) raw.push({ w, weight: bidWeight(view, w, c) * playWeight(view, w, c, reads) });
     }
     if (!raw.length) throw new Error('No world agrees with the view');
     const total = raw.reduce((t, x) => t + x.weight, 0);
@@ -2804,13 +2884,17 @@ const AI = (() => {
   }
   const PLANS = ['greedy', 'duck', 'balance'];
   const activePlans = cfg => (cfg.knowledge.showdownPlans ? PLANS : ['greedy']);
-  function plan(view, cfg, candidates, toAction, n, bonus) {
-    if (candidates.length === 1) return candidates[0];
+  let tracing = null;
+  function plan(view, cfg, candidates, toAction, n, bonus, taste) {
+    if (candidates.length === 1) { if (tracing) tracing.how = 'forced'; return candidates[0]; }
     const rng = rngFor(view);
     const worlds = sampleWorlds(view, Math.max(1, Math.round(n * cfg.thinking.worlds / SAMPLES.play)), rng, cfg);
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
+    const values = [];
+    if (tracing) tracing.how = 'plan';
     for (const cand of candidates) {
+      let candV = -Infinity, candPlan = '';
       for (const planName of activePlans(cfg)) {
         let total = 0;
         for (let i = 0; i < worlds.length; i++) {
@@ -2822,10 +2906,61 @@ const AI = (() => {
           total += outcome(s, view.seat, view.scores, cfg);
         }
         const v = total / worlds.length + (bonus ? bonus(cand) : 0);
+        if (v > candV) { candV = v; candPlan = planName; }
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
       }
+      values.push(candV);
+      if (tracing) tracing.options.push({ choice: cand, value: candV, plan: candPlan });
     }
-    return best;
+    const slack = taste ? cfg.style.slack : 0;
+    if (slack <= 0) return best;
+    let pick = best, pickT = taste(best), pickV = bestV;
+    candidates.forEach((c, i) => {
+      if (values[i] < bestV - slack - 1e-9) return;
+      const t = taste(c);
+      if (t > pickT + 1e-9 || (t > pickT - 1e-9 && values[i] > pickV + 1e-9)) { pick = c; pickT = t; pickV = values[i]; }
+    });
+    if (tracing && pick !== best) tracing.how = 'habit';
+    return pick;
+  }
+  function habitTaste(view, style) {
+    const trump = view.trump, trick = view.trick, plays = trick.plays, hand = view.hand;
+    const byStr = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
+    const rank = ( c) => (byStr.length > 1 ? byStr.indexOf(c) / (byStr.length - 1) : 0);
+    const len = ( c) => hand.filter(id => R.getEffectiveSuit(id, trump) === R.getEffectiveSuit(c, trump)).length / hand.length;
+    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
+    const follows = !!best && hand.some(id => R.getEffectiveSuit(id, trump) === trick.leadSuit);
+    return ( c) => {
+      let t = 0;
+      if (!best) {
+        const h = style.leadHabit;
+        if (h === 'trump') t += R.isTrump(c, trump) ? 1 : 0;
+        else if (h === 'long') t += len(c);
+        else if (h === 'short') t += 1 - len(c);
+        else if (h === 'kings') t += R.isKing(c) ? 1 : 0;
+      } else if (follows) {
+        const beats = R.compareCards(c, best.card, trick.leadSuit, trump) > 0, h = style.winHabit;
+        if (h === 'cheap') t += beats ? 1 - 0.5 * rank(c) : 0;
+        else if (h === 'big') t += beats ? 0.5 + 0.5 * rank(c) : 0;
+        else if (h === 'duck') t += beats ? 0 : 0.5 + 0.5 * rank(c);
+      } else {
+        const h = style.voidHabit;
+        if (h === 'ruff') t += R.isTrump(c, trump) ? 1 - 0.5 * rank(c) : 0;
+        else if (h === 'low') t += R.isTrump(c, trump) ? 0 : 1 - rank(c);
+      }
+      if (R.isKing(c)) t += style.kingHabit === 'early' ? 0.5 : style.kingHabit === 'late' ? -0.5 : 0;
+      if (style.feint) {
+        let f = 0;
+        if (!best && !R.isTrump(c, trump)) {
+          f += 1 - len(c);
+          if (R.isKing(c) && hand.some(id => !R.isTrump(id, trump) && R.card(id).rank === 'A' && R.getEffectiveSuit(id, trump) === R.getEffectiveSuit(c, trump))) f += 1;
+        } else if (best && !follows) {
+          if (!R.isTrump(c, trump)) f += len(c) + (hand.some(id => R.isTrump(id, trump)) && trick.leadSuit !== trump ? 0.5 : 0);
+        }
+        t += style.feint * f;
+      }
+      return t;
+    };
   }
   function decideInner(view, cfg) {
     const me = view.seat, trump = view.trump, style = cfg.style;
@@ -2865,16 +3000,21 @@ const AI = (() => {
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         const cands = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
-        return { type: 'PLAY', player: me, card: plan(view, cfg, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play) };
+        return { type: 'PLAY', player: me, card: plan(view, cfg, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play, undefined, habitTaste(view, style)) };
       }
       default:
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
-  function decide(view, cfg) {
+  function decide(view, cfg, trace) {
     const was = Logger.enabled;
     Logger.enabled = false;
-    try { return decideInner(view, cfg || DEFAULT_CONFIG); } finally { Logger.enabled = was; }
+    tracing = trace ? { how: 'rule', options: [] } : null;
+    try {
+      const action = decideInner(view, cfg || DEFAULT_CONFIG);
+      if (trace && tracing) Object.assign(trace, tracing);
+      return action;
+    } finally { Logger.enabled = was; tracing = null; }
   }
   function fallbackAction(view, cfg) {
     const hands = [[], [], []];
@@ -2889,7 +3029,7 @@ const AI = (() => {
   return Object.freeze({
     decide, fallbackAction, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
-    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
+    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS, LEAD_PICKS, HABITS, MAX_SLACK, READS, readsOf, playWeight, cleanTune, tunedConfig, tuneOf
   });
 })();
 const Dynamic = (() => {
@@ -2906,7 +3046,8 @@ const Dynamic = (() => {
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
   const TUNE = Object.freeze({
     DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
-    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2
+    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2,
+    SLIP_NORMAL: 0.02, SLIP_SPAN: 0.06, SLIP_PRIOR: 60, SLIP_WEIGHT: 0.25
   });
   const clamp01 = x => Math.min(1, Math.max(0, x));
   function handEstimate(hand, trump) {
@@ -2965,13 +3106,17 @@ const Dynamic = (() => {
     const farts = row >= (r0 < FARTS_ROW ? FARTS_ROW : r0 + 1);
     return AI.config(own, {
       thinking: { worlds: Math.min(own.thinking.worlds, hunches), playoutSkill: farts ? Math.min(own.thinking.playoutSkill, FLOOR_SKILL) : own.thinking.playoutSkill },
-      knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge
+      knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge,
+      style: {
+        feint: own.style.feint * (1 - x), wariness: own.style.wariness * (1 - x),
+        credulity: own.style.credulity + (1 - own.style.credulity) * x, slack: own.style.slack + (AI.MAX_SLACK - own.style.slack) * x
+      }
     });
   }
   const num = ( x) => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : 0);
   const blankProfile = () => ({
     v: 1, hands: 0, games: 0,
-    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 },
+    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     habits: { calls: 0, made: 0, value: 0 },
     mark: false, at:  (null)
   });
@@ -2980,11 +3125,12 @@ const Dynamic = (() => {
     if (!x || typeof x !== 'object' || x.v !== 1) return p;
     const o = ( y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
-    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits);
+    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
     p.share = { me: num(s.me), all: Math.max(num(s.all), num(s.me)) };
     p.calls = { n: num(c.n), failed: Math.min(num(c.failed), num(c.n)), value: num(c.value) };
     p.bids = { n: num(b.n), errors: Math.min(num(b.errors), num(b.n)) };
     p.discards = { n: num(d.n), loss: num(d.loss) };
+    p.plays = { n: num(pl.n), slips: Math.min(num(pl.slips), num(pl.n)) };
     p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
     p.mark = x.mark === true;
     p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
@@ -2992,22 +3138,26 @@ const Dynamic = (() => {
   }
   function snapshotOf(profile) {
     const p = cleanProfile(profile);
-    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, mark: p.mark };
+    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, plays: { n: p.plays.n, slips: p.plays.slips }, mark: p.mark };
   }
   function cleanSnapshot(x) {
     if (!x || typeof x !== 'object' || !x.share || !x.calls || !x.bids || typeof x.mark !== 'boolean' || !Number.isInteger(x.h) || x.h < 0) return null;
     const ok = ( y) => typeof y === 'number' && isFinite(y) && y >= 0;
     if (![x.share.me, x.share.all, x.calls.n, x.calls.failed, x.bids.n, x.bids.errors].every(ok)) return null;
     if (x.share.me > x.share.all || x.calls.failed > x.calls.n || x.bids.errors > x.bids.n) return null;
-    return { h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors }, mark: x.mark };
+    if (x.plays !== undefined && (!x.plays || !ok(x.plays.n) || !ok(x.plays.slips) || x.plays.slips > x.plays.n)) return null;
+    return Object.assign({ h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors } },
+      x.plays !== undefined ? { plays: { n: x.plays.n, slips: x.plays.slips } } : {}, { mark: x.mark });
   }
   function slowTarget(x) {
     const T = TUNE;
     const share = (x.share.me + T.SHARE_EVEN * T.SHARE_PRIOR) / (x.share.all + T.SHARE_PRIOR);
     const fail = (x.calls.failed + T.FAIL_NORMAL * T.FAIL_PRIOR) / (x.calls.n + T.FAIL_PRIOR);
     const errors = x.bids.errors / (x.bids.n + T.BID_PRIOR);
+    const pl = x.plays || { n: 0, slips: 0 }, slips = (pl.slips + T.SLIP_NORMAL * T.SLIP_PRIOR) / (pl.n + T.SLIP_PRIOR);
     const e = clamp01((T.SHARE_EVEN - share) / (T.SHARE_EVEN - T.SHARE_FULL)) +
-      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN);
+      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN) +
+      T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
   const startEase = snap => (snap.mark ? 1 : slowTarget(snap));
@@ -3029,7 +3179,7 @@ const Dynamic = (() => {
     const snap = cleanSnapshot(snapshot) || snapshotOf(null);
     const D = TUNE.DECAY;
     const t = {
-      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids,
+      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids, plays: snap.plays,
       e0: startEase(snap), e: startEase(snap), target: startEase(snap),
       visible:  ([]), fast: false, quiet: 0, hands: 0,
       hand(v) {
@@ -3100,13 +3250,19 @@ const Dynamic = (() => {
       }
     } catch (e) { return null; }
     const done = hands.filter(x => x.done);
+    const c = Habits.count(rec)[me];
+    const plays = { n: c.leads + c.follows + c.voids, slips: c.kingUnder + c.wasteWin + c.deadTrump };
     const losses = done.map(x => x.loss);
     let marked = false;
     for (let i = 2; i < losses.length; i++) if ([losses[i], losses[i - 1], losses[i - 2]].filter(x => x !== null && x > LOSS).length >= 2) marked = true;
-    return { hands: done, marked };
+    return { hands: done, marked, plays };
   }
   function addGame(profile, rv, mode, at) {
     const p = cleanProfile(profile), D = TUNE.DECAY;
+    if (rv.plays && rv.plays.n > 0) {
+      const m = rv.plays.n, keep = Math.pow(D, m), sum = (1 - keep) / (1 - D);
+      p.plays = { n: p.plays.n * keep + sum, slips: p.plays.slips * keep + sum * rv.plays.slips / m };
+    }
     for (const h of rv.hands) {
       p.hands++;
       if (h.loss !== null) p.discards = { n: p.discards.n * D + 1, loss: p.discards.loss * D + h.loss };
@@ -3177,6 +3333,163 @@ const SuitText = (() => {
     }).observe(root, { childList: true, subtree: true, characterData: true });
   }
   return Object.freeze({ draw, watch });
+})();
+const Habits = (() => {
+  const R = Rules, P = Engine.P;
+  const KEYS = Object.freeze([
+    'leads', 'leadTrump', 'leadKing', 'leadLong', 'leadShort', 'leadMulti', 'leadTop',
+    'follows', 'canWin', 'wentFor', 'winCheap', 'heldBack', 'second', 'secondLow',
+    'voids', 'canRuff', 'ruffed', 'discards', 'discardShort', 'discardLow',
+    'kings', 'kingTrick', 'kingsWon', 'kingUnder', 'wasteWin', 'deadTrump',
+    'bid1', 'call1', 'call1Value', 'pass1Value', 'bid2', 'call2', 'call2Value', 'pass2Value'
+  ]);
+  const LABELS = Object.freeze({
+    leadTrump: 'leads trump', leadKing: 'leads a King', leadLong: 'leads from the longest suit', leadShort: 'leads from the shortest suit',
+    leadTop: 'leads the top card of the suit (2 or more held)', wentFor: 'tries to win when it can', heldBack: 'holds back when it could win',
+    winCheap: 'wins with the cheapest winner', secondLow: 'second hand plays its lowest', ruff: 'trumps in when void',
+    discardShort: 'void: throws from the shortest side suit', discardLow: 'void: throws the lowest of that suit',
+    kingTrick: 'average trick a King is played in', kingWon: 'Kings that win their trick',
+    slips: 'card-play slips (a King thrown under, a wasted winner, a dead trump)',
+    call1: 'calls in round 1', call1Value: 'hand value at a round 1 call', pass1Value: 'hand value at a round 1 pass',
+    call2: 'names trump in round 2', call2Value: 'hand value at a round 2 call', pass2Value: 'hand value at a round 2 pass'
+  });
+  const blank = () => Object.fromEntries(KEYS.map(k => [k, 0]));
+  function add(a, b) { for (const k of KEYS) a[k] += b[k] || 0; return a; }
+  function suitLengths(counts, hand, trump, only) {
+    for (const id of hand) if (!only || only(id)) { const e = R.getEffectiveSuit(id, trump); counts[e] = (counts[e] || 0) + 1; }
+    return counts;
+  }
+  function play(c, s, p, card) {
+    const trump = s.trump, hand = s.hands[p], plays = s.trick.plays, ls = s.trick.leadSuit;
+    const eff = ( id) => R.getEffectiveSuit(id, trump), str = ( id) => R.getCardStrength(id, trump);
+    const legal = R.legalCards(hand, ls, trump);
+    if (!plays.length) {
+      const lens = Object.values(suitLengths({}, hand, trump)), len = hand.filter(id => eff(id) === eff(card)).length;
+      c.leads++;
+      if (R.isTrump(card, trump)) c.leadTrump++;
+      if (R.isKing(card)) c.leadKing++;
+      if (len === Math.max(...lens)) c.leadLong++;
+      if (len === Math.min(...lens) && len < Math.max(...lens)) c.leadShort++;
+      if (len > 1) { c.leadMulti++; if (hand.every(id => eff(id) !== eff(card) || str(id) <= str(card))) c.leadTop++; }
+      return;
+    }
+    const best = R.getTrickWinner(plays, trump);
+    const beats = ( id) => R.compareCards(id, best.card, ls, trump) > 0;
+    if (hand.some(id => eff(id) === ls)) {
+      c.follows++;
+      const winners = legal.filter(beats).sort((a, b) => str(a) - str(b));
+      if (winners.length) {
+        c.canWin++;
+        if (beats(card)) { c.wentFor++; if (card === winners[0]) c.winCheap++; } else c.heldBack++;
+      }
+      if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+      else if (plays.length === 2 && beats(card) && card !== winners[0] && !R.isKing(card)) c.wasteWin++;
+      if (plays.length === 1 && legal.length > 1) { c.second++; if (legal.every(id => str(id) >= str(card))) c.secondLow++; }
+      return;
+    }
+    c.voids++;
+    if (legal.some(id => R.isTrump(id, trump))) { c.canRuff++; if (R.isTrump(card, trump)) c.ruffed++; }
+    if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+    else if (R.isTrump(card, trump) && !beats(card) && legal.some(id => !R.isTrump(id, trump))) c.deadTrump++;
+    if (R.isTrump(card, trump)) return;
+    const side = Object.values(suitLengths({}, hand, trump, id => !R.isTrump(id, trump)));
+    const mine = hand.filter(id => eff(id) === eff(card));
+    c.discards++;
+    if (mine.length === Math.min(...side)) c.discardShort++;
+    if (mine.every(id => str(id) >= str(card))) c.discardLow++;
+  }
+  function bid(c, s, p, d) {
+    const hand = s.hands[p], turned = R.turnedSuit(s.flippedId, s.jokerSuit);
+    if (d.type === 'BID') {
+      const v = AI.handValue(hand, turned);
+      c.bid1++;
+      if (d.accept) { c.call1++; c.call1Value += v; } else c.pass1Value += v;
+      return;
+    }
+    c.bid2++;
+    if (d.suit) { c.call2++; c.call2Value += AI.handValue(hand, d.suit); }
+    else c.pass2Value += Math.max(...R.SUITS.filter(x => x !== turned).map(x => AI.handValue(hand, x)));
+  }
+  function kings(seats, trick) {
+    for (const pl of trick.plays) {
+      if (!R.isKing(pl.card)) continue;
+      const c = seats[pl.player];
+      c.kings++; c.kingTrick += trick.number;
+      if (trick.winner === pl.player) c.kingsWon++;
+    }
+  }
+  function quiet(fn) {
+    const was = Logger.enabled;
+    Logger.enabled = false;
+    try { return fn(); } finally { Logger.enabled = was; }
+  }
+  function nextDecision(cur) {
+    return cur.record.decisions.slice(cur.decisionsUsed).find(( x) => x && x.type !== 'MARK') || null;
+  }
+  function count(recOrCode) { return quiet(() => countInner(recOrCode)); }
+  function countInner(recOrCode) {
+    const seats = [blank(), blank(), blank()];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      if (d && d.type === 'PLAY' && s.phase === P.TRICK_PLAY) play(seats[d.player], s, d.player, d.card);
+      else if (d && (d.type === 'BID' || d.type === 'NAME')) bid(seats[d.player], s, d.player, d);
+      const step = cur.step();
+      if (!step) break;
+      if (step.events.some(( e) => e.type === 'TRICK_WON')) kings(seats, cur.state.lastTrick);
+    }
+    return seats;
+  }
+  const share = ( x,  n) => (n ? x / n : null);
+  function rates(c) {
+    return {
+      leadTrump: share(c.leadTrump, c.leads), leadKing: share(c.leadKing, c.leads), leadLong: share(c.leadLong, c.leads),
+      leadShort: share(c.leadShort, c.leads), leadTop: share(c.leadTop, c.leadMulti),
+      wentFor: share(c.wentFor, c.canWin), heldBack: share(c.heldBack, c.canWin), winCheap: share(c.winCheap, c.wentFor),
+      secondLow: share(c.secondLow, c.second), ruff: share(c.ruffed, c.canRuff),
+      discardShort: share(c.discardShort, c.discards), discardLow: share(c.discardLow, c.discards),
+      kingTrick: share(c.kingTrick, c.kings), kingWon: share(c.kingsWon, c.kings),
+      slips: share(c.kingUnder + c.wasteWin + c.deadTrump, c.leads + c.follows + c.voids),
+      call1: share(c.call1, c.bid1), call1Value: share(c.call1Value, c.call1), pass1Value: share(c.pass1Value, c.bid1 - c.call1),
+      call2: share(c.call2, c.bid2), call2Value: share(c.call2Value, c.call2), pass2Value: share(c.pass2Value, c.bid2 - c.call2)
+    };
+  }
+  function choiceOf(d) {
+    switch (d.type) {
+      case 'DISCARD': case 'EXCHANGE': return d.cards.slice().sort();
+      case 'BID': return d.accept;
+      case 'NAME': return d.suit;
+      case 'SHOWDOWN_LEAD': return d.leader;
+      default: return d.card;
+    }
+  }
+  const key = ( x) => JSON.stringify(Array.isArray(x) ? x.slice().sort() : x);
+  function explain(recOrCode, cfgOf, after) { return quiet(() => explainInner(recOrCode, cfgOf, after)); }
+  function explainInner(recOrCode, cfgOf, after) {
+    const out = [];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      const cfg = d ? cfgOf(d.player) : null;
+      let entry = null;
+      if (d && cfg) {
+        const trace = { how: '', options: [] };
+        const a = AI.decide(buildView(s, d.player), cfg, trace);
+        const chosen = key(choiceOf(d)), opts = trace.options.map(o => ({ choice: o.choice, value: Math.round(o.value * 1000) / 1000, plan: o.plan }));
+        const mine = opts.find(o => key(o.choice) === chosen);
+        entry = {
+          hand: s.handNumber, trick: s.trickNumber, phase: s.phase, seat: d.player, chosen: choiceOf(d), how: trace.how,
+          plan: mine ? mine.plan : null, options: opts.sort((x, y) => y.value - x.value), match: !!a && a.type === d.type && key(choiceOf(a)) === chosen
+        };
+      }
+      const step = cur.step();
+      if (entry) out.push(entry);
+      if (!step) break;
+      if (after) after(step.events, cur.state);
+    }
+    return out;
+  }
+  return Object.freeze({ KEYS, LABELS, blank, add, count, rates, explain });
 })();
 const Render = (() => {
   const R = Rules, P = Engine.P;
@@ -3256,7 +3569,16 @@ const Render = (() => {
     return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
       '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
+      '<span>Reads you</span>' + pips(Math.round(4 * (x.credulity || 0))) + '<span>Feints</span>' + pips(Math.round(4 * (x.feint || 0))) +
+      (habitWords(x) ? '<span class="p-ways">' + escHTML(habitWords(x)) + '</span>' : '') +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
+  }
+  function habitWords(x) {
+    const h = x.habits || {};
+    const W = { lead: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, win: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
+      void: { ruff: 'trumps in', low: 'throws low' }, kings: { early: 'Kings early', late: 'Kings late' } };
+    const w =  (['lead', 'win', 'void', 'kings'].map(k =>  (W)[k][ (h)[k]]).filter(Boolean));
+    return w.length ? w.join(' · ').replace(/^./, c => c.toUpperCase()) : '';
   }
   const held = (ctx, p) => (ctx.ui && ctx.ui.scoreHold[p]) || 0;
   const OUTCOME_TEXT = {
@@ -4010,19 +4332,16 @@ const App = (() => {
     mode: null,
     dyn:  (null),
     said:  ({}),
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
       scoreHold:  ({}) },
     wave: { n: null, wasOpenAtStart: false, result: null },
     humanSeatWasAutoplayed: false,
     seatSwapPending: false,
-    usePersonas: true,
     houseRules: HOUSE,
-    seatPersona: '',
-    ai: AI.DEFAULT_CONFIG,
+    seats: blankSeats(),
     updateReady: false, menuOpen: false, menuLaunch: false,
     timer: null,
-    timerFn: null,
-    botSettings: blankBotSettings()
+    timerFn: null
   };
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
@@ -4042,6 +4361,26 @@ const App = (() => {
     });
   }
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
+  function dynamicTable(s, e0, last) {
+    const order = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+    const max = e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2;
+    const pairs = [];
+    for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) pairs.push([order[i], order[j]]);
+    const fits = ( p) => p.filter(id => PERSONA_BY_ID[id].tier === 'shark').length <= max;
+    const none = ( p) => !p.some(id => last.includes(id)), other = ( p) => !p.every(id => last.includes(id));
+    return pairs.find(p => fits(p) && none(p)) || pairs.find(p => fits(p) && other(p)) || pairs.find(fits) || pairs[0];
+  }
+  function tableFor(s, mode) {
+    if (mode === 'dynamic') {
+      const last = replays.list().find(e => e.mode === 'dynamic' && e.west && e.east);
+      return dynamicTable(s, app.dyn ? app.dyn.e0 : 0, last ? [last.west, last.east] : []);
+    }
+    if (mode !== 'free') return seedTable(s);
+    const w = app.seats[1].who, e = app.seats[2].who;
+    const rest = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).filter(id => id !== w && id !== e);
+    const west = w || rest.shift();
+    return [west, e || rest.shift()];
+  }
   function newGame(seed, wave, opts) {
     dropWatch();
     clearTimer();
@@ -4049,14 +4388,15 @@ const App = (() => {
     app.ui.autoplay = false;
     const s = (seed === undefined || seed === null) ? RNG.freshSeed() : (seed >>> 0);
     const w = Waves.get(wave);
-    const pool = w ? [w.west, w.east] : seedTable(s);
     app.mode = w ? 'waves' : opts && opts.mode === 'dynamic' ? 'dynamic' : 'free';
     app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
+    const pool = w ? [w.west, w.east] : opts && opts.table ? opts.table : tableFor(s, app.mode);
+    app.ui.tunes = opts && opts.tunes ? opts.tunes.map(t => AI.cleanTune(t)) : [null, ...[1, 2].map(p => (app.mode === 'free' ? AI.cleanTune(app.seats[p].tune) : null))];
+    app.ui.swapped = false;
     app.said = {};
     app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
     app.seatSwapPending = !w && !app.ui.autoplay;
-    app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, opts && opts.rules ? Object.assign({}, app.houseRules, opts.rules) : app.houseRules);
@@ -4080,7 +4420,8 @@ const App = (() => {
     app.wave = { n: null, wasOpenAtStart: false, result: null };
     app.ui.autoplay = false;
     app.seatSwapPending = false;
-    app.botSettings = blankBotSettings();
+    app.ui.tunes = [null, null, null];
+    app.ui.swapped = false;
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
@@ -4118,7 +4459,7 @@ const App = (() => {
   function replayRecord(endedAt) {
     return app.mode && app.state ? Replay.fromState(app.state, {
       mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.humanSeatWasAutoplayed, endedAt,
-      meta: Object.assign(botMeta(), app.mode === 'dynamic' && app.dyn ? dynamicMeta(app.dyn) : {})
+      meta: Object.assign(seatMeta(), app.mode === 'dynamic' && app.dyn ? dynamicMeta(app.dyn) : {})
     }) : null;
   }
   function replayCode(endedAt) {
@@ -4140,29 +4481,12 @@ const App = (() => {
     const p = profile.add(rv, job.mode, job.rec.endedAt || undefined);
     Logger.log('DYNAMIC_REVIEW', { mode: job.mode, hands: rv.hands.length, marked: rv.marked, profileHands: p.hands });
   }
-  function blankBotSettings() { return { personas: false, panel: null, changed: false }; }
-  function trackBotSettings(persona) {
-    const b = app.botSettings;
-    if (persona) { b.personas = true; return; }
-    const cfg = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style };
-    if (b.panel && JSON.stringify(b.panel) !== JSON.stringify(cfg)) b.changed = true;
-    b.panel = cfg;
-  }
-  function botMeta() {
-    const b = app.botSettings;
-    const m = b.panel ? aiMeta(AI.config(AI.DEFAULT_CONFIG, b.panel)) : {};
-    if (b.personas) m['ai.personas'] = true;
-    if (b.changed) m['ai.changed'] = true;
-    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));
-  }
-  function aiMeta(cfg) {
-    const ai = cfg || app.ai;
-    const m = {
-      'ai.tier': AI.skillTierOf(ai), 'ai.courage': ai.style.courage, 'ai.realTable': !!ai.style.realTable,
-      'ai.hunches': ai.thinking.worlds, 'ai.brainFarts': Math.round((1 - ai.thinking.playoutSkill) * 100)
-    };
-    for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!ai.knowledge[k];
-    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));
+  function seatMeta() {
+    const m = {};
+    app.ui.tunes.forEach((t, p) => { if (t) m['ai.tune' + p] = JSON.stringify(t); });
+    const out = m;
+    if (app.ui.swapped) out['seats.swapped'] = true;
+    return out;
   }
   function finishGame() {
     const won = app.state.winner === HUMAN;
@@ -4171,13 +4495,13 @@ const App = (() => {
       app.wave.result = counts ? Waves.record(app.wave.n, won) : Waves.progress();
       Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
     }
-    if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
+    if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won, tuned: [!!app.ui.tunes[1], !!app.ui.tunes[2]] });
     const at = Date.now();
     const rec = replayRecord(at);
     const code = rec ? Replay.encode(rec) : null;
     pendingReview = rec && !app.humanSeatWasAutoplayed ? { rec, mode: app.mode } : null;
     endCode = code;
-    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
+    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, tuned: !!(app.ui.tunes[1] || app.ui.tunes[2]), at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
@@ -4196,7 +4520,7 @@ const App = (() => {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX),
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX),
       dynamic: app.dyn ? app.dyn.snap : null
     });
   }
@@ -4217,6 +4541,57 @@ const App = (() => {
       text: '<p>The game hit an error. Your game is saved after each move, so a reload continues it.</p>',
       ok: 'Reload', cancel: 'Keep playing'
     }).then(yes => { if (yes) location.reload(); });
+  }
+  function recordSettings(rec) {
+    const m = rec.meta || {};
+    const legacy = typeof m['ai.hunches'] === 'number';
+    const personas = !legacy || rec.mode === 'waves' || rec.mode === 'dynamic' || m['ai.personas'] === true;
+    const tunes = [0, 1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(m['ai.tune' + p]))));
+    const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(m['dyn.snap']))) : null;
+    const t = snap ? Dynamic.tracker(snap) : null;
+    const panel = legacy ? AI.config(AI.DEFAULT_CONFIG, {
+      thinking: { worlds: m['ai.hunches'], playoutSkill: 1 - m['ai.brainFarts'] / 100 },
+      knowledge: Object.fromEntries(Object.keys(AI.KNOWLEDGE_DEFAULTS).map(k => [k, m['ai.know.' + k] === true])),
+      style: { courage: m['ai.courage'], realTable: m['ai.realTable'] === true }
+    }) : null;
+    return {
+      cfgOf(p) {
+        if (p === HUMAN) return null;
+        const x = personas ? PERSONA_BY_ID[rec.seats[p]] : null;
+        return x ? (t ? Dynamic.ease(x, t.e) : AI.tunedConfig(x, tunes[p])) : panel;
+      },
+      after(events, state) { if (t && Dynamic.handEnded(events, state)) t.hand(buildView(state, 1)); },
+      changed: m['ai.changed'] === true
+    };
+  }
+  const round3 = ( x) => (x === null ? null : Math.round(x * 1000) / 1000);
+  function habits() {
+    const you = Habits.blank(),  bots = {};
+    let games = 0, yours = 0, skipped = 0;
+    for (const e of replays.list()) {
+      const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
+      if (!seats) { skipped++; continue; }
+      games++;
+      if (!e.assisted) { yours++; Habits.add(you, seats[0]); }
+      for (const p of [1, 2]) { const id = rec.seats[p]; if (id && !(rec.meta && rec.meta['ai.tune' + p])) Habits.add(bots[id] || (bots[id] = Habits.blank()), seats[p]); }
+    }
+    const show = ( c) => Object.fromEntries(Object.entries(Habits.rates(c)).map(([k, v]) => [k, round3(v)]));
+    return { games, yours, skipped, labels: Habits.LABELS, you: show(you), bots: Object.fromEntries(Object.keys(bots).map(id => [id, show(bots[id])])), counts: { you, bots } };
+  }
+  function explain(n = 0) {
+    const e = replays.list()[n], rec = e && safe(() => Replay.decode(e.code));
+    if (!rec) return null;
+    const how = recordSettings(rec);
+    const list = Habits.explain(rec, p => how.cfgOf(p), (ev, st) => how.after(ev, st));
+    const text = ( x) => (Array.isArray(x) ? x.join('+') : String(x));
+    for (const x of list) {
+      Logger.log('AI_DECISION', {
+        hand: x.hand, trick: x.trick, phase: x.phase, seat: x.seat, chose: text(x.chosen), how: x.how, plan: x.plan,
+        options: x.options.slice(0, 6).map(o => text(o.choice) + ' ' + o.value + (o.plan === 'greedy' ? '' : ' ' + o.plan)).join(', '),
+        match: x.match
+      });
+    }
+    return { game: n, mode: rec.mode, seats: rec.seats, changed: how.changed, matched: list.filter(x => x.match).length, decisions: list };
   }
   const backup = Object.freeze({
     create() {
@@ -4314,7 +4689,8 @@ const App = (() => {
       app.humanSeatWasAutoplayed = !!s.assisted;
       app.ui.autoplay = !!s.autoplay && app.ui.allowSeatAI;
       app.seatSwapPending = s.swapDone === false;
-      app.botSettings = JSON.parse(JSON.stringify(s.ai));
+      app.ui.tunes = s.tunes.map(t => AI.cleanTune(t));
+      app.ui.swapped = s.swapped;
       app.ui.endButtons = '';
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
@@ -4533,10 +4909,10 @@ const App = (() => {
       }
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
-        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && personasOn() ? PERSONA_BY_ID[id] : null;
+        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] ? PERSONA_BY_ID[id] : null, tuned = !watch && !!app.ui.tunes[seat];
         const r = callRound();
         const TEXT = {
-          ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
+          ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : '.') + (tuned ? ' This game, ' + who + ' plays with your Settings → Bots changes.' : '')],
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
           dealer: () => [who + ' · Dealer', v.showdown
             ? who + ' mediates the Showdown, so ' + who + ' deals it' + (Engine.discardsInTurn(v.rules) ? ': the discards go in turn from ' + who + '\'s left. ' : '. ') + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
@@ -4585,22 +4961,17 @@ const App = (() => {
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.humanSeatWasAutoplayed = true;
-    if (app.ui.autoplay && !app.ui.personas[HUMAN]) app.ui.personas[HUMAN] = seatPersona();
+    if (app.ui.autoplay && !app.ui.personas[HUMAN]) { app.ui.personas[HUMAN] = seatPersona(); app.ui.tunes[HUMAN] = AI.cleanTune(app.seats[HUMAN].tune); }
     app.ui.selected.clear();
     draw([]);
     schedule();
     saveGame();
   }
   function seatPersona() {
-    const taken = app.ui.personas;
-    if (PERSONA_BY_ID[app.seatPersona] && !taken.includes(app.seatPersona)) return app.seatPersona;
+    const taken = app.ui.personas, mine = app.seats[HUMAN].who;
+    if (PERSONA_BY_ID[mine] && !taken.includes(mine)) return mine;
     const free = PERSONAS.filter(x => !taken.includes(x.id));
     return free[RNG.int({ s: (app.state.seed ^ 0x2545F491) >>> 0 }, free.length)].id;
-  }
-  function setSeatPersona(id) {
-    app.seatPersona = PERSONA_BY_ID[id] ? id : '';
-    $('setSeatPersona').value = app.seatPersona;
-    saveSettings();
   }
   function setAllowSeatAI(on) {
     app.ui.allowSeatAI = on;
@@ -4643,10 +5014,8 @@ const App = (() => {
     if (ai.length) {
       const p = ai[0];
       later(d.ai, () => {
-        const { cfg, persona } = botConfig(p);
-        if (p !== HUMAN) trackBotSettings(persona);
         const view = buildView(app.state, p);
-        const tries = [() => AI.decide(view, cfg), () => AI.fallbackAction(view, cfg), () => plainAction(app.state, p)];
+        const tries = [() => AI.decide(view, botConfig(p).cfg), () => AI.fallbackAction(view, botConfig(p).cfg), () => plainAction(app.state, p)];
         for (let i = 0; i < tries.length; i++) {
           let action = null, error = null;
           try { action = tries[i](); error = Engine.validate(app.state, action); } catch (e) { console.error(e); error = String(e instanceof Error ? e.message : e); }
@@ -4666,9 +5035,11 @@ const App = (() => {
     draw(ev);
   }
   function botConfig(p, a = app) {
-    const persona = personasOn(a) ? PERSONA_BY_ID[a.ui.personas[p]] : null;
-    if (!persona) return { cfg: a.ai, persona: false };
-    return { cfg: a.mode === 'dynamic' && a.dyn && p !== HUMAN ? Dynamic.ease(persona, a.dyn.e) : AI.personaConfig(persona), persona: true };
+    const persona = PERSONA_BY_ID[a.ui.personas[p]];
+    if (!persona) return { cfg: AI.DEFAULT_CONFIG, persona: false };
+    if (a.mode === 'dynamic' && a.dyn && p !== HUMAN) return { cfg: Dynamic.ease(persona, a.dyn.e), persona: true };
+    const tune = a.ui.tunes && a.ui.tunes[p];
+    return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
   }
   function plainAction(st, p) {
     const h = st.hands[p];
@@ -4763,7 +5134,6 @@ const App = (() => {
     return n && counts && !cleared.includes(n) ? n : null;
   }
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
-  const personasOn = (a = app) => a.usePersonas || inWaves(a) || a.mode === 'dynamic';
   function houseNotes(a = app) {
     const out = {};
     for (const [id, game, setting, text] of HOUSE_NOTES) {
@@ -4799,17 +5169,8 @@ const App = (() => {
     chip.title = watch ? 'Exit the replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
     if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
-    $('setPersonas').disabled = ownBots;
-    $('setPersonas').checked = personasOn();
-    off('setPersonaRow', ownBots);
     $('setWaveNote').hidden = !ownBots;
-    off('setBotFields', personasOn());
-    off('setAdvanced', personasOn());
-    if (personasOn() !== botRowsDefault) { botRowsDefault = personasOn(); syncBotPanel(); }
-    const fixed = gameOn() && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
-    off('setSeatPersonaRow', seatOff);
-    $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
-      : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
+    syncSeatNotes();
     for (const [id, text] of Object.entries(houseNotes())) { const note = $(id); note.hidden = !text; note.textContent = text; }
   }
   const LOG_HIGHLIGHTS = [
@@ -5134,7 +5495,7 @@ const App = (() => {
     return app.mode === mode && gameOn() ? app.state : (slots.get(mode) || { state: null }).state;
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
-  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Full-strength opponents; tune each seat in Settings', dynamic: 'Opponents for your level, who ease off as you learn', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   const forfeitText = ( n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
   function forfeit( n) {
@@ -5170,28 +5531,34 @@ const App = (() => {
     }
     showMenu(app.menuLaunch);
   }
-  function startMode(mode, seed, wave, snapshot, rules) {
+  function startMode(mode, seed, wave, snapshot, rules, more) {
     app.menuOpen = false;
-    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot, rules });
+    newGame(seed, mode === 'waves' ? wave : undefined, Object.assign({ mode, snapshot, rules }, more || {}));
   }
   function newDeal() {
     if (inWaves()) { startMode('waves', undefined, app.wave.n); return; }
     const west = app.ui.personas[1], east = app.ui.personas[2];
     let seed = RNG.freshSeed();
-    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = seedTable(seed); if (t[0] === west && t[1] === east) break; }
-    startMode(app.mode, seed);
+    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = tableFor(seed, app.mode); if (t[0] === west && t[1] === east) break; }
+    startMode(app.mode, seed, undefined, undefined, undefined, { table: [west, east], tunes: [null, app.ui.tunes[1], app.ui.tunes[2]] });
+  }
+  function dealtTable(table, tunes, swapped) {
+    return swapped ? { table: [table[1], table[0]], tunes: [null, tunes[1], tunes[0]] } : { table: table.slice(), tunes: [null, tunes[0], tunes[1]] };
   }
   function againOf(e) {
     const rec = safe(() => Replay.decode(e.code));
     if (!rec || rec.rules > Engine.RULES_VERSION || !MODES.includes(rec.mode) || (rec.mode === 'waves' && !Waves.get(rec.wave))) return null;
     const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : undefined;
     if (snap === null) return null;
-    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' } };
+    const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
+    const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' },
+      more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
   }
   function replaySeedRow(at) {
     const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
     if (!g) return;
-    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules); else showProfile(); });
+    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules, g.more); else showProfile(); });
   }
   const WATCH_ICON = {
     prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2.5v14H3zM13.5 5 6.5 12l7 7zM21 5l-7 7 7 7z"/></svg>',
@@ -5513,12 +5880,14 @@ const App = (() => {
   function swapNew() {
     const [, west, east] = app.ui.personas;
     let seed = RNG.freshSeed();
-    for (let k = 0; k < 100 && seedTable(seed).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
+    for (let k = 0; k < 100 && tableFor(seed, app.mode).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
     newGame(seed, undefined, { mode: app.mode, snapshot: app.dyn && app.dyn.snap });
   }
   function swapPreview() {
     const [, west, east] = app.ui.personas;
     seatBots(east, west);
+    app.ui.tunes = [app.ui.tunes[0], app.ui.tunes[2], app.ui.tunes[1]];
+    app.ui.swapped = !app.ui.swapped;
     redrawLog();
     draw([]);
     showSwap();
@@ -5659,14 +6028,14 @@ const App = (() => {
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
         '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
-        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
+        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + (e.tuned ? ' <small>(tuned)</small>' : '') + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
           '<td class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, ' data-at="' + escHTML(String(e.at)) + '"') : '') +
           (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
-    html += habitsHTML();
+    html += habitsHTML() + cardPlayHTML();
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
-    html += '<h3>By opponent</h3><p class="pf-sub">Every game counts for both opponents at the table. Select a column to sort.</p>' +
+    html += '<h3>By opponent</h3><p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
     if (m === 'all') {
       const pairs = Object.entries(st.tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
@@ -5683,6 +6052,21 @@ const App = (() => {
     return '<h3>Your bidding</h3><p class="pf-sub">From every game you played yourself, in every mode.</p><div class="pf-tiles">' +
       tile('Calls', h.calls) + tile('Calls made', pfPct(h.made / h.calls)) + tile('Usual hand at a call', (Math.round(h.value / h.calls * 10) / 10).toFixed(1) + ' <small>tricks</small>') + '</div>' +
       '<p class="pf-note">A call is made when you take the most tricks without a Showdown. The usual hand counts the tricks and Kings a hand like it wins on average.</p>';
+  }
+  function cardPlayHTML() {
+    const h = habits();
+    if (!h.yours) return '';
+    const ids = Object.keys(h.counts.bots), all = Habits.blank();
+    for (const id of ids) Habits.add(all, h.counts.bots[id]);
+    const bots = Habits.rates(all), you = h.you;
+    const rows = [['tries to win when it can', 'wentFor'], ['holds back when it could win', 'heldBack'], ['leads trump', 'leadTrump'], ['trumps in when void', 'ruff'], ['card-play slips', 'slips']];
+    const cell = ( v) => '<td class="num">' + (v === null ? '–' : Math.round(100 * v) + '%') + '</td>';
+    const kt = ( v) => '<td class="num">' + (v === null ? '–' : (Math.round(v * 10) / 10).toFixed(1)) + '</td>';
+    return '<h3>Your card play</h3><p class="pf-sub">From your last ' + h.yours + (h.yours === 1 ? ' game' : ' games') + ' played yourself, beside the bots in them (as themselves). Main hand only.</p>' +
+      '<table><thead><tr><th></th><th class="num">You</th><th class="num">Bots</th></tr></thead><tbody>' +
+      rows.map(([label, k]) => '<tr><td>' + label + '</td>' + cell(you[k]) + cell(bots[k]) + '</tr>').join('') +
+      '<tr><td>average trick a King is played in</td>' + kt(you.kingTrick) + kt(bots.kingTrick) + '</tr></tbody></table>' +
+      '<p class="pf-note">A slip is a King thrown under the card already winning, a last card that wins with more than it takes, or a trump that cannot beat a higher one already played, each while another card could go. Dynamic eases off a little more when your slips run above the bots\'.</p>';
   }
   function showProfile(keepFocus) {
     const ov = $('overlay'), old = ov.querySelector('.profile'), body = old && old.querySelector('.sheet-body'), scroll = body ? body.scrollTop : 0;
@@ -5821,7 +6205,8 @@ const App = (() => {
       }
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
-        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' },
+          inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
@@ -5837,7 +6222,8 @@ const App = (() => {
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': resetBotSettings(); setPersonas(true); break;
+      case 'settings-reset': resetSeats(); break;
+      case 'seat-reset': resetSeats(Number(el.getAttribute('data-seat'))); break;
       case 'run-tests': {
         if (testsRunning) break;
         testsRunning = true;
@@ -5851,7 +6237,7 @@ const App = (() => {
       default: break;
     }
   }
-  const SET_TABS = ['Game', 'Bots', 'Expert', 'Tools'];
+  const SET_TABS = ['Game', 'Bots', 'Tools'];
   function showSettingsTab(name, focus) {
     const tab = SET_TABS.includes(name) ? name : 'Game';
     for (const t of SET_TABS) {
@@ -5882,48 +6268,156 @@ const App = (() => {
     checkInstall();
     const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
   }
-  function syncKnowledge() {
-    const ai = shownAI();
-    for (const box of  (document.querySelectorAll('[data-knowledge]'))) box.checked = ai.knowledge[box.getAttribute('data-knowledge')];
-    syncTier();
+  const SEAT_NAMES = ['Your seat', 'West', 'East'];
+  const SEAT_DESC = ['Used when the AI plays your seat, in every mode.', 'On your left. Free play only.', 'On your right. Free play only.'];
+  const TIER_NAMES = Object.freeze({ novice: 'Novice', casual: 'Casual', club: 'Club player', shark: 'Shark' });
+  const COURAGE_NAMES = Object.freeze({ timid: 'Timid', cautious: 'Cautious', normal: 'Normal', bold: 'Bold' });
+  const PICK_NAMES = Object.freeze({ auto: 'Auto', shrewd: 'Shrewd', fair: 'Fair', impulsive: 'Impulsive' });
+  const KNOW_NAMES = Object.freeze({
+    voids: ['Spots voids', 'Remembers who could not follow suit.'], ownDiscards: ['Remembers discards', 'Remembers the cards it put in the outside pile.'],
+    showdownPlans: ['Plans showdowns', 'Also tries ducking and balancing, not only greedy play.'], bids: ['Reads bids', 'Takes each bid as a clue to that player\'s hand.'],
+    scoreAware: ['Watches score', 'Plays the race to 10 harder once a score passes 5.'], turnedCard: ['Tracks upcard', 'Follows where the turned card went.']
+  });
+  const FARTS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const HABIT_NAMES = Object.freeze({
+    leadHabit: ['Leads', 'What it likes to lead when its best leads are about equal.', { none: 'No habit', trump: 'Trump', long: 'Its longest suit', short: 'Its shortest suit', kings: 'A King' }],
+    winHabit: ['Winning a trick', 'When it can win a trick it follows.', { none: 'No habit', cheap: 'With its cheapest winner', big: 'With its biggest card', duck: 'Holds back' }],
+    voidHabit: ['When void', 'When it cannot follow suit.', { none: 'No habit', ruff: 'Trumps in', low: 'Throws its lowest' }],
+    kingHabit: ['Kings', 'When it plays its Kings.', { none: 'No habit', early: 'Early', late: 'Late' }]
+  });
+  const SLACKS = [0, 1, 2, 3, 4, 5];
+  const CREDULITY = [0, 25, 50, 75, 100];
+  function blankSeats() { return [0, 1, 2].map(() => ({ who: '', tune: null })); }
+  function cleanSeats(x) {
+    const out = blankSeats();
+    if (Array.isArray(x)) {
+      for (const p of [0, 1, 2]) {
+        const s = x[p];
+        if (!s || typeof s !== 'object') continue;
+        out[p].who = typeof s.who === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, s.who) ? s.who : '';
+        out[p].tune = AI.cleanTune(s.tune);
+      }
+    }
+    if (out[1].who && out[1].who === out[2].who) out[2].who = '';
+    return out;
   }
-  function setKnowledge(k) {
-    app.ai = AI.config(app.ai, { knowledge: k });
-    const now = app.ai.knowledge;
-    syncBotPanel();
-    Logger.log('AI_KNOWLEDGE', now);
-    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); const name = box && box.closest('.set-row') && box.closest('.set-row').querySelector('.set-name'); return name ? name.textContent : key; };
-    const off = Object.keys(now).filter(key => !now[key]).map(label);
-    addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
+  const farts = ( skill) => Math.round((1 - skill) * 100);
+  const tuneSize = ( t) => (t ? Object.keys(t).filter(k => k !== 'knowledge').length + Object.keys(t.knowledge || {}).length : 0);
+  function seatTier(seat) {
+    const t = seat.tune || {};
+    if (t.worlds === undefined && t.playoutSkill === undefined && !t.knowledge) return '';
+    const x = PERSONA_BY_ID[seat.who];
+    if (x) return AI.skillTierOf(AI.tunedConfig(x, t));
+    const full = t.worlds !== undefined && t.playoutSkill !== undefined && t.knowledge && Object.keys(AI.KNOWLEDGE_DEFAULTS).every(k => k in  (t.knowledge));
+    return full ? AI.skillTierOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: t.worlds, playoutSkill: t.playoutSkill }, knowledge: t.knowledge })) : 'custom';
+  }
+  function seatGroupHTML(p) {
+    const id = ( f) => 'seat' + p + '-' + f.replace('.', '-');
+    const opts = ( list) => list.map(([v, t, off]) => '<option value="' + v + '"' + (off ? ' disabled' : '') + '>' + escHTML(t) + '</option>').join('');
+    const row = ( f,  name,  desc,  control) =>
+      '<div class="set-row"><span class="set-text"><label class="set-name" for="' + id(f) + '">' + name + '</label><span class="set-desc">' + desc + '</span></span>' + control + '</div>';
+    const sel = ( f,  name,  desc,  list) =>
+      row(f, name, desc, '<select id="' + id(f) + '" data-seat="' + p + '" data-field="' + f + '"><option value="">Its own</option>' + opts(list) + '</select>');
+    const sub = ( title,  rows) => '<details class="seat-sub"><summary>' + title + '</summary><div class="set-card">' + rows + '</div></details>';
+    const onOff = [['on', 'On'], ['off', 'Off']];
+    const who = row('who', 'Who sits', p ? 'The seed\'s pick, or always this bot.' : 'The seed\'s pick, or this bot when it is not at the table.',
+      '<select id="' + id('who') + '" data-seat="' + p + '" data-field="who"><option value="">From the seed</option>' +
+      opts(PERSONAS.map(x => [x.id, x.name + ' (' + TIER_NAMES[x.tier] + ', ' + COURAGE_NAMES[x.courage].toLowerCase() + ')'])) + '</select>');
+    return '<details class="seat-set" id="setSeat' + p + '"><summary><span class="set-name">' + SEAT_NAMES[p] + '</span><span class="seat-sum" id="setSeatSum' + p + '"></span></summary>' +
+      '<div class="seat-body"><p class="k-hint set-note">' + SEAT_DESC[p] + '</p><p class="k-hint set-note rule-note" id="setSeatNow' + p + '" hidden></p>' +
+      '<div class="set-card">' + who + '</div>' +
+      sub('Skill', sel('tier', 'Skill', 'Sets hunches, brain farts and knowledge together.', [...Object.entries(TIER_NAMES), ['custom', 'Custom', 'off']]) +
+        row('worlds', 'Hunches', 'Guesses about the hidden cards per decision, 1 to 200. Empty: its own.',
+          '<input type="number" id="' + id('worlds') + '" data-seat="' + p + '" data-field="worlds" min="1" max="200" step="1" placeholder="Its own">') +
+        sel('playoutSkill', 'Brain farts', 'How often it imagines a random card while it thinks.', FARTS.map(f => [String(f), f + '%']))) +
+      sub('Style', sel('courage', 'Bid courage', 'How readily it calls trump.', Object.entries(COURAGE_NAMES)) +
+        sel('realTable', 'Real table', 'Human habits: pass more, pitch the lowest cards first.', onOff) +
+        sel('credulity', 'Reads play', 'How much it believes what others\' plays suggest: a lead means length, a King led means no Ace, a throw-off means short.', CREDULITY.map(x => [String(x), x ? x + '%' : 'Does not read (0%)'])) +
+        sel('feint', 'Feints', 'How much it likes plays that tell a reader the wrong story, within its habit strength.', CREDULITY.map(x => [String(x), x ? x + '%' : 'Never (0%)'])) +
+        sel('wariness', 'Wariness', 'How much a caught feint lowers its belief in that player\'s plays, for the rest of the hand.', CREDULITY.map(x => [String(x), x + '%'])) +
+        sel('leadPick', 'Showdown pick', 'As mediator, how it picks the Showdown leader (house rule). Auto: shrewd when it watches the score.', Object.entries(PICK_NAMES))) +
+      sub('Habits', Object.keys(HABIT_NAMES).map(f => sel(f, HABIT_NAMES[f][0], HABIT_NAMES[f][1], Object.entries(HABIT_NAMES[f][2]))).join('') +
+        sel('slack', 'Habit strength', 'The win chance it gives up, at most, per card to follow its habits. 0%: no habits.', SLACKS.map(x => [String(x), x + '%']))) +
+      sub('Knowledge', Object.keys(AI.KNOWLEDGE_DEFAULTS).map(k => sel('k.' + k, KNOW_NAMES[k][0], KNOW_NAMES[k][1], onOff)).join('')) +
+      '<div class="set-card"><div class="set-row"><span class="set-text"><span class="set-name">Reset this seat</span><span class="set-desc">The seed picks; the bot plays as itself.</span></span>' +
+      '<button class="btn btn-sm" type="button" data-action="seat-reset" data-seat="' + p + '">Reset</button></div></div></div></details>';
+  }
+  function syncSeats() {
+    for (const p of [0, 1, 2]) {
+      const seat = app.seats[p], t = seat.tune || {}, k = t.knowledge || {}, x = PERSONA_BY_ID[seat.who] || null, own = x ? AI.personaConfig(x) : null;
+      const show = ( f,  v,  ownText) => {
+        const el = $('seat' + p + '-' + f.replace('.', '-'));
+        if (!el) return;
+        const label = 'Its own' + (ownText ? ' (' + ownText + ')' : '');
+        if (el.tagName === 'SELECT') el.options[0].textContent = label; else el.placeholder = label;
+        el.value = v;
+        el.closest('.set-row').classList.toggle('changed', v !== '');
+      };
+      const yes = ( b) => (b === undefined ? '' : b ? 'on' : 'off');
+      $('seat' + p + '-who').value = seat.who;
+      show('tier', seatTier(seat), x && TIER_NAMES[x.tier]);
+      show('worlds', t.worlds === undefined ? '' : String(t.worlds), own && String(own.thinking.worlds));
+      show('playoutSkill', t.playoutSkill === undefined ? '' : String(farts(t.playoutSkill)), own && farts(own.thinking.playoutSkill) + '%');
+      show('courage', t.courage || '', own && COURAGE_NAMES[own.style.courage]);
+      show('realTable', yes(t.realTable), own && (own.style.realTable ? 'On' : 'Off'));
+      show('leadPick', t.leadPick || '', own && PICK_NAMES[own.style.leadPick]);
+      for (const f of ['credulity', 'feint', 'wariness']) show(f,  (t)[f] === undefined ? '' : String(Math.round( (t)[f] * 100)), own && Math.round(own.style[f] * 100) + '%');
+      for (const f of Object.keys(HABIT_NAMES)) show(f,  (t)[f] || '', own && HABIT_NAMES[f][2][own.style[f]]);
+      show('slack', t.slack === undefined ? '' : String(Math.round(t.slack * 100)), own && Math.round(own.style.slack * 100) + '%');
+      for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) show('k.' + key, yes( (k)[key]), own && (own.knowledge[key] ? 'On' : 'Off'));
+      const n = tuneSize(seat.tune);
+      $('setSeatSum' + p).textContent = (x ? x.name : 'From the seed') + ' · ' + (n ? n + (n === 1 ? ' change' : ' changes') : 'as itself');
+    }
+    syncSeatNotes();
+  }
+  function syncSeatNotes() {
+    if (!$('setSeatNow0')) return;
+    const on = gameOn();
+    for (const p of [0, 1, 2]) {
+      const id = app.ui.personas[p], seat = app.seats[p], tune = app.ui.tunes[p];
+      const applies = on && !!id && (p === HUMAN || app.mode === 'free');
+      const differs = applies && (JSON.stringify(tune) !== JSON.stringify(AI.cleanTune(seat.tune)) || (!!seat.who && seat.who !== id));
+      const note = $('setSeatNow' + p), n = tuneSize(tune);
+      note.hidden = !differs;
+      note.textContent = differs ? 'This game: ' + PERSONA_BY_ID[id].name + ', ' + (n ? n + (n === 1 ? ' change' : ' changes') : 'as itself') + '. Your settings apply from your next game.' : '';
+    }
+  }
+  function setSeatField(p, field, value) {
+    const seat = app.seats[p];
+    const t =  (Object.assign({}, seat.tune || {}, { knowledge: Object.assign({}, (seat.tune && seat.tune.knowledge) || {}) }));
+    if (field === 'who') {
+      seat.who = Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, value) ? value : '';
+      if (p !== HUMAN && seat.who && app.seats[3 - p].who === seat.who) app.seats[3 - p].who = '';
+    } else if (field === 'tier') {
+      const tier = AI.SKILL_TIERS[value];
+      if (tier) Object.assign(t, { worlds: tier.thinking.worlds, playoutSkill: tier.thinking.playoutSkill, knowledge: Object.assign({}, tier.knowledge) });
+      else if (value === '') { delete t.worlds; delete t.playoutSkill; t.knowledge = {}; }
+    } else if (field.startsWith('k.')) {
+      if (value === '') delete t.knowledge[field.slice(2)]; else t.knowledge[field.slice(2)] = value === 'on';
+    } else if (value === '') delete t[field];
+    else if (field === 'worlds') { if (isFinite(Number(value))) t.worlds = Number(value); }
+    else if (field === 'playoutSkill') t.playoutSkill = 1 - Number(value) / 100;
+    else if (field === 'slack') t.slack = Number(value) / 100;
+    else if (['credulity', 'feint', 'wariness'].includes(field)) t[field] = Number(value) / 100;
+    else if (field === 'realTable') t.realTable = value === 'on';
+    else t[field] = value;
+    seat.tune = AI.cleanTune(t);
+    Logger.log('SEAT_SETTINGS', { seat: p, who: seat.who, tune: seat.tune });
+    syncSeats();
     saveSettings();
   }
-  function setStyle(t) {
-    app.ai = AI.config(app.ai, { style: t });
-    const now = app.ai.style;
-    syncBotPanel();
-    Logger.log('AI_STYLE', now);
-    addLog('Bot style: bid courage ' + $('setCourage').selectedOptions[0].textContent + ', real table ' + (now.realTable ? 'on' : 'off') + '.', 'h');
+  function resetSeats(p) {
+    if (p === undefined) app.seats = blankSeats(); else app.seats[p] = { who: '', tune: null };
+    Logger.log('SEAT_SETTINGS', { seat: p === undefined ? 'all' : p, reset: true });
+    syncSeats();
     saveSettings();
   }
-  function syncStyle() { const st = shownAI().style; $('setRealTable').checked = st.realTable; $('setCourage').value = st.courage; }
-  function shownAI() { return personasOn() ? AI.DEFAULT_CONFIG : AI.config(AI.DEFAULT_CONFIG, app.ai); }
-  function syncBotPanel() { syncThinking(); syncKnowledge(); syncStyle(); }
-  let botRowsDefault =  (null);
-  function resetBotSettings() { setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); }
-  function setPersonas(on, quiet) {
-    app.usePersonas = on;
-    $('setPersonas').checked = on;
-    syncModeUI();
-    if (!quiet) { addLog('Personalities: ' + (on ? 'on' : 'off') + '.', 'h'); saveSettings(); }
+  function setSeat(p, x) {
+    if (![0, 1, 2].includes(p)) return null;
+    if (x && 'who' in x) setSeatField(p, 'who', String(x.who || ''));
+    if (x && 'tune' in x) { app.seats[p].tune = AI.cleanTune(x.tune); syncSeats(); saveSettings(); }
+    return JSON.parse(JSON.stringify(app.seats[p]));
   }
-  function setSkillTier(name) {
-    app.ai = AI.withSkillTier(app.ai, name);
-    syncBotPanel();
-    Logger.log('AI_SKILL', { tier: AI.skillTierOf(app.ai) });
-    addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
-    saveSettings();
-  }
-  function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
   function copyText(text, done) {
     const fallback = () => {
       const t = document.createElement('textarea');
@@ -5957,7 +6451,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', seats: 'Seat settings', habits: 'Habits'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -5978,32 +6472,18 @@ const App = (() => {
     if (st) html += '<div class="t-stats">Simulated ' + n(st.games) + ' games: ' + n(st.hands) + ' hands, ' + n(st.showdowns) + ' Showdowns, ' + n(st.kingPts) + ' King points. Every one of ' + n(st.illegalRejected) + ' illegal plays was refused.</div>';
     $('setTests').innerHTML = html;
   }
-  function syncThinking() {
-    const ai = shownAI();
-    $('setWorlds').value = ai.thinking.worlds;
-    const farts = Math.round((1 - ai.thinking.playoutSkill) * 100);
-    $('setSkill').value = farts;
-    $('setSkillOut').textContent = farts + '%';
-    syncTier();
-  }
-  function setThinking(t) {
-    app.ai = AI.config(app.ai, { thinking: t });
-    const now = app.ai.thinking;
-    syncBotPanel();
-    const farts = Math.round((1 - now.playoutSkill) * 100);
-    Logger.log('AI_THINKING', now);
-    addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
-    saveSettings();
-  }
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   function loadSettings() {
     const x = settingsStore.load();
     if (!x || typeof x !== 'object') return;
-    app.ai = AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style });
-    if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
-    if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
+    if (Array.isArray(x.seats)) app.seats = cleanSeats(x.seats);
+    else {
+      app.seats = blankSeats();
+      if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seats[HUMAN].who = x.seatPersona;
+      if (x.personas === false) for (const p of [1, 2]) app.seats[p].tune = AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style }));
+    }
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
@@ -6102,25 +6582,17 @@ const App = (() => {
       if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
       saveSettings();
     });
-    $('setWorlds').addEventListener('change', () => { const w = $('setWorlds').value.trim(); if (w === '' || !isFinite(Number(w))) syncThinking(); else setThinking({ worlds: Number(w) }); });
-    $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
-    $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
-    for (const box of  (document.querySelectorAll('[data-knowledge]'))) {
-      box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
-      box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
-    }
-    syncThinking(); syncKnowledge();
-    $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
-    syncStyle();
-    $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
-    $('setPersonas').addEventListener('change', () => { resetBotSettings(); setPersonas($('setPersonas').checked); });
-    setPersonas(app.usePersonas, true);
+    $('setSeats').innerHTML = [1, 2, HUMAN].map(seatGroupHTML).join('');
+    $('setSeats').addEventListener('change', ( ev) => {
+      const el =  (ev.target);
+      if (!el || !el.hasAttribute || !el.hasAttribute('data-field')) return;
+      const v = String(el.value).trim(), f = el.getAttribute('data-field');
+      if (f === 'worlds' && v !== '' && !isFinite(Number(v))) { syncSeats(); return; }
+      setSeatField(Number(el.getAttribute('data-seat')), f, v);
+    });
+    syncSeats();
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
-    $('setSeatPersona').append(...PERSONAS.map(x => new Option(x.name + ' (' + x.tier + ', ' + x.courage + ')', x.id)));
-    $('setSeatPersona').value = app.seatPersona;
-    $('setSeatPersona').addEventListener('change', () => setSeatPersona($('setSeatPersona').value));
-    $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     Logger.listeners.push(line => {
       const pre = $('setLog');
       if (pre.parentElement.hidden) return;
@@ -6157,7 +6629,7 @@ const App = (() => {
   }
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, personasOn, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
 })();
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -6413,7 +6885,8 @@ const SelfTest = (() => {
           check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null);
         }
         eq('thinking settings clamp to their ranges', AI.config(full, { thinking: { worlds: 999, playoutSkill: -1 } }).thinking, { worlds: 200, playoutSkill: 0 });
-        eq('bot style defaults: normal courage, real table off, auto Showdown pick', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal', leadPick: 'auto' });
+        eq('bot style defaults: normal courage, real table off, auto Showdown pick, no habits', AI.STYLE_DEFAULTS,
+          { realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0, feint: 0, wariness: 0 });
         {
           const cfg = AI.config(full, { style: { realTable: true } });
           const st = revealState(11, 0, '9H');
@@ -6473,7 +6946,7 @@ const SelfTest = (() => {
       check('every wave seats two different known personalities', WAVES.every(w => PERSONA_BY_ID[w.west] && PERSONA_BY_ID[w.east] && w.west !== w.east));
       check('every personality plays at least one wave', PERSONAS.every(x => WAVES.some(w => w.west === x.id || w.east === x.id)));
       check('no table repeats', new Set(WAVES.map(w => w.west + '/' + w.east)).size === WAVES.length);
-      check('waves go from easiest to hardest', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin));
+      check('waves go from easiest to hardest, within the measurement margin', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin + 8) && WAVES[0].youWin > WAVES[WAVES.length - 1].youWin + 30);
       check('a rematch is an earlier wave with the seats swapped', WAVES.filter(w => w.rematchOf).every(w => {
         const r = WAVES[w.rematchOf - 1];
         return r && r.n < w.n && r.west === w.east && r.east === w.west;
@@ -6570,8 +7043,13 @@ const SelfTest = (() => {
       eq('a save cannot open a locked wave', createSlots(store).get('waves').wave.open, Waves.isUnlocked(18));
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null },
         ai: { personas: 1, panel: { thinking: { worlds: 9999 }, knowledge: { bids: 'yes' }, style: { courage: evil } }, changed: true } } }));
-      eq('saved bot settings are cleaned', createSlots(store).get('free').ai,
-        { personas: false, panel: { thinking: Object.assign({}, AI.THINKING_DEFAULTS, { worlds: 200 }), knowledge: AI.KNOWLEDGE_DEFAULTS, style: AI.STYLE_DEFAULTS }, changed: true });
+      const legacyTune = AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 200 } }));
+      eq('an old save\'s panel settings become West\'s and East\'s tunes, cleaned', createSlots(store).get('free').tunes, [null, legacyTune, legacyTune]);
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null },
+        tunes: [{ worlds: 9999, courage: evil, junk: 1 }, 'x', { knowledge: { bids: 'yes', voids: false } }] } }));
+      eq('saved tunes are cleaned', createSlots(store).get('free').tunes, [{ worlds: 200 }, null, { knowledge: { voids: false } }]);
+      store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, WAVES[0].west, WAVES[0].east], wave: { n: 1, open: true }, tunes: [null, { courage: 'bold' }, null] } }));
+      eq('a Waves game with a tuned bot is dropped', createSlots(store).get('waves'), null);
       check('no saved HTML ran', !( (window)).kctSelfTestHit);
       const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
       check('a save to blocked storage reports the failure', blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } }) === false);
@@ -6684,7 +7162,7 @@ const SelfTest = (() => {
       eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
       const junk = JSON.stringify([null, 5, { code: 7 }, { code: '<b>x</b>' }, { code: 'KCT2-AA', west: '<i>', wave: 99, winner: 1, scores: [1, 2], extra: 1 }]);
       eq('saved replay entries are cleaned', createReplays({ get: () => junk, set: () => {} }).list(),
-        [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, at: null }]);
+        [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, tuned: false, at: null }]);
       let longErr = '';
       try { Replay.decode('KCT2-' + Base64url.encode([2, 1, 8, 255, 255, 255, 255, 255, 255, 255, 127])); } catch (e) { longErr = e instanceof Error ? e.message : String(e); }
       check('a number past 2^53 in a code is refused', /too long/.test(longErr), longErr);
@@ -6702,11 +7180,12 @@ const SelfTest = (() => {
       const wc = Replay.encode(worst);
       check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
       eq('20 showdown hands decode the same', Replay.decode(wc), worst);
-      const am = App.aiMeta(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 37, playoutSkill: 0.55 }, knowledge: { bids: true, voids: false } }));
-      eq('AI META holds the full settings', [am['ai.tier'], am['ai.hunches'], am['ai.brainFarts'], am['ai.know.bids'], am['ai.know.voids'], Object.keys(am).filter(k => k.startsWith('ai.know.')).length], ['custom', 37, 45, true, false, Object.keys(AI.KNOWLEDGE_DEFAULTS).length]);
+      const full = JSON.stringify(AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 137, playoutSkill: 0.55 }, style: { courage: 'cautious', leadPick: 'impulsive' } })));
+      const am = { 'ai.tune0': full, 'ai.tune1': full, 'ai.tune2': full };
+      eq('a full tune sets every field', Object.keys(JSON.parse(full)).sort(), ['courage', 'credulity', 'feint', 'kingHabit', 'knowledge', 'leadHabit', 'leadPick', 'playoutSkill', 'realTable', 'slack', 'voidHabit', 'wariness', 'winHabit', 'worlds']);
       const worstAll = Object.assign({}, worst, { meta: am });
       const wa = Replay.encode(worstAll);
-      check('20 showdown hands with full AI META fit in 3000 chars', wa.length <= 3000, wa.length + ' chars');
+      check('20 showdown hands with three full tunes in META fit in 4000 chars', wa.length <= 4000, wa.length + ' chars');
       eq('full AI META decodes the same', Replay.decode(wa).meta, am);
     });
     safeRun('backup', () => {
@@ -6962,10 +7441,12 @@ const SelfTest = (() => {
       const panel = typeof document !== 'undefined' && document.getElementById('settingsPanel');
       if (panel) {
         const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
-        eq('every setting sits in a row with a name', unnamed.map(c => c.id || c.getAttribute('data-knowledge')), []);
-        eq('six AI knowledge switches', panel.querySelectorAll('input[data-knowledge]').length, 6);
+        eq('every setting sits in a row with a name', unnamed.map(c => c.id), []);
+        eq('each seat (yours, West, East) has who sits, 3 skill, 6 style, 5 habit and 6 knowledge controls',
+          [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [21, 21, 21]);
+        check('each seat is a collapsed group of collapsed groups', [0, 1, 2].every(p => { const d = document.getElementById('setSeat' + p); return !!d && d.tagName === 'DETAILS' && d.querySelectorAll('details.seat-sub').length === 4; }));
         const tabs = [...panel.querySelectorAll('.set-tab')];
-        check('four settings tabs, each with its pane', tabs.length === 4 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
+        check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
       }
@@ -7030,10 +7511,9 @@ const SelfTest = (() => {
       check('Polite Play off: trick circles only count', !circles(false).includes('data-action') && circles(false).includes('tricks won'));
     });
     safeRun('app logic', () => {
-      const A = App, mk = ( x) => Object.assign({ mode: null, state: null, usePersonas: true, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
+      const A = App, mk = ( x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
       const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
       eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
-      eq('personasOn: the switch in Free play, always in a wave', [A.personasOn(mk({ usePersonas: false })), A.personasOn(mk({ usePersonas: true })), A.personasOn(mk({ usePersonas: false, wave: { n: 3 } }))], [false, true, true]);
       eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '' }, { setMediatorNow: '', setJokerNow: '' }]);
       const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S' }, houseRules: { mediatorLead: true, jokerFlip: 'random' } }));
       eq('house notes: each setting that differs from the game names the game\'s value', notes, {
@@ -7104,13 +7584,18 @@ const SelfTest = (() => {
           if (c.thinking.worlds > own.thinking.worlds || c.thinking.playoutSkill > own.thinking.playoutSkill) why.push('stronger than its own');
           if (Object.keys(own.knowledge).some(key => c.knowledge[key] && !own.knowledge[key])) why.push('knows more than its own');
           if (c.thinking.worlds < 1 || c.thinking.playoutSkill < 0.4 - 1e-9) why.push('below the floor');
-          if (JSON.stringify(c.style) !== JSON.stringify(own.style) || c.persona !== true) why.push('style changed');
+          const fade = ( st) => Object.assign({}, st, { feint: 0, wariness: 0, credulity: 0, slack: 0 });
+          if (JSON.stringify(fade(c.style)) !== JSON.stringify(fade(own.style)) || c.persona !== true) why.push('style changed');
+          if (c.style.feint > own.style.feint + 1e-12 || c.style.wariness > own.style.wariness + 1e-12 || c.style.feint > prev.style.feint + 1e-12 || c.style.wariness > prev.style.wariness + 1e-12) why.push('feints or wariness grew');
+          if (c.style.credulity < prev.style.credulity - 1e-12 || c.style.slack < prev.style.slack - 1e-12) why.push('belief or habit strength fell');
           if (c.thinking.worlds > prev.thinking.worlds || c.thinking.playoutSkill > prev.thinking.playoutSkill || Object.keys(c.knowledge).some(key => c.knowledge[key] && !prev.knowledge[key])) why.push('stronger than at less easing');
           if (why.length && bad.length < 5) bad.push(x.id + ' at ' + k / 20 + ': ' + why.join(', '));
           prev = c;
         }
       }
-      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes, and more easing never helps', bad, []);
+      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes (only feints and wariness fade, belief and habit strength rise), and more easing never helps', bad, []);
+      eq('at the floor a bot neither feints nor grows wary, believes fully and follows its habits at full strength',
+        PERSONAS.filter(x => { const c = DY.ease(x, 1).style; return c.feint !== 0 || c.wariness !== 0 || c.credulity !== 1 || Math.abs(c.slack - AI.MAX_SLACK) > 1e-12; }).map(x => x.id), []);
       eq('easing 0 is each bot\'s own personality', PERSONAS.filter(x => JSON.stringify(DY.ease(x, 0)) !== JSON.stringify(AI.personaConfig(x))).map(x => x.id), []);
       eq('easing 1 is the floor for every bot: 1 hunch, no knowledge, 60% brain farts',
         PERSONAS.filter(x => { const c = DY.ease(x, 1); return c.thinking.worlds !== 1 || Math.abs(c.thinking.playoutSkill - 0.4) > 1e-9 || JSON.stringify(c.knowledge) !== JSON.stringify(off); }).map(x => x.id), []);
@@ -7203,13 +7688,121 @@ const SelfTest = (() => {
       const back = Replay.decode(code);
       eq('a replay code keeps the Dynamic mode (number 3) and its META', [back.mode, back.meta['dyn.ease'], DY.cleanSnapshot(JSON.parse(back.meta['dyn.snap']))], ['dynamic', 120, blank]);
       const A = App, dt = DY.tracker(Object.assign({}, blank, { mark: true }));
-      const mk = ( x) => Object.assign({ mode: 'dynamic', state: { gameOver: false }, usePersonas: false, wave: { n: null }, ui: { personas: ['kit', 'vex', 'gus'] }, ai: AI.DEFAULT_CONFIG, dyn: dt }, x);
+      const tune = { courage: 'timid', worlds: 2 };
+      const mk = ( x) => Object.assign({ mode: 'dynamic', state: { gameOver: false }, wave: { n: null }, ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, null, null] }, dyn: dt }, x);
       eq('Dynamic: both bots use the same easing amount, from their own personalities', [A.botConfig(1, mk({})).cfg, A.botConfig(2, mk({})).cfg], [DY.ease(PERSONA_BY_ID.vex, 1), DY.ease(PERSONA_BY_ID.gus, 1)]);
       eq('Dynamic: the AI in your seat plays its own personality', A.botConfig(0, mk({})).cfg, AI.personaConfig(PERSONA_BY_ID.kit));
-      eq('Dynamic always uses personalities', A.personasOn(mk({})), true);
-      eq('Free play and Waves: the bots play exactly as before', [A.botConfig(1, mk({ mode: 'free', usePersonas: true })).cfg, A.botConfig(1, mk({ mode: 'waves', wave: { n: 3 } })).cfg, A.botConfig(1, mk({ mode: 'free' })).cfg],
-        [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex), AI.DEFAULT_CONFIG]);
+      eq('Dynamic: a tune never applies to an eased bot', A.botConfig(1, mk({ ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, tune, null] } })).cfg, DY.ease(PERSONA_BY_ID.vex, 1));
+      eq('Free play and Waves: an untuned bot plays its own personality', [A.botConfig(1, mk({ mode: 'free' })).cfg, A.botConfig(1, mk({ mode: 'waves', wave: { n: 3 } })).cfg],
+        [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex)]);
+      eq('Free play: a tuned bot plays its personality with the tune over it', A.botConfig(1, mk({ mode: 'free', ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, tune, null] } })).cfg, AI.tunedConfig(PERSONA_BY_ID.vex, tune));
       eq('read pace: Sharks notice soonest, Novices last', ['vex', 'ace', 'gus', 'lou'].map(id => PERSONA_BY_ID[id].readPace), [2, 3, 4, 6]);
+      const sharks = ( t) => t.filter(id => PERSONA_BY_ID[id].tier === 'shark').length;
+      const most = ( e0) => Math.max(...Array.from({ length: 300 }, (_, k) => sharks(A.dynamicTable(k * 7919, e0, []))));
+      eq('Dynamic opponents: no Shark for a new player, one at most, then any pair', [most(0.8), most(0.4), most(0)], [0, 1, 2]);
+      eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
+      const seat = A.dynamicTable(12345, 0.8, []);
+      check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
+      const base = { h: 60, share: { me: 10, all: 30 }, calls: { n: 10, failed: 4 }, bids: { n: 20, errors: 0 }, mark: false };
+      eq('a snapshot from before slips is kept as it is', DY.cleanSnapshot(base), base);
+      eq('a snapshot with more slips than plays is refused', DY.cleanSnapshot(Object.assign({}, base, { plays: { n: 5, slips: 6 } })), null);
+      const at = ( rate) => DY.slowTarget(Object.assign({}, base, { plays: { n: 600, slips: 600 * rate } }));
+      check('slips at the normal rate change nothing; more slips ease more, up to the weight',
+        Math.abs(at(DY.TUNE.SLIP_NORMAL) - DY.slowTarget(base)) < 1e-9 && at(0.05) > at(DY.TUNE.SLIP_NORMAL) && at(0.5) <= at(0.05) + DY.TUNE.SLIP_WEIGHT + 1e-9, [DY.slowTarget(base), at(0.05), at(0.5)].join());
+      const pg = DY.addGame(DY.blankProfile(), { hands: [], marked: false, plays: { n: 50, slips: 5 } }, 'free');
+      check('a game adds its plays as decayed samples, its slips in proportion', pg.plays.n > 39 && pg.plays.n < 50 && Math.abs(pg.plays.slips / pg.plays.n - 0.1) < 1e-9, JSON.stringify(pg.plays));
+    });
+    safeRun('seats', () => {
+      const vex = PERSONA_BY_ID.vex;
+      eq('a tune keeps only valid fields, clamped', AI.cleanTune({ courage: 'reckless', realTable: 1, leadPick: 'shrewd', worlds: 999.4, playoutSkill: -2, knowledge: { bids: false, voids: 'yes', x: true }, extra: 1 }),
+        { leadPick: 'shrewd', worlds: 200, playoutSkill: 0, knowledge: { bids: false } });
+      eq('a tune with no valid field is none', [AI.cleanTune({}), AI.cleanTune(null), AI.cleanTune({ knowledge: {} })], [null, null, null]);
+      eq('no tune: the personality as it is', AI.tunedConfig(vex, null), AI.personaConfig(vex));
+      const c = AI.tunedConfig(vex, { courage: 'timid', worlds: 4, knowledge: { bids: false } }), own = AI.personaConfig(vex);
+      eq('a tune changes only its fields', [c.style.courage, c.thinking.worlds, c.knowledge.bids, c.style.realTable, c.thinking.playoutSkill, c.knowledge.voids, c.persona],
+        ['timid', 4, false, own.style.realTable, own.thinking.playoutSkill, own.knowledge.voids, true]);
+      const novice = AI.withSkillTier(AI.DEFAULT_CONFIG, 'novice'), full = AI.tunedConfig(vex, AI.tuneOf(novice));
+      eq('a full tune plays exactly those settings', [full.thinking, full.knowledge, full.style], [novice.thinking, novice.knowledge, novice.style]);
+      eq('a tune keeps valid habits, slack clamped to 5%', AI.cleanTune({ leadHabit: 'trump', winHabit: 'sneaky', kingHabit: 'late', slack: 0.2 }), { leadHabit: 'trump', kingHabit: 'late', slack: AI.MAX_SLACK });
+      eq('each personality\'s habits are valid', PERSONAS.filter(x => { const st = AI.personaConfig(x).style, h = x.habits || {}; return (h.lead || 'none') !== st.leadHabit || (h.win || 'none') !== st.winHabit || (h.void || 'none') !== st.voidHabit || (h.kings || 'none') !== st.kingHabit || (h.slack || 0) !== st.slack; }).map(x => x.id), []);
+      const plain = AI.tunedConfig(vex, { leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, feint: 0 });
+      const loose = AI.tunedConfig(vex, { winHabit: 'big', leadHabit: 'trump', voidHabit: 'ruff', kingHabit: 'early', slack: 0.05, worlds: 4 });
+      const g = Engine.createGame(777, ['A', 'B', 'C']);
+      let n = 0, same = 0, habit = 0, within = 0;
+      for (let k = 0; !g.gameOver && k < 4000; k++) {
+        const act = Engine.actors(g);
+        if (!act.length) { Engine.dispatch(g, Engine.systemAction(g)); continue; }
+        const p = act[0], v = buildView(g, p);
+        if (g.phase === Engine.P.TRICK_PLAY && n < 40) {
+          n++;
+          const noHabit = AI.config(plain, { thinking: { worlds: 4 } });
+          if (JSON.stringify(AI.decide(v, noHabit)) === JSON.stringify(AI.decide(v, AI.config(AI.personaConfig(PERSONA_BY_ID.mei), { thinking: { worlds: 4 }, knowledge: noHabit.knowledge, style: { courage: noHabit.style.courage, leadPick: noHabit.style.leadPick, credulity: noHabit.style.credulity, feint: 0, wariness: noHabit.style.wariness } })))) same++;
+          const tr = { how: '', options: [] }, a = AI.decide(v, loose, tr);
+          if (tr.how === 'habit') {
+            habit++;
+            const best = Math.max(...tr.options.map(o => o.value)), mine = tr.options.find(o => o.choice === a.card);
+            if (mine && mine.value >= best - 0.05 - 1e-9) within++;
+          }
+        }
+        Engine.dispatch(g, AI.decide(v, AI.personaConfig(PERSONA_BY_ID.lou)));
+      }
+      eq('no habits: the same card as a bot without them', same, n);
+      check('habits pick some cards, each within slack of the best', habit > 0 && within === habit, habit + ' habit picks, ' + within + ' within slack');
+      eq('a tune keeps credulity, clamped to 0..1', [AI.cleanTune({ credulity: 3 }), AI.cleanTune({ credulity: -1 })], [{ credulity: 1 }, { credulity: 0 }]);
+      const rv = { seat: 0, trump: 'S', showdown: null, phase: Engine.P.TRICK_PLAY, playLog: [], trickWinners: [], trick: { leader: 1, leadSuit: 'H', plays: [{ player: 1, card: 'KH' }] } };
+      const wLong = { hands: [[], ['9H', '10H', 'QH', '7C'], []] }, wShort = { hands: [[], ['9C', '10C', 'QC', '7C'], []] }, wAce = { hands: [[], ['AH', '9C', 'QC', '7C'], []] };
+      const believer = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 1 } }), doubter = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 0 } });
+      check('a lead reads as length in its suit', AI.playWeight(rv, wLong, believer) > AI.playWeight(rv, wShort, believer));
+      check('a King led reads as no Ace of its suit', AI.playWeight(rv, wAce, believer) < AI.playWeight(rv, { hands: [[], ['9H', '9C', 'QC', '7C'], []] }, believer));
+      eq('credulity 0 reads nothing', [AI.playWeight(rv, wLong, doubter), AI.playWeight(rv, wAce, doubter)], [1, 1]);
+      const caughtV = Object.assign({}, rv, { playLog: [{ player: 1, card: 'KH' }, { player: 2, card: '9H' }, { player: 0, card: 'QH' }], trickWinners: [1],
+        trick: { leader: 1, leadSuit: 'H', plays: [{ player: 1, card: 'AH' }] } });
+      eq('a later Ace catches the King-led read', AI.readsOf(caughtV).caught, [0, 1, 0]);
+      const wary = AI.config(believer, { style: { wariness: 1 } }), trusting = AI.config(believer, { style: { wariness: 0 } });
+      eq('a fully wary bot stops reading a player it caught', AI.playWeight(caughtV, wLong, wary), 1);
+      check('a trusting bot keeps reading a player it caught', AI.playWeight(caughtV, wLong, trusting) > 1);
+      check('a half believer reads less than a full one', AI.playWeight(rv, wLong, AI.config(believer, { style: { credulity: 0.5 } })) < AI.playWeight(rv, wLong, believer));
+      const st = createStats((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
+      st.record({ mode: 'free', west: 'vex', east: 'doc', won: true, tuned: [true, false] });
+      st.record({ mode: 'free', west: 'vex', east: 'doc', won: false });
+      const r = st.get();
+      eq('results: a tuned bot\'s game counts for the mode and the other bot, not for it or the table',
+        [r.modes.free, r.opponents.vex, r.opponents.doc, r.modeOpponents.free.vex, r.tables['vex/doc']],
+        [{ played: 2, won: 1 }, { played: 1, won: 0 }, { played: 2, won: 1 }, { played: 1, won: 0 }, { played: 1, won: 0 }]);
+    });
+    safeRun('habits', () => {
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const g = Engine.createGame(4242, ['A', 'B', 'C']);
+      let traced = 0, same = 0;
+      for (let n = 0; !g.gameOver && n < 5000; n++) {
+        const act = Engine.actors(g);
+        let a = null;
+        if (act.length) {
+          const v = buildView(g, act[0]), trace = { how: '', options: [] };
+          a = AI.decide(v, cfgs[act[0]], trace);
+          traced++;
+          if (JSON.stringify(AI.decide(v, cfgs[act[0]])) === JSON.stringify(a) && ['plan', 'forced', 'rule', 'habit'].includes(trace.how)) same++;
+        } else a = Engine.systemAction(g);
+        if (!a || !Engine.dispatch(g, a).ok) break;
+      }
+      check('a bot game finishes', g.gameOver);
+      eq('a trace never changes the decision, and names how it was made', same, traced);
+      const rec = Replay.fromState(g), seats = Habits.count(rec);
+      const tricks = seats.reduce((t, c) => t + c.leads, 0);
+      const plays = rec.decisions.filter(d => d.type === 'PLAY').length;
+      check('every main-hand play is a lead, a follow or a void play, and every play counts at most once',
+        seats.every(c => c.leads + c.follows + c.voids > 0) && seats.reduce((t, c) => t + c.leads + c.follows + c.voids, 0) <= plays, JSON.stringify(seats));
+      check('each trick has one lead', tricks > 0 && seats.reduce((t, c) => t + c.follows + c.voids, 0) === 2 * tricks, 'leads ' + tricks);
+      check('slips are a few of the plays', seats.every(c => c.kingUnder + c.wasteWin + c.deadTrump <= c.leads + c.follows + c.voids), JSON.stringify(seats));
+      check('each habit is counted only when it could come up', seats.every(c => c.wentFor + c.heldBack === c.canWin && c.winCheap <= c.wentFor && c.ruffed <= c.canRuff &&
+        c.discards <= c.voids && c.leadTop <= c.leadMulti && c.call1 <= c.bid1 && c.call2 <= c.bid2 && c.kingsWon <= c.kings), JSON.stringify(seats));
+      eq('rates with no chance are null', Object.values(Habits.rates(Habits.blank())).every(x => x === null), true);
+      const ex = Habits.explain(rec, p => cfgs[p]);
+      eq('explain makes every decision again, the same as in the game', [ex.length, ex.filter(x => x.match).length], [traced, traced]);
+      const pl = ex.find(x => x.how === 'plan' && x.phase === Engine.P.TRICK_PLAY);
+      check('a planned card play lists its options, best first, with the chosen one among them',
+        !!pl && pl.options.length > 1 && pl.options.every((o, i) => i === 0 || o.value <= pl.options[i - 1].value) && pl.options.some(o => o.choice === pl.chosen), JSON.stringify(pl));
+      eq('explain skips a seat with no settings (a person)', Habits.explain(rec, p => (p === 0 ? null : cfgs[p])).some(x => x.seat === 0), false);
     });
     safeRun('random games', () => {
       const n = o.randomGames || 6, flips = [undefined, ...Engine.JOKER_FLIPS];
@@ -7346,7 +7939,7 @@ const PERSONA_ART = Object.freeze({
   zen: 'data:image/webp;base64,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'
 });
 const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23tcLZt2+ov1GHbtm3b2nTY5mnbtm3btn3Y9unzHB8qqVQty7qmtePbGleyZK1EUIAk2bRt7Wfbtm3btm3btr5t2//Ztm3b5jnnIicgPCVIdhoymq/ZzD6Oc57rPOAFLM76Q46xj818xWgakq0toAwj+Z59vEDhkX18z4ixx0hMbaazlmcQOOgzjVok9g9pacXb7CECwWHAW7QkrU+IRxP+Igzx/RmNJ74gPwu5aUqnLCCXD6jOSqgeUN51NGOHqWcDdR1GXNpywJzIftrUjqIiR82ZHKKKi8jIj8TCoTN+ILNriM8YnpljB4weOoWanDEHc4o67iA7f8HR/ElmR1CUi+bsOHICA3ltDu8wQB+p+d8cPyGZMspy3ZwfB6poQ9g8SIj2ihhGrHlxxigtNR+bN3lfB0lYax7lr44C0nHQvMoB0osjOfvNs+zrCyMeW8y7bJqIIg6/mYf5uSuJD8zLU0FMNk8HMdQ1b1NPCJm446/ZUARx2GhKP+/ZLnCifWxuZZV1Rhfo95QYG7oSmG0aH/Zhc1aTarE75yMGGozJAqhAjIJfO1Ys+Di/oIAwFUsjFVdM/I26qRLn/ZU44zKpy+I/k367SywnVeroUneRZvxTEq1N+pesIVV69XnSjNalkJDr0l4sinwZaf26DGab7L9blBJ6lifJslkJZCck6267SYndw0hW1SmOpSb673aXEtz/O1E2LIzWJnteSvRUllVFcV7WK0XhPVmcK6gy0Z+0DGnhK0RZVQyHRD1qPVH8Bh4lir2F0NhEP0tU2BFl1C6CraJusyINK7mXqF4B1Ibo80SVlxFlVG6NtaL+aFk6er8niqUtUYZYUceKSieiZpRrhdkm+VEr0LKCqSSbtcIlUR+TUtsXxYUWqA3Ri/ScR5RROR9fiPq/NejZ2EgUH+QiPvdE/URK8VgUd4d5aA3Rb6DJRFmVhx9kXUvTs8ga5+GqrEWa+rK4moPcJvtQmmayrNOM3sK2p2kgjN7N+EPYmjRNhY2b8aRd4QpxGlHahG9P00CY1Y0YLW2maSat22gsbZGmqbRxI7ZKG2oaSus14q60V9LUk8bdBqSG9K/SNJJm/QyVxf3LmvSsYSSuztBbnC3SMzXxdM4wW97H6OnLm2Um8h61Ai0rmMqbZPhDnh1Ly8TkjzKsVfB7WmoF/Qx7FdgiHVNT2MlwVMMtlqVhJbfSEDKc1WCX0XAt01hnuKviXn151X1UcDdDSIW9m7xPM5WVInsWaR1TxF0l/zNP1hn6Srib4aoS+7vdSdrV35lSrmZqLXa7zcjZ1B1Ma51hrxp70lmkDMemtpNhrR6zl5HxUqa4n2GpJvu8VZS3hh4080dmpMrucpnllDO6xN1MNV9kWKzL7K8WlDHnRqacxRl6azP7heMUdaxfM/WDDLX1mT3sI7qraaU758MG5kAqZ8jsgmzv2S5won1sbmWVdUYXeI4vgyNJnQk8dYSTuRsasrd9YWsjfmhfxo2Y3L6ERpRuX+pGxOFRu8KT0JSl7cqwGaPblW4zSrcrdTPi8Kg94UnIydL2ZJiH3u3JIA/JeKHrRl/3Aa/2dOc6zgF2tY2NrCEVq4ntqj5OGL3aB3zdWBcvSZon8IOaH3urS9WrSZXYrWdvM1QzDrmpreIO7zFnTVHkdN573UMFtfMF7on7s+fZRRQ9rP9KHJdDi3wg63YvtbOUwj1MbiGL2a1QWtJPnCCqPdEPCSKW3K0E1or5koOkVB/sy8SwNAlapraQL9pFVD/8JiFUbi2wVcLvDaITj1JL6CVBgTQu7x4XiM60urxxEYEDZX3PhqJDhz9TFoeSoFA6l/RKy4pOXcHblETrYojHuTIeMyfl3O6sDM6Hgulcwh12Fh28q/uUUBUV2FjYTTYVnbyNGxXG2lA4hQgV9AvriY5e388UVFGwuMDsYgYri85exU8UMwslkpDrRfze6qLD13WjIvokLCPQuoC7bCzl9G08oIAqlMvSlh6zi+j4/f1dSywNJZOKK60cLeX8M7TSqcoKVCCc7w2iBy0fEconQfmMzvVzy/PBCn4mVzcJJPJfjkdsIeXFepxjGERW3Gl2uujJJc06lYxACV43+qroze9qxDOKB6m0JabBTvxxoAY96gW5jM58TPRoP9MNkvnA7J8255Mt/ANsmgSiicM/9krRq29k/NeVFUj8n92b8Mum/rNnEKR/OuuWEb9sEflSliSQf0X6vR77ZK+nl6UNGs9PfsQ1fxx2oxN0JnFO3e+Lkw8ncYLapeV+OOu/oPnShWvGum+9mGES6L62wn4PXTd6erGg3c5csTyXTZZWWnDgtd02j7grDJLAjVdmPPKyq0ZVcOaVY7cJuWg8Ci69KNHZ/67BNdXZ/4ckcOzTSxx+3S1HX3x6ieDg0TYhd4yvGhjcfHaCiz/Z/o0bRhd/2kkCd185e49n+nZ/dsWc4Phrhhx4T9UyDr11db8k8ODTayys3zqsZavw/MZe8OUNnU45sEGMPDvl0LXdksCrx8e7YuqRl1clqTrmwpUTQhL497IkVw1cWnPA/UpCtf+DxbXXDBkEf1/b7ex/jz+976PNo4qzMD33rxs6JUFb+KyqV405//sztp5w/IjLB97f7fnW4fVjYqw6vcmRV044PhrPnlU1PDUIAA==';
- (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
