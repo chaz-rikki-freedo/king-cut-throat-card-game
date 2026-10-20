@@ -133,7 +133,7 @@ Dynamic is a third mode, next to Free play and Waves, in the app since 2026-10-1
 
 - **It only ever makes the game easier.** The bots never play harder than normal, and never punish a new player.
 - **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game.
-- **It eases mainly by lowering hunches,** following an easing ladder that was measured row by row, down to a floor at about Novice strength with 1 hunch. Style never changes, so each personality still plays like itself.
+- **It eases mainly by lowering hunches,** following an easing ladder that was measured row by row, down to a floor at about Novice strength with 1 hunch. Style never changes (only feints and wariness fade, since 2026-10-20), so each personality still plays like itself.
 - **It spots gross mistakes within a game,** using the fast signals above. It judges finer skill with the slow ones, from the player's record across games plus the hands of the current game.
 - **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
 - **The game's own hand value stays as it is.** Dynamic's reads and review use the fitted estimate instead.
@@ -147,10 +147,77 @@ The record left only tuning open. The build uses these values, in `Dynamic.TUNE`
 | Small-sample priors | 10 points, 5 calls, 10 bids | Pull a short record toward normal play: an even score share, 45% failed calls, no bid errors. |
 | Failed calls | +0.25 at most | Added to the slow target from 45% failed calls, in full at 80%. |
 | Bid errors | +0.25 at most | Added to the slow target, in full at 25% of bids. |
+| Card-play slips | normal 2%, full at +6%, weight +0.25, prior 60 plays | Added in step 4c (2026-10-20). A slip is a King thrown under the winning card, a last card winning with more than it takes, or a dead trump, each while another card could go. 2% is about the Casual bots' rate (`node tests/habits.js`). |
 | Bid-error cut-offs | below 1.2, at 4.2 or more | A call on a fitted hand value below 1.2, or a pass on one of 4.2 or more. |
 | Read pace | Shark 2, Club 3, Casual 4, Novice 6 | Weak visible hands a bot sees before its read line (see [banter.md](banter.md)). |
 
 `node tests/dynamic.js rates 80 4` measured the fast path in the build: it caught a new player who throws away their best cards within 3 visible hands in 90.9% of games, and fired on at most 1.4% of 3-hand windows for ladder rows 4, 6 and 8.
+
+## Habit report (2026-10-20)
+
+The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.
+
+**The plan, by mode:**
+
+- **Free play is the forge.** It will expose every setting for each seat, so a table can be tuned precisely.
+- **Dynamic is the marquee mode.** It will take only the settings proven in Free play, and it keeps its rules: never harder than normal, never adapting to your bluffs.
+- **Waves stays the measured ladder.** It is measured again whenever the bots change.
+
+**The tools.** `KCT.Habits` counts each seat's habits from a finished game: how it leads, follows, trumps in, throws off when void, plays its Kings and bids. `KCT.App.habits()` reports on the games in Your profile, and `KCT.App.explain(n)` replays each bot decision of a game with the options the bot weighed. `tests/habits.js` prints the report for all ten bots.
+
+**Baseline:** `node tests/habits.js 1 4` (120 games). Spread is the highest bot rate minus the lowest.
+
+| Habit | Lowest | Highest | Spread |
+|---|---|---|---|
+| Leads from its longest suit | 71% | 75% | 4 |
+| Wins with the cheapest winner | 87% | 92% | 4 |
+| Void: throws from the shortest side suit | 75% | 79% | 4 |
+| Tries to win when it can | 91% | 96% | 6 |
+| Leads trump | 33% | 41% | 9 |
+| Second hand plays its lowest | 48% | 63% | 15 |
+| Names trump in round 2 | 65% | 100% | 35 |
+| Calls in round 1 | 13% | 63% | 50 |
+
+**What it shows:**
+
+1. **The bots differ in their bids, but hardly in their card play.** Bid courage and Real table only act on the bids. Card play has no style setting, so most card habits spread 4 to 15 points across all ten bots.
+2. **No bot plays a deliberate wrong card.** All ten try to win a trick they can win more than 90% of the time, and most often with the cheapest card that wins.
+3. **Ties go to the weakest card.** `KCT.App.explain(n)` shows options with the same value, and every bot then plays the weakest one. That is one shared habit, not ten.
+
+### Habits, reads and feints (steps 3a to 3c, 2026-10-20)
+
+Each step was measured with `node tests/habits.js 1 4` and `node tests/roundrobin.js 4 4 1` (480 games, the same seeds each time). Each bot plays 144 games, so a change under about 8 points is within noise.
+
+- **3a, habits:** each bot likes some plays when its best cards are about equal, within its habit strength (0 to 5% win chance per card).
+- **3b, reads:** each bot reads the other players' public plays (a lead means length, a King led means no Ace, a throw-off means short), believed in proportion to its credulity.
+- **3c, feints and wariness:** bots play against type, within their habit strength, and a caught feint lowers belief in that player for the rest of the hand.
+
+| Habit | Baseline spread | After 3c |
+|---|---|---|
+| Leads from the longest suit | 4 | 29 |
+| Leads from the shortest suit | 4 | 28 |
+| Leads trump | 9 | 30 |
+| Wins with the cheapest winner | 4 | 25 |
+| Second hand plays its lowest | 15 | 31 |
+| Trumps in when void | 11 | 38 |
+
+| Group | Step 2 | 3a | 3b | 3c |
+|---|---|---|---|---|
+| Shark and Club | 42 to 51% | 42 to 54% | 40 to 56% | 40 to 58% |
+| Casual | 24 to 27% | 24 to 25% | 24 to 27% | 26 to 27% |
+| Novice | 13 to 17% | 13 to 19% | 15 to 16% | 13 to 17% |
+
+The three strength groups stay apart at every step. **Mei** climbed from 49% to 58%: Mei has no habits and no feints, so as the other bots take on small, chosen costs, the one bot that plays straight gains in their place. The game is zero-sum, so the pack is not stronger. Decision (2026-10-20): keep Mei as is, the counter who never feints.
+
+Next steps: the Dynamic upgrade, then Waves measured again.
+
+### Dynamic upgrade (step 4, decided 2026-10-20)
+
+These change decisions on issue #117:
+
+1. **Opponents by level (4a, done).** A new player meets no Shark; one at most while the starting easing is above 0.2. A pair that shares no bot with the last Dynamic game comes first.
+2. **Easing adds human-style weakness (4b, done).** The measured hunch ladder stays. On top of it, as the easing rises, the bots believe your plays more, follow their habits more plainly, and stop feinting and guarding.
+3. **Your card play (4c, done).** The post-game review also counts card-play slips, which feed the slow easing, and Your profile shows your card habits beside the bots'.
 
 ## Proposals
 

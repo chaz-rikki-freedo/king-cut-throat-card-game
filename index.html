@@ -140,6 +140,7 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .persona .pips{display:inline-flex;gap:0.25rem}
 .persona .pips b{width:1.125rem;height:0.375rem;border-radius:0.1875rem;background:rgba(255,255,255,.14)}
 .persona .pips b.on{background:var(--gold)}
+.persona .p-ways{grid-column:1 / -1;color:var(--ink)}
 .persona .habit{grid-column:1 / -1;justify-self:start;font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:0.125rem 0.5rem;border-radius:62.4375rem;border:1px solid rgba(255,255,255,.3);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.seat-face{transition:none}}
 /* Your profile: your results from this browser. Filter row, figure tiles, the Last games chart, sortable tables. */
@@ -418,6 +419,22 @@ body.set-open{overflow:hidden}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
 .settings .set-off{opacity:.45;pointer-events:none}
+/* Settings → Bots: one collapsed group per seat, with collapsed groups inside it. */
+.settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
+.settings .seat-set{border:1px solid var(--set-line);border-radius:0.75rem;background:var(--set-card)}
+.settings .seat-set > summary,.settings .seat-sub > summary{display:flex;align-items:baseline;gap:var(--s3);cursor:pointer;list-style:none;padding:var(--s3) var(--s4);min-height:2.75rem}
+.settings .seat-set > summary::-webkit-details-marker,.settings .seat-sub > summary::-webkit-details-marker{display:none}
+.settings .seat-set > summary::before,.settings .seat-sub > summary::before{content:'▸';color:var(--gold);transition:transform .15s}
+.settings .seat-set[open] > summary::before,.settings .seat-sub[open] > summary::before{transform:rotate(90deg)}
+.settings .seat-set > summary:focus-visible,.settings .seat-sub > summary:focus-visible{outline:0.125rem solid var(--gold);outline-offset:-0.125rem;border-radius:0.75rem}
+.settings .seat-sum{color:var(--set-hint);font-size:0.8125rem;margin-left:auto;text-align:right}
+.settings .seat-body{display:flex;flex-direction:column;gap:var(--s2);padding:0 var(--s3) var(--s3)}
+.settings .seat-body > .set-card{background:none}
+.settings .seat-sub{border:1px solid var(--set-line);border-radius:0.75rem}
+.settings .seat-sub > summary{font-weight:700;padding:var(--s2) var(--s4);min-height:2.5rem}
+.settings .seat-sub > .set-card{border:0;border-top:1px solid var(--set-line);border-radius:0 0 0.75rem 0.75rem;background:none}
+.settings .seat-set .set-row.changed .set-name::after{content:' •';color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.settings .seat-set > summary::before,.settings .seat-sub > summary::before{transition:none}}
 .settings .btn-sm{padding:0.375rem 0.75rem;font-size:0.8125rem;min-height:2.25rem;margin:0}
 .settings .set-tests{padding:var(--s3) 0;border-bottom:1px solid var(--set-line);font-size:0.8125rem}
 .settings .set-tests .t-sum{font-size:0.9375rem;font-weight:800;margin-bottom:0.375rem}
@@ -914,7 +931,6 @@ window.kctTheme = (() => {
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
       <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
-      <button class="set-tab" type="button" role="tab" id="setTabExpert" aria-controls="setPaneExpert" data-action="set-tab" data-tab="Expert">Expert</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
     <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close settings">✕<span class="set-close-word"> Close</span></button>
@@ -943,43 +959,15 @@ window.kctTheme = (() => {
       <h3 class="set-head">Your seat</h3>
       <div class="set-card" id="setSeat">
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <div class="set-row" id="setSeatPersonaRow"><span class="set-text"><label class="set-name" for="setSeatPersona">AI personality</label><span class="set-desc" id="setSeatPersonaDesc">Who the AI plays as in your seat. A game it plays clears no wave.</span></span><select id="setSeatPersona"><option value="">From the seed</option></select></div>
+        <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
       </div>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
-      <div class="set-card" id="setPersonaRow">
-        <label class="set-row"><span class="set-text"><span class="set-name">Personalities</span><span class="set-desc">Each bot plays its own style. Off: every bot uses the settings below. Switching resets them.</span></span><input class="sw" type="checkbox" id="setPersonas" checked></label>
-      </div>
-      <p class="k-hint set-note" id="setWaveNote" hidden>Waves and Dynamic always use their personalities, so these rows show the defaults. Your settings are kept and come back in Free play.</p>
-      <h3 class="set-head">Every bot</h3>
-      <div class="set-card" id="setBotFields">
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setTier">Skill</label><span class="set-desc">How well the bots play. Stronger bots think longer.</span></span>
-          <select id="setTier"><option value="novice">Novice</option><option value="casual">Casual</option><option value="club">Club player</option><option value="shark">Shark</option><option value="custom" disabled>Custom</option></select></div>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setCourage">Bid courage</label><span class="set-desc">How readily they call trump.</span></span>
-          <select id="setCourage"><option value="timid">Timid</option><option value="cautious">Cautious</option><option value="normal">Normal</option><option value="bold">Bold</option></select></div>
-        <label class="set-row"><span class="set-text"><span class="set-name">Real table</span><span class="set-desc">Human habits: pass more, pitch the lowest cards first.</span></span><input class="sw" type="checkbox" id="setRealTable"></label>
-      </div>
+      <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
+      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
+      <div class="seat-sets" id="setSeats"></div>
       <div class="set-card">
-        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Personalities on; Casual, Normal, no habits; Expert at its defaults.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
-      </div>
-    </section>
-    <section class="set-pane" id="setPaneExpert" role="tabpanel" aria-labelledby="setTabExpert" hidden>
-      <p class="k-hint set-note">Fine-tunes Skill for every bot. With Personalities on, it does not apply.</p>
-      <div id="setAdvanced">
-        <h3 class="set-head">AI thinking</h3>
-        <div class="set-card" id="setThinking">
-          <div class="set-row"><span class="set-text"><label class="set-name" for="setWorlds">Hunches</label><span class="set-desc">Guesses about the hidden cards per decision. Default 10.</span></span><input type="number" id="setWorlds" min="1" max="200" step="1" value="10"></div>
-          <div class="set-row"><span class="set-text"><label class="set-name" for="setSkill">Brain farts</label><span class="set-desc">How often a bot imagines a random card while it thinks. Default 30%.</span></span><span class="set-range"><input type="range" id="setSkill" min="0" max="100" step="10" value="30"><output id="setSkillOut">30%</output></span></div>
-        </div>
-        <h3 class="set-head">AI knowledge</h3>
-        <div class="set-card" id="setKnowledge">
-          <label class="set-row"><span class="set-text"><span class="set-name">Spots voids</span><span class="set-desc">Remembers who could not follow suit.</span></span><input class="sw" type="checkbox" data-knowledge="voids" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Remembers discards</span><span class="set-desc">Remembers the cards it put in the outside pile.</span></span><input class="sw" type="checkbox" data-knowledge="ownDiscards" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Plans showdowns</span><span class="set-desc">Also tries ducking and balancing, not only greedy play.</span></span><input class="sw" type="checkbox" data-knowledge="showdownPlans" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Reads bids</span><span class="set-desc">Takes each bid as a clue to that player's hand.</span></span><input class="sw" type="checkbox" data-knowledge="bids" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Watches score</span><span class="set-desc">Plays the race to 10 harder once a score passes 5.</span></span><input class="sw" type="checkbox" data-knowledge="scoreAware" checked></label>
-          <label class="set-row"><span class="set-text"><span class="set-name">Tracks upcard</span><span class="set-desc">Follows where the turned card went.</span></span><input class="sw" type="checkbox" data-knowledge="turnedCard" checked></label>
-        </div>
+        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
@@ -2330,7 +2318,12 @@ function buildView(state, seat) {
 
 /* ---------------------------------------------------------------------
    5b. PERSONALITIES — ten named bots. Each one is a skill tier, a bid
-   courage and the Real table switch. The color marks the name on the board
+   courage, the Real table switch, a Showdown pick and its habits (AI.HABITS:
+   what it likes to play when its best cards are about equal, and slack, the
+   win chance it gives up at most per card for them), its credulity (how
+   much it believes what other players' plays suggest, AI.READS), feint (how
+   much it likes plays that tell a reader the wrong story, within its slack)
+   and wariness (how much a caught feint lowers its belief in that player). The color marks the name on the board
    and in the log; it is the bot's --bot-<id> token (docs/ui/colors.md), so a
    theme can change it. Art is in PERSONA_ART near the end of the script.
    Dynamic mode (issue #117, decisions 3 and 10): readPace is how many weak
@@ -2340,16 +2333,16 @@ function buildView(state, seat) {
    saw, and never admits that a bot eases off.
    --------------------------------------------------------------------- */
 const PERSONAS = Object.freeze([
-  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
-  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
-  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
-  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
-  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
-  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
-  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
-  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
-  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
-  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
+  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', kings: 'early', slack: 0.01 }, credulity: 0.3, feint: 0.8, wariness: 0.6, quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
+  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { win: 'cheap', kings: 'late', slack: 0.01 }, credulity: 0.4, feint: 0.2, wariness: 0.9, quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
+  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.02 }, credulity: 0.6, feint: 0.4, wariness: 0.3, quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
+  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', habits: {}, credulity: 0.5, feint: 0, wariness: 0.8, quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
+  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', habits: { win: 'big', void: 'ruff', slack: 0.03 }, credulity: 0.8, feint: 0.3, wariness: 0.2, quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
+  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', habits: { win: 'duck', void: 'low', kings: 'late', slack: 0.03 }, credulity: 0.9, feint: 0, wariness: 0.1, quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
+  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { lead: 'long', win: 'duck', kings: 'late', slack: 0.02 }, credulity: 0.5, feint: 0.5, wariness: 0.6, quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
+  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', void: 'ruff', slack: 0.04 }, credulity: 0.7, feint: 0.6, wariness: 0.2, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
+  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.03 }, credulity: 1, feint: 0, wariness: 0.3, quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
+  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', habits: { lead: 'long', win: 'cheap', slack: 0.02 }, credulity: 0.6, feint: 0.2, wariness: 0.4, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
@@ -2360,28 +2353,30 @@ const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, t
    personalities, West and East. The seat order is part of the wave: East
    gives you the trump gift when East calls, so a bold bot is easier on
    your right (East) than on your left (West). youWin is the measured win
-   rate (%) of a human-style player at that table, from 150 bot games.
+   rate (%) of a human-style player at that table, from 150 bot games
+   (tests/waves.js, measured again 2026-10-20 after the habits, reads and
+   feints). Each is within its margin (about ±8) of falling wave to wave.
    A rematch is an earlier wave with the two seats swapped.
    --------------------------------------------------------------------- */
 const WAVES = Object.freeze([
-  { west: 'kit', east: 'tex', youWin: 61, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
-  { west: 'kit', east: 'gus', youWin: 51, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
-  { west: 'zen', east: 'tex', youWin: 51, rematchOf: null, purpose: 'Practice. A table like real players.' },
-  { west: 'lou', east: 'gus', youWin: 49, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
-  { west: 'lou', east: 'zen', youWin: 47, rematchOf: null, purpose: 'Two calm players.' },
-  { west: 'viv', east: 'tex', youWin: 47, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
-  { west: 'kit', east: 'zen', youWin: 46, rematchOf: null, purpose: 'Two relaxed players.' },
-  { west: 'mei', east: 'tex', youWin: 40, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
-  { west: 'kit', east: 'ace', youWin: 37, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
-  { west: 'viv', east: 'gus', youWin: 37, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
-  { west: 'lou', east: 'vex', youWin: 35, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
-  { west: 'doc', east: 'ace', youWin: 29, rematchOf: null, purpose: 'Two strong bots.' },
-  { west: 'tex', east: 'mei', youWin: 24, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
-  { west: 'ace', east: 'doc', youWin: 21, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
-  { west: 'vex', east: 'lou', youWin: 18, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
-  { west: 'tex', east: 'viv', youWin: 18, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
-  { west: 'mei', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
-  { west: 'vex', east: 'doc', youWin: 7, rematchOf: null, purpose: 'Final boss.' }
+  { west: 'kit', east: 'tex', youWin: 53, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
+  { west: 'kit', east: 'gus', youWin: 41, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
+  { west: 'zen', east: 'tex', youWin: 45, rematchOf: null, purpose: 'Practice. A table like real players.' },
+  { west: 'lou', east: 'gus', youWin: 46, rematchOf: null, purpose: 'Timid player on your left, bold player on your right.' },
+  { west: 'lou', east: 'zen', youWin: 40, rematchOf: null, purpose: 'Two calm players.' },
+  { west: 'viv', east: 'tex', youWin: 36, rematchOf: null, purpose: 'Meet Viv in a good seat order.' },
+  { west: 'kit', east: 'zen', youWin: 39, rematchOf: null, purpose: 'Two relaxed players.' },
+  { west: 'mei', east: 'tex', youWin: 33, rematchOf: null, purpose: 'First strong bot, in a good seat order.' },
+  { west: 'kit', east: 'ace', youWin: 29, rematchOf: null, purpose: 'First strong bold caller, on your right.' },
+  { west: 'viv', east: 'gus', youWin: 31, rematchOf: null, purpose: 'Cautious player on your left, bold player on your right.' },
+  { west: 'lou', east: 'vex', youWin: 29, rematchOf: null, purpose: 'Meet Vex in a good seat order.' },
+  { west: 'doc', east: 'ace', youWin: 23, rematchOf: null, purpose: 'Two strong bots.' },
+  { west: 'tex', east: 'mei', youWin: 16, rematchOf: 8, purpose: 'Wave 8 with the seats swapped.' },
+  { west: 'ace', east: 'doc', youWin: 15, rematchOf: 12, purpose: 'Wave 12 with the seats swapped.' },
+  { west: 'vex', east: 'lou', youWin: 9, rematchOf: 11, purpose: 'Wave 11 with the seats swapped.' },
+  { west: 'tex', east: 'viv', youWin: 15, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
+  { west: 'mei', east: 'doc', youWin: 8, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
+  { west: 'vex', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Final boss.' }
 ].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
 
 /* Wave progress: the highest wave you may play, the waves you have won and the tries per wave.
@@ -2550,16 +2545,19 @@ function cleanSlot(mode, s) {
   const waveN = mode === 'waves' ? w.n : null;
   if (mode === 'waves' && !(Number.isInteger(waveN) && WAVES[waveN - 1])) return null;
   if (mode === 'waves' && (personas[1] !== WAVES[waveN - 1].west || personas[2] !== WAVES[waveN - 1].east)) return null;
+  /* Each seat's tune for the game. A save from before seat settings has ai.panel instead: the one Settings-panel config
+     both bots played with when Personalities was off, which becomes West's and East's tune. */
   const b = s.ai && typeof s.ai === 'object' ? s.ai : {};
-  const panel = b.panel && typeof b.panel === 'object' ? AI.config(AI.DEFAULT_CONFIG, b.panel) : null;
+  const panel = !Array.isArray(s.tunes) && b.personas !== true && b.panel && typeof b.panel === 'object' ? AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, b.panel)) : null;
+  const tunes = Array.isArray(s.tunes) ? [0, 1, 2].map(k => AI.cleanTune(s.tunes[k])) : [null, panel, panel];
+  if (mode !== 'free' && (tunes[1] || tunes[2])) return null;
   const dynamic = mode === 'dynamic' ? Dynamic.cleanSnapshot(s.dynamic) : null;
   if (mode === 'dynamic' && !dynamic) return null;
   if (dynamic) { try { Dynamic.trace(dynamic, state); } catch (e) { return null; } }
   return {
     format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas, dynamic,
     wave: { n: waveN, open: w.open === true && Waves.isUnlocked(waveN) }, assisted: s.assisted === true, autoplay: s.autoplay === true,
-    swapDone: s.swapDone !== false, log: cleanLog(s.log),
-    ai: { personas: b.personas === true, panel: panel && { thinking: panel.thinking, knowledge: panel.knowledge, style: panel.style }, changed: b.changed === true }
+    swapDone: s.swapDone !== false, log: cleanLog(s.log), tunes, swapped: s.swapped === true
   };
 }
 /** @param {unknown} log @returns {[string, string][]} at most LOG_SAVE_MAX [text, classes] lines */
@@ -2617,7 +2615,7 @@ function cleanReplayEntry(e) {
   return {
     code: e.code, mode: MODES.includes(e.mode) ? e.mode : null, wave: Number.isInteger(e.wave) && WAVES[e.wave - 1] ? e.wave : null,
     west: seat(e.west), east: seat(e.east), winner: [0, 1, 2].includes(e.winner) ? e.winner : null, scores,
-    assisted: e.assisted === true, at: Number.isFinite(e.at) ? e.at : null
+    assisted: e.assisted === true, tuned: e.tuned === true, at: Number.isFinite(e.at) ? e.at : null
   };
 }
 function createReplays(store) {
@@ -2656,14 +2654,13 @@ function createStats(store) {
   }
   const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
   return Object.freeze({
-    record({ mode, west, east, won }) {
+    /* tuned: [West, East] played with changes from Settings → Bots. A tuned bot is not itself: the game counts for
+       the mode, but not for that bot, nor for the table. */
+    record({ mode, west, east, won, tuned = [false, false] }) {
       add(s.modes, mode, won);
-      add(s.tables, west + '/' + east, won);
-      add(s.opponents, west, won);
-      add(s.opponents, east, won);
+      if (!tuned[0] && !tuned[1]) add(s.tables, west + '/' + east, won);
       const mine = s.modeOpponents[mode] || (s.modeOpponents[mode] = {});
-      add(mine, west, won);
-      add(mine, east, won);
+      [west, east].forEach((id, i) => { if (!tuned[i]) { add(s.opponents, id, won); add(mine, id, won); } });
       js.save(s);
       return this.get();
     },
@@ -2850,9 +2847,13 @@ const Backup = (() => {
 /**
  * @typedef {{ worlds: number, playoutSkill: number }} Thinking
  * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
- * @typedef {{ realTable: boolean, courage: string, leadPick: string }} Style
+ * @typedef {{ realTable: boolean, courage: string, leadPick: string, leadHabit: string, winHabit: string, voidHabit: string, kingHabit: string, slack: number, credulity: number, feint: number, wariness: number }} Style
  * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
  * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
+ * @typedef {{ how: string, options: { choice: any, value: number, plan: string }[] }} AITrace
+ * @typedef {{ courage?: string, realTable?: boolean, leadPick?: string, leadHabit?: string, winHabit?: string, voidHabit?: string, kingHabit?: string, slack?: number, credulity?: number, feint?: number, wariness?: number,
+ *   worlds?: number, playoutSkill?: number, knowledge?: Partial<Knowledge> }} SeatTune
+ * @typedef {{ lead?: string, win?: string, void?: string, kings?: string, slack?: number }} PersonaHabits
  */
 const AI = (() => {
   const R = Rules, P = Engine.P, WIN = Engine.C.WIN_SCORE;
@@ -2903,7 +2904,18 @@ const AI = (() => {
   /* leadPick: how a mediator picks the Showdown leader (house rule). shrewd: the lower score leads (a tie: fair);
      fair: the latest main-trick winner between them, as without the house rule; impulsive: at random;
      auto: shrewd when the bot watches the score, fair when not. */
-  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto' });
+  /* Habits: what a bot likes to play when its best cards are about equally good. They only choose among cards whose
+     value is within slack of the best (win chance, 0 to MAX_SLACK), so a habit costs at most slack per card and never
+     uses more than the bot can see. Each style field names one habit; 'none' has none.
+     leadHabit: on a lead, trump, the longest suit, the shortest suit or a King. winHabit: when it can win a trick it
+     follows, with the cheapest winner, the biggest card, or not at all (duck). voidHabit: when it cannot follow, trump
+     in with its smallest trump, or throw its lowest card. kingHabit: play Kings early, or hold them late. */
+  const HABITS = Object.freeze({
+    leadHabit: Object.freeze(['none', 'trump', 'long', 'short', 'kings']), winHabit: Object.freeze(['none', 'cheap', 'big', 'duck']),
+    voidHabit: Object.freeze(['none', 'ruff', 'low']), kingHabit: Object.freeze(['none', 'early', 'late'])
+  });
+  const MAX_SLACK = 0.05;
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0, feint: 0, wariness: 0 });
   const LEAD_PICKS = Object.freeze(['auto', 'shrewd', 'fair', 'impulsive']);
 
   /* ---- Settings ----
@@ -2930,6 +2942,9 @@ const AI = (() => {
     if (typeof ps.realTable === 'boolean') style.realTable = ps.realTable;
     if (Object.prototype.hasOwnProperty.call(COURAGE, ps.courage)) style.courage = ps.courage;
     if (LEAD_PICKS.includes(ps.leadPick)) style.leadPick = ps.leadPick;
+    for (const key of Object.keys(HABITS)) if (HABITS[key].includes(ps[key])) style[key] = ps[key];
+    if (typeof ps.slack === 'number' && isFinite(ps.slack)) style.slack = Math.min(MAX_SLACK, Math.max(0, ps.slack));
+    for (const key of ['credulity', 'feint', 'wariness']) if (typeof ps[key] === 'number' && isFinite(ps[key])) style[key] = Math.min(1, Math.max(0, ps[key]));
     return freezeConfig(thinking, knowledge, style, typeof p.persona === 'boolean' ? p.persona : b.persona);
   }
   /** base with a skill tier's thinking and knowledge. An unknown name returns base.
@@ -2947,10 +2962,53 @@ const AI = (() => {
     }
     return 'custom';
   }
-  /** A personality's config: its tier, its courage, its Real table switch and how it picks a Showdown leader.
-      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @returns {AIConfig} */
+  /** A personality's config: its tier, its courage, its Real table switch, how it picks a Showdown leader, its habits,
+      how much it believes its reads of card play, how readily it feints and how quickly a caught feint makes it wary.
+      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string, habits?: PersonaHabits, credulity?: number, feint?: number, wariness?: number }} persona @returns {AIConfig} */
   function personaConfig(persona) {
-    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), { style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick }, persona: true });
+    const h = persona.habits || {};
+    return config(withSkillTier(DEFAULT_CONFIG, persona.tier), {
+      style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick, leadHabit: h.lead, winHabit: h.win, voidHabit: h.void, kingHabit: h.kings, slack: h.slack, credulity: persona.credulity, feint: persona.feint, wariness: persona.wariness },
+      persona: true
+    });
+  }
+  /* A seat's tune (Free play's seat settings): the fields it sets over a personality's own. Each field is optional:
+     courage, realTable, leadPick, the habits (leadHabit, winHabit, voidHabit, kingHabit, slack), credulity, feint, wariness, worlds, playoutSkill,
+     and knowledge (some or all of its switches). */
+  /** The valid fields of x, or null when it sets none. @param {any} x @returns {SeatTune | null} */
+  function cleanTune(x) {
+    if (!x || typeof x !== 'object') return null;
+    /** @type {SeatTune} */
+    const t = {};
+    if (Object.prototype.hasOwnProperty.call(COURAGE, x.courage)) t.courage = x.courage;
+    if (typeof x.realTable === 'boolean') t.realTable = x.realTable;
+    if (LEAD_PICKS.includes(x.leadPick)) t.leadPick = x.leadPick;
+    for (const key of Object.keys(HABITS)) if (HABITS[key].includes(x[key])) /** @type {any} */ (t)[key] = x[key];
+    if (typeof x.slack === 'number' && isFinite(x.slack)) t.slack = Math.min(MAX_SLACK, Math.max(0, x.slack));
+    for (const key of ['credulity', 'feint', 'wariness']) if (typeof x[key] === 'number' && isFinite(x[key])) /** @type {any} */ (t)[key] = Math.min(1, Math.max(0, x[key]));
+    if (typeof x.worlds === 'number' && isFinite(x.worlds)) t.worlds = Math.min(200, Math.max(1, Math.round(x.worlds)));
+    if (typeof x.playoutSkill === 'number' && isFinite(x.playoutSkill)) t.playoutSkill = Math.min(1, Math.max(0, x.playoutSkill));
+    const k = x.knowledge && typeof x.knowledge === 'object' ? Object.fromEntries(Object.keys(KNOWLEDGE_DEFAULTS).filter(key => typeof x.knowledge[key] === 'boolean').map(key => [key, x.knowledge[key]])) : {};
+    if (Object.keys(k).length) t.knowledge = k;
+    return Object.keys(t).length ? t : null;
+  }
+  /** A personality's config with a seat's tune over it. It stays a personality's config (persona: true).
+      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @param {any} tune @returns {AIConfig} */
+  function tunedConfig(persona, tune) {
+    const own = personaConfig(persona), t = cleanTune(tune);
+    if (!t) return own;
+    return config(own, {
+      thinking: { worlds: t.worlds, playoutSkill: t.playoutSkill }, knowledge: t.knowledge,
+      style: { courage: t.courage, realTable: t.realTable, leadPick: t.leadPick, leadHabit: t.leadHabit, winHabit: t.winHabit, voidHabit: t.voidHabit, kingHabit: t.kingHabit, slack: t.slack, credulity: t.credulity, feint: t.feint, wariness: t.wariness }
+    });
+  }
+  /** The tune that sets every field to cfg's value. @param {AIConfig} cfg @returns {SeatTune} */
+  function tuneOf(cfg) {
+    const st = cfg.style;
+    return {
+      courage: st.courage, realTable: st.realTable, leadPick: st.leadPick, leadHabit: st.leadHabit, winHabit: st.winHabit, voidHabit: st.voidHabit, kingHabit: st.kingHabit,
+      slack: st.slack, credulity: st.credulity, feint: st.feint, wariness: st.wariness, worlds: cfg.thinking.worlds, playoutSkill: cfg.thinking.playoutSkill, knowledge: Object.assign({}, cfg.knowledge)
+    };
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
   const REAL_TABLE_BID_BUMP = 0.5;
@@ -3335,6 +3393,72 @@ const AI = (() => {
     }
     return w;
   }
+  /* Reads of card play: how well a world agrees with what the other players' plays this hand suggest, believed in
+     proportion to style.credulity (0: no reads, 1: full belief). Public plays only, main hand only; a void stays a hard
+     fact (dealWorld), and a read only weighs the guessed hands, so a player who plays against type can fool it.
+     - A lead suggests length in its suit (READS.lead per card the world gives that player), a trump lead more trump.
+     - A side-suit King led suggests no Ace of that suit.
+     - A throw-off (void, not trumping) suggests shortness in the suit thrown, and when trump was not led, no trump.
+     Trust: a later play this hand that shows one of a player's reads was wrong (a long suit then void, the Ace after the
+     King, a short suit led later, a trump after a throw-off) is a caught feint. Each one multiplies the belief in that
+     player's reads by 1 - style.wariness for the rest of the hand. */
+  const READS = Object.freeze({ lead: 0.3, leadTrump: 0.5, kingNoAce: 0.7, throwShort: 0.35, noRuff: 0.3 });
+  /** The reads of each other player this hand, in play order, and how many of them later plays showed wrong.
+      @param {any} view @returns {{ player: number, kind: string, suit: string }[][] & { caught?: number[] }} */
+  function readsOf(view) {
+    const trump = view.trump, eff = (/** @type {string} */ id) => R.getEffectiveSuit(id, trump);
+    const tricks = Engine.tricksOf(view).main;
+    if (view.phase === P.TRICK_PLAY && view.trick && view.trick.plays.length) tricks.push(view.trick.plays);
+    /** @type {any} */
+    const out = [[], [], []];
+    out.caught = [0, 0, 0];
+    for (const t of tricks) {
+      const ls = eff(t[0].card);
+      t.forEach((/** @type {Play} */ pl, /** @type {number} */ i) => {
+        const o = pl.player, s = eff(pl.card), mine = out[o];
+        /* What this play shows about the player's earlier reads. */
+        const wrong = mine.filter((/** @type {any} */ r) => !r.caught && (
+          (r.kind === 'long' && i > 0 && ls === r.suit && s !== r.suit) ||
+          (r.kind === 'noAce' && !R.isTrump(pl.card, trump) && s === r.suit && R.card(pl.card).rank === 'A') ||
+          (r.kind === 'short' && i === 0 && s === r.suit) ||
+          (r.kind === 'noTrump' && R.isTrump(pl.card, trump))));
+        for (const r of wrong) { r.caught = true; out.caught[o]++; }
+        if (i === 0) {
+          if (ls === trump) mine.push({ kind: 'trump', suit: trump });
+          else {
+            mine.push({ kind: 'long', suit: ls });
+            if (R.isKing(pl.card)) mine.push({ kind: 'noAce', suit: ls });
+          }
+        } else if (s !== ls && !R.isTrump(pl.card, trump)) {
+          mine.push({ kind: 'short', suit: s });
+          if (ls !== trump) mine.push({ kind: 'noTrump', suit: trump });
+        }
+      });
+    }
+    return out;
+  }
+  /** @param {any} view @param {any} w a guessed deal (hands) @param {AIConfig} cfg @param {any} [reads] readsOf(view) @returns {number} */
+  function playWeight(view, w, cfg, reads) {
+    const k = cfg.style.credulity;
+    if (!k || view.showdown || !view.trump) return 1;
+    const trump = view.trump, eff = (/** @type {string} */ id) => R.getEffectiveSuit(id, trump);
+    const all = reads || readsOf(view);
+    let weight = 1;
+    for (let o = 0; o < 3; o++) {
+      if (o === view.seat || !all[o].length) continue;
+      const b = k * Math.pow(1 - cfg.style.wariness, all.caught[o]);
+      if (b <= 0) continue;
+      const hand = w.hands[o], count = (/** @type {string} */ s) => hand.filter((/** @type {string} */ id) => eff(id) === s).length;
+      for (const r of all[o]) {
+        if (r.kind === 'trump') weight *= Math.pow(1 + READS.leadTrump * b, count(trump));
+        else if (r.kind === 'long') weight *= Math.pow(1 + READS.lead * b, count(r.suit));
+        else if (r.kind === 'noAce') { if (hand.some((/** @type {string} */ id) => !R.isTrump(id, trump) && R.card(id).rank === 'A' && eff(id) === r.suit)) weight *= 1 - READS.kingNoAce * b; }
+        else if (r.kind === 'short') weight *= Math.pow(1 - READS.throwShort * b, count(r.suit));
+        else if (r.kind === 'noTrump') weight *= Math.pow(1 - READS.noRuff * b, count(trump));
+      }
+    }
+    return weight;
+  }
   /* How well a world agrees with the bids that the other players made (main hand only). */
   function bidWeight(view, w, cfg) {
     if (view.showdown || !cfg.knowledge.bids) return 1;
@@ -3374,11 +3498,12 @@ const AI = (() => {
     const lay = layout(view, c);
     const free = lay.cap.hands.reduce((x, y) => x + y, 0) + lay.cap.kitty + lay.cap.outside + lay.cap.sdDiscards;
     if (free !== lay.unknown.length) throw new Error('World layout mismatch: ' + free + ' slots, ' + lay.unknown.length + ' cards');
+    const reads = c.style.credulity && !view.showdown && view.trump ? readsOf(view) : null;
     const raw = [];
     for (let i = 0; i < n * SAMPLES.oversample && raw.length < n * SAMPLES.oversample; i++) {
       let w = null;
       for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng, c.knowledge);
-      if (w) raw.push({ w, weight: bidWeight(view, w, c) });
+      if (w) raw.push({ w, weight: bidWeight(view, w, c) * playWeight(view, w, c, reads) });
     }
     if (!raw.length) throw new Error('No world agrees with the view');
     /* Systematic resampling to n equal-weight worlds. */
@@ -3428,14 +3553,22 @@ const AI = (() => {
      One plan holds for every world, so the AI does not assume that it can see the cards. */
   const PLANS = ['greedy', 'duck', 'balance'];
   const activePlans = cfg => (cfg.knowledge.showdownPlans ? PLANS : ['greedy']);
-  /* bonus (optional): candidate => win chance (0..1) added to its value, such as the bid courage bias for a call. */
-  function plan(view, cfg, candidates, toAction, n, bonus) {
-    if (candidates.length === 1) return candidates[0];
+  /* The trace that decide fills, or null. Only decide sets it; it never changes a decision. */
+  /** @type {AITrace | null} */
+  let tracing = null;
+  /* bonus (optional): candidate => win chance (0..1) added to its value, such as the bid courage bias for a call.
+     taste (optional): candidate => how much the bot's habits like it. Among the candidates within the style's slack of
+     the best value, the one it likes most is played (on equal taste, the better value). */
+  function plan(view, cfg, candidates, toAction, n, bonus, taste) {
+    if (candidates.length === 1) { if (tracing) tracing.how = 'forced'; return candidates[0]; }
     const rng = rngFor(view);
     const worlds = sampleWorlds(view, Math.max(1, Math.round(n * cfg.thinking.worlds / SAMPLES.play)), rng, cfg);
     const seeds = worlds.map(() => Math.floor(RNG.next(rng) * 4294967296));
     let best = candidates[0], bestV = -Infinity;
+    const values = [];
+    if (tracing) tracing.how = 'plan';
     for (const cand of candidates) {
+      let candV = -Infinity, candPlan = '';
       for (const planName of activePlans(cfg)) {
         let total = 0;
         for (let i = 0; i < worlds.length; i++) {
@@ -3447,10 +3580,63 @@ const AI = (() => {
           total += outcome(s, view.seat, view.scores, cfg);
         }
         const v = total / worlds.length + (bonus ? bonus(cand) : 0);
+        if (v > candV) { candV = v; candPlan = planName; }
         if (v > bestV + 1e-9) { bestV = v; best = cand; }
       }
+      values.push(candV);
+      if (tracing) tracing.options.push({ choice: cand, value: candV, plan: candPlan });
     }
-    return best;
+    const slack = taste ? cfg.style.slack : 0;
+    if (slack <= 0) return best;
+    let pick = best, pickT = taste(best), pickV = bestV;
+    candidates.forEach((c, i) => {
+      if (values[i] < bestV - slack - 1e-9) return;
+      const t = taste(c);
+      if (t > pickT + 1e-9 || (t > pickT - 1e-9 && values[i] > pickV + 1e-9)) { pick = c; pickT = t; pickV = values[i]; }
+    });
+    if (tracing && pick !== best) tracing.how = 'habit';
+    return pick;
+  }
+  /* How much a bot's habits and feints like playing card c now (see HABITS and READS). It reads only the bot's own view. */
+  function habitTaste(view, style) {
+    const trump = view.trump, trick = view.trick, plays = trick.plays, hand = view.hand;
+    const byStr = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
+    const rank = (/** @type {string} */ c) => (byStr.length > 1 ? byStr.indexOf(c) / (byStr.length - 1) : 0);
+    const len = (/** @type {string} */ c) => hand.filter(id => R.getEffectiveSuit(id, trump) === R.getEffectiveSuit(c, trump)).length / hand.length;
+    const best = plays.length ? R.getTrickWinner(plays, trump) : null;
+    const follows = !!best && hand.some(id => R.getEffectiveSuit(id, trump) === trick.leadSuit);
+    return (/** @type {string} */ c) => {
+      let t = 0;
+      if (!best) {
+        const h = style.leadHabit;
+        if (h === 'trump') t += R.isTrump(c, trump) ? 1 : 0;
+        else if (h === 'long') t += len(c);
+        else if (h === 'short') t += 1 - len(c);
+        else if (h === 'kings') t += R.isKing(c) ? 1 : 0;
+      } else if (follows) {
+        const beats = R.compareCards(c, best.card, trick.leadSuit, trump) > 0, h = style.winHabit;
+        if (h === 'cheap') t += beats ? 1 - 0.5 * rank(c) : 0;
+        else if (h === 'big') t += beats ? 0.5 + 0.5 * rank(c) : 0;
+        else if (h === 'duck') t += beats ? 0 : 0.5 + 0.5 * rank(c);
+      } else {
+        const h = style.voidHabit;
+        if (h === 'ruff') t += R.isTrump(c, trump) ? 1 - 0.5 * rank(c) : 0;
+        else if (h === 'low') t += R.isTrump(c, trump) ? 0 : 1 - rank(c);
+      }
+      if (R.isKing(c)) t += style.kingHabit === 'early' ? 0.5 : style.kingHabit === 'late' ? -0.5 : 0;
+      /* Feints: plays that tell a reader the wrong story (see READS). Like habits, only within slack of the best. */
+      if (style.feint) {
+        let f = 0;
+        if (!best && !R.isTrump(c, trump)) {
+          f += 1 - len(c);
+          if (R.isKing(c) && hand.some(id => !R.isTrump(id, trump) && R.card(id).rank === 'A' && R.getEffectiveSuit(id, trump) === R.getEffectiveSuit(c, trump))) f += 1;
+        } else if (best && !follows) {
+          if (!R.isTrump(c, trump)) f += len(c) + (hand.some(id => R.isTrump(id, trump)) && trick.leadSuit !== trump ? 0.5 : 0);
+        }
+        t += style.feint * f;
+      }
+      return t;
+    };
   }
 
   function decideInner(view, cfg) {
@@ -3491,18 +3677,26 @@ const AI = (() => {
       case P.TRICK_PLAY:
       case P.SHOWDOWN_PLAY: {
         const cands = view.legal.slice().sort((a, b) => R.getCardStrength(a, trump) - R.getCardStrength(b, trump));
-        return { type: 'PLAY', player: me, card: plan(view, cfg, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play) };
+        return { type: 'PLAY', player: me, card: plan(view, cfg, cands, c => ({ type: 'PLAY', player: me, card: c }), SAMPLES.play, undefined, habitTaste(view, style)) };
       }
       default:
         throw new Error('AI has no decision for phase ' + view.phase);
     }
   }
   /* Play-outs run the real Engine; keep them out of the event log.
-     The decision depends only on the view and cfg. @param {AIConfig} [cfg] */
-  function decide(view, cfg) {
+     The decision depends only on the view and cfg. trace (optional) gets how the decision was made: 'plan' (each
+     candidate's value and its best plan in options), 'habit' (planned, then a habit picked a card within slack of
+     the best), 'forced' (one candidate) or 'rule' (a rule, no play-outs).
+     @param {AIConfig} [cfg] @param {AITrace} [trace] */
+  function decide(view, cfg, trace) {
     const was = Logger.enabled;
     Logger.enabled = false;
-    try { return decideInner(view, cfg || DEFAULT_CONFIG); } finally { Logger.enabled = was; }
+    tracing = trace ? { how: 'rule', options: [] } : null;
+    try {
+      const action = decideInner(view, cfg || DEFAULT_CONFIG);
+      if (trace && tracing) Object.assign(trace, tracing);
+      return action;
+    } finally { Logger.enabled = was; tracing = null; }
   }
   /* A simple legal action from the view alone, for when decide fails. The other hands are empty
      in this stand-in state, so it uses no hidden card. @param {AIConfig} [cfg] */
@@ -3519,7 +3713,7 @@ const AI = (() => {
   return Object.freeze({
     decide, fallbackAction, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
-    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS
+    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS, LEAD_PICKS, HABITS, MAX_SLACK, READS, readsOf, playWeight, cleanTune, tunedConfig, tuneOf
   });
 })();
 
@@ -3544,7 +3738,8 @@ const AI = (() => {
  * @typedef {{ me: number, all: number }} DynShare
  * @typedef {{ n: number, failed: number }} DynCalls
  * @typedef {{ n: number, errors: number }} DynBids
- * @typedef {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, mark: boolean }} DynSnapshot
+ * @typedef {{ n: number, slips: number }} DynPlays
+ * @typedef {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, plays?: DynPlays, mark: boolean }} DynSnapshot
  */
 const Dynamic = (() => {
   const R = Rules, P = Engine.P, C = Engine.C;
@@ -3572,11 +3767,15 @@ const Dynamic = (() => {
        FAIL_PRIOR calls at FAIL_NORMAL failed, BID_PRIOR bids with no error.
      - The slow target adds FAIL_WEIGHT × (failed calls above FAIL_NORMAL, full at +FAIL_SPAN) and
        BID_WEIGHT × (bid errors, full at BID_SPAN) to the score-share term.
+     - Card-play slips (step 4c): the slow target adds SLIP_WEIGHT × (the share of main-hand plays that slip, above
+       SLIP_NORMAL, full at +SLIP_SPAN). SLIP_PRIOR plays pull a short record toward SLIP_NORMAL, the Casual bots' rate
+       (tests/habits.js).
      - A bid error is a call with a fitted value below CALL_LOW, or a pass with one at PASS_HIGH or more. On the
        fitted scale the bid thresholds sit at about 1.9 to 2.3, and callers win half their hands at about 3.4 to 4.0. */
   const TUNE = Object.freeze({
     DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
-    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2
+    FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2,
+    SLIP_NORMAL: 0.02, SLIP_SPAN: 0.06, SLIP_PRIOR: 60, SLIP_WEIGHT: 0.25
   });
   const clamp01 = x => Math.min(1, Math.max(0, x));
 
@@ -3633,7 +3832,10 @@ const Dynamic = (() => {
   /** A personality's settings at easing e. e spreads evenly over the rows from the bot's starting row to the floor.
       Hunches run from the bot's own value to the next rows' values; knowledge goes off as a group at row 4 (or the
       bot's next row, if it starts there or below), brain farts rise to 60% at row 6 (likewise). On each dial the bot
-      keeps the weaker of its own value and the ladder's. Style never changes.
+      keeps the weaker of its own value and the ladder's. On top of the ladder it eases the way people are weak (step 4b
+      of the personality plan): as e rises it believes what your plays suggest more (credulity rises to 1), follows its
+      habits more plainly (habit strength rises to AI.MAX_SLACK), and stops feinting and guarding (feints and wariness
+      fade to 0). Every other style field never changes.
       @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @param {number} e @returns {AIConfig} */
   function ease(persona, e) {
     const own = AI.personaConfig(persona);
@@ -3648,7 +3850,11 @@ const Dynamic = (() => {
     const farts = row >= (r0 < FARTS_ROW ? FARTS_ROW : r0 + 1);
     return AI.config(own, {
       thinking: { worlds: Math.min(own.thinking.worlds, hunches), playoutSkill: farts ? Math.min(own.thinking.playoutSkill, FLOOR_SKILL) : own.thinking.playoutSkill },
-      knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge
+      knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge,
+      style: {
+        feint: own.style.feint * (1 - x), wariness: own.style.wariness * (1 - x),
+        credulity: own.style.credulity + (1 - own.style.credulity) * x, slack: own.style.slack + (AI.MAX_SLACK - own.style.slack) * x
+      }
     });
   }
 
@@ -3657,8 +3863,10 @@ const Dynamic = (() => {
   const blankProfile = () => ({
     v: 1, hands: 0, games: 0,
     /* Decayed sums. share: points won by you and by everyone (Dynamic games only). calls: your calls, the failed ones
-       and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss. */
-    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 },
+       and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss.
+       plays: your main-hand card plays and the slips among them (Habits: a King thrown under, a wasted winner, a dead
+       trump; step 4c of the personality plan). */
+    share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
     habits: { calls: 0, made: 0, value: 0 },
     /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
@@ -3670,11 +3878,12 @@ const Dynamic = (() => {
     if (!x || typeof x !== 'object' || x.v !== 1) return p;
     const o = (/** @type {any} */ y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
-    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits);
+    const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
     p.share = { me: num(s.me), all: Math.max(num(s.all), num(s.me)) };
     p.calls = { n: num(c.n), failed: Math.min(num(c.failed), num(c.n)), value: num(c.value) };
     p.bids = { n: num(b.n), errors: Math.min(num(b.errors), num(b.n)) };
     p.discards = { n: num(d.n), loss: num(d.loss) };
+    p.plays = { n: num(pl.n), slips: Math.min(num(pl.slips), num(pl.n)) };
     p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
     p.mark = x.mark === true;
     p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
@@ -3683,26 +3892,33 @@ const Dynamic = (() => {
   /** The part of the profile that a game starts from, and that Replay Seed needs. @param {any} profile @returns {DynSnapshot} */
   function snapshotOf(profile) {
     const p = cleanProfile(profile);
-    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, mark: p.mark };
+    return { h: p.hands, share: { me: p.share.me, all: p.share.all }, calls: { n: p.calls.n, failed: p.calls.failed }, bids: { n: p.bids.n, errors: p.bids.errors }, plays: { n: p.plays.n, slips: p.plays.slips }, mark: p.mark };
   }
-  /** A stored snapshot (a saved game or a replay code), or null when it is not one. @param {any} x @returns {DynSnapshot | null} */
+  /** A stored snapshot (a saved game or a replay code), or null when it is not one. A snapshot from before card-play
+      slips has no plays; it still starts the same game. @param {any} x @returns {DynSnapshot | null} */
   function cleanSnapshot(x) {
     if (!x || typeof x !== 'object' || !x.share || !x.calls || !x.bids || typeof x.mark !== 'boolean' || !Number.isInteger(x.h) || x.h < 0) return null;
     const ok = (/** @type {any} */ y) => typeof y === 'number' && isFinite(y) && y >= 0;
     if (![x.share.me, x.share.all, x.calls.n, x.calls.failed, x.bids.n, x.bids.errors].every(ok)) return null;
     if (x.share.me > x.share.all || x.calls.failed > x.calls.n || x.bids.errors > x.bids.n) return null;
-    return { h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors }, mark: x.mark };
+    if (x.plays !== undefined && (!x.plays || !ok(x.plays.n) || !ok(x.plays.slips) || x.plays.slips > x.plays.n)) return null;
+    /* The same key order as snapshotOf, so a snapshot compares equal after a round trip. */
+    return Object.assign({ h: x.h, share: { me: x.share.me, all: x.share.all }, calls: { n: x.calls.n, failed: x.calls.failed }, bids: { n: x.bids.n, errors: x.bids.errors } },
+      x.plays !== undefined ? { plays: { n: x.plays.n, slips: x.plays.slips } } : {}, { mark: x.mark });
   }
 
-  /* ---- The slow path (decision 19): score share, failed calls and bid errors, weighted by the hands on record ---- */
-  /** @param {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids }} x @returns {number} */
+  /* ---- The slow path (decision 19): score share, failed calls, bid errors and card-play slips, weighted by the hands
+     on record ---- */
+  /** @param {{ h: number, share: DynShare, calls: DynCalls, bids: DynBids, plays?: DynPlays }} x @returns {number} */
   function slowTarget(x) {
     const T = TUNE;
     const share = (x.share.me + T.SHARE_EVEN * T.SHARE_PRIOR) / (x.share.all + T.SHARE_PRIOR);
     const fail = (x.calls.failed + T.FAIL_NORMAL * T.FAIL_PRIOR) / (x.calls.n + T.FAIL_PRIOR);
     const errors = x.bids.errors / (x.bids.n + T.BID_PRIOR);
+    const pl = x.plays || { n: 0, slips: 0 }, slips = (pl.slips + T.SLIP_NORMAL * T.SLIP_PRIOR) / (pl.n + T.SLIP_PRIOR);
     const e = clamp01((T.SHARE_EVEN - share) / (T.SHARE_EVEN - T.SHARE_FULL)) +
-      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN);
+      T.FAIL_WEIGHT * clamp01((fail - T.FAIL_NORMAL) / T.FAIL_SPAN) + T.BID_WEIGHT * clamp01(errors / T.BID_SPAN) +
+      T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
   /** The easing a game starts at: 1 when the profile is marked, else w × e_profile. @param {DynSnapshot} snap */
@@ -3737,7 +3953,7 @@ const Dynamic = (() => {
     const snap = cleanSnapshot(snapshot) || snapshotOf(null);
     const D = TUNE.DECAY;
     const t = {
-      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids,
+      snap, h: snap.h, share: Object.assign({}, snap.share), calls: Object.assign({}, snap.calls), bids: snap.bids, plays: snap.plays,
       e0: startEase(snap), e: startEase(snap), target: startEase(snap),
       /* Visible hands this game: weak (true) or not. fast: the fast path holds; quiet: visible hands since it fired. */
       visible: /** @type {boolean[]} */ ([]), fast: false, quiet: 0, hands: 0,
@@ -3820,15 +4036,23 @@ const Dynamic = (() => {
       }
     } catch (e) { return null; }
     const done = hands.filter(x => x.done);
+    /* Card-play slips (Habits) over the game's main-hand plays. */
+    const c = Habits.count(rec)[me];
+    const plays = { n: c.leads + c.follows + c.voids, slips: c.kingUnder + c.wasteWin + c.deadTrump };
     const losses = done.map(x => x.loss);
     let marked = false;
     for (let i = 2; i < losses.length; i++) if ([losses[i], losses[i - 1], losses[i - 2]].filter(x => x !== null && x > LOSS).length >= 2) marked = true;
-    return { hands: done, marked };
+    return { hands: done, marked, plays };
   }
   /** The profile after one reviewed game. Score share counts only Dynamic games (decision 13).
-      @param {any} profile @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+      @param {any} profile @param {{ hands: any[], marked: boolean, plays?: DynPlays }} rv @param {string | null} mode @param {number} [at] */
   function addGame(profile, rv, mode, at) {
     const p = cleanProfile(profile), D = TUNE.DECAY;
+    /* The game's m plays decay as m samples, each with the game's share of slips. */
+    if (rv.plays && rv.plays.n > 0) {
+      const m = rv.plays.n, keep = Math.pow(D, m), sum = (1 - keep) / (1 - D);
+      p.plays = { n: p.plays.n * keep + sum, slips: p.plays.slips * keep + sum * rv.plays.slips / m };
+    }
     for (const h of rv.hands) {
       p.hands++;
       if (h.loss !== null) p.discards = { n: p.discards.n * D + 1, loss: p.discards.loss * D + h.loss };
@@ -3852,7 +4076,7 @@ const Dynamic = (() => {
     let p = cleanProfile(js.load());
     return Object.freeze({
       get: () => JSON.parse(JSON.stringify(p)),
-      /** @param {{ hands: any[], marked: boolean }} rv @param {string | null} mode @param {number} [at] */
+      /** @param {{ hands: any[], marked: boolean, plays?: DynPlays }} rv @param {string | null} mode @param {number} [at] */
       add(rv, mode, at) { p = addGame(p, rv, mode, at); js.save(p); return JSON.parse(JSON.stringify(p)); },
       reset() { p = blankProfile(); js.save(p); }
     });
@@ -3917,6 +4141,206 @@ const SuitText = (() => {
     }).observe(root, { childList: true, subtree: true, characterData: true });
   }
   return Object.freeze({ draw, watch });
+})();
+
+/* ---------------------------------------------------------------------
+   6d. HABITS — how each seat plays, counted from finished games. It only
+   measures: it changes no decision, never runs during play, and no bot
+   reads it.
+   - count(rec): for each seat, how often a habit could come up and how
+     often the seat took it, in the bids and the main hand's tricks. A
+     Showdown's tricks are left out.
+   - rates(c): those counts as shares and averages (null with no chance).
+   - explain(rec, cfgOf, after): each bot decision again, with the AI's
+     trace. The AI decides from the view and its settings alone, so the
+     same game gives the same decision; match says that it did.
+   It reads finished games, so a trace shows no card that was still hidden
+   while the game ran.
+   --------------------------------------------------------------------- */
+const Habits = (() => {
+  const R = Rules, P = Engine.P;
+  const KEYS = Object.freeze([
+    'leads', 'leadTrump', 'leadKing', 'leadLong', 'leadShort', 'leadMulti', 'leadTop',
+    'follows', 'canWin', 'wentFor', 'winCheap', 'heldBack', 'second', 'secondLow',
+    'voids', 'canRuff', 'ruffed', 'discards', 'discardShort', 'discardLow',
+    'kings', 'kingTrick', 'kingsWon', 'kingUnder', 'wasteWin', 'deadTrump',
+    'bid1', 'call1', 'call1Value', 'pass1Value', 'bid2', 'call2', 'call2Value', 'pass2Value'
+  ]);
+  /* Each rate in plain words, in the order a report shows them. */
+  const LABELS = Object.freeze({
+    leadTrump: 'leads trump', leadKing: 'leads a King', leadLong: 'leads from the longest suit', leadShort: 'leads from the shortest suit',
+    leadTop: 'leads the top card of the suit (2 or more held)', wentFor: 'tries to win when it can', heldBack: 'holds back when it could win',
+    winCheap: 'wins with the cheapest winner', secondLow: 'second hand plays its lowest', ruff: 'trumps in when void',
+    discardShort: 'void: throws from the shortest side suit', discardLow: 'void: throws the lowest of that suit',
+    kingTrick: 'average trick a King is played in', kingWon: 'Kings that win their trick',
+    slips: 'card-play slips (a King thrown under, a wasted winner, a dead trump)',
+    call1: 'calls in round 1', call1Value: 'hand value at a round 1 call', pass1Value: 'hand value at a round 1 pass',
+    call2: 'names trump in round 2', call2Value: 'hand value at a round 2 call', pass2Value: 'hand value at a round 2 pass'
+  });
+  /** @returns {Record<string, number>} */
+  const blank = () => Object.fromEntries(KEYS.map(k => [k, 0]));
+  /** Adds b's counts to a. @param {Record<string, number>} a @param {Record<string, number>} b */
+  function add(a, b) { for (const k of KEYS) a[k] += b[k] || 0; return a; }
+  /** @param {Record<string, number>} counts @param {string[]} hand @param {string} trump @param {(id: string) => boolean} [only] */
+  function suitLengths(counts, hand, trump, only) {
+    for (const id of hand) if (!only || only(id)) { const e = R.getEffectiveSuit(id, trump); counts[e] = (counts[e] || 0) + 1; }
+    return counts;
+  }
+
+  /** A main-hand card play by seat p, before it is played. @param {Record<string, number>} c @param {any} s @param {number} p @param {string} card */
+  function play(c, s, p, card) {
+    const trump = s.trump, hand = s.hands[p], plays = s.trick.plays, ls = s.trick.leadSuit;
+    const eff = (/** @type {string} */ id) => R.getEffectiveSuit(id, trump), str = (/** @type {string} */ id) => R.getCardStrength(id, trump);
+    const legal = R.legalCards(hand, ls, trump);
+    if (!plays.length) {
+      const lens = Object.values(suitLengths({}, hand, trump)), len = hand.filter(id => eff(id) === eff(card)).length;
+      c.leads++;
+      if (R.isTrump(card, trump)) c.leadTrump++;
+      if (R.isKing(card)) c.leadKing++;
+      if (len === Math.max(...lens)) c.leadLong++;
+      if (len === Math.min(...lens) && len < Math.max(...lens)) c.leadShort++;
+      if (len > 1) { c.leadMulti++; if (hand.every(id => eff(id) !== eff(card) || str(id) <= str(card))) c.leadTop++; }
+      return;
+    }
+    const best = R.getTrickWinner(plays, trump);
+    const beats = (/** @type {string} */ id) => R.compareCards(id, best.card, ls, trump) > 0;
+    if (hand.some(id => eff(id) === ls)) {
+      c.follows++;
+      const winners = legal.filter(beats).sort((a, b) => str(a) - str(b));
+      if (winners.length) {
+        c.canWin++;
+        if (beats(card)) { c.wentFor++; if (card === winners[0]) c.winCheap++; } else c.heldBack++;
+      }
+      /* Slips, plain from the seat's own view: a King played under the card that is already winning while another card
+         could go, or the last card of a trick winning with more than it takes (not a King, which scores). */
+      if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+      else if (plays.length === 2 && beats(card) && card !== winners[0] && !R.isKing(card)) c.wasteWin++;
+      if (plays.length === 1 && legal.length > 1) { c.second++; if (legal.every(id => str(id) >= str(card))) c.secondLow++; }
+      return;
+    }
+    c.voids++;
+    if (legal.some(id => R.isTrump(id, trump))) { c.canRuff++; if (R.isTrump(card, trump)) c.ruffed++; }
+    /* Slips when void: a King thrown under the winning card, or a trump that cannot beat a higher trump already played,
+       while a side card could go. */
+    if (R.isKing(card) && !beats(card) && legal.some(id => !R.isKing(id))) c.kingUnder++;
+    else if (R.isTrump(card, trump) && !beats(card) && legal.some(id => !R.isTrump(id, trump))) c.deadTrump++;
+    if (R.isTrump(card, trump)) return;
+    const side = Object.values(suitLengths({}, hand, trump, id => !R.isTrump(id, trump)));
+    const mine = hand.filter(id => eff(id) === eff(card));
+    c.discards++;
+    if (mine.length === Math.min(...side)) c.discardShort++;
+    if (mine.every(id => str(id) >= str(card))) c.discardLow++;
+  }
+  /** A bid by seat p, before it is made. Values are the game's hand value (AI.handValue). @param {Record<string, number>} c @param {any} s @param {number} p @param {Decision} d */
+  function bid(c, s, p, d) {
+    const hand = s.hands[p], turned = R.turnedSuit(s.flippedId, s.jokerSuit);
+    if (d.type === 'BID') {
+      const v = AI.handValue(hand, turned);
+      c.bid1++;
+      if (d.accept) { c.call1++; c.call1Value += v; } else c.pass1Value += v;
+      return;
+    }
+    c.bid2++;
+    if (d.suit) { c.call2++; c.call2Value += AI.handValue(hand, d.suit); }
+    else c.pass2Value += Math.max(...R.SUITS.filter(x => x !== turned).map(x => AI.handValue(hand, x)));
+  }
+  /** The Kings of a main-hand trick that just ended. @param {Record<string, number>[]} seats @param {any} trick the state's lastTrick */
+  function kings(seats, trick) {
+    for (const pl of trick.plays) {
+      if (!R.isKing(pl.card)) continue;
+      const c = seats[pl.player];
+      c.kings++; c.kingTrick += trick.number;
+      if (trick.winner === pl.player) c.kingsWon++;
+    }
+  }
+  /* A replayed game's Engine events stay out of the event log. @template T @param {() => T} fn @returns {T} */
+  function quiet(fn) {
+    const was = Logger.enabled;
+    Logger.enabled = false;
+    try { return fn(); } finally { Logger.enabled = was; }
+  }
+  /** The next decision a cursor will play, or null (MARK notes skipped). @param {any} cur */
+  function nextDecision(cur) {
+    return cur.record.decisions.slice(cur.decisionsUsed).find((/** @type {any} */ x) => x && x.type !== 'MARK') || null;
+  }
+
+  /** Habit counts for each seat of a game (a record or a code). Throws if the game does not replay.
+      @param {any} recOrCode @returns {Record<string, number>[]} */
+  function count(recOrCode) { return quiet(() => countInner(recOrCode)); }
+  /** @param {any} recOrCode */
+  function countInner(recOrCode) {
+    const seats = [blank(), blank(), blank()];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      if (d && d.type === 'PLAY' && s.phase === P.TRICK_PLAY) play(seats[d.player], s, d.player, d.card);
+      else if (d && (d.type === 'BID' || d.type === 'NAME')) bid(seats[d.player], s, d.player, d);
+      const step = cur.step();
+      if (!step) break;
+      if (step.events.some((/** @type {any} */ e) => e.type === 'TRICK_WON')) kings(seats, cur.state.lastTrick);
+    }
+    return seats;
+  }
+  const share = (/** @type {number} */ x, /** @type {number} */ n) => (n ? x / n : null);
+  /** The counts as rates (LABELS names them). @param {Record<string, number>} c @returns {Record<string, number | null>} */
+  function rates(c) {
+    return {
+      leadTrump: share(c.leadTrump, c.leads), leadKing: share(c.leadKing, c.leads), leadLong: share(c.leadLong, c.leads),
+      leadShort: share(c.leadShort, c.leads), leadTop: share(c.leadTop, c.leadMulti),
+      wentFor: share(c.wentFor, c.canWin), heldBack: share(c.heldBack, c.canWin), winCheap: share(c.winCheap, c.wentFor),
+      secondLow: share(c.secondLow, c.second), ruff: share(c.ruffed, c.canRuff),
+      discardShort: share(c.discardShort, c.discards), discardLow: share(c.discardLow, c.discards),
+      kingTrick: share(c.kingTrick, c.kings), kingWon: share(c.kingsWon, c.kings),
+      slips: share(c.kingUnder + c.wasteWin + c.deadTrump, c.leads + c.follows + c.voids),
+      call1: share(c.call1, c.bid1), call1Value: share(c.call1Value, c.call1), pass1Value: share(c.pass1Value, c.bid1 - c.call1),
+      call2: share(c.call2, c.bid2), call2Value: share(c.call2Value, c.call2), pass2Value: share(c.pass2Value, c.bid2 - c.call2)
+    };
+  }
+
+  /* What a decision or a candidate chose, in one comparable form: a card, the cards (sorted), true or false, a suit
+     or null, or a seat. */
+  /** @param {any} d */
+  function choiceOf(d) {
+    switch (d.type) {
+      case 'DISCARD': case 'EXCHANGE': return d.cards.slice().sort();
+      case 'BID': return d.accept;
+      case 'NAME': return d.suit;
+      case 'SHOWDOWN_LEAD': return d.leader;
+      default: return d.card;
+    }
+  }
+  const key = (/** @type {any} */ x) => JSON.stringify(Array.isArray(x) ? x.slice().sort() : x);
+  /** Each decision that cfgOf gives settings for, made again with the AI's trace.
+      @param {any} recOrCode @param {(p: number) => AIConfig | null} cfgOf the settings seat p played with, or null to skip it
+      @param {(events: any[], state: GameState) => void} [after] called after each step (Dynamic moves its easing there) */
+  function explain(recOrCode, cfgOf, after) { return quiet(() => explainInner(recOrCode, cfgOf, after)); }
+  /** @param {any} recOrCode @param {(p: number) => AIConfig | null} cfgOf @param {(events: any[], state: GameState) => void} [after] */
+  function explainInner(recOrCode, cfgOf, after) {
+    const out = [];
+    const cur = Replay.cursor(recOrCode);
+    for (;;) {
+      const s = cur.state, d = Engine.systemAction(s) ? null : nextDecision(cur);
+      const cfg = d ? cfgOf(d.player) : null;
+      let entry = null;
+      if (d && cfg) {
+        /** @type {AITrace} */
+        const trace = { how: '', options: [] };
+        const a = AI.decide(buildView(s, d.player), cfg, trace);
+        const chosen = key(choiceOf(d)), opts = trace.options.map(o => ({ choice: o.choice, value: Math.round(o.value * 1000) / 1000, plan: o.plan }));
+        const mine = opts.find(o => key(o.choice) === chosen);
+        entry = {
+          hand: s.handNumber, trick: s.trickNumber, phase: s.phase, seat: d.player, chosen: choiceOf(d), how: trace.how,
+          plan: mine ? mine.plan : null, options: opts.sort((x, y) => y.value - x.value), match: !!a && a.type === d.type && key(choiceOf(a)) === chosen
+        };
+      }
+      const step = cur.step();
+      if (entry) out.push(entry);
+      if (!step) break;
+      if (after) after(step.events, cur.state);
+    }
+    return out;
+  }
+  return Object.freeze({ KEYS, LABELS, blank, add, count, rates, explain });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4022,7 +4446,17 @@ const Render = (() => {
     return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
       '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
       '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
+      '<span>Reads you</span>' + pips(Math.round(4 * (x.credulity || 0))) + '<span>Feints</span>' + pips(Math.round(4 * (x.feint || 0))) +
+      (habitWords(x) ? '<span class="p-ways">' + escHTML(habitWords(x)) + '</span>' : '') +
       (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
+  }
+  /* A bot's card habits in a few words, for its profile. */
+  function habitWords(x) {
+    const h = x.habits || {};
+    const W = { lead: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, win: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
+      void: { ruff: 'trumps in', low: 'throws low' }, kings: { early: 'Kings early', late: 'Kings late' } };
+    const w = /** @type {string[]} */ (['lead', 'win', 'void', 'kings'].map(k => /** @type {any} */ (W)[k][/** @type {any} */ (h)[k]]).filter(Boolean));
+    return w.length ? w.join(' · ').replace(/^./, c => c.toUpperCase()) : '';
   }
 
   /* A bot's King point is held back while its +1 flies to the seat (App kingPop): the score changes when it lands. */
@@ -4975,7 +5409,7 @@ const App = (() => {
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what every player has seen this hand. All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -4984,19 +5418,14 @@ const App = (() => {
     humanSeatWasAutoplayed: false,
     /* Free play only: the swap is offered once, before the dealer is drawn and the first deal. */
     seatSwapPending: false,
-    usePersonas: true,
     houseRules: HOUSE,
-    /* Settings → Game → AI personality: a persona id, or '' to pick one from the seed (see seatPersona). */
-    seatPersona: '',
-    /* The bot settings from the Settings panel (an AI config). A personality or a wave uses its own. */
-    ai: AI.DEFAULT_CONFIG,
+    /* Settings → Bots: who sits in each seat and how it plays, [your seat, West, East] (see blankSeats). */
+    seats: blankSeats(),
     updateReady: false, menuOpen: false, menuLaunch: false,
     /** @type {ReturnType<typeof setTimeout> | null} */
     timer: null,
     /** @type {(() => void) | null} */
-    timerFn: null,
-    /* The AI settings that the bots used in this game (see trackBotSettings). */
-    botSettings: blankBotSettings()
+    timerFn: null
   };
   /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
@@ -5022,10 +5451,38 @@ const App = (() => {
 
   /* The two personalities that a Free play seed seats: [West, East]. */
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
+  /* Dynamic's opponents, by level (issue #117, step 4 of the personality plan). From the seed's order of the ten bots,
+     the first pair [West, East] that fits: no Shark while the starting easing e0 is above 0.5, at most one above 0.2,
+     any pair below. Among those, a pair that shares no bot with the last Dynamic game (last: [West, East]) comes first,
+     then one that is not the same pair. With no limit and no last game, it is seedTable. */
+  /** @param {number} s @param {number} e0 @param {string[]} last @returns {string[]} */
+  function dynamicTable(s, e0, last) {
+    const order = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+    const max = e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2;
+    const pairs = [];
+    for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) pairs.push([order[i], order[j]]);
+    const fits = (/** @type {string[]} */ p) => p.filter(id => PERSONA_BY_ID[id].tier === 'shark').length <= max;
+    const none = (/** @type {string[]} */ p) => !p.some(id => last.includes(id)), other = (/** @type {string[]} */ p) => !p.every(id => last.includes(id));
+    return pairs.find(p => fits(p) && none(p)) || pairs.find(p => fits(p) && other(p)) || pairs.find(fits) || pairs[0];
+  }
+  /* The table that seed s seats in mode: in Free play a seat set to a bot (Settings → Bots → Who sits) keeps it, and
+     the seed fills the others in its own order. With no seat set, it is seedTable. */
+  function tableFor(s, mode) {
+    if (mode === 'dynamic') {
+      const last = replays.list().find(e => e.mode === 'dynamic' && e.west && e.east);
+      return dynamicTable(s, app.dyn ? app.dyn.e0 : 0, last ? [last.west, last.east] : []);
+    }
+    if (mode !== 'free') return seedTable(s);
+    const w = app.seats[1].who, e = app.seats[2].who;
+    const rest = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).filter(id => id !== w && id !== e);
+    const west = w || rest.shift();
+    return [west, e || rest.shift()];
+  }
   /* wave (optional): play that wave's table. Without it, the seed picks the table: Free play, or Dynamic with
      opts.mode 'dynamic'. opts.rules: house rules for this game instead of the settings (Replay Seed passes the old
      game's). opts.snapshot: the profile snapshot a Dynamic game starts from (Replay Seed passes the old
-     game's); without it, the profile now. */
+     game's); without it, the profile now. opts.table: [West, East] instead of the seed's table, and opts.tunes: each
+     seat's tune instead of the settings' (New deal and Try again pass the old game's). */
   function newGame(seed, wave, opts) {
     dropWatch();
     clearTimer();
@@ -5036,14 +5493,18 @@ const App = (() => {
     /* Two personalities sit West and East, picked from the seed so a replay meets the same bots.
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
     const w = Waves.get(wave);
-    const pool = w ? [w.west, w.east] : seedTable(s);
     app.mode = w ? 'waves' : opts && opts.mode === 'dynamic' ? 'dynamic' : 'free';
     app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
+    const pool = w ? [w.west, w.east] : opts && opts.table ? opts.table : tableFor(s, app.mode);
+    /* A tune stays with its bot for the game. West and East are tuned in Free play only; your seat's tune is taken
+       when the AI first plays it (toggleAutoplay). */
+    app.ui.tunes = opts && opts.tunes ? opts.tunes.map(t => AI.cleanTune(t)) : [null, ...[1, 2].map(p => (app.mode === 'free' ? AI.cleanTune(app.seats[p].tune) : null))];
+    /* Whether the seat dialog swapped West and East: Try again starts from the table before the swap, as it was dealt. */
+    app.ui.swapped = false;
     app.said = {};
     app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
     app.seatSwapPending = !w && !app.ui.autoplay;
-    app.botSettings = blankBotSettings();
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(s, ['You', 'West', 'East'], Engine.RULES_VERSION, opts && opts.rules ? Object.assign({}, app.houseRules, opts.rules) : app.houseRules);
@@ -5071,7 +5532,8 @@ const App = (() => {
     app.wave = { n: null, wasOpenAtStart: false, result: null };
     app.ui.autoplay = false;
     app.seatSwapPending = false;
-    app.botSettings = blankBotSettings();
+    app.ui.tunes = [null, null, null];
+    app.ui.swapped = false;
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
@@ -5120,7 +5582,7 @@ const App = (() => {
   function replayRecord(endedAt) {
     return app.mode && app.state ? Replay.fromState(app.state, {
       mode: app.mode, wave: app.wave.n, seats: app.ui.personas.slice(0, 3), assisted: app.humanSeatWasAutoplayed, endedAt,
-      meta: Object.assign(botMeta(), app.mode === 'dynamic' && app.dyn ? dynamicMeta(app.dyn) : {})
+      meta: Object.assign(seatMeta(), app.mode === 'dynamic' && app.dyn ? dynamicMeta(app.dyn) : {})
     }) : null;
   }
   /** The record as a replay code, or null. @param {number} [endedAt] */
@@ -5149,39 +5611,18 @@ const App = (() => {
     const p = profile.add(rv, job.mode, job.rec.endedAt || undefined);
     Logger.log('DYNAMIC_REVIEW', { mode: job.mode, hands: rv.hands.length, marked: rv.marked, profileHands: p.hands });
   }
-  /* The AI settings that the bots used in this game, for the replay code META.
-     personas: a bot played as its personality (its settings follow from SEATS).
-     panel: the last Settings-panel config that a bot played with, or null.
-     changed: the bots played with more than one panel config in this game. */
-  function blankBotSettings() { return { personas: false, panel: null, changed: false }; }
-  /** Notes the settings of one bot decision. @param {boolean} persona the bot played as its personality */
-  function trackBotSettings(persona) {
-    const b = app.botSettings;
-    if (persona) { b.personas = true; return; }
-    const cfg = { thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style };
-    if (b.panel && JSON.stringify(b.panel) !== JSON.stringify(cfg)) b.changed = true;
-    b.panel = cfg;
+  /* META for the code (docs/replay-code.md, 4.4): ai.tune<p>, the tune each tuned seat played with, as JSON. A seat
+     without one played as its personality (in Dynamic, eased). */
+  function seatMeta() {
+    /** @type {Record<string, string>} */
+    const m = {};
+    app.ui.tunes.forEach((t, p) => { if (t) m['ai.tune' + p] = JSON.stringify(t); });
+    /** @type {Record<string, string | boolean>} */
+    const out = m;
+    if (app.ui.swapped) out['seats.swapped'] = true;
+    return out;
   }
-  /* META for the code (docs/replay-code.md, 4.4): the panel settings that the bots used, ai.personas and ai.changed. */
-  function botMeta() {
-    const b = app.botSettings;
-    /** @type {Record<string, boolean | number | string>} */
-    const m = b.panel ? aiMeta(AI.config(AI.DEFAULT_CONFIG, b.panel)) : {};
-    if (b.personas) m['ai.personas'] = true;
-    if (b.changed) m['ai.changed'] = true;
-    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));
-  }
-  /* The full AI settings as replay META keys (docs/replay-code.md, 4.4). The replay does not need them. */
-  /** @param {AIConfig} [cfg] the settings to describe (default: the Settings panel's) */
-  function aiMeta(cfg) {
-    const ai = cfg || app.ai;
-    const m = {
-      'ai.tier': AI.skillTierOf(ai), 'ai.courage': ai.style.courage, 'ai.realTable': !!ai.style.realTable,
-      'ai.hunches': ai.thinking.worlds, 'ai.brainFarts': Math.round((1 - ai.thinking.playoutSkill) * 100)
-    };
-    for (const k of Object.keys(AI.KNOWLEDGE_DEFAULTS)) m['ai.know.' + k] = !!ai.knowledge[k];
-    return Object.fromEntries(Object.keys(m).sort().map(k => [k, m[k]]));  /* sorted as encodeMeta writes them, so a decoded code equals this object key for key */
-  }
+
 
   /* Game end: wave progress, results and the end buttons. The mode's save slot is emptied. */
   function finishGame() {
@@ -5191,13 +5632,13 @@ const App = (() => {
       app.wave.result = counts ? Waves.record(app.wave.n, won) : Waves.progress();
       Logger.log('WAVE_RESULT', { wave: app.wave.n, won, counted: counts, unlocked: app.wave.result.unlocked });
     }
-    if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won });
+    if (!app.humanSeatWasAutoplayed) stats.record({ mode: app.mode, west: app.ui.personas[1], east: app.ui.personas[2], won, tuned: [!!app.ui.tunes[1], !!app.ui.tunes[2]] });
     const at = Date.now();
     const rec = replayRecord(at);
     const code = rec ? Replay.encode(rec) : null;
     pendingReview = rec && !app.humanSeatWasAutoplayed ? { rec, mode: app.mode } : null;
     endCode = code;
-    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, at });
+    if (code) replays.add({ code, mode: app.mode, wave: app.wave.n, west: app.ui.personas[1], east: app.ui.personas[2], winner: app.state.winner, scores: app.state.scores.slice(), assisted: app.humanSeatWasAutoplayed, tuned: !!(app.ui.tunes[1] || app.ui.tunes[2]), at });
     app.ui.endButtons = endButtonsHTML();
     slots.clear(app.mode);
   }
@@ -5223,7 +5664,7 @@ const App = (() => {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, ai: app.botSettings, log: logLines.slice(-LOG_SAVE_MAX),
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX),
       dynamic: app.dyn ? app.dyn.snap : null
     });
   }
@@ -5252,6 +5693,74 @@ const App = (() => {
       ok: 'Reload', cancel: 'Keep playing'
     }).then(yes => { if (yes) location.reload(); });
   }
+  /* ---- Habits: KCT.App.habits() and KCT.App.explain(n) from the console. They read the finished games in Your
+     profile (the last REPLAYS_MAX), never the running game. ---- */
+  /** The settings each bot seat of a finished record played with. Seat 0 is skipped: a person, or the AI for part of
+      the game at most. Dynamic's easing moves after each hand as it did in the game. @param {any} rec */
+  function recordSettings(rec) {
+    const m = rec.meta || {};
+    /* Codes from before seat settings: the bots played the Settings-panel config (ai.hunches and the other ai.* keys)
+       unless ai.personas says they played their personalities. Since then, every bot plays its personality, with
+       its seat's tune (ai.tune<p>) if it had one. */
+    const legacy = typeof m['ai.hunches'] === 'number';
+    const personas = !legacy || rec.mode === 'waves' || rec.mode === 'dynamic' || m['ai.personas'] === true;
+    const tunes = [0, 1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(m['ai.tune' + p]))));
+    const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(m['dyn.snap']))) : null;
+    const t = snap ? Dynamic.tracker(snap) : null;
+    const panel = legacy ? AI.config(AI.DEFAULT_CONFIG, {
+      thinking: { worlds: m['ai.hunches'], playoutSkill: 1 - m['ai.brainFarts'] / 100 },
+      knowledge: Object.fromEntries(Object.keys(AI.KNOWLEDGE_DEFAULTS).map(k => [k, m['ai.know.' + k] === true])),
+      style: { courage: m['ai.courage'], realTable: m['ai.realTable'] === true }
+    }) : null;
+    return {
+      /** @param {number} p @returns {AIConfig | null} */
+      cfgOf(p) {
+        if (p === HUMAN) return null;
+        const x = personas ? PERSONA_BY_ID[rec.seats[p]] : null;
+        return x ? (t ? Dynamic.ease(x, t.e) : AI.tunedConfig(x, tunes[p])) : panel;
+      },
+      /** @param {any[]} events @param {GameState} state */
+      after(events, state) { if (t && Dynamic.handEnded(events, state)) t.hand(buildView(state, 1)); },
+      /* The bots played with more than one panel config, so some traces may not match. */
+      changed: m['ai.changed'] === true
+    };
+  }
+  const round3 = (/** @type {number | null} */ x) => (x === null ? null : Math.round(x * 1000) / 1000);
+  /** Habit rates from the finished games in Your profile: yours (games where the AI never played your seat) and each
+      bot's (games where it played as itself). counts holds the raw counts. */
+  function habits() {
+    const you = Habits.blank(), /** @type {Record<string, Record<string, number>>} */ bots = {};
+    let games = 0, yours = 0, skipped = 0;
+    for (const e of replays.list()) {
+      const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
+      if (!seats) { skipped++; continue; }
+      games++;
+      if (!e.assisted) { yours++; Habits.add(you, seats[0]); }
+      /* A bot with changes from Settings → Bots (ai.tune<p>) is not itself, so its habits are left out. */
+      for (const p of [1, 2]) { const id = rec.seats[p]; if (id && !(rec.meta && rec.meta['ai.tune' + p])) Habits.add(bots[id] || (bots[id] = Habits.blank()), seats[p]); }
+    }
+    const show = (/** @type {Record<string, number>} */ c) => Object.fromEntries(Object.entries(Habits.rates(c)).map(([k, v]) => [k, round3(v)]));
+    return { games, yours, skipped, labels: Habits.LABELS, you: show(you), bots: Object.fromEntries(Object.keys(bots).map(id => [id, show(bots[id])])), counts: { you, bots } };
+  }
+  /** Each bot decision of finished game n in Your profile (0 = the latest), made again with the AI's trace: how it
+      decided, each option's value (its chance to win the game) and best plan, and whether the trace matches the move
+      the bot made. With the event log on, it also writes one AI_DECISION line for each. @param {number} [n] */
+  function explain(n = 0) {
+    const e = replays.list()[n], rec = e && safe(() => Replay.decode(e.code));
+    if (!rec) return null;
+    const how = recordSettings(rec);
+    const list = Habits.explain(rec, p => how.cfgOf(p), (ev, st) => how.after(ev, st));
+    const text = (/** @type {any} */ x) => (Array.isArray(x) ? x.join('+') : String(x));
+    for (const x of list) {
+      Logger.log('AI_DECISION', {
+        hand: x.hand, trick: x.trick, phase: x.phase, seat: x.seat, chose: text(x.chosen), how: x.how, plan: x.plan,
+        options: x.options.slice(0, 6).map(o => text(o.choice) + ' ' + o.value + (o.plan === 'greedy' ? '' : ' ' + o.plan)).join(', '),
+        match: x.match
+      });
+    }
+    return { game: n, mode: rec.mode, seats: rec.seats, changed: how.changed, matched: list.filter(x => x.match).length, decisions: list };
+  }
+
   /* ---- Backup (docs/backup.md). Settings → Tools → Your data, and KCT.App.backup from the console. ---- */
   const backup = Object.freeze({
     /** The full client state now. The running game is saved first, so mid-game progress is in it.
@@ -5374,7 +5883,8 @@ const App = (() => {
       /* With the Your seat switch off (always so after a reload), you take your seat back. The game stays assisted. */
       app.ui.autoplay = !!s.autoplay && app.ui.allowSeatAI;
       app.seatSwapPending = s.swapDone === false;
-      app.botSettings = JSON.parse(JSON.stringify(s.ai));
+      app.ui.tunes = s.tunes.map(t => AI.cleanTune(t));
+      app.ui.swapped = s.swapped;
       app.ui.endButtons = '';
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
@@ -5616,12 +6126,12 @@ const App = (() => {
       }
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
-        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] && personasOn() ? PERSONA_BY_ID[id] : null;
+        const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] ? PERSONA_BY_ID[id] : null, tuned = !watch && !!app.ui.tunes[seat];
         const r = callRound();
         /* Each tag's [title, text], built only for the tag clicked: some read state that is not always there (the
            turned card is gone in a Showdown and before the reveal). */
         const TEXT = {
-          ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : ', with the Bots settings.')],
+          ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : '.') + (tuned ? ' This game, ' + who + ' plays with your Settings → Bots changes.' : '')],
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
           dealer: () => [who + ' · Dealer', v.showdown
             ? who + ' mediates the Showdown, so ' + who + ' deals it' + (Engine.discardsInTurn(v.rules) ? ': the discards go in turn from ' + who + '\'s left. ' : '. ') + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
@@ -5681,26 +6191,22 @@ const App = (() => {
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
     if (app.ui.autoplay) app.humanSeatWasAutoplayed = true;
-    if (app.ui.autoplay && !app.ui.personas[HUMAN]) app.ui.personas[HUMAN] = seatPersona();
+    if (app.ui.autoplay && !app.ui.personas[HUMAN]) { app.ui.personas[HUMAN] = seatPersona(); app.ui.tunes[HUMAN] = AI.cleanTune(app.seats[HUMAN].tune); }
     app.ui.selected.clear();
     draw([]);
     schedule();
     saveGame();
   }
 
-  /* Your seat's personality for the AI: the one from Settings → Game if it is not at the table.
+  /* Your seat's personality for the AI: the one from Settings → Bots → Your seat if it is not at the table.
      Else one from the seed, so a replayed seed with the same hand-overs gives the same game. */
   function seatPersona() {
-    const taken = app.ui.personas;
-    if (PERSONA_BY_ID[app.seatPersona] && !taken.includes(app.seatPersona)) return app.seatPersona;
+    const taken = app.ui.personas, mine = app.seats[HUMAN].who;
+    if (PERSONA_BY_ID[mine] && !taken.includes(mine)) return mine;
     const free = PERSONAS.filter(x => !taken.includes(x.id));
     return free[RNG.int({ s: (app.state.seed ^ 0x2545F491) >>> 0 }, free.length)].id;
   }
-  function setSeatPersona(id) {
-    app.seatPersona = PERSONA_BY_ID[id] ? id : '';
-    $('setSeatPersona').value = app.seatPersona;
-    saveSettings();
-  }
+
 
   /* Settings → Game. Off while the AI has your seat: you take it back at once (the game stays assisted). */
   function setAllowSeatAI(on) {
@@ -5754,13 +6260,12 @@ const App = (() => {
     if (ai.length) {
       const p = ai[0];
       later(d.ai, () => {
-        const { cfg, persona } = botConfig(p);
-        if (p !== HUMAN) trackBotSettings(persona);
         const view = buildView(app.state, p);
         /* An AI error must not stop the game. The same view gives the same error again, so each
            failure (a throw or an action that the Engine refuses) falls through to a simpler move:
-           the planner, then the fallback move, then a plain legal move from the rules alone. */
-        const tries = [() => AI.decide(view, cfg), () => AI.fallbackAction(view, cfg), () => plainAction(app.state, p)];
+           the planner, then the fallback move, then a plain legal move from the rules alone. The seat's settings are
+           read inside each try, so bad settings fall through too. */
+        const tries = [() => AI.decide(view, botConfig(p).cfg), () => AI.fallbackAction(view, botConfig(p).cfg), () => plainAction(app.state, p)];
         for (let i = 0; i < tries.length; i++) {
           let action = null, error = null;
           try { action = tries[i](); error = Engine.validate(app.state, action); } catch (e) { console.error(e); error = String(e instanceof Error ? e.message : e); }
@@ -5781,13 +6286,15 @@ const App = (() => {
     draw(ev);
   }
 
-  /* The settings an AI seat plays with: its personality's (in Dynamic, a bot's eased by the game's one easing amount;
-     the AI in your seat is never eased), or the Settings panel's when personalities are off. a: the app (a stand-in in
-     the self-test). @param {number} p @returns {{ cfg: AIConfig, persona: boolean }} */
+  /* The settings an AI seat plays with: its personality's with the seat's tune for this game over it (in Dynamic, a bot
+     eased by the game's one easing amount; the AI in your seat is never eased). a: the app (a stand-in in the
+     self-test). @param {number} p @returns {{ cfg: AIConfig, persona: boolean }} */
   function botConfig(p, a = app) {
-    const persona = personasOn(a) ? PERSONA_BY_ID[a.ui.personas[p]] : null;
-    if (!persona) return { cfg: a.ai, persona: false };
-    return { cfg: a.mode === 'dynamic' && a.dyn && p !== HUMAN ? Dynamic.ease(persona, a.dyn.e) : AI.personaConfig(persona), persona: true };
+    const persona = PERSONA_BY_ID[a.ui.personas[p]];
+    if (!persona) return { cfg: AI.DEFAULT_CONFIG, persona: false };
+    if (a.mode === 'dynamic' && a.dyn && p !== HUMAN) return { cfg: Dynamic.ease(persona, a.dyn.e), persona: true };
+    const tune = a.ui.tunes && a.ui.tunes[p];
+    return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
   }
 
   /* A legal action for seat p from the rules and that seat's own hand only: the last guard when the AI fails. */
@@ -5909,9 +6416,6 @@ const App = (() => {
   }
   /* Whether a game is being played: a mode is set and its game is not over. a: the app (a stand-in in the self-test). */
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
-  /* Whether the bots play their personalities: always in a wave (they set its difficulty) and in Dynamic (it eases
-     each bot from its personality), else as the switch says. */
-  const personasOn = (a = app) => a.usePersonas || inWaves(a) || a.mode === 'dynamic';
   /* The Settings notes for the running game's house rules: note id -> its text, or '' when the setting matches. */
   function houseNotes(a = app) {
     /** @type {Record<string, string>} */
@@ -5925,8 +6429,6 @@ const App = (() => {
   /* Free play's (or Dynamic's) goal on the menu: how many bots you have won a game of that mode against (the results'
      modeOpponents). */
   const beatenCount = (/** @type {any} */ results, mode = 'free') => { const won = (results.modeOpponents || {})[mode] || {}; return PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length; };
-  /* The header shows the mode. In Waves, the Personalities switch and the bot settings are dimmed, and the switch
-     shows on: a wave always uses its personalities. app.usePersonas keeps its value for Free play. */
   /* The About screen stands in for the empty table: no game is loaded and no replay is shown. */
   function syncAbout() {
     const idle = !app.mode && !watch;
@@ -5956,20 +6458,8 @@ const App = (() => {
     if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     /* A setting that does not apply now is dimmed and out of reach: no click, no keyboard focus (inert). */
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
-    $('setPersonas').disabled = ownBots;
-    $('setPersonas').checked = personasOn();
-    off('setPersonaRow', ownBots);
     $('setWaveNote').hidden = !ownBots;
-    off('setBotFields', personasOn());
-    off('setAdvanced', personasOn());
-    /* Only when the rows switch between your settings and the defaults, so a row being edited keeps its text. */
-    if (personasOn() !== botRowsDefault) { botRowsDefault = personasOn(); syncBotPanel(); }
-    /* AI personality applies when the AI takes your seat: not while that is off, nor once this game's hand-over
-       has fixed it (it stays for the game). */
-    const fixed = gameOn() && app.ui.personas[HUMAN], seatOff = !app.ui.allowSeatAI || !!fixed;
-    off('setSeatPersonaRow', seatOff);
-    $('setSeatPersonaDesc').textContent = fixed ? 'This game: ' + PERSONA_BY_ID[fixed].name + '. A change applies from your next game.'
-      : !app.ui.allowSeatAI ? 'Turn on AI can play your seat to choose.' : 'Who the AI plays as in your seat. A game it plays clears no wave.';
+    syncSeatNotes();
     /* The running game keeps its house rules: say so under each setting that now differs. */
     for (const [id, text] of Object.entries(houseNotes())) { const note = $(id); note.hidden = !text; note.textContent = text; }
   }
@@ -6358,7 +6848,7 @@ const App = (() => {
   }
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
   /* A mode card's second line when it has no game. */
-  const MODE_TAGLINE = Object.freeze({ free: 'Random, full-strength opponents', dynamic: 'Random, adaptive-strength opponents', waves: 'Clear increasingly difficult tables' });
+  const MODE_TAGLINE = Object.freeze({ free: 'Full-strength opponents; tune each seat in Settings', dynamic: 'Opponents for your level, who ease off as you learn', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
   /* The note in the questions below when leaving the game costs a try (forfeitWave). */
   const forfeitText = (/** @type {number | null} */ n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
@@ -6401,10 +6891,10 @@ const App = (() => {
     showMenu(app.menuLaunch);
   }
   /* snapshot: Dynamic's starting snapshot, rules: the house rules (Replay Seed passes the old game's). */
-  function startMode(mode, seed, wave, snapshot, rules) {
+  function startMode(mode, seed, wave, snapshot, rules, more) {
     app.menuOpen = false;
     /* Leaving a running game of the other mode keeps it in its slot (it was saved after its last action). */
-    newGame(seed, mode === 'waves' ? wave : undefined, { mode, snapshot, rules });
+    newGame(seed, mode === 'waves' ? wave : undefined, Object.assign({ mode, snapshot, rules }, more || {}));
   }
   /* New deal: new cards at the same table. Waves: the same wave. Free play and Dynamic: a new seed that seats the same
      two opponents in the same seats, since the seed picks the table (one seed in 90 does). */
@@ -6412,8 +6902,14 @@ const App = (() => {
     if (inWaves()) { startMode('waves', undefined, app.wave.n); return; }
     const west = app.ui.personas[1], east = app.ui.personas[2];
     let seed = RNG.freshSeed();
-    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = seedTable(seed); if (t[0] === west && t[1] === east) break; }
-    startMode(app.mode, seed);
+    for (let k = 0; k < 20000; k++, seed = RNG.freshSeed()) { const t = tableFor(seed, app.mode); if (t[0] === west && t[1] === east) break; }
+    /* The table and its tunes are passed too: after a swap against the seats set in Settings, no seed seats them. */
+    startMode(app.mode, seed, undefined, undefined, undefined, { table: [west, east], tunes: [null, app.ui.tunes[1], app.ui.tunes[2]] });
+  }
+  /* Try again's table: the game's [West, East] and their tunes as dealt, before the seat dialog's swap (the dialog
+     offers the swap again). @param {string[]} table @param {any[]} tunes @param {boolean} swapped */
+  function dealtTable(table, tunes, swapped) {
+    return swapped ? { table: [table[1], table[0]], tunes: [null, tunes[1], tunes[0]] } : { table: table.slice(), tunes: [null, tunes[0], tunes[1]] };
   }
   /* Replay Seed on a Last games row: the same table as that game, from its replay code. Null when this app cannot
      play it again (a newer rules version, no mode, or a Dynamic code without its snapshot). @param {any} e */
@@ -6422,12 +6918,16 @@ const App = (() => {
     if (!rec || rec.rules > Engine.RULES_VERSION || !MODES.includes(rec.mode) || (rec.mode === 'waves' && !Waves.get(rec.wave))) return null;
     const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : undefined;
     if (snap === null) return null;
-    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' } };
+    /* The same table and tunes (Free play), which the seed alone may not seat. */
+    const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
+    const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' },
+      more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
   }
   function replaySeedRow(at) {
     const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
     if (!g) return;
-    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules); else showProfile(); });
+    confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules, g.more); else showProfile(); });
   }
 
   /* ---- The replay viewer (docs/ui/plan.md): a read-only table that plays a replay code from your seat. It saves
@@ -6795,12 +7295,15 @@ const App = (() => {
   function swapNew() {
     const [, west, east] = app.ui.personas;
     let seed = RNG.freshSeed();
-    for (let k = 0; k < 100 && seedTable(seed).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
+    for (let k = 0; k < 100 && tableFor(seed, app.mode).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
     newGame(seed, undefined, { mode: app.mode, snapshot: app.dyn && app.dyn.snap });
   }
   function swapPreview() {
     const [, west, east] = app.ui.personas;
     seatBots(east, west);
+    /* A tune stays with its bot. */
+    app.ui.tunes = [app.ui.tunes[0], app.ui.tunes[2], app.ui.tunes[1]];
+    app.ui.swapped = !app.ui.swapped;
     redrawLog();
     draw([]);
     showSwap();
@@ -6951,14 +7454,14 @@ const App = (() => {
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
         '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
-        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
+        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + (e.tuned ? ' <small>(tuned)</small>' : '') + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
           '<td class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, ' data-at="' + escHTML(String(e.at)) + '"') : '') +
           (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
         '</tbody></table></details>';
     }
-    html += habitsHTML();
+    html += habitsHTML() + cardPlayHTML();
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
-    html += '<h3>By opponent</h3><p class="pf-sub">Every game counts for both opponents at the table. Select a column to sort.</p>' +
+    html += '<h3>By opponent</h3><p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
     if (m === 'all') {
       const pairs = Object.entries(st.tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
@@ -6977,6 +7480,23 @@ const App = (() => {
     return '<h3>Your bidding</h3><p class="pf-sub">From every game you played yourself, in every mode.</p><div class="pf-tiles">' +
       tile('Calls', h.calls) + tile('Calls made', pfPct(h.made / h.calls)) + tile('Usual hand at a call', (Math.round(h.value / h.calls * 10) / 10).toFixed(1) + ' <small>tricks</small>') + '</div>' +
       '<p class="pf-note">A call is made when you take the most tricks without a Showdown. The usual hand counts the tricks and Kings a hand like it wins on average.</p>';
+  }
+  /* Your card play beside the bots', from the finished games in Your profile (KCT.App.habits): a few habits and the
+     slips. Shown once you have finished a game yourself. */
+  function cardPlayHTML() {
+    const h = habits();
+    if (!h.yours) return '';
+    const ids = Object.keys(h.counts.bots), all = Habits.blank();
+    for (const id of ids) Habits.add(all, h.counts.bots[id]);
+    const bots = Habits.rates(all), you = h.you;
+    const rows = [['tries to win when it can', 'wentFor'], ['holds back when it could win', 'heldBack'], ['leads trump', 'leadTrump'], ['trumps in when void', 'ruff'], ['card-play slips', 'slips']];
+    const cell = (/** @type {number | null} */ v) => '<td class="num">' + (v === null ? '–' : Math.round(100 * v) + '%') + '</td>';
+    const kt = (/** @type {number | null} */ v) => '<td class="num">' + (v === null ? '–' : (Math.round(v * 10) / 10).toFixed(1)) + '</td>';
+    return '<h3>Your card play</h3><p class="pf-sub">From your last ' + h.yours + (h.yours === 1 ? ' game' : ' games') + ' played yourself, beside the bots in them (as themselves). Main hand only.</p>' +
+      '<table><thead><tr><th></th><th class="num">You</th><th class="num">Bots</th></tr></thead><tbody>' +
+      rows.map(([label, k]) => '<tr><td>' + label + '</td>' + cell(you[k]) + cell(bots[k]) + '</tr>').join('') +
+      '<tr><td>average trick a King is played in</td>' + kt(you.kingTrick) + kt(bots.kingTrick) + '</tr></tbody></table>' +
+      '<p class="pf-note">A slip is a King thrown under the card already winning, a last card that wins with more than it takes, or a trump that cannot beat a higher one already played, each while another card could go. Dynamic eases off a little more when your slips run above the bots\'.</p>';
   }
   /* Draws Your profile; keepFocus puts the focus back on the control that was used. */
   function showProfile(keepFocus) {
@@ -7123,7 +7643,9 @@ const App = (() => {
       }
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
-        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
+        /* The same table and tunes: the seed alone may seat another pair (seat settings, a swap, Dynamic's pick by level). */
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' },
+          inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
@@ -7139,7 +7661,8 @@ const App = (() => {
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': resetBotSettings(); setPersonas(true); break;
+      case 'settings-reset': resetSeats(); break;
+      case 'seat-reset': resetSeats(Number(el.getAttribute('data-seat'))); break;
       case 'run-tests': {
         if (testsRunning) break;
         testsRunning = true;
@@ -7155,7 +7678,7 @@ const App = (() => {
   }
 
   /* ---- The Settings panel: full screen, one tab at a time. The tab last shown is remembered in this browser. ---- */
-  const SET_TABS = ['Game', 'Bots', 'Expert', 'Tools'];
+  const SET_TABS = ['Game', 'Bots', 'Tools'];
   function showSettingsTab(name, focus) {
     const tab = SET_TABS.includes(name) ? name : 'Game';
     for (const t of SET_TABS) {
@@ -7193,57 +7716,172 @@ const App = (() => {
     const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
   }
 
-  /* AI knowledge switches: change the AI, keep the checkboxes in step, and log the change. */
-  function syncKnowledge() {
-    const ai = shownAI();
-    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) box.checked = ai.knowledge[box.getAttribute('data-knowledge')];
-    syncTier();
+  /* ---- Settings → Bots: the seats. app.seats[p] is { who, tune }: who sits (a persona id, or '' for the seed's
+     pick) and its tune (the fields it plays differently from its personality, or null). Seat 0 is used when the AI
+     plays your seat, in every mode; West and East in Free play only. A game takes the tunes when it starts
+     (app.ui.tunes; your seat's at the hand-over), so a change applies from the next game. ---- */
+  const SEAT_NAMES = ['Your seat', 'West', 'East'];
+  const SEAT_DESC = ['Used when the AI plays your seat, in every mode.', 'On your left. Free play only.', 'On your right. Free play only.'];
+  const TIER_NAMES = Object.freeze({ novice: 'Novice', casual: 'Casual', club: 'Club player', shark: 'Shark' });
+  const COURAGE_NAMES = Object.freeze({ timid: 'Timid', cautious: 'Cautious', normal: 'Normal', bold: 'Bold' });
+  const PICK_NAMES = Object.freeze({ auto: 'Auto', shrewd: 'Shrewd', fair: 'Fair', impulsive: 'Impulsive' });
+  const KNOW_NAMES = Object.freeze({
+    voids: ['Spots voids', 'Remembers who could not follow suit.'], ownDiscards: ['Remembers discards', 'Remembers the cards it put in the outside pile.'],
+    showdownPlans: ['Plans showdowns', 'Also tries ducking and balancing, not only greedy play.'], bids: ['Reads bids', 'Takes each bid as a clue to that player\'s hand.'],
+    scoreAware: ['Watches score', 'Plays the race to 10 harder once a score passes 5.'], turnedCard: ['Tracks upcard', 'Follows where the turned card went.']
+  });
+  const FARTS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  /* Habits (AI.HABITS): field -> [name, description, choice -> words]. Habit strength is slack, in percent. */
+  const HABIT_NAMES = Object.freeze({
+    leadHabit: ['Leads', 'What it likes to lead when its best leads are about equal.', { none: 'No habit', trump: 'Trump', long: 'Its longest suit', short: 'Its shortest suit', kings: 'A King' }],
+    winHabit: ['Winning a trick', 'When it can win a trick it follows.', { none: 'No habit', cheap: 'With its cheapest winner', big: 'With its biggest card', duck: 'Holds back' }],
+    voidHabit: ['When void', 'When it cannot follow suit.', { none: 'No habit', ruff: 'Trumps in', low: 'Throws its lowest' }],
+    kingHabit: ['Kings', 'When it plays its Kings.', { none: 'No habit', early: 'Early', late: 'Late' }]
+  });
+  const SLACKS = [0, 1, 2, 3, 4, 5];
+  const CREDULITY = [0, 25, 50, 75, 100];
+  /** @returns {{ who: string, tune: SeatTune | null }[]} */
+  function blankSeats() { return [0, 1, 2].map(() => ({ who: '', tune: null })); }
+  /** Seats as the app can trust them (they come from storage). West and East never pin the same bot. @param {any} x */
+  function cleanSeats(x) {
+    const out = blankSeats();
+    if (Array.isArray(x)) {
+      for (const p of [0, 1, 2]) {
+        const s = x[p];
+        if (!s || typeof s !== 'object') continue;
+        out[p].who = typeof s.who === 'string' && Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, s.who) ? s.who : '';
+        out[p].tune = AI.cleanTune(s.tune);
+      }
+    }
+    if (out[1].who && out[1].who === out[2].who) out[2].who = '';
+    return out;
   }
-  function setKnowledge(k) {
-    app.ai = AI.config(app.ai, { knowledge: k });
-    const now = app.ai.knowledge;
-    syncBotPanel();
-    Logger.log('AI_KNOWLEDGE', now);
-    const label = key => { const box = document.querySelector('[data-knowledge="' + key + '"]'); const name = box && box.closest('.set-row') && box.closest('.set-row').querySelector('.set-name'); return name ? name.textContent : key; };
-    const off = Object.keys(now).filter(key => !now[key]).map(label);
-    addLog('AI knowledge: ' + (off.length ? 'off — ' + off.join(', ') : 'all on') + '.', 'h');
+  const farts = (/** @type {number} */ skill) => Math.round((1 - skill) * 100);
+  const tuneSize = (/** @type {SeatTune | null} */ t) => (t ? Object.keys(t).filter(k => k !== 'knowledge').length + Object.keys(t.knowledge || {}).length : 0);
+  /* The Skill a seat shows: '' (its own) with no thinking or knowledge change, else the tier its settings match. */
+  function seatTier(seat) {
+    const t = seat.tune || {};
+    if (t.worlds === undefined && t.playoutSkill === undefined && !t.knowledge) return '';
+    const x = PERSONA_BY_ID[seat.who];
+    if (x) return AI.skillTierOf(AI.tunedConfig(x, t));
+    const full = t.worlds !== undefined && t.playoutSkill !== undefined && t.knowledge && Object.keys(AI.KNOWLEDGE_DEFAULTS).every(k => k in /** @type {any} */ (t.knowledge));
+    return full ? AI.skillTierOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: t.worlds, playoutSkill: t.playoutSkill }, knowledge: t.knowledge })) : 'custom';
+  }
+  /** One seat's group of settings: who sits, then Skill, Style and Knowledge, each collapsed. @param {number} p */
+  function seatGroupHTML(p) {
+    const id = (/** @type {string} */ f) => 'seat' + p + '-' + f.replace('.', '-');
+    const opts = (/** @type {string[][]} */ list) => list.map(([v, t, off]) => '<option value="' + v + '"' + (off ? ' disabled' : '') + '>' + escHTML(t) + '</option>').join('');
+    const row = (/** @type {string} */ f, /** @type {string} */ name, /** @type {string} */ desc, /** @type {string} */ control) =>
+      '<div class="set-row"><span class="set-text"><label class="set-name" for="' + id(f) + '">' + name + '</label><span class="set-desc">' + desc + '</span></span>' + control + '</div>';
+    const sel = (/** @type {string} */ f, /** @type {string} */ name, /** @type {string} */ desc, /** @type {string[][]} */ list) =>
+      row(f, name, desc, '<select id="' + id(f) + '" data-seat="' + p + '" data-field="' + f + '"><option value="">Its own</option>' + opts(list) + '</select>');
+    const sub = (/** @type {string} */ title, /** @type {string} */ rows) => '<details class="seat-sub"><summary>' + title + '</summary><div class="set-card">' + rows + '</div></details>';
+    const onOff = [['on', 'On'], ['off', 'Off']];
+    const who = row('who', 'Who sits', p ? 'The seed\'s pick, or always this bot.' : 'The seed\'s pick, or this bot when it is not at the table.',
+      '<select id="' + id('who') + '" data-seat="' + p + '" data-field="who"><option value="">From the seed</option>' +
+      opts(PERSONAS.map(x => [x.id, x.name + ' (' + TIER_NAMES[x.tier] + ', ' + COURAGE_NAMES[x.courage].toLowerCase() + ')'])) + '</select>');
+    return '<details class="seat-set" id="setSeat' + p + '"><summary><span class="set-name">' + SEAT_NAMES[p] + '</span><span class="seat-sum" id="setSeatSum' + p + '"></span></summary>' +
+      '<div class="seat-body"><p class="k-hint set-note">' + SEAT_DESC[p] + '</p><p class="k-hint set-note rule-note" id="setSeatNow' + p + '" hidden></p>' +
+      '<div class="set-card">' + who + '</div>' +
+      sub('Skill', sel('tier', 'Skill', 'Sets hunches, brain farts and knowledge together.', [...Object.entries(TIER_NAMES), ['custom', 'Custom', 'off']]) +
+        row('worlds', 'Hunches', 'Guesses about the hidden cards per decision, 1 to 200. Empty: its own.',
+          '<input type="number" id="' + id('worlds') + '" data-seat="' + p + '" data-field="worlds" min="1" max="200" step="1" placeholder="Its own">') +
+        sel('playoutSkill', 'Brain farts', 'How often it imagines a random card while it thinks.', FARTS.map(f => [String(f), f + '%']))) +
+      sub('Style', sel('courage', 'Bid courage', 'How readily it calls trump.', Object.entries(COURAGE_NAMES)) +
+        sel('realTable', 'Real table', 'Human habits: pass more, pitch the lowest cards first.', onOff) +
+        sel('credulity', 'Reads play', 'How much it believes what others\' plays suggest: a lead means length, a King led means no Ace, a throw-off means short.', CREDULITY.map(x => [String(x), x ? x + '%' : 'Does not read (0%)'])) +
+        sel('feint', 'Feints', 'How much it likes plays that tell a reader the wrong story, within its habit strength.', CREDULITY.map(x => [String(x), x ? x + '%' : 'Never (0%)'])) +
+        sel('wariness', 'Wariness', 'How much a caught feint lowers its belief in that player\'s plays, for the rest of the hand.', CREDULITY.map(x => [String(x), x + '%'])) +
+        sel('leadPick', 'Showdown pick', 'As mediator, how it picks the Showdown leader (house rule). Auto: shrewd when it watches the score.', Object.entries(PICK_NAMES))) +
+      sub('Habits', Object.keys(HABIT_NAMES).map(f => sel(f, HABIT_NAMES[f][0], HABIT_NAMES[f][1], Object.entries(HABIT_NAMES[f][2]))).join('') +
+        sel('slack', 'Habit strength', 'The win chance it gives up, at most, per card to follow its habits. 0%: no habits.', SLACKS.map(x => [String(x), x + '%']))) +
+      sub('Knowledge', Object.keys(AI.KNOWLEDGE_DEFAULTS).map(k => sel('k.' + k, KNOW_NAMES[k][0], KNOW_NAMES[k][1], onOff)).join('')) +
+      '<div class="set-card"><div class="set-row"><span class="set-text"><span class="set-name">Reset this seat</span><span class="set-desc">The seed picks; the bot plays as itself.</span></span>' +
+      '<button class="btn btn-sm" type="button" data-action="seat-reset" data-seat="' + p + '">Reset</button></div></div></div></details>';
+  }
+  /* Keeps every seat control in step with app.seats. "Its own" names the bot's own value when the seat has a bot. */
+  function syncSeats() {
+    for (const p of [0, 1, 2]) {
+      const seat = app.seats[p], t = seat.tune || {}, k = t.knowledge || {}, x = PERSONA_BY_ID[seat.who] || null, own = x ? AI.personaConfig(x) : null;
+      const show = (/** @type {string} */ f, /** @type {string} */ v, /** @type {string | null} */ ownText) => {
+        const el = $('seat' + p + '-' + f.replace('.', '-'));
+        if (!el) return;
+        const label = 'Its own' + (ownText ? ' (' + ownText + ')' : '');
+        if (el.tagName === 'SELECT') el.options[0].textContent = label; else el.placeholder = label;
+        el.value = v;
+        el.closest('.set-row').classList.toggle('changed', v !== '');
+      };
+      const yes = (/** @type {boolean | undefined} */ b) => (b === undefined ? '' : b ? 'on' : 'off');
+      $('seat' + p + '-who').value = seat.who;
+      show('tier', seatTier(seat), x && TIER_NAMES[x.tier]);
+      show('worlds', t.worlds === undefined ? '' : String(t.worlds), own && String(own.thinking.worlds));
+      show('playoutSkill', t.playoutSkill === undefined ? '' : String(farts(t.playoutSkill)), own && farts(own.thinking.playoutSkill) + '%');
+      show('courage', t.courage || '', own && COURAGE_NAMES[own.style.courage]);
+      show('realTable', yes(t.realTable), own && (own.style.realTable ? 'On' : 'Off'));
+      show('leadPick', t.leadPick || '', own && PICK_NAMES[own.style.leadPick]);
+      for (const f of ['credulity', 'feint', 'wariness']) show(f, /** @type {any} */ (t)[f] === undefined ? '' : String(Math.round(/** @type {any} */ (t)[f] * 100)), own && Math.round(own.style[f] * 100) + '%');
+      for (const f of Object.keys(HABIT_NAMES)) show(f, /** @type {any} */ (t)[f] || '', own && HABIT_NAMES[f][2][own.style[f]]);
+      show('slack', t.slack === undefined ? '' : String(Math.round(t.slack * 100)), own && Math.round(own.style.slack * 100) + '%');
+      for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) show('k.' + key, yes(/** @type {any} */ (k)[key]), own && (own.knowledge[key] ? 'On' : 'Off'));
+      const n = tuneSize(seat.tune);
+      $('setSeatSum' + p).textContent = (x ? x.name : 'From the seed') + ' · ' + (n ? n + (n === 1 ? ' change' : ' changes') : 'as itself');
+    }
+    syncSeatNotes();
+  }
+  /* Under each seat: what the running game seats there, when it differs from the settings. */
+  function syncSeatNotes() {
+    if (!$('setSeatNow0')) return;
+    const on = gameOn();
+    for (const p of [0, 1, 2]) {
+      const id = app.ui.personas[p], seat = app.seats[p], tune = app.ui.tunes[p];
+      const applies = on && !!id && (p === HUMAN || app.mode === 'free');
+      const differs = applies && (JSON.stringify(tune) !== JSON.stringify(AI.cleanTune(seat.tune)) || (!!seat.who && seat.who !== id));
+      const note = $('setSeatNow' + p), n = tuneSize(tune);
+      note.hidden = !differs;
+      note.textContent = differs ? 'This game: ' + PERSONA_BY_ID[id].name + ', ' + (n ? n + (n === 1 ? ' change' : ' changes') : 'as itself') + '. Your settings apply from your next game.' : '';
+    }
+  }
+  /** Sets one field of seat p from its control: '' is its own. @param {number} p @param {string} field @param {string} value */
+  function setSeatField(p, field, value) {
+    const seat = app.seats[p];
+    const t = /** @type {any} */ (Object.assign({}, seat.tune || {}, { knowledge: Object.assign({}, (seat.tune && seat.tune.knowledge) || {}) }));
+    if (field === 'who') {
+      seat.who = Object.prototype.hasOwnProperty.call(PERSONA_BY_ID, value) ? value : '';
+      /* West and East never pin the same bot: the other seat gives way. */
+      if (p !== HUMAN && seat.who && app.seats[3 - p].who === seat.who) app.seats[3 - p].who = '';
+    } else if (field === 'tier') {
+      const tier = AI.SKILL_TIERS[value];
+      if (tier) Object.assign(t, { worlds: tier.thinking.worlds, playoutSkill: tier.thinking.playoutSkill, knowledge: Object.assign({}, tier.knowledge) });
+      else if (value === '') { delete t.worlds; delete t.playoutSkill; t.knowledge = {}; }
+    } else if (field.startsWith('k.')) {
+      if (value === '') delete t.knowledge[field.slice(2)]; else t.knowledge[field.slice(2)] = value === 'on';
+    } else if (value === '') delete t[field];
+    else if (field === 'worlds') { if (isFinite(Number(value))) t.worlds = Number(value); }
+    else if (field === 'playoutSkill') t.playoutSkill = 1 - Number(value) / 100;
+    else if (field === 'slack') t.slack = Number(value) / 100;
+    else if (['credulity', 'feint', 'wariness'].includes(field)) t[field] = Number(value) / 100;
+    else if (field === 'realTable') t.realTable = value === 'on';
+    else t[field] = value;
+    seat.tune = AI.cleanTune(t);
+    Logger.log('SEAT_SETTINGS', { seat: p, who: seat.who, tune: seat.tune });
+    syncSeats();
     saveSettings();
   }
-
-  /* Table style switch: change the AI, keep the checkbox in step, and log the change. */
-  function setStyle(t) {
-    app.ai = AI.config(app.ai, { style: t });
-    const now = app.ai.style;
-    syncBotPanel();
-    Logger.log('AI_STYLE', now);
-    addLog('Bot style: bid courage ' + $('setCourage').selectedOptions[0].textContent + ', real table ' + (now.realTable ? 'on' : 'off') + '.', 'h');
+  /** Seat p (or every seat) back to the seed's pick, playing as itself. @param {number} [p] */
+  function resetSeats(p) {
+    if (p === undefined) app.seats = blankSeats(); else app.seats[p] = { who: '', tune: null };
+    Logger.log('SEAT_SETTINGS', { seat: p === undefined ? 'all' : p, reset: true });
+    syncSeats();
     saveSettings();
   }
-  function syncStyle() { const st = shownAI().style; $('setRealTable').checked = st.realTable; $('setCourage').value = st.courage; }
-  /* The bot settings the panel shows: yours, or the defaults while they do not apply (Personalities on, a wave,
-     Dynamic). A dimmed row never shows a custom set that no bot plays; yours are kept and come back in Free play. */
-  function shownAI() { return personasOn() ? AI.DEFAULT_CONFIG : AI.config(AI.DEFAULT_CONFIG, app.ai); }
-  function syncBotPanel() { syncThinking(); syncKnowledge(); syncStyle(); }
-  /* Whether the bot rows show the defaults now (syncModeUI refreshes them only when this changes). */
-  let botRowsDefault = /** @type {boolean | null} */ (null);
-  /* Personalities switch: on, each bot plays its own style; off, all bots use the settings below. */
-  /* The bot settings (Bots tab and Expert tab, Personalities aside) back to their defaults. */
-  function resetBotSettings() { setThinking(AI.THINKING_DEFAULTS); setKnowledge(AI.KNOWLEDGE_DEFAULTS); setStyle(AI.STYLE_DEFAULTS); }
-  function setPersonas(on, quiet) {
-    app.usePersonas = on;
-    $('setPersonas').checked = on;
-    syncModeUI();
-    if (!quiet) { addLog('Personalities: ' + (on ? 'on' : 'off') + '.', 'h'); saveSettings(); }
+  /** Console: seat p's setup, changed by x ({ who, tune }; a tune replaces the old one). Returns the setup.
+      @param {number} p @param {{ who?: string, tune?: any }} [x] */
+  function setSeat(p, x) {
+    if (![0, 1, 2].includes(p)) return null;
+    if (x && 'who' in x) setSeatField(p, 'who', String(x.who || ''));
+    if (x && 'tune' in x) { app.seats[p].tune = AI.cleanTune(x.tune); syncSeats(); saveSettings(); }
+    return JSON.parse(JSON.stringify(app.seats[p]));
   }
-  /* Skill tier: sets thinking and knowledge together. The menu shows Custom when they match no tier. */
-  function setSkillTier(name) {
-    app.ai = AI.withSkillTier(app.ai, name);
-    syncBotPanel();
-    Logger.log('AI_SKILL', { tier: AI.skillTierOf(app.ai) });
-    addLog('Bot skill: ' + $('setTier').selectedOptions[0].textContent + '.', 'h');
-    saveSettings();
-  }
-  function syncTier() { $('setTier').value = AI.skillTierOf(shownAI()); }
 
   /* Copies text (the clipboard API can be blocked on local files, so fall back). done(ok) reports the result. */
   function copyText(text, done) {
@@ -7282,7 +7920,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', seats: 'Seat settings', habits: 'Habits'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -7304,36 +7942,24 @@ const App = (() => {
     $('setTests').innerHTML = html;
   }
 
-  /* AI thinking settings: change the AI, keep the controls in step, and log the change. */
-  function syncThinking() {
-    const ai = shownAI();
-    $('setWorlds').value = ai.thinking.worlds;
-    const farts = Math.round((1 - ai.thinking.playoutSkill) * 100);
-    $('setSkill').value = farts;
-    $('setSkillOut').textContent = farts + '%';
-    syncTier();
-  }
-  function setThinking(t) {
-    app.ai = AI.config(app.ai, { thinking: t });
-    const now = app.ai.thinking;
-    syncBotPanel();
-    const farts = Math.round((1 - now.playoutSkill) * 100);
-    Logger.log('AI_THINKING', now);
-    addLog('AI thinking: ' + now.worlds + ' hunches, brain farts ' + farts + '%.', 'h');
-    saveSettings();
-  }
+
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ personas: app.usePersonas, seatPersona: app.seatPersona, thinking: app.ai.thinking, knowledge: app.ai.knowledge, style: app.ai.style, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
     const x = settingsStore.load();
     if (!x || typeof x !== 'object') return;
-    app.ai = AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style });
-    if (typeof x.personas === 'boolean') app.usePersonas = x.personas;
-    if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seatPersona = x.seatPersona;
+    if (Array.isArray(x.seats)) app.seats = cleanSeats(x.seats);
+    else {
+      /* Settings from before seat settings: the AI personality for your seat, and with Personalities off, the one
+         panel config every bot played with, which becomes West's and East's tune. */
+      app.seats = blankSeats();
+      if (typeof x.seatPersona === 'string' && PERSONA_BY_ID[x.seatPersona]) app.seats[HUMAN].who = x.seatPersona;
+      if (x.personas === false) for (const p of [1, 2]) app.seats[p].tune = AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: x.thinking, knowledge: x.knowledge, style: x.style }));
+    }
     if (x.logging === true) Logger.enabled = true;
     /* The theme boot script applied the saved theme already: keep what it applied (unknown names became Classic). */
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
@@ -7442,28 +8068,18 @@ const App = (() => {
       if (logBox.checked) Logger.log('LOGGING_ON', { hand: app.state.handNumber, phase: app.state.phase });
       saveSettings();
     });
-    /* An empty or unreadable entry keeps the current value (AI.config clamps the rest to 1–200). */
-    $('setWorlds').addEventListener('change', () => { const w = $('setWorlds').value.trim(); if (w === '' || !isFinite(Number(w))) syncThinking(); else setThinking({ worlds: Number(w) }); });
-    $('setSkill').addEventListener('input', () => { $('setSkillOut').textContent = $('setSkill').value + '%'; });
-    $('setSkill').addEventListener('change', () => setThinking({ playoutSkill: 1 - Number($('setSkill').value) / 100 }));
-    for (const box of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('[data-knowledge]'))) {
-      box.checked = app.ai.knowledge[box.getAttribute('data-knowledge')];
-      box.addEventListener('change', () => setKnowledge({ [box.getAttribute('data-knowledge')]: box.checked }));
-    }
-    syncThinking(); syncKnowledge();
-    $('setTier').addEventListener('change', () => setSkillTier($('setTier').value));
-    syncStyle();
-    $('setCourage').addEventListener('change', () => setStyle({ courage: $('setCourage').value }));
-    /* Switching Personalities either way starts the bot settings from their defaults: dimmed (on), they show the
-       defaults rather than an old custom set; enabled (off), you start from a known point. */
-    $('setPersonas').addEventListener('change', () => { resetBotSettings(); setPersonas($('setPersonas').checked); });
-    setPersonas(app.usePersonas, true);
+    $('setSeats').innerHTML = [1, 2, HUMAN].map(seatGroupHTML).join('');
+    /* A seat control sets one field. An unreadable Hunches entry keeps the old value (AI.cleanTune clamps the rest to 1–200). */
+    $('setSeats').addEventListener('change', (/** @type {Event} */ ev) => {
+      const el = /** @type {any} */ (ev.target);
+      if (!el || !el.hasAttribute || !el.hasAttribute('data-field')) return;
+      const v = String(el.value).trim(), f = el.getAttribute('data-field');
+      if (f === 'worlds' && v !== '' && !isFinite(Number(v))) { syncSeats(); return; }
+      setSeatField(Number(el.getAttribute('data-seat')), f, v);
+    });
+    syncSeats();
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
-    $('setSeatPersona').append(...PERSONAS.map(x => new Option(x.name + ' (' + x.tier + ', ' + x.courage + ')', x.id)));
-    $('setSeatPersona').value = app.seatPersona;
-    $('setSeatPersona').addEventListener('change', () => setSeatPersona($('setSeatPersona').value));
-    $('setRealTable').addEventListener('change', () => setStyle({ realTable: $('setRealTable').checked }));
     /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */
     Logger.listeners.push(line => {
       const pre = $('setLog');
@@ -7510,7 +8126,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, setSkillTier, setStyle, setThinking, setKnowledge, aiMeta, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, personasOn, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -7802,7 +8418,8 @@ const SelfTest = (() => {
           check('thinking ' + t.worlds + ' worlds, skill ' + t.playoutSkill + ': AI decisions stay legal', Engine.validate(st, AI.decide(buildView(st, 1), cfg)) === null);
         }
         eq('thinking settings clamp to their ranges', AI.config(full, { thinking: { worlds: 999, playoutSkill: -1 } }).thinking, { worlds: 200, playoutSkill: 0 });
-        eq('bot style defaults: normal courage, real table off, auto Showdown pick', AI.STYLE_DEFAULTS, { realTable: false, courage: 'normal', leadPick: 'auto' });
+        eq('bot style defaults: normal courage, real table off, auto Showdown pick, no habits', AI.STYLE_DEFAULTS,
+          { realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0, feint: 0, wariness: 0 });
         {
           const cfg = AI.config(full, { style: { realTable: true } });
           const st = revealState(11, 0, '9H');
@@ -7863,7 +8480,8 @@ const SelfTest = (() => {
       check('every wave seats two different known personalities', WAVES.every(w => PERSONA_BY_ID[w.west] && PERSONA_BY_ID[w.east] && w.west !== w.east));
       check('every personality plays at least one wave', PERSONAS.every(x => WAVES.some(w => w.west === x.id || w.east === x.id)));
       check('no table repeats', new Set(WAVES.map(w => w.west + '/' + w.east)).size === WAVES.length);
-      check('waves go from easiest to hardest', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin));
+      /* Measured rates: a wave may sit a little above the one before, within the measurement's margin (150 games: ±8). */
+      check('waves go from easiest to hardest, within the measurement margin', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin + 8) && WAVES[0].youWin > WAVES[WAVES.length - 1].youWin + 30);
       check('a rematch is an earlier wave with the seats swapped', WAVES.filter(w => w.rematchOf).every(w => {
         const r = WAVES[w.rematchOf - 1];
         return r && r.n < w.n && r.west === w.east && r.east === w.west;
@@ -7965,8 +8583,13 @@ const SelfTest = (() => {
       eq('a save cannot open a locked wave', createSlots(store).get('waves').wave.open, Waves.isUnlocked(18));
       store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null },
         ai: { personas: 1, panel: { thinking: { worlds: 9999 }, knowledge: { bids: 'yes' }, style: { courage: evil } }, changed: true } } }));
-      eq('saved bot settings are cleaned', createSlots(store).get('free').ai,
-        { personas: false, panel: { thinking: Object.assign({}, AI.THINKING_DEFAULTS, { worlds: 200 }), knowledge: AI.KNOWLEDGE_DEFAULTS, style: AI.STYLE_DEFAULTS }, changed: true });
+      const legacyTune = AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 200 } }));
+      eq('an old save\'s panel settings become West\'s and East\'s tunes, cleaned', createSlots(store).get('free').tunes, [null, legacyTune, legacyTune]);
+      store.poke(JSON.stringify({ free: { format: SAVE_FORMAT, state: s, personas: [null, 'vex', 'doc'], wave: { n: null },
+        tunes: [{ worlds: 9999, courage: evil, junk: 1 }, 'x', { knowledge: { bids: 'yes', voids: false } }] } }));
+      eq('saved tunes are cleaned', createSlots(store).get('free').tunes, [{ worlds: 200 }, null, { knowledge: { voids: false } }]);
+      store.poke(JSON.stringify({ waves: { format: SAVE_FORMAT, state: s, personas: [null, WAVES[0].west, WAVES[0].east], wave: { n: 1, open: true }, tunes: [null, { courage: 'bold' }, null] } }));
+      eq('a Waves game with a tuned bot is dropped', createSlots(store).get('waves'), null);
       check('no saved HTML ran', !(/** @type {any} */ (window)).kctSelfTestHit);
       const blocked = createSlots({ get: () => { throw new Error('blocked'); }, set: () => { throw new Error('blocked'); } });
       check('a save to blocked storage reports the failure', blocked.put('free', { state: s, personas: [null, 'vex', 'doc'], wave: { n: null } }) === false);
@@ -8087,7 +8710,7 @@ const SelfTest = (() => {
       eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
       const junk = JSON.stringify([null, 5, { code: 7 }, { code: '<b>x</b>' }, { code: 'KCT2-AA', west: '<i>', wave: 99, winner: 1, scores: [1, 2], extra: 1 }]);
       eq('saved replay entries are cleaned', createReplays({ get: () => junk, set: () => {} }).list(),
-        [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, at: null }]);
+        [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, tuned: false, at: null }]);
       let longErr = '';
       try { Replay.decode('KCT2-' + Base64url.encode([2, 1, 8, 255, 255, 255, 255, 255, 255, 255, 127])); } catch (e) { longErr = e instanceof Error ? e.message : String(e); }
       check('a number past 2^53 in a code is refused', /too long/.test(longErr), longErr);
@@ -8106,12 +8729,13 @@ const SelfTest = (() => {
       const wc = Replay.encode(worst);
       check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
       eq('20 showdown hands decode the same', Replay.decode(wc), worst);
-      /* The full AI settings go in META, and still fit with the worst case. */
-      const am = App.aiMeta(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 37, playoutSkill: 0.55 }, knowledge: { bids: true, voids: false } }));
-      eq('AI META holds the full settings', [am['ai.tier'], am['ai.hunches'], am['ai.brainFarts'], am['ai.know.bids'], am['ai.know.voids'], Object.keys(am).filter(k => k.startsWith('ai.know.')).length], ['custom', 37, 45, true, false, Object.keys(AI.KNOWLEDGE_DEFAULTS).length]);
+      /* Each seat's tune goes in META (ai.tune<p>), and three full tunes still fit with the worst case. */
+      const full = JSON.stringify(AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 137, playoutSkill: 0.55 }, style: { courage: 'cautious', leadPick: 'impulsive' } })));
+      const am = { 'ai.tune0': full, 'ai.tune1': full, 'ai.tune2': full };
+      eq('a full tune sets every field', Object.keys(JSON.parse(full)).sort(), ['courage', 'credulity', 'feint', 'kingHabit', 'knowledge', 'leadHabit', 'leadPick', 'playoutSkill', 'realTable', 'slack', 'voidHabit', 'wariness', 'winHabit', 'worlds']);
       const worstAll = Object.assign({}, worst, { meta: am });
       const wa = Replay.encode(worstAll);
-      check('20 showdown hands with full AI META fit in 3000 chars', wa.length <= 3000, wa.length + ' chars');
+      check('20 showdown hands with three full tunes in META fit in 4000 chars', wa.length <= 4000, wa.length + ' chars');
       eq('full AI META decodes the same', Replay.decode(wa).meta, am);
     });
 
@@ -8396,10 +9020,12 @@ const SelfTest = (() => {
       const panel = typeof document !== 'undefined' && document.getElementById('settingsPanel');
       if (panel) {
         const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
-        eq('every setting sits in a row with a name', unnamed.map(c => c.id || c.getAttribute('data-knowledge')), []);
-        eq('six AI knowledge switches', panel.querySelectorAll('input[data-knowledge]').length, 6);
+        eq('every setting sits in a row with a name', unnamed.map(c => c.id), []);
+        eq('each seat (yours, West, East) has who sits, 3 skill, 6 style, 5 habit and 6 knowledge controls',
+          [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [21, 21, 21]);
+        check('each seat is a collapsed group of collapsed groups', [0, 1, 2].every(p => { const d = document.getElementById('setSeat' + p); return !!d && d.tagName === 'DETAILS' && d.querySelectorAll('details.seat-sub').length === 4; }));
         const tabs = [...panel.querySelectorAll('.set-tab')];
-        check('four settings tabs, each with its pane', tabs.length === 4 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
+        check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
       }
@@ -8470,10 +9096,9 @@ const SelfTest = (() => {
 
     /* --- App logic kept in one place: tested with stand-in apps, so the running game is not touched. --- */
     safeRun('app logic', () => {
-      const A = App, mk = (/** @type {any} */ x) => Object.assign({ mode: null, state: null, usePersonas: true, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
+      const A = App, mk = (/** @type {any} */ x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
       const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
       eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
-      eq('personasOn: the switch in Free play, always in a wave', [A.personasOn(mk({ usePersonas: false })), A.personasOn(mk({ usePersonas: true })), A.personasOn(mk({ usePersonas: false, wave: { n: 3 } }))], [false, true, true]);
       eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '' }, { setMediatorNow: '', setJokerNow: '' }]);
       const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S' }, houseRules: { mediatorLead: true, jokerFlip: 'random' } }));
       eq('house notes: each setting that differs from the game names the game\'s value', notes, {
@@ -8550,13 +9175,18 @@ const SelfTest = (() => {
           if (c.thinking.worlds > own.thinking.worlds || c.thinking.playoutSkill > own.thinking.playoutSkill) why.push('stronger than its own');
           if (Object.keys(own.knowledge).some(key => c.knowledge[key] && !own.knowledge[key])) why.push('knows more than its own');
           if (c.thinking.worlds < 1 || c.thinking.playoutSkill < 0.4 - 1e-9) why.push('below the floor');
-          if (JSON.stringify(c.style) !== JSON.stringify(own.style) || c.persona !== true) why.push('style changed');
+          const fade = (/** @type {any} */ st) => Object.assign({}, st, { feint: 0, wariness: 0, credulity: 0, slack: 0 });
+          if (JSON.stringify(fade(c.style)) !== JSON.stringify(fade(own.style)) || c.persona !== true) why.push('style changed');
+          if (c.style.feint > own.style.feint + 1e-12 || c.style.wariness > own.style.wariness + 1e-12 || c.style.feint > prev.style.feint + 1e-12 || c.style.wariness > prev.style.wariness + 1e-12) why.push('feints or wariness grew');
+          if (c.style.credulity < prev.style.credulity - 1e-12 || c.style.slack < prev.style.slack - 1e-12) why.push('belief or habit strength fell');
           if (c.thinking.worlds > prev.thinking.worlds || c.thinking.playoutSkill > prev.thinking.playoutSkill || Object.keys(c.knowledge).some(key => c.knowledge[key] && !prev.knowledge[key])) why.push('stronger than at less easing');
           if (why.length && bad.length < 5) bad.push(x.id + ' at ' + k / 20 + ': ' + why.join(', '));
           prev = c;
         }
       }
-      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes, and more easing never helps', bad, []);
+      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes (only feints and wariness fade, belief and habit strength rise), and more easing never helps', bad, []);
+      eq('at the floor a bot neither feints nor grows wary, believes fully and follows its habits at full strength',
+        PERSONAS.filter(x => { const c = DY.ease(x, 1).style; return c.feint !== 0 || c.wariness !== 0 || c.credulity !== 1 || Math.abs(c.slack - AI.MAX_SLACK) > 1e-12; }).map(x => x.id), []);
       eq('easing 0 is each bot\'s own personality', PERSONAS.filter(x => JSON.stringify(DY.ease(x, 0)) !== JSON.stringify(AI.personaConfig(x))).map(x => x.id), []);
       eq('easing 1 is the floor for every bot: 1 hunch, no knowledge, 60% brain farts',
         PERSONAS.filter(x => { const c = DY.ease(x, 1); return c.thinking.worlds !== 1 || Math.abs(c.thinking.playoutSkill - 0.4) > 1e-9 || JSON.stringify(c.knowledge) !== JSON.stringify(off); }).map(x => x.id), []);
@@ -8664,13 +9294,131 @@ const SelfTest = (() => {
 
       /* 7. The app: in Dynamic both bots ease by the game's one amount, your seat's AI never; other modes as before. */
       const A = App, dt = DY.tracker(Object.assign({}, blank, { mark: true }));
-      const mk = (/** @type {any} */ x) => Object.assign({ mode: 'dynamic', state: { gameOver: false }, usePersonas: false, wave: { n: null }, ui: { personas: ['kit', 'vex', 'gus'] }, ai: AI.DEFAULT_CONFIG, dyn: dt }, x);
+      const tune = { courage: 'timid', worlds: 2 };
+      const mk = (/** @type {any} */ x) => Object.assign({ mode: 'dynamic', state: { gameOver: false }, wave: { n: null }, ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, null, null] }, dyn: dt }, x);
       eq('Dynamic: both bots use the same easing amount, from their own personalities', [A.botConfig(1, mk({})).cfg, A.botConfig(2, mk({})).cfg], [DY.ease(PERSONA_BY_ID.vex, 1), DY.ease(PERSONA_BY_ID.gus, 1)]);
       eq('Dynamic: the AI in your seat plays its own personality', A.botConfig(0, mk({})).cfg, AI.personaConfig(PERSONA_BY_ID.kit));
-      eq('Dynamic always uses personalities', A.personasOn(mk({})), true);
-      eq('Free play and Waves: the bots play exactly as before', [A.botConfig(1, mk({ mode: 'free', usePersonas: true })).cfg, A.botConfig(1, mk({ mode: 'waves', wave: { n: 3 } })).cfg, A.botConfig(1, mk({ mode: 'free' })).cfg],
-        [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex), AI.DEFAULT_CONFIG]);
+      eq('Dynamic: a tune never applies to an eased bot', A.botConfig(1, mk({ ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, tune, null] } })).cfg, DY.ease(PERSONA_BY_ID.vex, 1));
+      eq('Free play and Waves: an untuned bot plays its own personality', [A.botConfig(1, mk({ mode: 'free' })).cfg, A.botConfig(1, mk({ mode: 'waves', wave: { n: 3 } })).cfg],
+        [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex)]);
+      eq('Free play: a tuned bot plays its personality with the tune over it', A.botConfig(1, mk({ mode: 'free', ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, tune, null] } })).cfg, AI.tunedConfig(PERSONA_BY_ID.vex, tune));
       eq('read pace: Sharks notice soonest, Novices last', ['vex', 'ace', 'gus', 'lou'].map(id => PERSONA_BY_ID[id].readPace), [2, 3, 4, 6]);
+      /* 8. Opponents by level: no Shark above e0 0.5, at most one above 0.2; a fresh pair after the last game. */
+      const sharks = (/** @type {string[]} */ t) => t.filter(id => PERSONA_BY_ID[id].tier === 'shark').length;
+      const most = (/** @type {number} */ e0) => Math.max(...Array.from({ length: 300 }, (_, k) => sharks(A.dynamicTable(k * 7919, e0, []))));
+      eq('Dynamic opponents: no Shark for a new player, one at most, then any pair', [most(0.8), most(0.4), most(0)], [0, 1, 2]);
+      eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
+      const seat = A.dynamicTable(12345, 0.8, []);
+      check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
+      /* 9. Card-play slips (step 4c): an old snapshot still works; slips above normal ease more; a game's plays decay as samples. */
+      const base = { h: 60, share: { me: 10, all: 30 }, calls: { n: 10, failed: 4 }, bids: { n: 20, errors: 0 }, mark: false };
+      eq('a snapshot from before slips is kept as it is', DY.cleanSnapshot(base), base);
+      eq('a snapshot with more slips than plays is refused', DY.cleanSnapshot(Object.assign({}, base, { plays: { n: 5, slips: 6 } })), null);
+      const at = (/** @type {number} */ rate) => DY.slowTarget(Object.assign({}, base, { plays: { n: 600, slips: 600 * rate } }));
+      check('slips at the normal rate change nothing; more slips ease more, up to the weight',
+        Math.abs(at(DY.TUNE.SLIP_NORMAL) - DY.slowTarget(base)) < 1e-9 && at(0.05) > at(DY.TUNE.SLIP_NORMAL) && at(0.5) <= at(0.05) + DY.TUNE.SLIP_WEIGHT + 1e-9, [DY.slowTarget(base), at(0.05), at(0.5)].join());
+      const pg = DY.addGame(DY.blankProfile(), { hands: [], marked: false, plays: { n: 50, slips: 5 } }, 'free');
+      check('a game adds its plays as decayed samples, its slips in proportion', pg.plays.n > 39 && pg.plays.n < 50 && Math.abs(pg.plays.slips / pg.plays.n - 0.1) < 1e-9, JSON.stringify(pg.plays));
+    });
+
+    /* --- Seat settings (Settings → Bots): a seat's tune over its personality, and results that skip a tuned bot. --- */
+    safeRun('seats', () => {
+      const vex = PERSONA_BY_ID.vex;
+      eq('a tune keeps only valid fields, clamped', AI.cleanTune({ courage: 'reckless', realTable: 1, leadPick: 'shrewd', worlds: 999.4, playoutSkill: -2, knowledge: { bids: false, voids: 'yes', x: true }, extra: 1 }),
+        { leadPick: 'shrewd', worlds: 200, playoutSkill: 0, knowledge: { bids: false } });
+      eq('a tune with no valid field is none', [AI.cleanTune({}), AI.cleanTune(null), AI.cleanTune({ knowledge: {} })], [null, null, null]);
+      eq('no tune: the personality as it is', AI.tunedConfig(vex, null), AI.personaConfig(vex));
+      const c = AI.tunedConfig(vex, { courage: 'timid', worlds: 4, knowledge: { bids: false } }), own = AI.personaConfig(vex);
+      eq('a tune changes only its fields', [c.style.courage, c.thinking.worlds, c.knowledge.bids, c.style.realTable, c.thinking.playoutSkill, c.knowledge.voids, c.persona],
+        ['timid', 4, false, own.style.realTable, own.thinking.playoutSkill, own.knowledge.voids, true]);
+      const novice = AI.withSkillTier(AI.DEFAULT_CONFIG, 'novice'), full = AI.tunedConfig(vex, AI.tuneOf(novice));
+      eq('a full tune plays exactly those settings', [full.thinking, full.knowledge, full.style], [novice.thinking, novice.knowledge, novice.style]);
+      /* Habits: a pick among the cards within slack of the best; with slack 0 (or no habits), the best card as before. */
+      eq('a tune keeps valid habits, slack clamped to 5%', AI.cleanTune({ leadHabit: 'trump', winHabit: 'sneaky', kingHabit: 'late', slack: 0.2 }), { leadHabit: 'trump', kingHabit: 'late', slack: AI.MAX_SLACK });
+      eq('each personality\'s habits are valid', PERSONAS.filter(x => { const st = AI.personaConfig(x).style, h = x.habits || {}; return (h.lead || 'none') !== st.leadHabit || (h.win || 'none') !== st.winHabit || (h.void || 'none') !== st.voidHabit || (h.kings || 'none') !== st.kingHabit || (h.slack || 0) !== st.slack; }).map(x => x.id), []);
+      const plain = AI.tunedConfig(vex, { leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, feint: 0 });
+      const loose = AI.tunedConfig(vex, { winHabit: 'big', leadHabit: 'trump', voidHabit: 'ruff', kingHabit: 'early', slack: 0.05, worlds: 4 });
+      const g = Engine.createGame(777, ['A', 'B', 'C']);
+      let n = 0, same = 0, habit = 0, within = 0;
+      for (let k = 0; !g.gameOver && k < 4000; k++) {
+        const act = Engine.actors(g);
+        if (!act.length) { Engine.dispatch(g, Engine.systemAction(g)); continue; }
+        const p = act[0], v = buildView(g, p);
+        if (g.phase === Engine.P.TRICK_PLAY && n < 40) {
+          n++;
+          const noHabit = AI.config(plain, { thinking: { worlds: 4 } });
+          if (JSON.stringify(AI.decide(v, noHabit)) === JSON.stringify(AI.decide(v, AI.config(AI.personaConfig(PERSONA_BY_ID.mei), { thinking: { worlds: 4 }, knowledge: noHabit.knowledge, style: { courage: noHabit.style.courage, leadPick: noHabit.style.leadPick, credulity: noHabit.style.credulity, feint: 0, wariness: noHabit.style.wariness } })))) same++;
+          const tr = { how: '', options: [] }, a = AI.decide(v, loose, tr);
+          if (tr.how === 'habit') {
+            habit++;
+            const best = Math.max(...tr.options.map(o => o.value)), mine = tr.options.find(o => o.choice === a.card);
+            if (mine && mine.value >= best - 0.05 - 1e-9) within++;
+          }
+        }
+        Engine.dispatch(g, AI.decide(v, AI.personaConfig(PERSONA_BY_ID.lou)));
+      }
+      eq('no habits: the same card as a bot without them', same, n);
+      check('habits pick some cards, each within slack of the best', habit > 0 && within === habit, habit + ' habit picks, ' + within + ' within slack');
+      /* Reads of card play: soft weights on guessed hands, from public plays, scaled by credulity. */
+      eq('a tune keeps credulity, clamped to 0..1', [AI.cleanTune({ credulity: 3 }), AI.cleanTune({ credulity: -1 })], [{ credulity: 1 }, { credulity: 0 }]);
+      const rv = { seat: 0, trump: 'S', showdown: null, phase: Engine.P.TRICK_PLAY, playLog: [], trickWinners: [], trick: { leader: 1, leadSuit: 'H', plays: [{ player: 1, card: 'KH' }] } };
+      const wLong = { hands: [[], ['9H', '10H', 'QH', '7C'], []] }, wShort = { hands: [[], ['9C', '10C', 'QC', '7C'], []] }, wAce = { hands: [[], ['AH', '9C', 'QC', '7C'], []] };
+      const believer = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 1 } }), doubter = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 0 } });
+      check('a lead reads as length in its suit', AI.playWeight(rv, wLong, believer) > AI.playWeight(rv, wShort, believer));
+      check('a King led reads as no Ace of its suit', AI.playWeight(rv, wAce, believer) < AI.playWeight(rv, { hands: [[], ['9H', '9C', 'QC', '7C'], []] }, believer));
+      eq('credulity 0 reads nothing', [AI.playWeight(rv, wLong, doubter), AI.playWeight(rv, wAce, doubter)], [1, 1]);
+      /* Trust: Seat 1 leads the King of hearts, then plays the Ace of hearts: a caught feint. */
+      const caughtV = Object.assign({}, rv, { playLog: [{ player: 1, card: 'KH' }, { player: 2, card: '9H' }, { player: 0, card: 'QH' }], trickWinners: [1],
+        trick: { leader: 1, leadSuit: 'H', plays: [{ player: 1, card: 'AH' }] } });
+      eq('a later Ace catches the King-led read', AI.readsOf(caughtV).caught, [0, 1, 0]);
+      const wary = AI.config(believer, { style: { wariness: 1 } }), trusting = AI.config(believer, { style: { wariness: 0 } });
+      eq('a fully wary bot stops reading a player it caught', AI.playWeight(caughtV, wLong, wary), 1);
+      check('a trusting bot keeps reading a player it caught', AI.playWeight(caughtV, wLong, trusting) > 1);
+      check('a half believer reads less than a full one', AI.playWeight(rv, wLong, AI.config(believer, { style: { credulity: 0.5 } })) < AI.playWeight(rv, wLong, believer));
+      const st = createStats((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
+      st.record({ mode: 'free', west: 'vex', east: 'doc', won: true, tuned: [true, false] });
+      st.record({ mode: 'free', west: 'vex', east: 'doc', won: false });
+      const r = st.get();
+      eq('results: a tuned bot\'s game counts for the mode and the other bot, not for it or the table',
+        [r.modes.free, r.opponents.vex, r.opponents.doc, r.modeOpponents.free.vex, r.tables['vex/doc']],
+        [{ played: 2, won: 1 }, { played: 1, won: 0 }, { played: 2, won: 1 }, { played: 1, won: 0 }, { played: 1, won: 0 }]);
+    });
+
+    /* --- Habits: the counts from a finished game, and the AI trace that explains each bot decision again.
+       tests/habits.js prints the report for all ten bots. --- */
+    safeRun('habits', () => {
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const g = Engine.createGame(4242, ['A', 'B', 'C']);
+      let traced = 0, same = 0;
+      for (let n = 0; !g.gameOver && n < 5000; n++) {
+        const act = Engine.actors(g);
+        let a = null;
+        if (act.length) {
+          const v = buildView(g, act[0]), trace = { how: '', options: [] };
+          a = AI.decide(v, cfgs[act[0]], trace);
+          traced++;
+          if (JSON.stringify(AI.decide(v, cfgs[act[0]])) === JSON.stringify(a) && ['plan', 'forced', 'rule', 'habit'].includes(trace.how)) same++;
+        } else a = Engine.systemAction(g);
+        if (!a || !Engine.dispatch(g, a).ok) break;
+      }
+      check('a bot game finishes', g.gameOver);
+      eq('a trace never changes the decision, and names how it was made', same, traced);
+      const rec = Replay.fromState(g), seats = Habits.count(rec);
+      const tricks = seats.reduce((t, c) => t + c.leads, 0);
+      const plays = rec.decisions.filter(d => d.type === 'PLAY').length;
+      check('every main-hand play is a lead, a follow or a void play, and every play counts at most once',
+        seats.every(c => c.leads + c.follows + c.voids > 0) && seats.reduce((t, c) => t + c.leads + c.follows + c.voids, 0) <= plays, JSON.stringify(seats));
+      check('each trick has one lead', tricks > 0 && seats.reduce((t, c) => t + c.follows + c.voids, 0) === 2 * tricks, 'leads ' + tricks);
+      check('slips are a few of the plays', seats.every(c => c.kingUnder + c.wasteWin + c.deadTrump <= c.leads + c.follows + c.voids), JSON.stringify(seats));
+      check('each habit is counted only when it could come up', seats.every(c => c.wentFor + c.heldBack === c.canWin && c.winCheap <= c.wentFor && c.ruffed <= c.canRuff &&
+        c.discards <= c.voids && c.leadTop <= c.leadMulti && c.call1 <= c.bid1 && c.call2 <= c.bid2 && c.kingsWon <= c.kings), JSON.stringify(seats));
+      eq('rates with no chance are null', Object.values(Habits.rates(Habits.blank())).every(x => x === null), true);
+      const ex = Habits.explain(rec, p => cfgs[p]);
+      eq('explain makes every decision again, the same as in the game', [ex.length, ex.filter(x => x.match).length], [traced, traced]);
+      const pl = ex.find(x => x.how === 'plan' && x.phase === Engine.P.TRICK_PLAY);
+      check('a planned card play lists its options, best first, with the chosen one among them',
+        !!pl && pl.options.length > 1 && pl.options.every((o, i) => i === 0 || o.value <= pl.options[i - 1].value) && pl.options.some(o => o.choice === pl.chosen), JSON.stringify(pl));
+      eq('explain skips a seat with no settings (a person)', Habits.explain(rec, p => (p === 0 ? null : cfgs[p])).some(x => x.seat === 0), false);
     });
 
     /* --- Truly random: fresh seeds and house rules on every run (RNG.freshSeed), so each run tries new deals. A failure
@@ -8823,7 +9571,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

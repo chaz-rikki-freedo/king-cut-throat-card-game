@@ -199,7 +199,8 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Profile name | `.persona h2` | L | The name, in its color. |
 | Quote | `.p-quote` | D | The personality's saying. |
 | Play hint | `.p-hint` | D | How the personality plays. |
-| Dials | `.p-dials`, `.pips` | D | "Card sense" and "Nerve", 1 to 4 pips each. |
+| Dials | `.p-dials`, `.pips` | D | "Card sense", "Nerve", "Reads you" and "Feints", 0 to 4 pips each. |
+| Habits line | `.p-ways` | D | The bot's card habits in a few words, such as "Leads trump · wins big · Kings early". |
 | Habit badge | `.habit` | D | "Set in their ways", for a personality with human habits. |
 
 ### 3.4a Your profile
@@ -291,20 +292,17 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Personalities switch | `#setPersonas` | C | "Each bot plays its own way". |
-| Waves note | `#setWaveNote` | D | "Waves always use their personalities…". |
-| Skill list | `#setTier` | C | Novice, Casual, Club player, Shark, Custom. |
-| Bid courage list | `#setCourage` | C | Timid, Cautious, Normal, Bold. |
-| Real table switch | `#setRealTable` | C | "Human habits". |
+| Waves note | `#setWaveNote` | D | "Waves and Dynamic always seat their own bots…". |
+| Seat groups | `#setSeats` | — | One collapsed group per seat, `details#setSeat1` (West), `#setSeat2` (East), `#setSeat0` (Your seat). Its summary names the seat and `#setSeatSum<p>`: who sits and how many changes. |
+| Seat game note | `#setSeatNow<p>` | D | What the running game seats there, when it differs from the settings. |
+| Who sits list | `#seat<p>-who` | C | "From the seed", or one personality. |
+| Seat subgroups | `details.seat-sub` | — | **Skill** (`#seat<p>-tier`, `-worlds`, `-playoutSkill`), **Style** (`-courage`, `-realTable`, `-leadPick`), **Knowledge** (`-k-voids` and the other five). Each control has `data-seat` and `data-field`; its first choice is **Its own**. |
+| Changed row | `.set-row.changed` | D | A gold dot after the setting's name. |
+| Reset this seat | `seat-reset` | C | One seat back to the seed's pick, playing as itself. |
 
 ### 5.2 Advanced section
 
-`details#setAdvanced`. Closed by default.
-
-| Term | Code anchor | Kind | What it is |
-|---|---|---|---|
-| AI thinking group | `#setThinking` | — | **Hunches** (`#setWorlds`, 1–200) and **Brain farts** (`#setSkill`, 0–100 %, readout `#setSkillOut`). |
-| AI knowledge group | `#setKnowledge` | — | Six switches, `data-knowledge`: Spots voids, Remembers discards, Plans showdowns, Reads bids, Watches score, Tracks upcard. |
+Removed: its settings are in each seat's **Skill** and **Knowledge** groups.
 
 ### 5.3 Your seat section
 
@@ -313,7 +311,7 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Seat AI switch | `#setSeatAI` | C | "AI can play your seat": makes the seat toggle work. |
-| Seat personality list | `#setSeatPersona` | C | "From the seed", or one personality. |
+
 
 ### 5.4 Defaults row
 

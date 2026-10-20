@@ -105,11 +105,21 @@ then count entries, in key order (sorted):
 
 Key rules:
 
-- Use dotted, lower-case names: `area.name`, for example `ai.tier`.
+- Use dotted, lower-case names: `area.name`, for example `dyn.ease`.
 - The `x.` prefix is for tests and private use. The app never gives a meaning to `x.` keys.
 - A reader ignores keys that it does not know.
 
 Keys that the app writes now:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `ai.tune0`, `ai.tune1`, `ai.tune2` | TEXT | The changes a seat played with (Settings → Bots; seat 0 is yours, when the AI played it), as JSON: any of `courage`, `realTable`, `leadPick`, `worlds`, `playoutSkill` and `knowledge`. A seat without the key played as its personality, eased in Dynamic. **Try again** needs them to seat the same bots with the same changes; a replay of the code does not. |
+| `seats.swapped` | BOOL | The seat dialog swapped West and East before the first deal. SEATS hold the seats as played; **Try again** deals the table as it was before the swap, and the dialog offers the swap again. |
+| `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Try again** needs it to run the bots again; a replay of the code does not. |
+| `dyn.e0` | INT | Dynamic only: the easing at the start, in thousandths (0 = normal, 1000 = the floor). |
+| `dyn.ease` | INT | Dynamic only: the easing when the code was made, in thousandths. |
+
+Keys that older versions wrote, from before seat settings. A reader still reads them:
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -126,11 +136,8 @@ Keys that the app writes now:
 | `ai.know.showdownPlans` | BOOL | Knowledge switch: plans showdowns. |
 | `ai.personas` | BOOL | At least one bot move used the bot's personality. Its settings follow from its id in SEATS. |
 | `ai.changed` | BOOL | The bots used more than one set of Settings-panel values in this game. |
-| `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Try again** needs it to run the bots again; a replay of the code does not. |
-| `dyn.e0` | INT | Dynamic only: the easing at the start, in thousandths (0 = normal, 1000 = the floor). |
-| `dyn.ease` | INT | Dynamic only: the easing when the code was made, in thousandths. |
 
-The `ai.tier` to `ai.know.*` keys hold the Settings-panel values that a bot used, so you can see the settings also when `ai.tier` is `custom`. They are written only when a bot played with the panel values (Personalities off, in Free play). If the values changed during the game, the code holds the last values that a bot used, and `ai.changed` is true. A game in which every bot played as its personality has only `ai.personas`. The app writes a key only when it is true or has a value.
+The old `ai.tier` to `ai.know.*` keys hold the one set of Settings-panel values that both bots played with when **Personalities** was off, in Free play. The app writes a key only when it is true or has a value.
 
 These keys are for information only. The AI moves are already in DECISIONS, so a replay does not need them.
 
