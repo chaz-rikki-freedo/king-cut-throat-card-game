@@ -944,9 +944,13 @@ window.kctTheme = (() => {
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
       </div>
-      <h3 class="set-head">Table</h3>
+      <h3 class="set-head">Table memory</h3>
       <div class="set-card" id="setInterface">
-        <label class="set-row"><span class="set-text"><span class="set-name">Table memory</span><span class="set-desc">Show what everyone has seen this hand: bids, voids, trumps and Kings played.</span></span><input class="sw" type="checkbox" id="setMemory"></label>
+        <p class="k-hint set-note">What every player has seen this hand, added to the popups. Never a card someone holds unseen.</p>
+        <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup lists the trumps played and not seen yet.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup lists the Kings still to come.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
       </div>
       <h3 class="set-head">House rules</h3>
       <div class="set-card" id="setHouseRules">
@@ -5409,8 +5413,8 @@ const App = (() => {
     said: /** @type {Record<number, boolean>} */ ({}),
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
-       memory: Table memory, what every player has seen this hand. All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
+       memory: Table memory, what every player has seen this hand, one switch per fact (MEMORY_SWITCHES). All are kept. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: { trumps: false, kings: false, turned: false, voids: false }, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -5937,9 +5941,12 @@ const App = (() => {
     syncTheme();
     saveSettings();
   }
-  function setMemory(on) {
-    app.ui.memory = on;
-    $('setMemory').checked = on;
+  /* Table memory: each fact it adds to the popups, and its switch. */
+  const MEMORY_SWITCHES = { trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids' };
+  /** @param {'trumps' | 'kings' | 'turned' | 'voids'} key @param {boolean} on */
+  function setMemory(key, on) {
+    app.ui.memory[key] = on;
+    $(MEMORY_SWITCHES[key]).checked = on;
     closePanel();
     saveSettings();
   }
@@ -6005,11 +6012,11 @@ const App = (() => {
     anchor.classList.add('open');
   }
   /* The information popups (adv-info): what a strip cell, a tag, a score or a hand of backs means.
-     With Settings → Table memory on, they add what every player at the table has seen, counted for you: the AI keeps
+     With Settings → Table memory switches on, they add what every player at the table has seen, counted for you: the AI keeps
      the same facts (see its Knowledge settings). Never a card that someone holds unseen. Returns [title, body]. */
   function infoPanel(v, kind, seat, anchor) {
     const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr'), minis = ids => '<div class="prow">' + ids.map(mini).join('') + '</div>';
-    const memory = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
+    const mem = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
     const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
     const callRound = () => { const b = Engine.trumpCall(v.bidLog); return b ? b.round : null; };
     const inHand = id => v.hand.includes(id);
@@ -6020,7 +6027,8 @@ const App = (() => {
       if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
       return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
-    const off = memory ? '' : '<p class="pnote">Settings → Table memory adds what has been played.</p>';
+    /* With a switch off, a note names the switch that adds its facts. */
+    const off = (/** @type {boolean} */ on, /** @type {string} */ name, /** @type {string} */ adds) => on ? '' : '<p class="pnote">Settings → Table memory → ' + name + ' adds ' + adds + '.</p>';
     const blockedText = (/** @type {Suit} */ x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
     switch (kind) {
       /* The play area, on your move (Render explains): a trick slot, the kitty, an unplayable card. */
@@ -6077,7 +6085,7 @@ const App = (() => {
       case 'trump': {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
         let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
-        if (memory) {
+        if (mem.trumps) {
           /* Seen but not played: your own discards, and the turned card (everyone saw it turned up). */
           const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), left = order.filter(id => !played.includes(id) && !inHand(id));
           const discarded = left.filter(id => v.myOut.includes(id)), turnedOut = v.flippedOut && left.includes(v.flipped) ? v.flipped : null;
@@ -6085,28 +6093,29 @@ const App = (() => {
           body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
             sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) +
             p1('You hold ' + mine.length + '.' + (discarded.length ? ' You discarded ' + discarded.map(mini).join(' ') + '.' : '') +
-              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.') + turnedNote();
+              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.');
         }
-        return ['Trump', body + off];
+        if (mem.turned) body += turnedNote();
+        return ['Trump', body + off(mem.trumps, 'Trumps played', 'the trumps played and not seen yet')];
       }
       case 'hand': {
         const sd = v.showdown && v.showdown.active;
         let body = p1('Dealer: ' + n(v.dealer) + '. The player left of the dealer leads the first trick.');
         if (Render.stageHelp(v)) body += p1(Render.stageHelp(v));
         if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
-        if (memory && T) {
+        if (mem.kings && T) {
           const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
           body += sub('Kings not played yet (' + out.length + ')') + (out.length ? minis(out) : p1('None.')) + p1('A King that wins a trick scores +1 at once.' + (out.some(inHand) ? ' You hold ' + out.filter(inHand).map(mini).join(' ') + '.' : ''));
         }
-        return [handLabel(v), body + (T ? off : '')];
+        return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'the Kings still to come') : '')];
       }
       case 'turned': {
         const blocked = v.phase === P.BID2 && v.flippedBlocked;
         let body = blocked ? p1(suit(v.flippedSuit) + ' was turned down in round 1, so it cannot be named in round 2.')
           : p1('The dealer turned up the top kitty card. In round 1, a player who accepts makes its suit trump, and this card goes to the player left of them.');
         if (v.flippedOut) body += p1('Round 2 named another suit, so this card went to the outside pile.');
-        if (memory) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
-        return [blocked ? 'Blocked suit' : 'Turned-up card', body + off];
+        if (mem.turned) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
+        return [blocked ? 'Blocked suit' : 'Turned-up card', body + off(mem.turned, 'Turned card', 'whether it has been played')];
       }
       case 'score': {
         const st = v.handStats && v.handStats.pts[seat], win = Engine.C.WIN_SCORE, need = Math.max(0, win - v.scores[seat]);
@@ -6118,9 +6127,9 @@ const App = (() => {
         return [n(seat) + ' · score', body];
       }
       case 'backs': {
-        /* A hand of backs: with Table memory on, the suits this player has shown void in (could not follow suit), as
-           pips. With it off, only the note that Table memory shows them. */
-        if (!memory) return [n(seat) + ' · hand', '<p class="pnote">Settings → Table memory shows the suits this player can\'t follow.</p>'];
+        /* A hand of backs: with Table memory → Voids on, the suits this player has shown void in (could not follow suit),
+           as pips. With it off, only the note that names the switch. */
+        if (!mem.voids) return [n(seat) + ' · hand', off(false, 'Voids', 'the suits this player can\'t follow')];
         const voids = v.voids[seat] || [];
         const pips = voids.length ? voids.map(x => '<b class="vpip' + (R.COLOR[x] === 'red' ? ' pip-red' : '') + '" title="' + R.SUIT_NAME[x] + '">' + R.SYMBOL[x] + '</b>').join('') : '<b class="vpip none">—</b>';
         return [n(seat) + ' · hand', '<p class="pvoid">Void of ' + pips + '</p>'];
@@ -6146,7 +6155,7 @@ const App = (() => {
         };
         const [title, text] = TEXT[tag] ? TEXT[tag]() : [who, ''];
         let body = p1(text);
-        if (tag === 'receiver' && memory) body += turnedNote();
+        if (tag === 'receiver' && mem.turned) body += turnedNote();
         return [title, body];
       }
     }
@@ -7947,7 +7956,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: app.ui.memory, mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -7965,9 +7974,12 @@ const App = (() => {
     /* The theme boot script applied the saved theme already: keep what it applied (unknown names became Classic). */
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
-    /* Profiles → Show this hand's bids and voids (up to 0.6.14) is now part of Table memory. */
-    if (typeof x.memory !== 'boolean' && x.thisHand === true) app.ui.memory = true;
-    if (typeof x.memory === 'boolean') app.ui.memory = x.memory;
+    /* Table memory was one switch (a boolean) before it split into one per fact: it sets them all. Profiles → Show this
+       hand's bids and voids (up to 0.6.14) was part of it. */
+    const mem = app.ui.memory, keys = /** @type {('trumps' | 'kings' | 'turned' | 'voids')[]} */ (Object.keys(mem));
+    if (x.memory === undefined && x.thisHand === true) for (const k of keys) mem[k] = true;
+    if (typeof x.memory === 'boolean') for (const k of keys) mem[k] = x.memory;
+    if (x.memory && typeof x.memory === 'object') for (const k of keys) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
@@ -8029,8 +8041,11 @@ const App = (() => {
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
     loadSettings();
-    $('setMemory').checked = app.ui.memory;
-    $('setMemory').addEventListener('change', () => setMemory($('setMemory').checked));
+    for (const [k, id] of Object.entries(MEMORY_SWITCHES)) {
+      const key = /** @type {'trumps' | 'kings' | 'turned' | 'voids'} */ (k);
+      $(id).checked = app.ui.memory[key];
+      $(id).addEventListener('change', () => setMemory(key, $(id).checked));
+    }
     syncTheme();
     $('setFelt').addEventListener('change', ev => { const r = /** @type {HTMLInputElement} */ (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt, /** @type {HTMLInputElement} */ ($('setColorBlind')).checked ? 'colorblind' : ''));
@@ -9032,6 +9047,7 @@ const SelfTest = (() => {
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
+      const memOf = (t, k, tu, vo) => ({ trumps: t, kings: k, turned: tu, voids: vo });
       let built = 0;
       const anchor = (tag, card) => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); if (card) a.setAttribute('data-card', card); return a; };
       const tryPanel = (v, kind, seat, tag, card) => {
@@ -9045,7 +9061,8 @@ const SelfTest = (() => {
       };
       try {
         for (let g = 0; g < 3; g++) {
-          ui.memory = g === 1;
+          /* Table memory all off, all on, then half of its switches. */
+          ui.memory = g === 0 ? memOf(false, false, false, false) : g === 1 ? memOf(true, true, true, true) : memOf(true, false, true, false);
           const s = Engine.createGame(2000 + g);
           D(s, { type: 'START_GAME' });
           for (let steps = 0; !s.gameOver && steps < 20000; steps++) {
@@ -9077,16 +9094,26 @@ const SelfTest = (() => {
           }
         }
       } finally { ui.memory = wasMemory; }
-      eq('every information popup builds, all through 3 games, Table memory off and on', fails, []);
+      eq('every information popup builds, all through 3 games, Table memory off, on and in part', fails, []);
       check('the popup check ran', built > 1000, built + ' popups');
       /* Table memory: a trump you discarded, or the turned card, is never listed as not seen yet. */
       {
         const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker), m = id => Render.microHTML(id, 'Jkr');
         Object.assign(tv, { trump: T, hand: [], played: [], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
-        ui.memory = true;
+        ui.memory = memOf(true, false, false, false);
         try {
           const body = App.infoPanel(tv, 'trump', null, anchor())[1], unseen = body.split('Not seen yet')[1].split('<p>')[0];
           check('Table memory: own discards and the turned card are not listed as not seen yet', !unseen.includes(m(trumps[0])) && !unseen.includes(m(trumps[1])) && unseen.includes(m(trumps[2])) && body.includes('You discarded'));
+          /* Each switch adds only its own facts: Trumps played alone leaves the hand of backs and the Kings to their notes. */
+          const tv2 = Object.assign({}, tv, { voids: [[], ['H'], []] }), hs = Engine.createGame(2200);
+          D(hs, { type: 'START_GAME' });
+          const hv = Object.assign(buildView(hs, 0), { trump: T });
+          check('Table memory: Trumps played alone keeps voids hidden', App.infoPanel(tv2, 'backs', 1, anchor())[1].includes('Table memory → Voids'));
+          check('Table memory: Trumps played alone keeps the Kings hidden', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Table memory → Kings not played'));
+          ui.memory = memOf(false, true, false, true);
+          check('Table memory: Voids shows the suits a bot can\'t follow', App.infoPanel(tv2, 'backs', 1, anchor())[1].includes('Void of'));
+          check('Table memory: Kings not played lists them in the Hand popup', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Kings not played yet'));
+          check('Table memory: Trumps played off leaves its note in the Trump popup', !App.infoPanel(tv, 'trump', null, anchor())[1].includes('Not seen yet'));
         } finally { ui.memory = wasMemory; }
       }
       /* Polite Play (house rule): on, trick circles open the tricks won; off, they only count. */
