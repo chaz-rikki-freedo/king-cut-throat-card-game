@@ -208,7 +208,15 @@ Each step was measured with `node tests/habits.js 1 4` and `node tests/roundrobi
 
 The three strength groups stay apart at every step. **Mei** climbed from 49% to 58%: Mei has no habits and no feints, so as the other bots take on small, chosen costs, the one bot that plays straight gains in their place. The game is zero-sum, so the pack is not stronger. Decision (2026-10-20): keep Mei as is, the counter who never feints.
 
-Next steps: the Dynamic upgrade (easing the way people are weak, reading the player's card play, choosing the opponents), then Waves measured again.
+Next steps: the Dynamic upgrade, then Waves measured again.
+
+### Dynamic upgrade (step 4, decided 2026-10-20)
+
+These change decisions on issue #117:
+
+1. **Opponents by level (4a, done).** A new player meets no Shark; one at most while the starting easing is above 0.2. A pair that shares no bot with the last Dynamic game comes first.
+2. **Easing adds human-style weakness (4b).** The measured hunch ladder stays. On top of it, as the easing rises, the bots believe your plays more, follow their habits more plainly, and stop feinting and guarding.
+3. **Your card play (4c).** The post-game review also counts card-play slips, which feed the slow easing, and Your profile shows your card habits beside each bot's.
 
 ## Proposals
 

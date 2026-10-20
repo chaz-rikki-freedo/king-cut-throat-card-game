@@ -15,8 +15,8 @@ Your profile, a bot's profile, the results pop-up and Rules have the same header
 | Item | What it does |
 |---|---|
 | **Resume** (in each card) | Continues that mode's game: the one you are playing (the menu closes), or the saved one. Disabled when there is none. At launch, the last game played is the main button. |
-| **New game** (Free play) | The seed picks two random opponents. If an unfinished Free play game has begun, the app asks first. |
-| **New game** (Dynamic) | As in Free play, two random opponents, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
+| **New game** (Free play) | The seed picks two opponents, unless Settings → Bots sets who sits. If an unfinished Free play game has begun, the app asks first. |
+| **New game** (Dynamic) | Two opponents picked for your level, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
 | **Rules** | The quick rules. **✕** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
@@ -332,7 +332,7 @@ KCT.App.app.dyn.e                  // the easing of the running Dynamic game: 0 
 
 A mode for new players: the bots ease off while you learn, and tighten back to normal as you improve. They never play harder than their own personalities. The design and the measurements behind it are on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117) and in [docs/human-play.md](docs/human-play.md).
 
-- **Opponents:** two random bots, as in Free play, with the same seat dialog.
+- **Opponents:** two bots picked for your level, with the same seat dialog as Free play. From the seed's order of the ten bots, Dynamic takes the first pair that fits: no Shark (Vex, Doc, Mei) while your starting easing is above 0.5, at most one above 0.2, any pair below that. It prefers a pair that shares no bot with your last Dynamic game. **New opponents** picks again by the same rule; **Try again** and **New deal** keep the pair.
 - **What eases:** strength only. Mainly fewer hunches; then the knowledge switches go off together; near the floor, more brain farts. A bot's style (bid courage, Real table, Showdown pick, habits and reads) never changes, so each bot still plays like itself. Only its feints and wariness fade as it eases, to none at the floor: an easing bot neither fools you more nor guards against your bluffs. Both bots use the same easing amount. At most, each bot eases to the floor: 1 hunch, no knowledge, 60% brain farts.
 - **What the bots read during a game:** only what the table saw. After each hand, a hand where you were neither caller nor receiver shows all 7 cards you kept, because you played them. Weak hands there (2 of the last 3) ease the bots off fast. Your score share and your failed calls ease them slowly. A bot may say so, in its own words, once a game.
 - **Bluffing stays a real tactic.** The bots read your bids as they always do, in every mode.

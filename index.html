@@ -2554,7 +2554,7 @@ function cleanSlot(mode, s) {
   return {
     format: SAVE_FORMAT, mode, savedAt: Number.isFinite(s.savedAt) ? s.savedAt : null, state, personas, dynamic,
     wave: { n: waveN, open: w.open === true && Waves.isUnlocked(waveN) }, assisted: s.assisted === true, autoplay: s.autoplay === true,
-    swapDone: s.swapDone !== false, log: cleanLog(s.log), tunes
+    swapDone: s.swapDone !== false, log: cleanLog(s.log), tunes, swapped: s.swapped === true
   };
 }
 /** @param {unknown} log @returns {[string, string][]} at most LOG_SAVE_MAX [text, classes] lines */
@@ -5358,7 +5358,7 @@ const App = (() => {
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what every player has seen this hand. All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: false, houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -5400,9 +5400,27 @@ const App = (() => {
 
   /* The two personalities that a Free play seed seats: [West, East]. */
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
+  /* Dynamic's opponents, by level (issue #117, step 4 of the personality plan). From the seed's order of the ten bots,
+     the first pair [West, East] that fits: no Shark while the starting easing e0 is above 0.5, at most one above 0.2,
+     any pair below. Among those, a pair that shares no bot with the last Dynamic game (last: [West, East]) comes first,
+     then one that is not the same pair. With no limit and no last game, it is seedTable. */
+  /** @param {number} s @param {number} e0 @param {string[]} last @returns {string[]} */
+  function dynamicTable(s, e0, last) {
+    const order = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
+    const max = e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2;
+    const pairs = [];
+    for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) pairs.push([order[i], order[j]]);
+    const fits = (/** @type {string[]} */ p) => p.filter(id => PERSONA_BY_ID[id].tier === 'shark').length <= max;
+    const none = (/** @type {string[]} */ p) => !p.some(id => last.includes(id)), other = (/** @type {string[]} */ p) => !p.every(id => last.includes(id));
+    return pairs.find(p => fits(p) && none(p)) || pairs.find(p => fits(p) && other(p)) || pairs.find(fits) || pairs[0];
+  }
   /* The table that seed s seats in mode: in Free play a seat set to a bot (Settings → Bots → Who sits) keeps it, and
      the seed fills the others in its own order. With no seat set, it is seedTable. */
   function tableFor(s, mode) {
+    if (mode === 'dynamic') {
+      const last = replays.list().find(e => e.mode === 'dynamic' && e.west && e.east);
+      return dynamicTable(s, app.dyn ? app.dyn.e0 : 0, last ? [last.west, last.east] : []);
+    }
     if (mode !== 'free') return seedTable(s);
     const w = app.seats[1].who, e = app.seats[2].who;
     const rest = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).filter(id => id !== w && id !== e);
@@ -5425,11 +5443,13 @@ const App = (() => {
        A wave sets them instead. Your seat gets one only when you hand it to the AI, and keeps it for the game. */
     const w = Waves.get(wave);
     app.mode = w ? 'waves' : opts && opts.mode === 'dynamic' ? 'dynamic' : 'free';
+    app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
     const pool = w ? [w.west, w.east] : opts && opts.table ? opts.table : tableFor(s, app.mode);
     /* A tune stays with its bot for the game. West and East are tuned in Free play only; your seat's tune is taken
        when the AI first plays it (toggleAutoplay). */
     app.ui.tunes = opts && opts.tunes ? opts.tunes.map(t => AI.cleanTune(t)) : [null, ...[1, 2].map(p => (app.mode === 'free' ? AI.cleanTune(app.seats[p].tune) : null))];
-    app.dyn = app.mode === 'dynamic' ? Dynamic.tracker(opts.snapshot || Dynamic.snapshotOf(profile.get())) : null;
+    /* Whether the seat dialog swapped West and East: Try again starts from the table before the swap, as it was dealt. */
+    app.ui.swapped = false;
     app.said = {};
     app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
@@ -5462,6 +5482,7 @@ const App = (() => {
     app.ui.autoplay = false;
     app.seatSwapPending = false;
     app.ui.tunes = [null, null, null];
+    app.ui.swapped = false;
     app.ui.endButtons = '';
     app.ui.scoreHold = {};
     app.state = Engine.createGame(0, ['You', 'West', 'East']);
@@ -5545,7 +5566,10 @@ const App = (() => {
     /** @type {Record<string, string>} */
     const m = {};
     app.ui.tunes.forEach((t, p) => { if (t) m['ai.tune' + p] = JSON.stringify(t); });
-    return m;
+    /** @type {Record<string, string | boolean>} */
+    const out = m;
+    if (app.ui.swapped) out['seats.swapped'] = true;
+    return out;
   }
 
 
@@ -5589,7 +5613,7 @@ const App = (() => {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, log: logLines.slice(-LOG_SAVE_MAX),
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX),
       dynamic: app.dyn ? app.dyn.snap : null
     });
   }
@@ -5809,6 +5833,7 @@ const App = (() => {
       app.ui.autoplay = !!s.autoplay && app.ui.allowSeatAI;
       app.seatSwapPending = s.swapDone === false;
       app.ui.tunes = s.tunes.map(t => AI.cleanTune(t));
+      app.ui.swapped = s.swapped;
       app.ui.endButtons = '';
       app.ui.selected.clear();
       seatBots(s.personas[1], s.personas[2]);
@@ -6830,6 +6855,11 @@ const App = (() => {
     /* The table and its tunes are passed too: after a swap against the seats set in Settings, no seed seats them. */
     startMode(app.mode, seed, undefined, undefined, undefined, { table: [west, east], tunes: [null, app.ui.tunes[1], app.ui.tunes[2]] });
   }
+  /* Try again's table: the game's [West, East] and their tunes as dealt, before the seat dialog's swap (the dialog
+     offers the swap again). @param {string[]} table @param {any[]} tunes @param {boolean} swapped */
+  function dealtTable(table, tunes, swapped) {
+    return swapped ? { table: [table[1], table[0]], tunes: [null, tunes[1], tunes[0]] } : { table: table.slice(), tunes: [null, tunes[0], tunes[1]] };
+  }
   /* Replay Seed on a Last games row: the same table as that game, from its replay code. Null when this app cannot
      play it again (a newer rules version, no mode, or a Dynamic code without its snapshot). @param {any} e */
   function againOf(e) {
@@ -6838,9 +6868,10 @@ const App = (() => {
     const snap = rec.mode === 'dynamic' ? Dynamic.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : undefined;
     if (snap === null) return null;
     /* The same table and tunes (Free play), which the seed alone may not seat. */
-    const table = rec.mode === 'waves' || !PERSONA_BY_ID[rec.seats[1]] || !PERSONA_BY_ID[rec.seats[2]] ? undefined : [rec.seats[1], rec.seats[2]];
-    const tunes = [0, 1, 2].map(p => (p === HUMAN ? null : AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p])))));
-    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' }, more: table ? { table, tunes } : undefined };
+    const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
+    const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' },
+      more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
   }
   function replaySeedRow(at) {
     const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
@@ -7213,7 +7244,7 @@ const App = (() => {
   function swapNew() {
     const [, west, east] = app.ui.personas;
     let seed = RNG.freshSeed();
-    for (let k = 0; k < 100 && seedTable(seed).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
+    for (let k = 0; k < 100 && tableFor(seed, app.mode).some(id => id === west || id === east); k++) seed = RNG.freshSeed();
     newGame(seed, undefined, { mode: app.mode, snapshot: app.dyn && app.dyn.snap });
   }
   function swapPreview() {
@@ -7221,6 +7252,7 @@ const App = (() => {
     seatBots(east, west);
     /* A tune stays with its bot. */
     app.ui.tunes = [app.ui.tunes[0], app.ui.tunes[2], app.ui.tunes[1]];
+    app.ui.swapped = !app.ui.swapped;
     redrawLog();
     draw([]);
     showSwap();
@@ -7543,7 +7575,9 @@ const App = (() => {
       }
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
-        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' });
+        /* The same table and tunes: the seed alone may seat another pair (seat settings, a swap, Dynamic's pick by level). */
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' },
+          inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
@@ -8024,7 +8058,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -9198,6 +9232,13 @@ const SelfTest = (() => {
         [AI.personaConfig(PERSONA_BY_ID.vex), AI.personaConfig(PERSONA_BY_ID.vex)]);
       eq('Free play: a tuned bot plays its personality with the tune over it', A.botConfig(1, mk({ mode: 'free', ui: { personas: ['kit', 'vex', 'gus'], tunes: [null, tune, null] } })).cfg, AI.tunedConfig(PERSONA_BY_ID.vex, tune));
       eq('read pace: Sharks notice soonest, Novices last', ['vex', 'ace', 'gus', 'lou'].map(id => PERSONA_BY_ID[id].readPace), [2, 3, 4, 6]);
+      /* 8. Opponents by level: no Shark above e0 0.5, at most one above 0.2; a fresh pair after the last game. */
+      const sharks = (/** @type {string[]} */ t) => t.filter(id => PERSONA_BY_ID[id].tier === 'shark').length;
+      const most = (/** @type {number} */ e0) => Math.max(...Array.from({ length: 300 }, (_, k) => sharks(A.dynamicTable(k * 7919, e0, []))));
+      eq('Dynamic opponents: no Shark for a new player, one at most, then any pair', [most(0.8), most(0.4), most(0)], [0, 1, 2]);
+      eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
+      const seat = A.dynamicTable(12345, 0.8, []);
+      check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
     });
 
     /* --- Seat settings (Settings → Bots): a seat's tune over its personality, and results that skip a tuned bot. --- */

@@ -114,6 +114,7 @@ Keys that the app writes now:
 | Key | Type | Meaning |
 |---|---|---|
 | `ai.tune0`, `ai.tune1`, `ai.tune2` | TEXT | The changes a seat played with (Settings → Bots; seat 0 is yours, when the AI played it), as JSON: any of `courage`, `realTable`, `leadPick`, `worlds`, `playoutSkill` and `knowledge`. A seat without the key played as its personality, eased in Dynamic. **Try again** needs them to seat the same bots with the same changes; a replay of the code does not. |
+| `seats.swapped` | BOOL | The seat dialog swapped West and East before the first deal. SEATS hold the seats as played; **Try again** deals the table as it was before the swap, and the dialog offers the swap again. |
 | `dyn.snap` | TEXT | Dynamic only: the profile snapshot the game started from, as JSON: `{ h, share: { me, all }, calls: { n, failed }, bids: { n, errors }, mark }`. **Try again** needs it to run the bots again; a replay of the code does not. |
 | `dyn.e0` | INT | Dynamic only: the easing at the start, in thousandths (0 = normal, 1000 = the floor). |
 | `dyn.ease` | INT | Dynamic only: the easing when the code was made, in thousandths. |
