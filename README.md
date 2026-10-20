@@ -133,7 +133,7 @@ The Bots tab has one group for each seat: **West**, **East** and **Your seat** (
 | Group | Settings |
 |---|---|
 | **Skill** | **Skill** sets hunches, brain farts and knowledge together, and shows **Custom** when they match no tier. **Hunches** and **Brain farts** fine-tune it (see below). |
-| **Style** | **Bid courage**, **Real table**, **Reads play** and **Showdown pick** (see below and **Opponents**). |
+| **Style** | **Bid courage**, **Real table**, **Reads play**, **Feints**, **Wariness** and **Showdown pick** (see below and **Opponents**). |
 | **Habits** | **Leads**, **Winning a trick**, **When void**, **Kings** and **Habit strength** (see **Habits** under **Opponents**). |
 | **Knowledge** | The six knowledge switches (see below), each **Its own**, **On** or **Off**. |
 
@@ -210,7 +210,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
 - Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
-- Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick, habits and reads. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
+- Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick, habits, reads, feints and wariness. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
 |---|---|---|---|---|
@@ -254,9 +254,15 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 A player who plays against type can fool a bot that reads: the more it believes, the more it can be fooled. Reads act in the main hand only.
 
+**Feints** are plays that tell a reader the wrong story: leading a short suit, leading a King while holding its Ace, throwing off from a long suit, or not trumping in while holding trump. A bot that feints likes such plays the way it likes its habits: only among cards within its habit strength of its best card, so a feint is a small, chosen risk, never a blunder.
+
+**Wariness** is how a bot guards against feints. When a later play this hand shows that one of a player's plays told the wrong story (the Ace after the King, a void in the suit it led, a trump after a throw-off), the bot catches the feint, and believes that player's plays less for the rest of the hand: each caught feint multiplies its belief by 1 minus its wariness. A trusting bot keeps falling for the same player; a wary one stops after the first. Trust starts over each hand, and it treats you and the bots alike.
+
 | Bot | Vex | Doc | Ace | Mei | Gus | Lou | Viv | Tex | Kit | Zen |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Reads play | 30% | 40% | 60% | 50% | 80% | 90% | 50% | 70% | 100% | 60% |
+| Feints | 80% | 20% | 40% | 0% | 30% | 0% | 50% | 60% | 0% | 20% |
+| Wariness | 60% | 90% | 30% | 80% | 20% | 10% | 60% | 20% | 30% | 40% |
 
 **Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → Game):
 
@@ -327,7 +333,7 @@ KCT.App.app.dyn.e                  // the easing of the running Dynamic game: 0 
 A mode for new players: the bots ease off while you learn, and tighten back to normal as you improve. They never play harder than their own personalities. The design and the measurements behind it are on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117) and in [docs/human-play.md](docs/human-play.md).
 
 - **Opponents:** two random bots, as in Free play, with the same seat dialog.
-- **What eases:** strength only. Mainly fewer hunches; then the knowledge switches go off together; near the floor, more brain farts. A bot's style (bid courage, Real table, Showdown pick) never changes, so each bot still plays like itself. Both bots use the same easing amount. At most, each bot eases to the floor: 1 hunch, no knowledge, 60% brain farts.
+- **What eases:** strength only. Mainly fewer hunches; then the knowledge switches go off together; near the floor, more brain farts. A bot's style (bid courage, Real table, Showdown pick, habits and reads) never changes, so each bot still plays like itself. Only its feints and wariness fade as it eases, to none at the floor: an easing bot neither fools you more nor guards against your bluffs. Both bots use the same easing amount. At most, each bot eases to the floor: 1 hunch, no knowledge, 60% brain farts.
 - **What the bots read during a game:** only what the table saw. After each hand, a hand where you were neither caller nor receiver shows all 7 cards you kept, because you played them. Weak hands there (2 of the last 3) ease the bots off fast. Your score share and your failed calls ease them slowly. A bot may say so, in its own words, once a game.
 - **Bluffing stays a real tactic.** The bots read your bids as they always do, in every mode.
 - **After a game:** the app reviews your discards and bids with the whole deal, and updates your profile (`kct.profile`). The next Dynamic game starts from it. The review runs after the end-of-game box shows, never during play, and no bot reads it. Games from every mode feed it; your score share counts only from Dynamic games. Games where the AI played your seat never count.
