@@ -72,7 +72,7 @@ GAME fields:
   - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the game RNG when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`), 3 = Dynamic (`dynamic`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
-- **wave**: the wave number, or 0 for no wave.
+- **wave**: the wave number, or 0 for no wave. Waves 19 to 36 are the Shark run (Shark 1 to 18: the tables of waves 1 to 18 with both bots at Shark skill).
 
 RESULT: a replay must reach the same winner and the same scores. If it does not, the replay fails.
 

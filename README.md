@@ -34,7 +34,7 @@ A link with `?replay=` and a replay code opens that game in the replay viewer (s
 The header stays at the top of the window, and the page scrolls under it. From left to right:
 
 - **☰** opens the menu (games and Rules).
-- The title (hidden on narrow phones) and the mode: **Wave N of 18**, **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
+- The title (hidden on narrow phones) and the mode: **Wave N of 18** (**Shark N of 18** in the Shark run), **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
 - **Settings** (the sliders icon).
@@ -309,14 +309,48 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 | 17 | Mei | Doc | 8% | |
 | 18 | Vex | Doc | 12% | |
 
+### Shark run
+
+Clearing wave 18 opens the Shark run. Nothing in the app shows it before then.
+
+- The Shark run is the same eighteen tables in the same order, as **Shark 1** to **Shark 18**. Both bots play at **Shark** skill: 40 hunches, 0% brain farts and every knowledge switch on. Each bot keeps its own courage, Real table switch, habits, reads and feints, and its profile shows full card sense during a Shark game.
+- The app says **Shark** where it says **Wave** in the first run: the mode chip (**Shark N of 18**), the end notes, **Shark tries**, the log and the replay list. The menu's Waves card lists both runs and counts the Shark tables cleared, and its button becomes **Play table**.
+- Progress, tries, locked tables and **Next Shark** work as in the first run. Shark 1 opens when wave 18 is cleared, and each cleared Shark table opens the next one.
+- Inside the app and in replay codes, Shark N is wave 18 + N (`?wave=19` is Shark 1). Progress saved before the Shark run, with wave 18 cleared, opens Shark 1 when the page loads.
+
+**Your win** is measured as for the waves, from 60 bot games per table (`node tests/waves.js shark 60`, 2026-10-20). With 60 games each figure is good to about ±13 points.
+
+The Shark run is hardest where the first run was easiest: tables with Novice and Casual bots drop the most (Shark 4 and Shark 7, about 20 points). Tables 12 to 18 already seat Sharks, so their rates stay within the margin of the first run.
+
+| Shark | West | East | Your win | Wave's win |
+|---|---|---|---|---|
+| 1 | Kit | Tex | 42% | 53% |
+| 2 | Kit | Gus | 25% | 41% |
+| 3 | Zen | Tex | 28% | 45% |
+| 4 | Lou | Gus | 25% | 46% |
+| 5 | Lou | Zen | 37% | 40% |
+| 6 | Viv | Tex | 25% | 36% |
+| 7 | Kit | Zen | 18% | 39% |
+| 8 | Mei | Tex | 27% | 33% |
+| 9 | Kit | Ace | 25% | 29% |
+| 10 | Viv | Gus | 28% | 31% |
+| 11 | Lou | Vex | 27% | 29% |
+| 12 | Doc | Ace | 23% | 23% |
+| 13 | Tex | Mei | 17% | 16% |
+| 14 | Ace | Doc | 20% | 15% |
+| 15 | Vex | Lou | 15% | 9% |
+| 16 | Tex | Viv | 15% | 15% |
+| 17 | Mei | Doc | 10% | 8% |
+| 18 | Vex | Doc | 15% | 12% |
+
 Start a wave: `index.html?wave=3` (add `&seed=123` to fix the deals too).
 
 ```js
 KCT.App.newGame(undefined, 3)      // play wave 3 with a new seed
-KCT.Waves.progress()               // { unlocked, cleared, tries, total, complete }
+KCT.Waves.progress()               // { unlocked, cleared, tries, total, waves, sharks, complete, sharkOpen, sharkComplete }
 KCT.Waves.isUnlocked(5)
 KCT.Waves.tries(5)                 // games it took to clear wave 5 (or games so far)
-KCT.Waves.unlockAll()              // open every wave (for testing)
+KCT.Waves.unlockAll()              // open every wave and Shark table (for testing)
 KCT.Waves.reset()                  // back to wave 1
 KCT.WAVES                          // the table above, with a purpose line for each wave
 KCT.App.app.wave                   // { n, open, result } for the current game
@@ -362,7 +396,7 @@ The Latest Scroll's last line congratulates the winner. The results dialog and t
 | **Try again** | The same deal again: the same table, cards and house rules. |
 | **New deal** | New cards at the same table: the same wave, or in Free play and Dynamic, the same two opponents in the same seats. |
 | **Export** | Copy the seed (the deals) or the replay code (the whole game). |
-| **Next wave** | Only after a win that opens the next wave. |
+| **Next wave** | Only after a win that opens the next wave. In the Shark run, **Next Shark**; after wave 18, **Shark run**. |
 
 **✕** (Back) in the dialog's top right returns to the table. The menu is the **☰** button in the header.
 
