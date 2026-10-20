@@ -320,7 +320,28 @@ Clearing wave 18 opens the Shark run. Nothing in the app shows it before then.
 
 **Your win** is measured as for the waves, from 60 bot games per table (`node tests/waves.js shark 60`, 2026-10-20). With 60 games each figure is good to about ±13 points.
 
-SHARK_TABLE
+The Shark run is hardest where the first run was easiest: tables with Novice and Casual bots drop the most (Shark 4 and Shark 7, about 20 points). Tables 12 to 18 already seat Sharks, so their rates stay within the margin of the first run.
+
+| Shark | West | East | Your win | Wave's win |
+|---|---|---|---|---|
+| 1 | Kit | Tex | 42% | 53% |
+| 2 | Kit | Gus | 25% | 41% |
+| 3 | Zen | Tex | 28% | 45% |
+| 4 | Lou | Gus | 25% | 46% |
+| 5 | Lou | Zen | 37% | 40% |
+| 6 | Viv | Tex | 25% | 36% |
+| 7 | Kit | Zen | 18% | 39% |
+| 8 | Mei | Tex | 27% | 33% |
+| 9 | Kit | Ace | 25% | 29% |
+| 10 | Viv | Gus | 28% | 31% |
+| 11 | Lou | Vex | 27% | 29% |
+| 12 | Doc | Ace | 23% | 23% |
+| 13 | Tex | Mei | 17% | 16% |
+| 14 | Ace | Doc | 20% | 15% |
+| 15 | Vex | Lou | 15% | 9% |
+| 16 | Tex | Viv | 15% | 15% |
+| 17 | Mei | Doc | 10% | 8% |
+| 18 | Vex | Doc | 15% | 12% |
 
 Start a wave: `index.html?wave=3` (add `&seed=123` to fix the deals too).
 
