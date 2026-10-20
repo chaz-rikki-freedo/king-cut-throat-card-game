@@ -3824,8 +3824,10 @@ const Dynamic = (() => {
   /** A personality's settings at easing e. e spreads evenly over the rows from the bot's starting row to the floor.
       Hunches run from the bot's own value to the next rows' values; knowledge goes off as a group at row 4 (or the
       bot's next row, if it starts there or below), brain farts rise to 60% at row 6 (likewise). On each dial the bot
-      keeps the weaker of its own value and the ladder's. Style never changes, except that feints and wariness fade with e
-      (to 0 at the floor): a bot that eases neither fools you more nor guards against your bluffs.
+      keeps the weaker of its own value and the ladder's. On top of the ladder it eases the way people are weak (step 4b
+      of the personality plan): as e rises it believes what your plays suggest more (credulity rises to 1), follows its
+      habits more plainly (habit strength rises to AI.MAX_SLACK), and stops feinting and guarding (feints and wariness
+      fade to 0). Every other style field never changes.
       @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string }} persona @param {number} e @returns {AIConfig} */
   function ease(persona, e) {
     const own = AI.personaConfig(persona);
@@ -3841,7 +3843,10 @@ const Dynamic = (() => {
     return AI.config(own, {
       thinking: { worlds: Math.min(own.thinking.worlds, hunches), playoutSkill: farts ? Math.min(own.thinking.playoutSkill, FLOOR_SKILL) : own.thinking.playoutSkill },
       knowledge: knowOff ? KNOWLEDGE_OFF : own.knowledge,
-      style: { feint: own.style.feint * (1 - x), wariness: own.style.wariness * (1 - x) }
+      style: {
+        feint: own.style.feint * (1 - x), wariness: own.style.wariness * (1 - x),
+        credulity: own.style.credulity + (1 - own.style.credulity) * x, slack: own.style.slack + (AI.MAX_SLACK - own.style.slack) * x
+      }
     });
   }
 
@@ -9106,16 +9111,18 @@ const SelfTest = (() => {
           if (c.thinking.worlds > own.thinking.worlds || c.thinking.playoutSkill > own.thinking.playoutSkill) why.push('stronger than its own');
           if (Object.keys(own.knowledge).some(key => c.knowledge[key] && !own.knowledge[key])) why.push('knows more than its own');
           if (c.thinking.worlds < 1 || c.thinking.playoutSkill < 0.4 - 1e-9) why.push('below the floor');
-          const fade = (/** @type {any} */ st) => Object.assign({}, st, { feint: 0, wariness: 0 });
+          const fade = (/** @type {any} */ st) => Object.assign({}, st, { feint: 0, wariness: 0, credulity: 0, slack: 0 });
           if (JSON.stringify(fade(c.style)) !== JSON.stringify(fade(own.style)) || c.persona !== true) why.push('style changed');
           if (c.style.feint > own.style.feint + 1e-12 || c.style.wariness > own.style.wariness + 1e-12 || c.style.feint > prev.style.feint + 1e-12 || c.style.wariness > prev.style.wariness + 1e-12) why.push('feints or wariness grew');
+          if (c.style.credulity < prev.style.credulity - 1e-12 || c.style.slack < prev.style.slack - 1e-12) why.push('belief or habit strength fell');
           if (c.thinking.worlds > prev.thinking.worlds || c.thinking.playoutSkill > prev.thinking.playoutSkill || Object.keys(c.knowledge).some(key => c.knowledge[key] && !prev.knowledge[key])) why.push('stronger than at less easing');
           if (why.length && bad.length < 5) bad.push(x.id + ' at ' + k / 20 + ': ' + why.join(', '));
           prev = c;
         }
       }
-      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes (feints and wariness only fade), and more easing never helps', bad, []);
-      eq('at the floor a bot neither feints nor grows wary', PERSONAS.map(x => { const c = DY.ease(x, 1); return c.style.feint + c.style.wariness; }).filter(v => v !== 0), []);
+      eq('easing: never stronger than the bot\'s own settings, never below the floor, style never changes (only feints and wariness fade, belief and habit strength rise), and more easing never helps', bad, []);
+      eq('at the floor a bot neither feints nor grows wary, believes fully and follows its habits at full strength',
+        PERSONAS.filter(x => { const c = DY.ease(x, 1).style; return c.feint !== 0 || c.wariness !== 0 || c.credulity !== 1 || Math.abs(c.slack - AI.MAX_SLACK) > 1e-12; }).map(x => x.id), []);
       eq('easing 0 is each bot\'s own personality', PERSONAS.filter(x => JSON.stringify(DY.ease(x, 0)) !== JSON.stringify(AI.personaConfig(x))).map(x => x.id), []);
       eq('easing 1 is the floor for every bot: 1 hunch, no knowledge, 60% brain farts',
         PERSONAS.filter(x => { const c = DY.ease(x, 1); return c.thinking.worlds !== 1 || Math.abs(c.thinking.playoutSkill - 0.4) > 1e-9 || JSON.stringify(c.knowledge) !== JSON.stringify(off); }).map(x => x.id), []);
