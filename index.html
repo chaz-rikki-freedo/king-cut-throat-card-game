@@ -2319,7 +2319,8 @@ function buildView(state, seat) {
    5b. PERSONALITIES — ten named bots. Each one is a skill tier, a bid
    courage, the Real table switch, a Showdown pick and its habits (AI.HABITS:
    what it likes to play when its best cards are about equal, and slack, the
-   win chance it gives up at most per card for them). The color marks the name on the board
+   win chance it gives up at most per card for them) and its credulity (how
+   much it believes what other players' plays suggest, AI.READS). The color marks the name on the board
    and in the log; it is the bot's --bot-<id> token (docs/ui/colors.md), so a
    theme can change it. Art is in PERSONA_ART near the end of the script.
    Dynamic mode (issue #117, decisions 3 and 10): readPace is how many weak
@@ -2329,16 +2330,16 @@ function buildView(state, seat) {
    saw, and never admits that a bot eases off.
    --------------------------------------------------------------------- */
 const PERSONAS = Object.freeze([
-  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', kings: 'early', slack: 0.01 }, quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
-  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { win: 'cheap', kings: 'late', slack: 0.01 }, quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
-  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.02 }, quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
-  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', habits: {}, quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
-  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', habits: { win: 'big', void: 'ruff', slack: 0.03 }, quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
-  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', habits: { win: 'duck', void: 'low', kings: 'late', slack: 0.03 }, quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
-  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { lead: 'long', win: 'duck', kings: 'late', slack: 0.02 }, quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
-  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', void: 'ruff', slack: 0.04 }, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
-  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.03 }, quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
-  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', habits: { lead: 'long', win: 'cheap', slack: 0.02 }, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
+  { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', kings: 'early', slack: 0.01 }, credulity: 0.3, quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
+  { id: 'doc', name: 'Doc', color: 'var(--bot-doc)', tier: 'shark', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { win: 'cheap', kings: 'late', slack: 0.01 }, credulity: 0.4, quote: "I've seen this hand before.", hint: 'A call from Doc is seldom empty.', readPace: 2, readLine: 'Light cards, two hands running. Noted.' },
+  { id: 'ace', name: 'Ace', color: 'var(--bot-ace)', tier: 'club', courage: 'bold', realTable: false, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.02 }, credulity: 0.6, quote: 'Feeling lucky?', hint: 'Likes to push the bidding.', readPace: 3, readLine: 'Cards not falling your way, huh?' },
+  { id: 'mei', name: 'Mei', color: 'var(--bot-mei)', tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd', habits: {}, credulity: 0.5, quote: 'Seven tricks. I count them all.', hint: 'Forgets nothing that hits the table.', readPace: 2, readLine: 'Not much trump in those seven. I counted.' },
+  { id: 'gus', name: 'Gus', color: 'var(--bot-gus)', tier: 'casual', courage: 'bold', realTable: true, leadPick: 'impulsive', habits: { win: 'big', void: 'ruff', slack: 0.03 }, credulity: 0.8, quote: 'Ha! Why not?', hint: 'Here for a good time, not a long time.', readPace: 4, readLine: 'Rough deal, pal. Happens to me all the time!' },
+  { id: 'lou', name: 'Lou', color: 'var(--bot-lou)', tier: 'novice', courage: 'timid', realTable: false, leadPick: 'fair', habits: { win: 'duck', void: 'low', kings: 'late', slack: 0.03 }, credulity: 0.9, quote: 'Oh no. Not again.', hint: 'Needs a lot of hand to say yes.', readPace: 6, readLine: 'Your cards look like mine. Oh no.' },
+  { id: 'viv', name: 'Viv', color: 'var(--bot-viv)', tier: 'club', courage: 'cautious', realTable: false, leadPick: 'shrewd', habits: { lead: 'long', win: 'duck', kings: 'late', slack: 0.02 }, credulity: 0.5, quote: "Wake me when it's interesting.", hint: 'Waits for the right hand.', readPace: 3, readLine: 'Slim pickings on your side.' },
+  { id: 'tex', name: 'Tex', color: 'var(--bot-tex)', tier: 'novice', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', void: 'ruff', slack: 0.04 }, credulity: 0.7, quote: "Deal 'em.", hint: 'Never met a trump suit worth passing.', readPace: 6, readLine: 'Bad cards? Call anyway, that\'s my motto.' },
+  { id: 'kit', name: 'Kit', color: 'var(--bot-kit)', tier: 'novice', courage: 'cautious', realTable: true, leadPick: 'fair', habits: { lead: 'kings', kings: 'early', slack: 0.03 }, credulity: 1, quote: 'Is it my turn?', hint: 'Still learning the table.', readPace: 6, readLine: 'Are your cards bad too?' },
+  { id: 'zen', name: 'Zen', color: 'var(--bot-zen)', tier: 'casual', courage: 'normal', realTable: true, leadPick: 'fair', habits: { lead: 'long', win: 'cheap', slack: 0.02 }, credulity: 0.6, quote: 'The cards will come.', hint: 'Plays like your Sunday-night table.', readPace: 4, readLine: 'Lean hands. The cards will turn.' }
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 /* Profile bars: "Card sense" is the tier, "Nerve" the bid courage, each out of 4. */
@@ -2841,11 +2842,11 @@ const Backup = (() => {
 /**
  * @typedef {{ worlds: number, playoutSkill: number }} Thinking
  * @typedef {{ bids: boolean, turnedCard: boolean, ownDiscards: boolean, voids: boolean, scoreAware: boolean, showdownPlans: boolean }} Knowledge
- * @typedef {{ realTable: boolean, courage: string, leadPick: string, leadHabit: string, winHabit: string, voidHabit: string, kingHabit: string, slack: number }} Style
+ * @typedef {{ realTable: boolean, courage: string, leadPick: string, leadHabit: string, winHabit: string, voidHabit: string, kingHabit: string, slack: number, credulity: number }} Style
  * @typedef {{ readonly thinking: Readonly<Thinking>, readonly knowledge: Readonly<Knowledge>, readonly style: Readonly<Style>, readonly persona: boolean }} AIConfig
  * @typedef {{ thinking?: Partial<Thinking>, knowledge?: Partial<Knowledge>, style?: Partial<Style>, persona?: boolean }} AIConfigPatch
  * @typedef {{ how: string, options: { choice: any, value: number, plan: string }[] }} AITrace
- * @typedef {{ courage?: string, realTable?: boolean, leadPick?: string, leadHabit?: string, winHabit?: string, voidHabit?: string, kingHabit?: string, slack?: number,
+ * @typedef {{ courage?: string, realTable?: boolean, leadPick?: string, leadHabit?: string, winHabit?: string, voidHabit?: string, kingHabit?: string, slack?: number, credulity?: number,
  *   worlds?: number, playoutSkill?: number, knowledge?: Partial<Knowledge> }} SeatTune
  * @typedef {{ lead?: string, win?: string, void?: string, kings?: string, slack?: number }} PersonaHabits
  */
@@ -2909,7 +2910,7 @@ const AI = (() => {
     voidHabit: Object.freeze(['none', 'ruff', 'low']), kingHabit: Object.freeze(['none', 'early', 'late'])
   });
   const MAX_SLACK = 0.05;
-  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0 });
+  const STYLE_DEFAULTS = Object.freeze({ realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0 });
   const LEAD_PICKS = Object.freeze(['auto', 'shrewd', 'fair', 'impulsive']);
 
   /* ---- Settings ----
@@ -2938,6 +2939,7 @@ const AI = (() => {
     if (LEAD_PICKS.includes(ps.leadPick)) style.leadPick = ps.leadPick;
     for (const key of Object.keys(HABITS)) if (HABITS[key].includes(ps[key])) style[key] = ps[key];
     if (typeof ps.slack === 'number' && isFinite(ps.slack)) style.slack = Math.min(MAX_SLACK, Math.max(0, ps.slack));
+    if (typeof ps.credulity === 'number' && isFinite(ps.credulity)) style.credulity = Math.min(1, Math.max(0, ps.credulity));
     return freezeConfig(thinking, knowledge, style, typeof p.persona === 'boolean' ? p.persona : b.persona);
   }
   /** base with a skill tier's thinking and knowledge. An unknown name returns base.
@@ -2955,17 +2957,18 @@ const AI = (() => {
     }
     return 'custom';
   }
-  /** A personality's config: its tier, its courage, its Real table switch, how it picks a Showdown leader, and its habits.
-      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string, habits?: PersonaHabits }} persona @returns {AIConfig} */
+  /** A personality's config: its tier, its courage, its Real table switch, how it picks a Showdown leader, its habits and
+      how much it believes its reads of card play.
+      @param {{ tier: string, courage: string, realTable: boolean, leadPick?: string, habits?: PersonaHabits, credulity?: number }} persona @returns {AIConfig} */
   function personaConfig(persona) {
     const h = persona.habits || {};
     return config(withSkillTier(DEFAULT_CONFIG, persona.tier), {
-      style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick, leadHabit: h.lead, winHabit: h.win, voidHabit: h.void, kingHabit: h.kings, slack: h.slack },
+      style: { courage: persona.courage, realTable: persona.realTable, leadPick: persona.leadPick, leadHabit: h.lead, winHabit: h.win, voidHabit: h.void, kingHabit: h.kings, slack: h.slack, credulity: persona.credulity },
       persona: true
     });
   }
   /* A seat's tune (Free play's seat settings): the fields it sets over a personality's own. Each field is optional:
-     courage, realTable, leadPick, the habits (leadHabit, winHabit, voidHabit, kingHabit, slack), worlds, playoutSkill,
+     courage, realTable, leadPick, the habits (leadHabit, winHabit, voidHabit, kingHabit, slack), credulity, worlds, playoutSkill,
      and knowledge (some or all of its switches). */
   /** The valid fields of x, or null when it sets none. @param {any} x @returns {SeatTune | null} */
   function cleanTune(x) {
@@ -2977,6 +2980,7 @@ const AI = (() => {
     if (LEAD_PICKS.includes(x.leadPick)) t.leadPick = x.leadPick;
     for (const key of Object.keys(HABITS)) if (HABITS[key].includes(x[key])) /** @type {any} */ (t)[key] = x[key];
     if (typeof x.slack === 'number' && isFinite(x.slack)) t.slack = Math.min(MAX_SLACK, Math.max(0, x.slack));
+    if (typeof x.credulity === 'number' && isFinite(x.credulity)) t.credulity = Math.min(1, Math.max(0, x.credulity));
     if (typeof x.worlds === 'number' && isFinite(x.worlds)) t.worlds = Math.min(200, Math.max(1, Math.round(x.worlds)));
     if (typeof x.playoutSkill === 'number' && isFinite(x.playoutSkill)) t.playoutSkill = Math.min(1, Math.max(0, x.playoutSkill));
     const k = x.knowledge && typeof x.knowledge === 'object' ? Object.fromEntries(Object.keys(KNOWLEDGE_DEFAULTS).filter(key => typeof x.knowledge[key] === 'boolean').map(key => [key, x.knowledge[key]])) : {};
@@ -2990,7 +2994,7 @@ const AI = (() => {
     if (!t) return own;
     return config(own, {
       thinking: { worlds: t.worlds, playoutSkill: t.playoutSkill }, knowledge: t.knowledge,
-      style: { courage: t.courage, realTable: t.realTable, leadPick: t.leadPick, leadHabit: t.leadHabit, winHabit: t.winHabit, voidHabit: t.voidHabit, kingHabit: t.kingHabit, slack: t.slack }
+      style: { courage: t.courage, realTable: t.realTable, leadPick: t.leadPick, leadHabit: t.leadHabit, winHabit: t.winHabit, voidHabit: t.voidHabit, kingHabit: t.kingHabit, slack: t.slack, credulity: t.credulity }
     });
   }
   /** The tune that sets every field to cfg's value. @param {AIConfig} cfg @returns {SeatTune} */
@@ -2998,7 +3002,7 @@ const AI = (() => {
     const st = cfg.style;
     return {
       courage: st.courage, realTable: st.realTable, leadPick: st.leadPick, leadHabit: st.leadHabit, winHabit: st.winHabit, voidHabit: st.voidHabit, kingHabit: st.kingHabit,
-      slack: st.slack, worlds: cfg.thinking.worlds, playoutSkill: cfg.thinking.playoutSkill, knowledge: Object.assign({}, cfg.knowledge)
+      slack: st.slack, credulity: st.credulity, worlds: cfg.thinking.worlds, playoutSkill: cfg.thinking.playoutSkill, knowledge: Object.assign({}, cfg.knowledge)
     };
   }
   /* Extra hand value that a real-table bot needs before it calls trump. */
@@ -3384,6 +3388,38 @@ const AI = (() => {
     }
     return w;
   }
+  /* Reads of card play: how well a world agrees with what the other players' plays this hand suggest, believed in
+     proportion to style.credulity (0: no reads, 1: full belief). Public plays only, main hand only; a void stays a hard
+     fact (dealWorld), and a read only weighs the guessed hands, so a player who plays against type can fool it.
+     - A lead suggests length in its suit (READS.lead per card the world gives that player), a trump lead more trump.
+     - A side-suit King led suggests no Ace of that suit.
+     - A throw-off (void, not trumping) suggests shortness in the suit thrown, and when trump was not led, no trump. */
+  const READS = Object.freeze({ lead: 0.3, leadTrump: 0.5, kingNoAce: 0.7, throwShort: 0.35, noRuff: 0.3 });
+  /** @param {any} view @param {any} w a guessed deal (hands) @param {AIConfig} cfg @returns {number} */
+  function playWeight(view, w, cfg) {
+    const k = cfg.style.credulity;
+    if (!k || view.showdown || !view.trump) return 1;
+    const trump = view.trump, eff = (/** @type {string} */ id) => R.getEffectiveSuit(id, trump);
+    const tricks = Engine.tricksOf(view).main;
+    if (view.phase === P.TRICK_PLAY && view.trick && view.trick.plays.length) tricks.push(view.trick.plays);
+    let weight = 1;
+    for (const t of tricks) {
+      const ls = eff(t[0].card);
+      t.forEach((/** @type {Play} */ pl, /** @type {number} */ i) => {
+        if (pl.player === view.seat) return;
+        const hand = w.hands[pl.player], count = (/** @type {string} */ s) => hand.filter((/** @type {string} */ id) => eff(id) === s).length;
+        if (i === 0) {
+          if (ls === trump) { weight *= Math.pow(1 + READS.leadTrump * k, count(trump)); return; }
+          weight *= Math.pow(1 + READS.lead * k, count(ls));
+          if (R.isKing(pl.card) && hand.some((/** @type {string} */ id) => !R.isTrump(id, trump) && R.card(id).rank === 'A' && eff(id) === ls)) weight *= 1 - READS.kingNoAce * k;
+        } else if (eff(pl.card) !== ls && !R.isTrump(pl.card, trump)) {
+          weight *= Math.pow(1 - READS.throwShort * k, count(eff(pl.card)));
+          if (ls !== trump) weight *= Math.pow(1 - READS.noRuff * k, count(trump));
+        }
+      });
+    }
+    return weight;
+  }
   /* How well a world agrees with the bids that the other players made (main hand only). */
   function bidWeight(view, w, cfg) {
     if (view.showdown || !cfg.knowledge.bids) return 1;
@@ -3427,7 +3463,7 @@ const AI = (() => {
     for (let i = 0; i < n * SAMPLES.oversample && raw.length < n * SAMPLES.oversample; i++) {
       let w = null;
       for (let t = 0; t < 20 && !w; t++) w = dealWorld(view, lay, rng, c.knowledge);
-      if (w) raw.push({ w, weight: bidWeight(view, w, c) });
+      if (w) raw.push({ w, weight: bidWeight(view, w, c) * playWeight(view, w, c) });
     }
     if (!raw.length) throw new Error('No world agrees with the view');
     /* Systematic resampling to n equal-weight worlds. */
@@ -3626,7 +3662,7 @@ const AI = (() => {
   return Object.freeze({
     decide, fallbackAction, fastAction, winChance, handValue, sampleWorlds, layout, scoreWatch, BID_THRESHOLDS, SAMPLES,
     config, withSkillTier, skillTierOf, personaConfig, DEFAULT_CONFIG,
-    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS, LEAD_PICKS, HABITS, MAX_SLACK, cleanTune, tunedConfig, tuneOf
+    THINKING_DEFAULTS, THINKING_FULL, KNOWLEDGE_DEFAULTS, KNOWLEDGE_ALL_ON, STYLE_DEFAULTS, COURAGE, SKILL_TIERS, LEAD_PICKS, HABITS, MAX_SLACK, READS, playWeight, cleanTune, tunedConfig, tuneOf
   });
 })();
 
@@ -7551,6 +7587,7 @@ const App = (() => {
     kingHabit: ['Kings', 'When it plays its Kings.', { none: 'No habit', early: 'Early', late: 'Late' }]
   });
   const SLACKS = [0, 1, 2, 3, 4, 5];
+  const CREDULITY = [0, 25, 50, 75, 100];
   /** @returns {{ who: string, tune: SeatTune | null }[]} */
   function blankSeats() { return [0, 1, 2].map(() => ({ who: '', tune: null })); }
   /** Seats as the app can trust them (they come from storage). West and East never pin the same bot. @param {any} x */
@@ -7600,6 +7637,7 @@ const App = (() => {
         sel('playoutSkill', 'Brain farts', 'How often it imagines a random card while it thinks.', FARTS.map(f => [String(f), f + '%']))) +
       sub('Style', sel('courage', 'Bid courage', 'How readily it calls trump.', Object.entries(COURAGE_NAMES)) +
         sel('realTable', 'Real table', 'Human habits: pass more, pitch the lowest cards first.', onOff) +
+        sel('credulity', 'Reads play', 'How much it believes what others\' plays suggest: a lead means length, a King led means no Ace, a throw-off means short.', CREDULITY.map(x => [String(x), x ? x + '%' : 'Does not read (0%)'])) +
         sel('leadPick', 'Showdown pick', 'As mediator, how it picks the Showdown leader (house rule). Auto: shrewd when it watches the score.', Object.entries(PICK_NAMES))) +
       sub('Habits', Object.keys(HABIT_NAMES).map(f => sel(f, HABIT_NAMES[f][0], HABIT_NAMES[f][1], Object.entries(HABIT_NAMES[f][2]))).join('') +
         sel('slack', 'Habit strength', 'The win chance it gives up, at most, per card to follow its habits. 0%: no habits.', SLACKS.map(x => [String(x), x + '%']))) +
@@ -7627,6 +7665,7 @@ const App = (() => {
       show('courage', t.courage || '', own && COURAGE_NAMES[own.style.courage]);
       show('realTable', yes(t.realTable), own && (own.style.realTable ? 'On' : 'Off'));
       show('leadPick', t.leadPick || '', own && PICK_NAMES[own.style.leadPick]);
+      show('credulity', t.credulity === undefined ? '' : String(Math.round(t.credulity * 100)), own && Math.round(own.style.credulity * 100) + '%');
       for (const f of Object.keys(HABIT_NAMES)) show(f, /** @type {any} */ (t)[f] || '', own && HABIT_NAMES[f][2][own.style[f]]);
       show('slack', t.slack === undefined ? '' : String(Math.round(t.slack * 100)), own && Math.round(own.style.slack * 100) + '%');
       for (const key of Object.keys(AI.KNOWLEDGE_DEFAULTS)) show('k.' + key, yes(/** @type {any} */ (k)[key]), own && (own.knowledge[key] ? 'On' : 'Off'));
@@ -7666,6 +7705,7 @@ const App = (() => {
     else if (field === 'worlds') { if (isFinite(Number(value))) t.worlds = Number(value); }
     else if (field === 'playoutSkill') t.playoutSkill = 1 - Number(value) / 100;
     else if (field === 'slack') t.slack = Number(value) / 100;
+    else if (field === 'credulity') t.credulity = Number(value) / 100;
     else if (field === 'realTable') t.realTable = value === 'on';
     else t[field] = value;
     seat.tune = AI.cleanTune(t);
@@ -8225,7 +8265,7 @@ const SelfTest = (() => {
         }
         eq('thinking settings clamp to their ranges', AI.config(full, { thinking: { worlds: 999, playoutSkill: -1 } }).thinking, { worlds: 200, playoutSkill: 0 });
         eq('bot style defaults: normal courage, real table off, auto Showdown pick, no habits', AI.STYLE_DEFAULTS,
-          { realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0 });
+          { realTable: false, courage: 'normal', leadPick: 'auto', leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, credulity: 0 });
         {
           const cfg = AI.config(full, { style: { realTable: true } });
           const st = revealState(11, 0, '9H');
@@ -8537,7 +8577,7 @@ const SelfTest = (() => {
       /* Each seat's tune goes in META (ai.tune<p>), and three full tunes still fit with the worst case. */
       const full = JSON.stringify(AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 137, playoutSkill: 0.55 }, style: { courage: 'cautious', leadPick: 'impulsive' } })));
       const am = { 'ai.tune0': full, 'ai.tune1': full, 'ai.tune2': full };
-      eq('a full tune sets every field', Object.keys(JSON.parse(full)).sort(), ['courage', 'kingHabit', 'knowledge', 'leadHabit', 'leadPick', 'playoutSkill', 'realTable', 'slack', 'voidHabit', 'winHabit', 'worlds']);
+      eq('a full tune sets every field', Object.keys(JSON.parse(full)).sort(), ['courage', 'credulity', 'kingHabit', 'knowledge', 'leadHabit', 'leadPick', 'playoutSkill', 'realTable', 'slack', 'voidHabit', 'winHabit', 'worlds']);
       const worstAll = Object.assign({}, worst, { meta: am });
       const wa = Replay.encode(worstAll);
       check('20 showdown hands with three full tunes in META fit in 4000 chars', wa.length <= 4000, wa.length + ' chars');
@@ -8826,8 +8866,8 @@ const SelfTest = (() => {
       if (panel) {
         const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
         eq('every setting sits in a row with a name', unnamed.map(c => c.id), []);
-        eq('each seat (yours, West, East) has who sits, 3 skill, 3 style, 5 habit and 6 knowledge controls',
-          [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [18, 18, 18]);
+        eq('each seat (yours, West, East) has who sits, 3 skill, 4 style, 5 habit and 6 knowledge controls',
+          [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [19, 19, 19]);
         check('each seat is a collapsed group of collapsed groups', [0, 1, 2].every(p => { const d = document.getElementById('setSeat' + p); return !!d && d.tagName === 'DETAILS' && d.querySelectorAll('details.seat-sub').length === 4; }));
         const tabs = [...panel.querySelectorAll('.set-tab')];
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
@@ -9131,7 +9171,7 @@ const SelfTest = (() => {
         if (g.phase === Engine.P.TRICK_PLAY && n < 40) {
           n++;
           const noHabit = AI.config(plain, { thinking: { worlds: 4 } });
-          if (JSON.stringify(AI.decide(v, noHabit)) === JSON.stringify(AI.decide(v, AI.config(AI.personaConfig(PERSONA_BY_ID.mei), { thinking: { worlds: 4 }, knowledge: noHabit.knowledge, style: { courage: noHabit.style.courage, leadPick: noHabit.style.leadPick } })))) same++;
+          if (JSON.stringify(AI.decide(v, noHabit)) === JSON.stringify(AI.decide(v, AI.config(AI.personaConfig(PERSONA_BY_ID.mei), { thinking: { worlds: 4 }, knowledge: noHabit.knowledge, style: { courage: noHabit.style.courage, leadPick: noHabit.style.leadPick, credulity: noHabit.style.credulity } })))) same++;
           const tr = { how: '', options: [] }, a = AI.decide(v, loose, tr);
           if (tr.how === 'habit') {
             habit++;
@@ -9143,6 +9183,15 @@ const SelfTest = (() => {
       }
       eq('no habits: the same card as a bot without them', same, n);
       check('habits pick some cards, each within slack of the best', habit > 0 && within === habit, habit + ' habit picks, ' + within + ' within slack');
+      /* Reads of card play: soft weights on guessed hands, from public plays, scaled by credulity. */
+      eq('a tune keeps credulity, clamped to 0..1', [AI.cleanTune({ credulity: 3 }), AI.cleanTune({ credulity: -1 })], [{ credulity: 1 }, { credulity: 0 }]);
+      const rv = { seat: 0, trump: 'S', showdown: null, phase: Engine.P.TRICK_PLAY, playLog: [], trickWinners: [], trick: { leader: 1, leadSuit: 'H', plays: [{ player: 1, card: 'KH' }] } };
+      const wLong = { hands: [[], ['9H', '10H', 'QH', '7C'], []] }, wShort = { hands: [[], ['9C', '10C', 'QC', '7C'], []] }, wAce = { hands: [[], ['AH', '9C', 'QC', '7C'], []] };
+      const believer = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 1 } }), doubter = AI.config(AI.DEFAULT_CONFIG, { style: { credulity: 0 } });
+      check('a lead reads as length in its suit', AI.playWeight(rv, wLong, believer) > AI.playWeight(rv, wShort, believer));
+      check('a King led reads as no Ace of its suit', AI.playWeight(rv, wAce, believer) < AI.playWeight(rv, { hands: [[], ['9H', '9C', 'QC', '7C'], []] }, believer));
+      eq('credulity 0 reads nothing', [AI.playWeight(rv, wLong, doubter), AI.playWeight(rv, wAce, doubter)], [1, 1]);
+      check('a half believer reads less than a full one', AI.playWeight(rv, wLong, AI.config(believer, { style: { credulity: 0.5 } })) < AI.playWeight(rv, wLong, believer));
       const st = createStats((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
       st.record({ mode: 'free', west: 'vex', east: 'doc', won: true, tuned: [true, false] });
       st.record({ mode: 'free', west: 'vex', east: 'doc', won: false });

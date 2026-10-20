@@ -133,7 +133,7 @@ The Bots tab has one group for each seat: **West**, **East** and **Your seat** (
 | Group | Settings |
 |---|---|
 | **Skill** | **Skill** sets hunches, brain farts and knowledge together, and shows **Custom** when they match no tier. **Hunches** and **Brain farts** fine-tune it (see below). |
-| **Style** | **Bid courage**, **Real table** and **Showdown pick** (see below and **Opponents**). |
+| **Style** | **Bid courage**, **Real table**, **Reads play** and **Showdown pick** (see below and **Opponents**). |
 | **Habits** | **Leads**, **Winning a trick**, **When void**, **Kings** and **Habit strength** (see **Habits** under **Opponents**). |
 | **Knowledge** | The six knowledge switches (see below), each **Its own**, **On** or **Off**. |
 
@@ -210,7 +210,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
 - Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
-- Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick and habits. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
+- Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick, habits and reads. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
 |---|---|---|---|---|
@@ -245,6 +245,18 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 - **When void** (it cannot follow suit): it trumps in with its smallest trump, or throws its lowest card.
 - **Kings:** it plays them early, or holds them late.
 - Habits act on card play only, in the main hand and the Showdown. Easing in Dynamic never changes them.
+
+**Reads** are what a bot believes about the other hands from how they were played this hand, as a person at the table would. It uses only the plays everyone saw, and it never treats a read as certain: a read makes some guesses about the hidden cards more likely than others, in proportion to how much the bot believes it (**Reads play**, 0% to 100%). A void it has seen stays certain.
+
+- A player who leads a suit probably holds more of it; one who leads trump, more trump.
+- A player who leads a side-suit King probably has no Ace of that suit.
+- A player who throws off a card (cannot follow and does not trump) is probably short in that suit, and, when trump was not led, out of trump.
+
+A player who plays against type can fool a bot that reads: the more it believes, the more it can be fooled. Reads act in the main hand only.
+
+| Bot | Vex | Doc | Ace | Mei | Gus | Lou | Viv | Tex | Kit | Zen |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Reads play | 30% | 40% | 60% | 50% | 80% | 90% | 50% | 70% | 100% | 60% |
 
 **Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → Game):
 
