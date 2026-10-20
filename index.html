@@ -867,7 +867,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '7b69da7', date: '2026-10-20' });
+const BUILD = Object.freeze({ commit: '8b88f18', date: '2026-10-20' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1971,7 +1971,8 @@ const PERSONAS = Object.freeze([
 ].map(x => Object.freeze(x)));
 const PERSONA_BY_ID = Object.freeze(Object.fromEntries(PERSONAS.map(x => [x.id, x])));
 const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, timid: 1, cautious: 2, normal: 3, bold: 4 });
-const WAVES = Object.freeze([
+const WAVE_RUN = 18;
+const WAVE_TABLES = [
   { west: 'kit', east: 'tex', youWin: 53, rematchOf: null, purpose: 'Learn the rules. Tex feeds you from your right.' },
   { west: 'kit', east: 'gus', youWin: 41, rematchOf: null, purpose: 'Practice. A bold player on your right.' },
   { west: 'zen', east: 'tex', youWin: 45, rematchOf: null, purpose: 'Practice. A table like real players.' },
@@ -1990,7 +1991,17 @@ const WAVES = Object.freeze([
   { west: 'tex', east: 'viv', youWin: 15, rematchOf: 6, purpose: 'Wave 6 with the seats swapped: the largest drop.' },
   { west: 'mei', east: 'doc', youWin: 8, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
   { west: 'vex', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Final boss.' }
-].map((w, i) => Object.freeze(Object.assign({ n: i + 1 }, w))));
+];
+const SHARK_WIN = [42, 25, 28, 25, 37, 25, 18, 27, 25, 28, 27, 23, 17, 20, 15, 15, 10, 15];
+const WAVES = Object.freeze(WAVE_TABLES.map((w, i) => Object.assign({ n: i + 1, k: i + 1, shark: false }, w)).concat(WAVE_TABLES.map((w, i) => ({
+  n: WAVE_RUN + i + 1, k: i + 1, shark: true, west: w.west, east: w.east, youWin: SHARK_WIN[i], rematchOf: w.rematchOf ? WAVE_RUN + w.rematchOf : null,
+  purpose: 'Wave ' + (i + 1) + ' with both bots at Shark.'
+}))).map(w => Object.freeze(w)));
+const waveName = ( n, lower = false) => {
+  const w = WAVES[n - 1];
+  return w && w.shark ? 'Shark ' + w.k : (lower ? 'wave ' : 'Wave ') + n;
+};
+const sharkOf = ( persona) => Object.freeze(Object.assign({}, persona, { tier: 'shark' }));
 function createWaveProgress(store, rand) {
   const blank = () => ({ unlocked: 1, cleared: [], tries: {} });
   const valid = p => !!p && Number.isInteger(p.unlocked) && p.unlocked >= 1 && p.unlocked <= WAVES.length &&
@@ -2007,12 +2018,17 @@ function createWaveProgress(store, rand) {
         for (const n of p.cleared) p.tries[n] = 1 + Math.min(3, Math.floor(r() * 4));
         migrated = true;
       }
+      if (p.unlocked === WAVE_RUN && p.cleared.includes(WAVE_RUN)) { p.unlocked = WAVE_RUN + 1; migrated = true; }
     }
   } catch (e) {  }
   function get(n) { return WAVES[n - 1] || null; }
   const save = () => { try { store.set(JSON.stringify(p)); } catch (e) {  } };
   if (migrated) save();
-  const snapshot = () => ({ unlocked: p.unlocked, cleared: p.cleared.slice(), tries: Object.assign({}, p.tries), total: WAVES.length, complete: p.cleared.length === WAVES.length });
+  const snapshot = () => {
+    const waves = p.cleared.filter(n => n <= WAVE_RUN).length, sharks = p.cleared.length - waves;
+    return { unlocked: p.unlocked, cleared: p.cleared.slice(), tries: Object.assign({}, p.tries), total: WAVE_RUN, waves, sharks,
+      complete: waves === WAVE_RUN, sharkOpen: p.unlocked > WAVE_RUN, sharkComplete: sharks === WAVE_RUN };
+  };
   return Object.freeze({
     get,
     seats: n => { const w = get(n); return w ? [null, w.west, w.east] : null; },
@@ -4412,7 +4428,7 @@ const App = (() => {
     app.menuOpen = false;
     $('overlay').hidden = true;
     hideUpdateNote();
-    addLog((w ? 'Wave ' + w.n + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game.', '');
+    addLog((w ? waveName(w.n) + ': ' : modeName(app.mode) + ': ') + PERSONA_BY_ID[pool[0]].name + ' (West) and ' + PERSONA_BY_ID[pool[1]].name + ' (East). New game.', '');
     if (app.seatSwapPending) { schedule(); return; }
     act({ type: 'START_GAME' });
   }
@@ -4518,8 +4534,8 @@ const App = (() => {
       (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
     const n = app.wave.n, next = inWaves() && app.state.winner === HUMAN && n < WAVES.length && Waves.isUnlocked(n + 1);
     return '<div class="end-btns">' + b('replay-watch', 'Watch', { disabled: !endCode, title: endCode ? 'Watch the game again' : 'This game has no replay' }) + b('replay-seed', 'Try again', { title: 'The same deal again' }) +
-      b('new-deal', 'New deal', { primary: !next, title: inWaves() ? 'This wave, with new cards' : 'The same opponents, with new cards' }) +
-      b('export', 'Export', { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', 'Next wave', { primary: true }) : '') + '</div>';
+      b('new-deal', 'New deal', { primary: !next, title: inWaves() ? (inShark() ? 'This table, with new cards' : 'This wave, with new cards') : 'The same opponents, with new cards' }) +
+      b('export', 'Export', { title: 'Copy the seed or the replay code' }) + (next ? b('next-wave', WAVES[n].shark ? (n === WAVE_RUN ? 'Shark run' : 'Next Shark') : 'Next wave', { primary: true }) : '') + '</div>';
   }
   function saveGame() {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
@@ -4644,7 +4660,8 @@ const App = (() => {
     const ours = Backup.describe(backup.create());
     const when = t => t ? new Date(t).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
     const saved = x => x.savedGames.length ? x.savedGames.map(modeName).join(', ') : '—';
-    const rows = [['Saved', 'Now', when(theirs.createdAt)], ['Waves unlocked', ours.wavesUnlocked ?? 1, theirs.wavesUnlocked ?? 1],
+    const unlockedText = ( n) => !n ? 1 : n > WAVE_RUN ? WAVE_RUN + ' · ' + waveName(n) : n;
+    const rows = [['Saved', 'Now', when(theirs.createdAt)], ['Waves unlocked', unlockedText(ours.wavesUnlocked), unlockedText(theirs.wavesUnlocked)],
       ['Games played', ours.gamesPlayed, theirs.gamesPlayed], ['Saved games', saved(ours), saved(theirs)], ['Replays', ours.replays, theirs.replays]];
     const yes = await ask({
       title: 'Replace all data?',
@@ -4963,7 +4980,7 @@ const App = (() => {
     if (!app.ui.autoplay && waveCounts() && gameOn() &&
       !await ask({
         title: 'Let the AI play your seat?',
-        text: '<p>A win in this game will then not clear wave ' + app.wave.n + '.</p><p>This stays true if you take your seat back.</p>',
+        text: '<p>A win in this game will then not clear ' + waveName(app.wave.n, true) + '.</p><p>This stays true if you take your seat back.</p>',
         ok: 'Let the AI play', cancel: 'Keep my seat'
       })) return;
     app.ui.autoplay = !app.ui.autoplay;
@@ -5045,6 +5062,7 @@ const App = (() => {
     const persona = PERSONA_BY_ID[a.ui.personas[p]];
     if (!persona) return { cfg: AI.DEFAULT_CONFIG, persona: false };
     if (a.mode === 'dynamic' && a.dyn && p !== HUMAN) return { cfg: Dynamic.ease(persona, a.dyn.e), persona: true };
+    if (p !== HUMAN && inShark(a)) return { cfg: AI.personaConfig(sharkOf(persona)), persona: true };
     const tune = a.ui.tunes && a.ui.tunes[p];
     return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
   }
@@ -5132,6 +5150,7 @@ const App = (() => {
     ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal']
   ]);
   const inWaves = (a = app) => !!a.wave.n;
+  const inShark = (a = app) => !!(a.wave.n && WAVES[a.wave.n - 1] && WAVES[a.wave.n - 1].shark);
   const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.humanSeatWasAutoplayed;
   function forfeitWave(a = app, saved = slots.get('waves'), cleared = Waves.progress().cleared) {
     const live = a.mode === 'waves' && gameOn(a), st = live ? a.state : saved && saved.state;
@@ -5170,10 +5189,10 @@ const App = (() => {
   function syncModeUI() {
     const waves = inWaves(), ownBots = waves || app.mode === 'dynamic';
     const chip = $('modeChip');
-    chip.innerHTML = watch ? 'Replay<span class="x" aria-hidden="true">✕</span>' : waves ? 'Wave ' + app.wave.n + '<span class="of"> of ' + WAVES.length + '</span>' : app.mode ? modeName(app.mode) : '';
+    chip.innerHTML = watch ? 'Replay<span class="x" aria-hidden="true">✕</span>' : waves ? waveName(app.wave.n) + '<span class="of"> of ' + WAVE_RUN + '</span>' : app.mode ? modeName(app.mode) : '';
     chip.className = 'mode-chip' + (watch ? ' replay' : app.mode ? ' ' + app.mode : '');
     chip.hidden = !app.mode && !watch;
-    chip.title = watch ? 'Exit the replay' : waves ? 'Your tries for each wave' : 'Your wins against each opponent';
+    chip.title = watch ? 'Exit the replay' : waves ? (inShark() ? 'Your tries for each table' : 'Your tries for each wave') : 'Your wins against each opponent';
     if (watch) chip.setAttribute('aria-label', 'Exit the replay'); else chip.removeAttribute('aria-label');
     const off = (id, yes) => { const el = $(id); el.classList.toggle('set-off', yes); el.inert = yes; };
     $('setWaveNote').hidden = !ownBots;
@@ -5442,16 +5461,19 @@ const App = (() => {
   }
   function waveEndHTML() {
     if (!app.wave.n || !app.wave.result) return '';
-    const n = app.wave.n, won = app.state.winner === HUMAN;
-    if (won && app.humanSeatWasAutoplayed) return '<p class="wave-note">Wave ' + n + ': the AI played your seat, so this win does not clear the wave.</p>';
-    if (won && !app.wave.wasOpenAtStart) return '<p class="wave-note">Wave ' + n + ' was locked, so this win does not clear it.</p>';
-    if (won && app.wave.result.complete) return '<p class="wave-note">Wave ' + n + ' cleared. You have cleared every wave!</p>';
-    if (won) return '<p class="wave-note">Wave ' + n + ' cleared.' + (n < WAVES.length ? ' Wave ' + (n + 1) + ' is open.' : '') + '</p>';
-    return '<p class="wave-note">Wave ' + n + ' is not cleared yet.</p>';
+    const n = app.wave.n, won = app.state.winner === HUMAN, r = app.wave.result, name = waveName(n), shark = WAVES[n - 1].shark;
+    if (won && app.humanSeatWasAutoplayed) return '<p class="wave-note">' + name + ': the AI played your seat, so this win does not clear ' + (shark ? 'the table' : 'the wave') + '.</p>';
+    if (won && !app.wave.wasOpenAtStart) return '<p class="wave-note">' + name + ' was locked, so this win does not clear it.</p>';
+    if (won && shark && r.sharkComplete) return '<p class="wave-note">' + name + ' cleared. You have beaten every table at full strength!</p>';
+    if (won && n === WAVE_RUN && r.sharkOpen) return '<p class="wave-note">' + name + ' cleared.' + (r.complete ? ' You have cleared every wave!' : '') + '</p>' +
+      '<p class="wave-note">The Shark run is open: the same eighteen tables, with both bots at full strength. Shark 1 is open.</p>';
+    if (won && !shark && r.complete) return '<p class="wave-note">' + name + ' cleared. You have cleared every wave!</p>';
+    if (won) return '<p class="wave-note">' + name + ' cleared.' + (n < WAVES.length && n !== WAVE_RUN ? ' ' + waveName(n + 1) + ' is open.' : '') + '</p>';
+    return '<p class="wave-note">' + name + ' is not cleared yet.</p>';
   }
   function gameStatus(st, personas, wave, now) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    return [(now ? 'Playing now · ' : '') + (wave ? 'Wave ' + wave + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
+    return [(now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
       (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
@@ -5466,8 +5488,11 @@ const App = (() => {
     const p = Waves.progress();
     const playing = gameOn();
     const lost = slots.dropped();
-    const waveOptions = WAVES.filter(w => w.n <= p.unlocked).map(w =>
-      '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>Wave ' + w.n + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>').join('');
+    const waveOption = ( w) => '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>';
+    const openWaves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen));
+    const waveOptions = p.sharkOpen
+      ? '<optgroup label="Waves">' + openWaves.filter(w => !w.shark).map(waveOption).join('') + '</optgroup><optgroup label="Shark run">' + openWaves.filter(w => w.shark).map(waveOption).join('') + '</optgroup>'
+      : openWaves.map(waveOption).join('');
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     const main = launch ? slots.last() || resumable[0] : null;
     const card = (m, title, extra, tail, buttons) => {
@@ -5485,7 +5510,7 @@ const App = (() => {
     const tail = (m, text) => '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + text + '</button>';
     html += card('dynamic', 'Dynamic', '', tail('dynamic', 'Beaten ' + beatenCount(stats.get(), 'dynamic') + ' of ' + PERSONAS.length), menuButton('new-dynamic', 'New game'));
     html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
-      tail('waves', p.cleared.length + ' of ' + p.total + ' cleared'), menuButton('play-wave', 'Play wave'));
+      tail('waves', p.sharkOpen ? 'Sharks: ' + p.sharks + ' of ' + p.total + ' cleared' : p.waves + ' of ' + p.total + ' cleared'), menuButton('play-wave', p.sharkOpen ? 'Play table' : 'Play wave'));
     html += card('free', 'Free play', '', tail('free', 'Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length), menuButton('new-free', 'New game'));
     html += '<div class="mtools">' + menuButton('menu-rules', 'Rules') + menuButton('tutorial', 'Tutorial', { disabled: true, title: 'Coming soon' }) +
       (install.prompt ? menuButton('install-app', 'Install', { title: 'Play it from your home screen, also offline' }) : '') + '</div>';
@@ -5504,7 +5529,7 @@ const App = (() => {
   const modeName = mode => mode === 'waves' ? 'Waves' : mode === 'dynamic' ? 'Dynamic' : 'Free play';
   const MODE_TAGLINE = Object.freeze({ free: 'Full-strength opponents; tune each seat in Settings', dynamic: 'Opponents for your level, who ease off as you learn', waves: 'Clear increasingly difficult tables' });
   const unfinishedText = (mode, st) => 'Your unfinished ' + modeName(mode) + ' game (hand ' + handNo(st) + ', you have ' + st.scores[0] + (st.scores[0] === 1 ? ' point' : ' points') + ')';
-  const forfeitText = ( n) => n ? '<p>This counts as a try on wave ' + n + '.</p>' : '';
+  const forfeitText = ( n) => n ? '<p>This counts as a try on ' + waveName(n, true) + '.</p>' : '';
   function forfeit( n) {
     if (!n) return;
     Waves.record(n, false);
@@ -5600,7 +5625,7 @@ const App = (() => {
     app.ui.selected.clear();
     closePanel();
     clearLog();
-    const what = rec.mode === 'waves' && rec.wave ? 'Wave ' + rec.wave + ', ' : MODES.includes(rec.mode) ? modeName(rec.mode) + ', ' : '';
+    const what = rec.mode === 'waves' && rec.wave ? waveName(rec.wave) + ', ' : MODES.includes(rec.mode) ? modeName(rec.mode) + ', ' : '';
     addLog('Replay: ' + what + names[1] + ' (West) and ' + names[2] + ' (East).', '');
     watch.marks[0] = logLines.length;
     watchStep();
@@ -5929,19 +5954,21 @@ const App = (() => {
     const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</span>'; };
     const close = '</div></div>';
     if (app.mode === 'waves') {
-      const pr = Waves.progress();
-      const rows = WAVES.filter(w => w.n <= pr.unlocked).reverse().map(w => {
+      const pr = Waves.progress(), shark = inShark();
+      const run = WAVES.filter(w => w.shark === shark), word = shark ? 'table' : 'wave', title = shark ? 'Shark tries' : 'Wave tries';
+      const rows = run.filter(w => w.n <= pr.unlocked).reverse().map(w => {
         const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
         const tries = done ? t + ' ✓' : t ? t + ' so far' : '<span class="dim">—</span>';
-        return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.n + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
+        return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.k + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
       }).join('');
-      const total = pr.cleared.reduce((t, n) => t + Waves.tries(n), 0);
-      const locked = pr.total - pr.unlocked;
-      return sheetHTML('results', 'Wave tries', '<h2>Wave tries</h2>') +
-        '<p>Cleared ' + pr.cleared.length + ' of ' + pr.total + (pr.cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared wave.</p>' +
-        '<table><tr><th>Wave</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
-        (locked ? '<p class="note">' + locked + (locked === 1 ? ' more wave opens' : ' more waves open') + ' as you clear them.</p>' : '') +
-        '<p class="note">A try is a game that counts for the wave. A game where the AI played your seat is not a try.</p>' + close;
+      const cleared = pr.cleared.filter(n => run.some(w => w.n === n));
+      const total = cleared.reduce((t, n) => t + Waves.tries(n), 0);
+      const locked = run.filter(w => w.n > pr.unlocked).length;
+      return sheetHTML('results', title, '<h2>' + title + '</h2>') +
+        '<p>Cleared ' + cleared.length + ' of ' + pr.total + (cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared ' + word + '.</p>' +
+        '<table><tr><th>' + (shark ? 'Shark' : 'Wave') + '</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
+        (locked ? '<p class="note">' + locked + (locked === 1 ? ' more ' + word + ' opens' : ' more ' + word + 's open') + ' as you clear them.</p>' : '') +
+        '<p class="note">A try is a game that counts for the ' + word + '. A game where the AI played your seat is not a try.</p>' + close;
     }
     const mode = app.mode === 'dynamic' ? 'dynamic' : 'free', title = modeName(mode) + ' wins';
     const mine = (stats.get().modeOpponents[mode]) || {};
@@ -5986,7 +6013,7 @@ const App = (() => {
     const d = new Date(at), thisYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: thisYear ? undefined : 'numeric', hour: 'numeric', minute: '2-digit' });
   };
-  const pfModeName = e => e.mode === 'waves' ? 'Wave ' + (e.wave || '?') : e.mode === 'free' ? 'Free play' : e.mode === 'dynamic' ? 'Dynamic' : 'Game';
+  const pfModeName = e => e.mode === 'waves' ? (e.wave ? waveName(e.wave) : 'Wave ?') : e.mode === 'free' ? 'Free play' : e.mode === 'dynamic' ? 'Dynamic' : 'Game';
   function pfChartHTML(games) {
     const W = 320, H = 150, L = 20, R = 4, T = 8, B = 18, n = games.length;
     const top = Math.max(10, ...games.map(e => Math.max(...e.scores)));
@@ -6025,7 +6052,7 @@ const App = (() => {
       '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><p>Your results in this browser.</p></div>' +
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
-      (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.cleared.length + ' <small>of ' + pr.total + '</small>') : '') + '</div>';
+      (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.waves + ' <small>of ' + pr.total + '</small>') + (pr.sharkOpen ? tile('Sharks cleared', pr.sharks + ' <small>of ' + pr.total + '</small>') : '') : '') + '</div>';
     if (!tot.played && !games.length) {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
         close;
@@ -6141,7 +6168,7 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
       case 'skip': skip(); break;
-      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(x); $('overlay').hidden = false; } break; }
+      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
       case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
@@ -6953,18 +6980,23 @@ const SelfTest = (() => {
       }
     });
     safeRun('waves', () => {
-      eq('eighteen waves', WAVES.length, 18);
-      check('waves are numbered 1 to 18', WAVES.every((w, i) => w.n === i + 1));
+      const first = WAVES.filter(w => !w.shark), sharks = WAVES.filter(w => w.shark);
+      eq('eighteen waves and eighteen Shark tables', [first.length, sharks.length, WAVE_RUN], [18, 18, 18]);
+      check('waves are numbered 1 to 36, the Shark run after the waves', WAVES.every((w, i) => w.n === i + 1 && w.shark === (i >= WAVE_RUN) && w.k === i % WAVE_RUN + 1));
+      check('the Shark run seats the waves\' tables in the same order', sharks.every((w, i) => w.west === first[i].west && w.east === first[i].east));
+      eq('a Shark table is named in its run', [waveName(3), waveName(3, true), waveName(21), waveName(21, true)], ['Wave 3', 'wave 3', 'Shark 3', 'Shark 3']);
+      eq('a Shark table seats its bots at Shark skill', [sharkOf(PERSONA_BY_ID.kit).tier, sharkOf(PERSONA_BY_ID.kit).courage, PERSONA_BY_ID.kit.tier], ['shark', PERSONA_BY_ID.kit.courage, 'novice']);
       check('every wave seats two different known personalities', WAVES.every(w => PERSONA_BY_ID[w.west] && PERSONA_BY_ID[w.east] && w.west !== w.east));
       check('every personality plays at least one wave', PERSONAS.every(x => WAVES.some(w => w.west === x.id || w.east === x.id)));
-      check('no table repeats', new Set(WAVES.map(w => w.west + '/' + w.east)).size === WAVES.length);
-      check('waves go from easiest to hardest, within the measurement margin', WAVES.every((w, i) => i === 0 || w.youWin <= WAVES[i - 1].youWin + 8) && WAVES[0].youWin > WAVES[WAVES.length - 1].youWin + 30);
+      check('no table repeats within a run', new Set(first.map(w => w.west + '/' + w.east)).size === WAVE_RUN);
+      check('waves go from easiest to hardest, within the measurement margin', first.every((w, i) => i === 0 || w.youWin <= first[i - 1].youWin + 8) && first[0].youWin > first[WAVE_RUN - 1].youWin + 30);
+      check('every Shark table is measured and at least as hard as its wave, within the margin', sharks.every((w, i) => w.youWin > 0 && w.youWin <= first[i].youWin + 13));
       check('a rematch is an earlier wave with the seats swapped', WAVES.filter(w => w.rematchOf).every(w => {
         const r = WAVES[w.rematchOf - 1];
         return r && r.n < w.n && r.west === w.east && r.east === w.west;
       }));
       eq('wave seats are You, West, East', Waves.seats(1), [null, 'kit', 'tex']);
-      eq('an unknown wave has no seats', Waves.seats(19), null);
+      eq('an unknown wave has no seats', Waves.seats(37), null);
       let text = null;
       const store = { get: () => text, set: t => { text = t; } };
       const wp = createWaveProgress(store);
@@ -6979,14 +7011,17 @@ const SelfTest = (() => {
       wp.record(2, false); wp.record(2, false);
       eq('a loss adds a try to an open wave', wp.tries(2), 2);
       eq('a win clears the wave with its tries', [wp.record(2, true).tries[2], wp.record(2, false).tries[2]], [3, 3]);
-      eq('the last wave opens nothing past it', (() => { wp.unlockAll(); return wp.record(18, true); })().unlocked, 18);
-      check('all clear is complete', (() => { for (let n = 1; n <= 18; n++) wp.record(n, true); return wp.progress().complete; })());
+      eq('wave 18 opens the Shark run', (() => { for (let n = 3; n <= 17; n++) wp.record(n, true); const r = wp.record(18, true); return [r.unlocked, r.sharkOpen, r.complete]; })(), [19, true, true]);
+      check('the Shark run is closed before wave 18 is cleared', !createWaveProgress({ get: () => '{"unlocked":18,"cleared":[1,2,3]}', set: () => {} }).progress().sharkOpen);
+      eq('the last Shark table opens nothing past it', (() => { wp.unlockAll(); return wp.record(36, true).unlocked; })(), 36);
+      check('all clear is complete', (() => { for (let n = 1; n <= 36; n++) wp.record(n, true); const r = wp.progress(); return r.complete && r.sharkComplete && r.waves === 18 && r.sharks === 18; })());
       eq('reset opens wave 1 only', wp.reset().unlocked, 1);
       text = '{"unlocked":4,"cleared":[1,2,3]}';
       const old = createWaveProgress(store, () => 0.99);
       eq('old progress gets 1-4 random tries for each cleared wave', [old.tries(1), old.tries(3), old.tries(4)], [4, 4, 0]);
       eq('the random tries are saved once', [JSON.parse(text).tries, createWaveProgress(store, () => 0).tries(2)], [{ 1: 4, 2: 4, 3: 4 }, 4]);
       eq('random tries are at least 1', createWaveProgress({ get: () => '{"unlocked":2,"cleared":[1]}', set: () => {} }, () => 0).tries(1), 1);
+      eq('old progress with wave 18 cleared opens the Shark run', createWaveProgress({ get: () => '{"unlocked":18,"cleared":[18],"tries":{"18":2}}', set: () => {} }).progress().unlocked, 19);
       eq('new progress gets no random tries', createWaveProgress({ get: () => null, set: () => {} }, () => 0.99).progress().tries, {});
       text = '{"unlocked":99,"cleared":[1]}';
       eq('bad saved progress starts fresh', createWaveProgress(store).progress().unlocked, 1);
