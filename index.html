@@ -2389,7 +2389,7 @@ const WAVE_TABLES = [
   { west: 'mei', east: 'doc', youWin: 8, rematchOf: null, purpose: 'Two strong players in a bad seat order.' },
   { west: 'vex', east: 'doc', youWin: 12, rematchOf: null, purpose: 'Final boss.' }
 ];
-const SHARK_WIN = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const SHARK_WIN = [42, 25, 28, 25, 37, 25, 18, 27, 25, 28, 27, 23, 17, 20, 15, 15, 10, 15];
 /* k: the table's number within its run. shark: the Shark run, where both bots play at Shark. */
 const WAVES = Object.freeze(WAVE_TABLES.map((w, i) => Object.assign({ n: i + 1, k: i + 1, shark: false }, w)).concat(WAVE_TABLES.map((w, i) => ({
   n: WAVE_RUN + i + 1, k: i + 1, shark: true, west: w.west, east: w.east, youWin: SHARK_WIN[i], rematchOf: w.rematchOf ? WAVE_RUN + w.rematchOf : null,
