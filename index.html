@@ -232,6 +232,7 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 
 .summary{background:var(--panel-strong);border-radius:0.875rem;padding:0.875rem 1rem;text-align:center}
 .summary h3{margin:0 0 0.5rem;font-size:1.125rem}
+.summary p{margin:0.5rem 0}
 .summary table{margin:0.5rem auto;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .summary td,.summary th{padding:0.1875rem 0.625rem;border-bottom:1px solid rgba(255,255,255,.1)}
 .summary .pos{color:var(--good);font-weight:800}.summary .neg{color:var(--danger);font-weight:800}
@@ -4519,9 +4520,9 @@ const Render = (() => {
           statsTableHTML(v, {}) + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
-        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied with 3 tricks each. ' + n(hs.mediator) + ' won 1 trick and is the mediator.</p>' + trumpCallAndDealerHTML(v) +
+        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied 3–3. ' + n(hs.mediator) + ' won 1 trick and mediates.</p>' + trumpCallAndDealerHTML(v) +
           statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' will shuffle the ' + Engine.C.OUTSIDE_SIZE + ' outside cards and deal ' + Engine.C.SHOWDOWN_DEAL + ' to each Showdown player. Each discards ' + Engine.C.SHOWDOWN_DISCARD + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play ' + Engine.C.SHOWDOWN_TRICKS + ' tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><p>Winner +1 · Loser −1 (not below 0) · Kings that win still score +1.</p>' + leadRuleNote(v, ui) + '</div>';
+          '<p>' + n(hs.mediator) + ' deals ' + Engine.C.SHOWDOWN_DEAL + ' outside cards to each. Each discards ' + Engine.C.SHOWDOWN_DISCARD + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play ' + Engine.C.SHOWDOWN_TRICKS + ' tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><div class="meta">Winner +1 · Loser −1 (min 0) · Winning Kings +1</div>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
