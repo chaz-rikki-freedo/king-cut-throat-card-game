@@ -286,28 +286,28 @@ Eighteen fixed tables, easiest first. Each wave seats two personalities, West an
 - At the end of a wave: the end buttons (see **End of a game**); after a win that opens the next wave, also **Next wave**. **New deal** plays the same wave with new cards.
 - Progress is kept in the browser (`localStorage`, key `kct.waves`). Without storage, it lasts until the page reloads.
 
-**Your win** is the win rate of a human-style bot (Casual, Real table) in your seat, from 150 bot games per table. A real first-time player wins less. A rematch is an earlier wave with the seats swapped. For how real tables differ from this bot, see [docs/human-play.md](docs/human-play.md).
+**Your win** is the win rate of a human-style bot (Casual, Real table) in your seat, from 150 bot games per table (`node tests/waves.js`, measured again on 2026-10-20 after the habits, reads and feints). With 150 games each figure is good to about ±8 points, so a wave can show a little above the one before. A real first-time player wins less. A rematch is an earlier wave with the seats swapped. For how real tables differ from this bot, see [docs/human-play.md](docs/human-play.md).
 
 | Wave | West | East | Your win | Rematch of |
 |---|---|---|---|---|
-| 1 | Kit | Tex | 61% | |
-| 2 | Kit | Gus | 51% | |
-| 3 | Zen | Tex | 51% | |
-| 4 | Lou | Gus | 49% | |
-| 5 | Lou | Zen | 47% | |
-| 6 | Viv | Tex | 47% | |
-| 7 | Kit | Zen | 46% | |
-| 8 | Mei | Tex | 40% | |
-| 9 | Kit | Ace | 37% | |
-| 10 | Viv | Gus | 37% | |
-| 11 | Lou | Vex | 35% | |
-| 12 | Doc | Ace | 29% | |
-| 13 | Tex | Mei | 24% | 8 |
-| 14 | Ace | Doc | 21% | 12 |
-| 15 | Vex | Lou | 18% | 11 |
-| 16 | Tex | Viv | 18% | 6 |
-| 17 | Mei | Doc | 12% | |
-| 18 | Vex | Doc | 7% | |
+| 1 | Kit | Tex | 53% | |
+| 2 | Kit | Gus | 41% | |
+| 3 | Zen | Tex | 45% | |
+| 4 | Lou | Gus | 46% | |
+| 5 | Lou | Zen | 40% | |
+| 6 | Viv | Tex | 36% | |
+| 7 | Kit | Zen | 39% | |
+| 8 | Mei | Tex | 33% | |
+| 9 | Kit | Ace | 29% | |
+| 10 | Viv | Gus | 31% | |
+| 11 | Lou | Vex | 29% | |
+| 12 | Doc | Ace | 23% | |
+| 13 | Tex | Mei | 16% | 8 |
+| 14 | Ace | Doc | 15% | 12 |
+| 15 | Vex | Lou | 9% | 11 |
+| 16 | Tex | Viv | 15% | 6 |
+| 17 | Mei | Doc | 8% | |
+| 18 | Vex | Doc | 12% | |
 
 Start a wave: `index.html?wave=3` (add `&seed=123` to fix the deals too).
 
