@@ -119,7 +119,7 @@ Who the AI plays as in your seat, and how it plays, is set in **Settings → Bot
 
 ### Bots
 
-The Bots tab has one group for each seat: **West**, **East** and **Your seat** (used when the AI plays your seat). Each group is collapsed; its header shows who sits there and how many changes it has. Inside, **Who sits** comes first, then three collapsed groups: **Skill**, **Style** and **Knowledge**.
+The Bots tab has one group for each seat: **West**, **East** and **Your seat** (used when the AI plays your seat). Each group is collapsed; its header shows who sits there and how many changes it has. Inside, **Who sits** comes first, then four collapsed groups: **Skill**, **Style**, **Habits** and **Knowledge**.
 
 - **Who sits** (default **From the seed**): the seed's pick, or always this bot. West and East can't both choose the same bot: the other seat goes back to the seed's pick. For your seat, a bot already at the table means the seed picks one that isn't.
 - Every other setting starts at **Its own**: the bot plays that part as its personality does. When the seat has a chosen bot, **Its own** names that bot's value, for example **Its own (Bold)**. Any other choice changes that one thing, and a gold dot marks the row.
@@ -134,6 +134,7 @@ The Bots tab has one group for each seat: **West**, **East** and **Your seat** (
 |---|---|
 | **Skill** | **Skill** sets hunches, brain farts and knowledge together, and shows **Custom** when they match no tier. **Hunches** and **Brain farts** fine-tune it (see below). |
 | **Style** | **Bid courage**, **Real table** and **Showdown pick** (see below and **Opponents**). |
+| **Habits** | **Leads**, **Winning a trick**, **When void**, **Kings** and **Habit strength** (see **Habits** under **Opponents**). |
 | **Knowledge** | The six knowledge switches (see below), each **Its own**, **On** or **Off**. |
 
 Skill tiers, weakest first:
@@ -209,7 +210,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, and two bars. **Card sense** and **Nerve** go up to 4. **Set in their ways** marks a bot with human habits.
 - Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
-- Each bot plays its own skill tier, bid courage, Real table setting and Showdown pick. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
+- Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick and habits. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
 |---|---|---|---|---|
@@ -223,6 +224,27 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 | Tex | Novice | Bold | | Impulsive |
 | Kit | Novice | Cautious | on | Fair |
 | Zen | Casual | Normal | on | Fair |
+
+**Habits** are what a bot likes to play when its best cards are about equally good. A bot only follows a habit among the cards whose chance to win the game is within its **habit strength** of its best card, so a habit costs it at most that much per card, and it never uses more than it can see. A bot with 0% has no habits and always plays its best card.
+
+| Bot | Leads | Winning a trick | When void | Kings | Habit strength |
+|---|---|---|---|---|---|
+| Vex | Trump | With its biggest card | | Early | 1% |
+| Doc | | With its cheapest winner | | Late | 1% |
+| Ace | A King | | | Early | 2% |
+| Mei | | | | | 0% |
+| Gus | | With its biggest card | Trumps in | | 3% |
+| Lou | | Holds back | Throws its lowest | Late | 3% |
+| Viv | Its longest suit | Holds back | | Late | 2% |
+| Tex | Trump | With its biggest card | Trumps in | | 4% |
+| Kit | A King | | | Early | 3% |
+| Zen | Its longest suit | With its cheapest winner | | | 2% |
+
+- **Leads:** trump, its longest suit, its shortest suit, or a King.
+- **Winning a trick** it follows and can win: with its cheapest winner, with its biggest card, or it holds back (plays its highest card that loses).
+- **When void** (it cannot follow suit): it trumps in with its smallest trump, or throws its lowest card.
+- **Kings:** it plays them early, or holds them late.
+- Habits act on card play only, in the main hand and the Showdown. Easing in Dynamic never changes them.
 
 **Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → Game):
 
@@ -380,7 +402,7 @@ KCT.App.explain(0)                          // each bot decision of your latest 
 `KCT.App.habits()` and `KCT.App.explain(n)` read only finished games, the last 20 in Your profile. They never read the running game.
 
 - `habits()` counts how each seat leads, follows, trumps in, throws off when void, plays its Kings and bids. `labels` names each rate in plain words. Your column leaves out games where the AI played your seat, a bot's column leaves out games where it had changes from Settings → Bots, and every column leaves out the Showdown's tricks.
-- `explain(n)` plays game `n` again (0 is the latest) and asks each bot to decide again, with the settings it played with. In Dynamic, the easing moves after each hand as it did in the game. Each decision lists how the bot decided (`plan`: play-outs, `forced`: one choice, `rule`: a fixed rule), its options with their value (its chance to win the game) and best plan, and `match`. A bot decides from what it could see and its settings alone, so `match` is true unless the Settings panel changed during a Free play game (`changed`). With the event log on, each decision is also one `AI_DECISION` line.
+- `explain(n)` plays game `n` again (0 is the latest) and asks each bot to decide again, with the settings it played with. In Dynamic, the easing moves after each hand as it did in the game. Each decision lists how the bot decided (`plan`: play-outs, `habit`: play-outs, then a habit picked a card within its habit strength of the best, `forced`: one choice, `rule`: a fixed rule), its options with their value (its chance to win the game) and best plan, and `match`. A bot decides from what it could see and its settings alone, so `match` is true unless the Settings panel changed during a Free play game (`changed`). With the event log on, each decision is also one `AI_DECISION` line.
 
 `KCT.App.app.state` holds every hand, so use it for testing only.
 
