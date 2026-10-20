@@ -482,17 +482,30 @@ function expect(name, ok, detail) {
       for (let n = 1; n <= 18; n++) KCT.Waves.record(n, true);
       A.showMenu(); await sleep(20);
       out.after = options().filter(t => /^Shark/.test(t)); out.tail = q('[data-action="play-wave"]').textContent;
-      speed('fast'); KCT.App.newGame(undefined, 19); await sleep(50);
+      /* From a Wave 18 game: the list starts on wave 18 (Resume's game); picking Shark 1 makes Play table the main button. */
+      speed('fast'); KCT.App.newGame(undefined, 18); await sleep(50);
+      A.showMenu(); await sleep(20);
+      out.listStart = q('#waveSel').value;
+      const sel = q('#waveSel'); sel.value = '19'; sel.dispatchEvent(new Event('change', { bubbles: true })); await sleep(20);
+      out.mainButtons = Array.from(document.querySelectorAll('.mcard[data-mode="waves"] .btn.primary')).map(b => b.textContent);
+      click('[data-action="play-wave"]'); await sleep(50);
+      if (askOpen()) { click('[data-action="ask-ok"]'); await sleep(50); }
       out.chip = q('#modeChip').textContent;
       out.seats = app.ui.personas.slice(1);
       out.tiers = [1, 2].map(p => KCT.AI.skillTierOf(A.botConfig(p).cfg));
       out.style = A.botConfig(2).cfg.style.courage;
       click('#modeChip'); await sleep(20); out.popup = q('#overlay h2').textContent; click('[data-action="close-overlay"]');
+      click('[data-action="me-profile"]'); await sleep(20); click('[data-action="profile-mode"][data-mode="waves"]'); await sleep(20);
+      out.profile = Array.from(document.querySelectorAll('#overlay h3')).map(h => h.textContent).filter(t => /tries/.test(t));
+      out.sharkRows = document.querySelectorAll('#overlay .pf-tries')[0].querySelectorAll('tr').length - 1;
+      click('[data-action="close-overlay"]');
       return out;`);
     expect('the menu shows no Shark table before wave 18 is cleared', r.before === false, r);
     expect('clearing wave 18 lists Shark 1 in the menu', JSON.stringify(r.after) === JSON.stringify(['Shark 1 · Kit / Tex']) && r.tail === 'Play table', r);
     expect('Shark 1 seats wave 1\'s bots at Shark, keeping their courage', r.chip === 'Shark 1 of 18' && JSON.stringify(r.seats) === '["kit","tex"]' && JSON.stringify(r.tiers) === '["shark","shark"]' && r.style === 'bold', r);
+    expect('during a Wave 18 game, the list starts on wave 18; picking Shark 1 makes Play table the main button', r.listStart === '18' && JSON.stringify(r.mainButtons) === '["Play table"]', r);
     expect('the mode chip opens Shark tries', r.popup === 'Shark tries', r.popup);
+    expect('Your profile, Waves: Shark tries, then Wave tries', JSON.stringify(r.profile) === '["Shark tries","Wave tries"]' && r.sharkRows === 1, r);
 
     console.log('The play area explains itself on your move');
     r = await step(`
