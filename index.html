@@ -1248,7 +1248,8 @@ const RNG = (() => {
 /* ---------------------------------------------------------------------
    3. LOGGER — one timestamped logger. Off by default. Public info only.
    --------------------------------------------------------------------- */
-/* The Logger keeps the last LOGGER_MAX lines. */
+/* The Logger keeps the last LOGGER_MAX lines. header (set by the App): the first line of each log, written before the
+   first line after the log is turned on or cleared. */
 const LOGGER_MAX = 1500;
 const Logger = (() => {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1259,8 +1260,14 @@ const Logger = (() => {
     lines: [],
     /** @type {((line: string) => void)[]} */
     listeners: [],
+    /** @type {(() => [string, Object]) | null} */
+    header: null,
     log(type, data) {
       if (!this.enabled) return;
+      if (!this.lines.length && this.header) this.write(...this.header());
+      this.write(type, data);
+    },
+    write(type, data) {
       const ms = Math.round(now() - this.t0);
       const parts = [];
       if (data) {
@@ -3970,8 +3977,10 @@ const Dynamic = (() => {
 
   /* ---- The profile (kct.profile) and the snapshot a game starts from ---- */
   const num = (/** @type {any} */ x) => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : 0);
+  /* Raise PROFILE_VERSION when the profile's fields change meaning: a profile of another version starts blank. */
+  const PROFILE_VERSION = 1;
   const blankProfile = () => ({
-    v: 1, hands: 0, games: 0,
+    v: PROFILE_VERSION, hands: 0, games: 0,
     /* Decayed sums. share: points won by you and by everyone (Dynamic games only). calls: your calls, the failed ones
        and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss.
        plays: your main-hand card plays and the slips among them (Habits: a King thrown under, a wasted winner, a dead
@@ -3985,7 +3994,7 @@ const Dynamic = (() => {
   /** A profile as the app can trust it (it can come from a backup). @param {any} x */
   function cleanProfile(x) {
     const p = blankProfile();
-    if (!x || typeof x !== 'object' || x.v !== 1) return p;
+    if (!x || typeof x !== 'object' || x.v !== PROFILE_VERSION) return p;
     const o = (/** @type {any} */ y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
     const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
@@ -4192,7 +4201,7 @@ const Dynamic = (() => {
     });
   }
 
-  return Object.freeze({ FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -5540,6 +5549,9 @@ const App = (() => {
   /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
+  /* The event log opens with every version the app uses (docs/versions.md). */
+  Logger.header = () => ['VERSIONS', { engine: Engine.RULES_VERSION, replay: 'KCT' + Replay.VERSION, save: SAVE_FORMAT, backup: 'KCTS' + Backup.VERSION,
+    profile: Dynamic.PROFILE_VERSION, build: BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '') }];
   const slots = createSlots(localStore('kct.slots'));
   const stats = createStats(localStore('kct.stats'));
   const replays = createReplays(localStore('kct.replays'));
@@ -9450,6 +9462,19 @@ const SelfTest = (() => {
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
+        /* The event log opens with the versions, once, also after Clear log. */
+        const kept = { enabled: Logger.enabled, lines: Logger.lines, listeners: Logger.listeners, t0: Logger.t0 };
+        try {
+          Object.assign(Logger, { enabled: true, lines: [], listeners: [] });
+          Logger.log('TEST_A'); Logger.log('TEST_B');
+          const types = () => Logger.lines.map(l => l.split(' ')[1]);
+          const first = Logger.lines[0].replace(/^\[\+\d+ms\] /, '');
+          eq('the event log opens with the versions', [types(), first], [['VERSIONS', 'TEST_A', 'TEST_B'],
+            'VERSIONS engine=' + Engine.RULES_VERSION + ' replay=KCT' + Replay.VERSION + ' save=' + SAVE_FORMAT + ' backup=KCTS' + Backup.VERSION +
+            ' profile=' + Dynamic.PROFILE_VERSION + ' build=' + BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '')]);
+          Logger.clear(); Logger.log('TEST_C');
+          eq('Clear log: the versions open it again', types(), ['VERSIONS', 'TEST_C']);
+        } finally { Object.assign(Logger, kept); }
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];

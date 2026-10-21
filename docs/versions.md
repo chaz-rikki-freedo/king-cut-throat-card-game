@@ -4,6 +4,14 @@ This page lists each number or ID that the app uses as a version, what it covers
 
 **Load a code** shows the two versions that decide whether a replay code plays back: `Replay KCT3 · Engine 5`.
 
+The event log (**Settings → Tools → Event log**) lists all of them in its first line, after the log is turned on or cleared:
+
+```
+VERSIONS engine=5 replay=KCT3 save=1 backup=KCTS1 profile=1 build=dev
+```
+
+The log keeps its last 1,500 lines, so a very long log loses that line. **Clear log** writes it again.
+
 ## Versions in the app
 
 | Name | Where | Now | What it covers | Change it when |
@@ -12,7 +20,7 @@ This page lists each number or ID that the app uses as a version, what it covers
 | Replay code version | `Replay.VERSION` in `index.html` | 3 | The layout of a replay code: the `KCT3-` prefix, the sections and their fields. See [replay-code.md](replay-code.md). The app also reads versions 1 and 2. | The byte layout changes in a way that an older reader can't skip. A new optional section doesn't need a new version. |
 | Save format | `SAVE_FORMAT` in `index.html` | 1 | The unfinished game kept for each mode (`kct.slots`). A save in another format is dropped, and the app says so once. | A saved Engine state from an older app can't be resumed. |
 | Backup version | `Backup.VERSION` in `index.html` | 1 | The backup envelope (`format: 'kct-backup'`) and its code prefix, `KCTS1-`. See [backup.md](backup.md). A backup newer than the app is refused. | The envelope changes. The data inside it is the `kct.` keys as stored, so it doesn't need its own version. |
-| Profile version | `v` in `kct.profile` (`blankProfile` in `index.html`) | 1 | The Dynamic mode profile. A profile with another `v` starts again from blank. | The profile's fields change meaning. |
+| Profile version | `Dynamic.PROFILE_VERSION` in `index.html`, kept as `v` in `kct.profile` | 1 | The Dynamic mode profile. A profile with another `v` starts again from blank. | The profile's fields change meaning. |
 | Build | `BUILD` in `index.html` | `dev` on `main` | The published copy: the `main` commit and its date. `tools/publish.sh` writes it, and Settings and About show it. The service worker uses it to tell the game page from other pages. | Never by hand. The publish script sets it. |
 
 ## Release number
