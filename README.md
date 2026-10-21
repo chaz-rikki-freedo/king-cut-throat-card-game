@@ -460,7 +460,7 @@ KCT.App.explain(0)                          // each bot decision of your latest 
 
 ## Install and offline play
 
-The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser offers **Install** or **Add to Home Screen**. It then opens in its own window, as **Cut-Throat**, with the keycap 3 icon, and plays offline. Ad blockers that filter HTTPS, such as AdGuard, add scripts from their own address to the page; offline, those requests hang and the app would stay on its logo, so the service worker removes scripts and `<link>` tags that load from another site before it shows the cached page.
+The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser offers **Install** or **Add to Home Screen**. It then opens in its own window, as **Cut-Throat**, with the keycap 3 icon, and plays offline. Ad blockers that filter HTTPS, such as AdGuard, add scripts from their own address to the page; offline, those requests hang and the app would stay on its logo, so the service worker removes scripts and `<link>` tags that load from another site before it shows the cached page. A link opened inside another app (Facebook, Instagram, X, TikTok and others) opens in that app's own browser, which cannot install the game and often keeps nothing for offline play: the menu and **Settings → Install** then say to open the game in Chrome (Safari on iPhone and iPad). The Install checklist gives each network request 5 seconds, so it finishes offline too, behind a VPN that holds requests instead of failing them.
 
 | File | What it is |
 |---|---|

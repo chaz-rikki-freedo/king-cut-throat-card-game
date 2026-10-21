@@ -2518,6 +2518,22 @@ const MODES = Object.freeze(['waves', 'free', 'dynamic']);
 /* While StorageGate.locked is true, the app writes nothing to localStorage. A backup import
    locks it, so a timer or a save cannot overwrite the imported data before the page reloads. */
 const StorageGate = { locked: false };
+/* Links opened inside another app (Facebook, Instagram, X, TikTok...) open in that app's own browser. It cannot
+   install the game, and often keeps nothing for offline play, so the menu and Settings → Install say to open the
+   game in Chrome (Safari on iPhone and iPad). Returns the app's name, 'another app' when the browser only shows
+   it is built into one (an Android WebView, or an iPhone browser without Safari's mark), or '' in a real browser.
+   An installed app on iPhone and iPad also lacks Safari's mark: standalone tells it apart.
+   @param {string} ua @param {boolean} standalone @returns {string} */
+function inAppBrowser(ua, standalone) {
+  /** @type {[RegExp, string][]} */
+  const apps = [[/FBAN|FBAV|FB_IAB/, 'Facebook'], [/Instagram/, 'Instagram'], [/Twitter/, 'X'], [/musical_ly|BytedanceWebview|TikTok/, 'TikTok'],
+    [/Snapchat/, 'Snapchat'], [/LinkedInApp/, 'LinkedIn'], [/Pinterest/, 'Pinterest'], [/\bLine\//, 'LINE']];
+  const named = apps.find(([re]) => re.test(ua));
+  if (named) return named[1];
+  if (/; wv\)/.test(ua)) return 'another app';
+  if (/iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua) && !standalone) return 'another app';
+  return '';
+}
 /* One tab at a time, so the saved data has one writer. Each page load takes the active-tab mark
    (key 'kct-tab': it does not start with 'kct.', so it is not in backups). A tab that finds the
    mark of another tab is out of date: it writes nothing more, and the App stops it and asks you
@@ -6942,6 +6958,7 @@ const App = (() => {
       : '<button class="mgo primary" type="button" data-action="menu-view" data-view="new">New game<small>Dynamic, Waves or Free play</small></button>';
     let notes = '';
     if (linkNote) { notes += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
+    if (inApp) notes += '<p class="wave-note">' + escHTML(inAppText) + '</p>';
     if (lost.length) notes += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
     const link = (/** @type {string} */ action, /** @type {string} */ label, attrs = '') => '<button type="button" data-action="' + action + '"' + attrs + '>' + label + '</button>';
     return menuViewHTML('home', '', '<p class="about-suits" aria-hidden="true"><span>♠</span><span class="red">♥</span><span>♣</span><span class="red">♦</span></p>' +
@@ -7320,6 +7337,21 @@ const App = (() => {
   }
   /* ---- Install: the browser's own install offer, and a check that shows why it may be missing. ---- */
   const install = { prompt: null, offered: false, installed: false, linkRestored: false };
+  const standaloneApp = () => !!safe(() => matchMedia('(display-mode: standalone)').matches) || /** @type {any} */ (navigator).standalone === true;
+  const inApp = inAppBrowser(navigator.userAgent, standaloneApp());
+  const inAppText = 'You opened the game inside ' + (inApp === 'another app' ? 'another app' : inApp) + '. To install it and play offline, open it in Chrome (Safari on iPhone and iPad): in the app\'s menu, often ⋯ or ⋮, choose Open in browser.';
+  /* A request that gives up after ms: offline behind a VPN that blocks traffic, a request can wait for minutes.
+     Resolves to the response and its body as text. @param {string} url @param {number} ms */
+  async function fetchWithin(url, ms) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), ms);
+    try {
+      const res = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+      return { res, body: await res.text() };
+    } catch (e) {
+      throw ctl.signal.aborted ? new Error('no answer in ' + ms / 1000 + ' s') : e;
+    } finally { clearTimeout(timer); }
+  }
   /* Some ad blockers (AdGuard, for one) remove the manifest link from the page as it downloads.
      Without it, Chrome cannot install the app or update its name and icon, so the link is put back. */
   if (!document.querySelector('link[rel="manifest"]')) {
@@ -7362,21 +7394,21 @@ const App = (() => {
       row('wait', 'Install and offline play need the hosted game (HTTPS). A local copy cannot install.');
       return show();
     }
-    const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) || /** @type {any} */ (navigator).standalone === true;
-    if (standalone || install.installed) row('ok', 'Running as an installed app.');
+    if (standaloneApp() || install.installed) row('ok', 'Running as an installed app.');
+    else if (inApp) row('bad', inAppText);
     else row('wait', 'Running in a browser tab.');
     row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
     const link = /** @type {HTMLLinkElement | null} */ (document.querySelector('link[rel="manifest"]'));
     if (!link) row('bad', 'This page has no manifest link, so the browser cannot see the manifest. Checking manifest.webmanifest directly.');
     else if (install.linkRestored) row('wait', 'The page arrived without its manifest link, probably removed by an ad blocker. The app put it back.');
     try {
-      const res = await fetch(link ? link.href : 'manifest.webmanifest', { cache: 'no-store' });
-      const m = await res.json();
+      const { res, body } = await fetchWithin(link ? link.href : 'manifest.webmanifest', 5000);
+      const m = JSON.parse(body);
       row(res.ok ? 'ok' : 'bad', 'Manifest loaded (' + res.status + ', ' + (res.headers.get('content-type') || 'no type') + '): ' + m.name + '.');
       for (const ic of m.icons || []) {
         const url = new URL(ic.src, res.url).href;
         let st = 'error';
-        try { const r = await fetch(url, { cache: 'no-store' }); st = r.status + (r.ok ? '' : ' (failed)'); } catch (e) { st = 'failed: ' + e.message; }
+        try { const { res: r } = await fetchWithin(url, 5000); st = r.status + (r.ok ? '' : ' (failed)'); } catch (e) { st = 'failed: ' + e.message; }
         row(/^200/.test(st) ? 'ok' : 'bad', 'Icon ' + ic.sizes + ' (' + (ic.purpose || 'any') + '): ' + st + '.');
       }
     } catch (e) { row('bad', 'Manifest could not be loaded: ' + e.message + '.'); }
@@ -9315,6 +9347,20 @@ const SelfTest = (() => {
     /* --- Interface: the Settings panel's structure, and every information popup across real games. Reads the page and
        the settings; changes nothing (Table memory is switched for the check and put back). --- */
     safeRun('interface', () => {
+      /* Another app's built-in browser: named when it says so, else 'another app'; real browsers and installed apps are ''. */
+      const A = 'Mozilla/5.0 (Linux; Android 13; Pixel 7', I = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
+      eq('in-app browsers are told apart from real ones', [
+        inAppBrowser(A + ') AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/440.0.0.0;]', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36 Instagram 310.0.0.0 Android', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(A + ') AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(I + ' Version/17.0 Mobile/15E148 Safari/604.1', false),
+        inAppBrowser(I + ' CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1', false),
+        inAppBrowser(I + ' Mobile/15E148 Twitter for iPhone/10.20', false),
+        inAppBrowser(I + ' Mobile/15E148', false),
+        inAppBrowser(I + ' Mobile/15E148', true)
+      ], ['', 'Facebook', 'Instagram', 'another app', '', '', '', 'X', 'another app', '']);
       /* Suit symbols in text show drawn, every suit at one width; the text keeps the symbols. */
       if (typeof document !== 'undefined') {
         const box = document.createElement('div');
