@@ -164,7 +164,7 @@ function expect(name, ok, detail) {
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
     r = await step(`
       const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#menuTitle') || {}).textContent,
-        exits: document.querySelectorAll('#overlay .menu [data-action="close-menu"]').length };
+        menuExits: document.querySelectorAll('#overlay .menu [data-action="close-menu"]').length };
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
@@ -173,7 +173,7 @@ function expect(name, ok, detail) {
       out.back = !!q('#overlay .menu');
       return out;`);
     expect('the menu: the title, then a view each for Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
-    expect('with no game being played, nothing in the menu says Continue to the table (Escape closes it)', r.exits === 0, r);
+    expect('with no game being played, nothing in the menu says Continue to the table (Escape closes it)', r.menuExits === 0, r);
     expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
     expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
 
@@ -238,7 +238,7 @@ function expect(name, ok, detail) {
       set('#seat1-courage', '');
       click('[data-action="menu"]'); await sleep(20);
       click('[data-action="discard-free"]'); await sleep(50); click('[data-action="ask-ok"]'); await sleep(50);
-      click('[data-action="close-menu"]'); await sleep(20);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
       return out;`);
     expect('Free play: West plays with its seat\'s change', JSON.stringify(r.free) === JSON.stringify(['{"courage":"bold"}', 'bold']), r.free);
     expect('in a wave the bots play their personalities, and the Bots tab says so', JSON.stringify(r.wave) === '[null,false,true]', r.wave);
