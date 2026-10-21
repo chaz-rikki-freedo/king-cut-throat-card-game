@@ -10,7 +10,7 @@ The event log (**Settings → Tools → Event log**) lists all of them in its fi
 VERSIONS engine=5 replay=KCT3 save=1 backup=KCTS1 profile=1 build=dev
 ```
 
-The log keeps its last 1,500 lines, so a very long log loses that line. **Clear log** writes it again.
+The log keeps its last 1,500 lines, so a very long log loses that line. After **Clear log**, the line comes back with the next event.
 
 ## Versions in the app
 
