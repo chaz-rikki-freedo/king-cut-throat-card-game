@@ -136,6 +136,10 @@ function expect(name, ok, detail) {
       const load = () => q('#menuCode [data-action="code-load"]');
       const read = () => ({ text: q('#codeRead').textContent, load: load().textContent, off: load().disabled, where: !q('#codeWhere').hidden });
       const out = { open: !!q('#overlay .menu #codeIn') && !askOpen(), empty: read() };
+      /* The versions float at the foot of the window, outside the card, on this view only. */
+      const ver = () => { const v = q('#codeVersion'), b = v.getBoundingClientRect(); return { shown: !v.hidden, text: v.textContent, outside: !v.closest('.menu-card'), centered: Math.abs(b.left + b.width / 2 - innerWidth / 2) < 2, foot: innerHeight - b.bottom < 40 }; };
+      out.verHome = ver().shown;
+      click('#overlay .mfoot [data-view="code"]'); await sleep(50); out.ver = ver();
       type('KCTS1-H4sIAAAA'); out.backup = read();
       type('hello'); out.junk = read();
       type('4242'); out.seed = read();
@@ -151,6 +155,8 @@ function expect(name, ok, detail) {
     `);
     expect('Load a code sits in the menu\'s Play tab, not a dialog', r.open, r);
     expect('an empty field cannot load', r.empty.off && !r.empty.where, r.empty);
+    expect('the replay and Engine versions float at the foot of Load a code, outside the card', r.ver.shown && /^Replay KCT\d+ · Engine \d+$/.test(r.ver.text) && r.ver.outside && r.ver.centered && r.ver.foot, r.ver);
+    expect('the versions hide on the other menu views', !r.verHome, r);
     expect('a backup code is not loaded, and the dialog says where backups go', r.backup.off && /Settings → Tools → Your data/.test(r.backup.text), r.backup);
     expect('junk says why it cannot load', r.junk.off && /not a replay code or a seed/.test(r.junk.text), r.junk);
     expect('a seed asks where to play, and Load says Play', !r.seed.off && r.seed.where && r.seed.load === 'Play', r.seed);

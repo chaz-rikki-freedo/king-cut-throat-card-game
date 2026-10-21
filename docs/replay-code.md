@@ -63,7 +63,7 @@ then 1 or more sections:
 
 GAME fields:
 
-- **rules**: the rules version the game was played by (`Engine.RULES_VERSION` for a new game). Developers raise `Engine.RULES_VERSION` when a change makes the same seed and decisions give a different game (a rule, the deal or the RNG). A reader replays a code by the code's own rules version, and refuses a version newer than its own.
+- **rules**: the Engine version the game was played by (`Engine.RULES_VERSION` for a new game; the app shows it as **Engine**, see [versions.md](versions.md)). Developers raise `Engine.RULES_VERSION` when a change makes the same seed and decisions give a different game (a rule, the deal or the RNG). A reader replays a code by the code's own rules version, and refuses a version newer than its own.
   - 1: the first rules. The opening discard and the Showdown discard have no order.
   - 2: the discards go in turn: the opening discard from the dealer's left (the dealer last), the Showdown discard from the mediator's left.
   - 3: house rules can be on (see **options**). With no house rule on, the game is the same as in version 2.

@@ -477,6 +477,10 @@ body.set-open{overflow:hidden}
 .menu-stage{place-self:stretch;position:relative;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
 .menu-stage .about-kings{position:fixed}
 .menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem}
+/* The versions under Load a code: a pill floating at the foot of the window, with room kept under the card. */
+.code-ver{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;margin:0;padding:0.375rem 0.875rem;white-space:nowrap;font-size:0.75rem;color:var(--muted);background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:999px;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem);pointer-events:none}
+.code-ver[hidden]{display:none}
+.menu-stage:has(> .code-ver:not([hidden])){padding-bottom:4rem}
 .mview{display:flex;flex-direction:column;align-items:center;gap:0.875rem;width:100%}
 .mview[hidden]{display:none}
 .mepi{font-style:italic;font-size:0.875rem}
@@ -6932,7 +6936,10 @@ const App = (() => {
     if (launch && !app.menuOpen) menuView = 'home';
     const ov = $('overlay');
     ov.innerHTML = '<div class="menu menu-stage" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><div class="about-kings" aria-hidden="true">' + driftHTML() + '</div>' +
-      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section></div>';
+      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
+      /* Under Load a code, floating at the foot of the window: the replay code version and the Engine version (RULES_VERSION)
+         that this app writes (docs/versions.md). Outside the card, whose backdrop filter would hold a fixed child. */
+      '<p class="code-ver" id="codeVersion" hidden>Replay KCT' + Replay.VERSION + ' · Engine ' + Engine.RULES_VERSION + '</p></div>';
     ov.hidden = false;
     app.menuOpen = true;
     app.menuLaunch = !!launch;
@@ -6945,6 +6952,7 @@ const App = (() => {
     if (!views.some(v => v.getAttribute('data-view') === view)) view = 'home';
     menuView = view;
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
+    const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
       const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
@@ -7030,8 +7038,7 @@ const App = (() => {
       '<h4 class="mhead">Full rules</h4><p class="mnote">The full rules are coming soon.</p>');
   }
   function menuLoreHTML() { return menuViewHTML('lore', 'Lore', '<p class="mlore">' + LORE + '</p>'); }
-  /* Load a code: the field reads what it holds as you type (readCodeField). Only open waves are listed for a seed.
-     The last line names the replay code version and the rules version that this app writes. */
+  /* Load a code: the field reads what it holds as you type (readCodeField). Only open waves are listed for a seed. */
   function menuCodeHTML() {
     const p = Waves.progress();
     const waves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen)).map(w => '<option value="w' + w.n + '">' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + '</option>').join('');
@@ -7041,8 +7048,7 @@ const App = (() => {
       '<div class="mrow" id="codeWhere" hidden><label for="codeMode"><b>Play it in</b></label><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
       (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
       '<button class="btn primary mload" type="button" data-action="code-load" disabled>Load</button>' +
-      '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>' +
-      '<p class="mnote" id="codeVersion">Replay version in use: KCT' + Replay.VERSION + ' · rules ' + Engine.RULES_VERSION + '</p>', ' id="menuCode"');
+      '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>', ' id="menuCode"');
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
@@ -9444,8 +9450,6 @@ const SelfTest = (() => {
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
-        const ver = document.getElementById('codeVersion');
-        check('Load a code ends with the replay version in use', !!ver && !ver.nextElementSibling && ver.textContent === 'Replay version in use: KCT' + Replay.VERSION + ' · rules ' + Engine.RULES_VERSION);
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
