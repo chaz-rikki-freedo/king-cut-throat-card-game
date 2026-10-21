@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Service worker: a page that loads but is not the game (a network sign-in page) is never offered as an update,
-   and a real new version is. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
+   and a real new version is, both when the page opens and when the app comes back to the screen. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { launch, ROOT } = require('./lib/browser');
@@ -19,6 +19,7 @@ const srv = http.createServer((req, res) => {
     let body = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     if (serve === 'portal') body = '<!doctype html><title>Sign in</title><p>Sign in to the Wi-Fi to continue.</p>';
     if (serve === 'new') body = body.replace('<body>', '<body><!-- a new version -->');
+    if (serve === 'newer') body = body.replace('<body>', '<body><!-- a newer version -->');
     res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' });
     res.end(body);
     return;
@@ -54,7 +55,20 @@ srv.listen(0, '127.0.0.1', async () => {
     r = await state();
     expect('a sign-in page on the network: the game still opens from the cache', r.game, r);
     expect('the sign-in page is not offered as an update', !r.pending && !r.note, r);
+    /* An installed app comes back to the screen without opening the page again. */
     serve = 'new';
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForTimeout(1500);
+    r = await state();
+    expect('back on the screen: a new version is offered without a reload', r.game && r.pending && r.note, r);
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    r = await state();
+    expect('the update applied: nothing waits', r.game && !r.pending && !r.note, r);
+    serve = 'newer';
     await reload();
     r = await state();
     expect('a real new version is offered', r.game && r.pending && r.note, r);
