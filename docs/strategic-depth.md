@@ -1,6 +1,6 @@
 # Strategic depth
 
-A design note, not a spec. It reviews where the game asks a player to make real choices, and whether those choices stay interesting at a strong level of play. Each part says whether it is an observation, a hypothesis, a measurement or a proposal, as in [human-play.md](human-play.md).
+A design note, not a spec. It reviews where the game asks a player to make real choices, and whether those choices stay interesting at a strong level of play. Each part says whether it is an observation, a hypothesis or a measurement, as in [human-play.md](human-play.md).
 
 Started 2026-10-16. It grew out of a question from play: is losing a trick on purpose, to force a Showdown, a real tactic? Updated 2026-10-18 with discard lessons from replays.
 
@@ -143,23 +143,7 @@ Not measured: how often a 3–2–2 hand could have been turned into a 3–3–1
 
 Two views, and both are reasonable:
 
-- **It's depth.** A bad hand still has a decision in it. Players who watch the score can use a weak hand to slow the leader, which keeps games close and makes comebacks more common. [human-play.md](human-play.md) argues that comebacks keep weak players engaged.
+- **It's depth.** A bad hand still has a decision in it. Players who watch the score can use a weak hand to slow the leader, which keeps games close and makes comebacks more common.
 - **It's arbitrary.** The player who gains from a Showdown didn't earn it with their cards. A player near 10 can be stopped by a choice they had no part in.
 
 The house rule switch already lets a table choose. With it off, the latest main-trick winner leads, and the mediator has no say.
-
-## Open questions
-
-- Does forcing a Showdown on purpose raise a player's win rate, or only change who wins? Measure with a test seat that plays for a 3–3–1 from a 3–2–2 hand.
-- Should **Shrewd** bots force Showdowns more often against a player near 10? Today they pick the lower score to lead, but they don't play for the split that gives them the pick.
-- With a failed call costing nothing, is there a seat order where calling every hand is the best strategy? A bot with courage far past Bold could test this.
-- Does the 0 floor make players on 0 free to take risks in a Showdown that players on more points can't take?
-
-## Proposals
-
-1. **Measure the forced Showdown.** Add a test seat to `tests/showdown.js` that, holding 2 tricks in a 3–2–2 position, gives a trick to the other 2-trick player. Compare its win rate with the same seat that doesn't.
-
-   *Status: open.*
-2. **Show the lever in Table memory.** When a hand is one trick from a 3–3–1 split, a popup could say so, next to the trump and King counts that Table memory already adds.
-
-   *Status: open.*
