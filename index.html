@@ -908,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '2f8d085', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: 'e480479', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5967,6 +5967,13 @@ const App = (() => {
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
       if (reg.active) reg.active.postMessage({ type: 'update-status' });
     }).catch(() => {  });
+    let checked = 0;
+    document.addEventListener('visibilitychange', () => {
+      const sw = navigator.serviceWorker.controller;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 60000) return;
+      checked = Date.now();
+      sw.postMessage({ type: 'check-update' });
+    });
     requestPersist();
   }
   async function requestPersist() {
