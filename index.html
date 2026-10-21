@@ -908,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '9858b85', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: 'c1f36c0', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -2092,6 +2092,15 @@ function createWaveProgress(store, rand) {
 const SAVE_FORMAT = 1;
 const MODES = Object.freeze(['waves', 'free', 'dynamic']);
 const StorageGate = { locked: false };
+function inAppBrowser(ua, standalone) {
+  const apps = [[/FBAN|FBAV|FB_IAB/, 'Facebook'], [/Instagram/, 'Instagram'], [/Twitter/, 'X'], [/musical_ly|BytedanceWebview|TikTok/, 'TikTok'],
+    [/Snapchat/, 'Snapchat'], [/LinkedInApp/, 'LinkedIn'], [/Pinterest/, 'Pinterest'], [/\bLine\//, 'LINE']];
+  const named = apps.find(([re]) => re.test(ua));
+  if (named) return named[1];
+  if (/; wv\)/.test(ua)) return 'another app';
+  if (/iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua) && !standalone) return 'another app';
+  return '';
+}
 const TAB_KEY = 'kct-tab';
 const TabLock = (() => {
   const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -5567,6 +5576,7 @@ const App = (() => {
       : '<button class="mgo primary" type="button" data-action="menu-view" data-view="new">New game<small>Dynamic, Waves or Free play</small></button>';
     let notes = '';
     if (linkNote) { notes += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
+    if (inApp) notes += '<p class="wave-note">' + escHTML(inAppText) + '</p>';
     if (lost.length) notes += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
     const link = ( action,  label, attrs = '') => '<button type="button" data-action="' + action + '"' + attrs + '>' + label + '</button>';
     return menuViewHTML('home', '', '<p class="about-suits" aria-hidden="true"><span>♠</span><span class="red">♥</span><span>♣</span><span class="red">♦</span></p>' +
@@ -5886,6 +5896,19 @@ const App = (() => {
     else location.reload();
   }
   const install = { prompt: null, offered: false, installed: false, linkRestored: false };
+  const standaloneApp = () => !!safe(() => matchMedia('(display-mode: standalone)').matches) ||  (navigator).standalone === true;
+  const inApp = inAppBrowser(navigator.userAgent, standaloneApp());
+  const inAppText = 'You opened the game inside ' + (inApp === 'another app' ? 'another app' : inApp) + '. To install it and play offline, open it in Chrome (Safari on iPhone and iPad): in the app\'s menu, often ⋯ or ⋮, choose Open in browser.';
+  async function fetchWithin(url, ms) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), ms);
+    try {
+      const res = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+      return { res, body: await res.text() };
+    } catch (e) {
+      throw ctl.signal.aborted ? new Error('no answer in ' + ms / 1000 + ' s') : e;
+    } finally { clearTimeout(timer); }
+  }
   if (!document.querySelector('link[rel="manifest"]')) {
     const link = document.createElement('link');
     link.rel = 'manifest'; link.href = 'manifest.webmanifest';
@@ -5923,21 +5946,21 @@ const App = (() => {
       row('wait', 'Install and offline play need the hosted game (HTTPS). A local copy cannot install.');
       return show();
     }
-    const standalone = safe(() => matchMedia('(display-mode: standalone)').matches) ||  (navigator).standalone === true;
-    if (standalone || install.installed) row('ok', 'Running as an installed app.');
+    if (standaloneApp() || install.installed) row('ok', 'Running as an installed app.');
+    else if (inApp) row('bad', inAppText);
     else row('wait', 'Running in a browser tab.');
     row(window.isSecureContext ? 'ok' : 'bad', window.isSecureContext ? 'Secure page (HTTPS).' : 'Not a secure page: install needs HTTPS.');
     const link =  (document.querySelector('link[rel="manifest"]'));
     if (!link) row('bad', 'This page has no manifest link, so the browser cannot see the manifest. Checking manifest.webmanifest directly.');
     else if (install.linkRestored) row('wait', 'The page arrived without its manifest link, probably removed by an ad blocker. The app put it back.');
     try {
-      const res = await fetch(link ? link.href : 'manifest.webmanifest', { cache: 'no-store' });
-      const m = await res.json();
+      const { res, body } = await fetchWithin(link ? link.href : 'manifest.webmanifest', 5000);
+      const m = JSON.parse(body);
       row(res.ok ? 'ok' : 'bad', 'Manifest loaded (' + res.status + ', ' + (res.headers.get('content-type') || 'no type') + '): ' + m.name + '.');
       for (const ic of m.icons || []) {
         const url = new URL(ic.src, res.url).href;
         let st = 'error';
-        try { const r = await fetch(url, { cache: 'no-store' }); st = r.status + (r.ok ? '' : ' (failed)'); } catch (e) { st = 'failed: ' + e.message; }
+        try { const { res: r } = await fetchWithin(url, 5000); st = r.status + (r.ok ? '' : ' (failed)'); } catch (e) { st = 'failed: ' + e.message; }
         row(/^200/.test(st) ? 'ok' : 'bad', 'Icon ' + ic.sizes + ' (' + (ic.purpose || 'any') + '): ' + st + '.');
       }
     } catch (e) { row('bad', 'Manifest could not be loaded: ' + e.message + '.'); }
@@ -7679,6 +7702,19 @@ const SelfTest = (() => {
       eq('showdown pts are actual changes (loser at 0 logs 0)', [st.handStats.pts[0].showdown, st.handStats.pts[1].showdown], [1, 0]);
     });
     safeRun('interface', () => {
+      const A = 'Mozilla/5.0 (Linux; Android 13; Pixel 7', I = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
+      eq('in-app browsers are told apart from real ones', [
+        inAppBrowser(A + ') AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/440.0.0.0;]', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36 Instagram 310.0.0.0 Android', false),
+        inAppBrowser(A + '; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(A + ') AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36', false),
+        inAppBrowser(I + ' Version/17.0 Mobile/15E148 Safari/604.1', false),
+        inAppBrowser(I + ' CriOS/120.0.6099.119 Mobile/15E148 Safari/604.1', false),
+        inAppBrowser(I + ' Mobile/15E148 Twitter for iPhone/10.20', false),
+        inAppBrowser(I + ' Mobile/15E148', false),
+        inAppBrowser(I + ' Mobile/15E148', true)
+      ], ['', 'Facebook', 'Instagram', 'another app', '', '', '', 'X', 'another app', '']);
       if (typeof document !== 'undefined') {
         const box = document.createElement('div');
         box.innerHTML = '<p>Accept ♠ or Q♥, 10♦ and ♣</p><select><option>♠ Spades</option></select>';
