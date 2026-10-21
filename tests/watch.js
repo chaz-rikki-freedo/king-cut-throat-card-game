@@ -130,6 +130,34 @@ function expect(name, ok, detail) {
     r = await step(`await sleep(50); return { menu: overlayOpen() && !!q('#overlay .mcard'), note: (q('#overlay .wave-note') || {}).textContent || '' };`);
     expect('a code that does not decode opens the menu with a note', r.menu && /replay link/.test(r.note), r);
 
+    console.log('Load a code (the menu)');
+    r = await step(`
+      const type = v => { const i = q('#codeIn'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
+      const load = () => q('#menuCode [data-action="code-load"]');
+      const read = () => ({ text: q('#codeRead').textContent, load: load().textContent, off: load().disabled, where: !q('#codeWhere').hidden });
+      const out = { open: !!q('#overlay .menu #codeIn') && !askOpen(), empty: read() };
+      type('KCTS1-H4sIAAAA'); out.backup = read();
+      type('hello'); out.junk = read();
+      type('4242'); out.seed = read();
+      type(${JSON.stringify('https://example.com/?replay=' + code)}); out.replay = read();
+      click('#menuCode [data-action="code-load"]'); await sleep(50);
+      out.watching = !!q('.watch-ctl') && !overlayOpen();
+      click('#modeChip'); await sleep(50);
+      out.menuAfter = overlayOpen() && !!q('#overlay .mcard');
+      type(' 4242 '); q('#codeMode').value = 'free';
+      q('#codeIn').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(100);
+      out.played = { mode: app.mode, seed: app.state && app.state.seed, ask: askOpen() };
+      return out;
+    `);
+    expect('Load a code sits in the menu\'s Play tab, not a dialog', r.open, r);
+    expect('an empty field cannot load', r.empty.off && !r.empty.where, r.empty);
+    expect('a backup code is not loaded, and the dialog says where backups go', r.backup.off && /Settings → Tools → Your data/.test(r.backup.text), r.backup);
+    expect('junk says why it cannot load', r.junk.off && /not a replay code or a seed/.test(r.junk.text), r.junk);
+    expect('a seed asks where to play, and Load says Play', !r.seed.off && r.seed.where && r.seed.load === 'Play', r.seed);
+    expect('a replay link is read, and Load says Watch', !r.replay.off && !r.replay.where && r.replay.load === 'Watch', r.replay);
+    expect('Watch opens the viewer, and Exit returns to the menu', r.watching && r.menuAfter, r);
+    expect('Enter on a seed starts that game in the chosen mode', r.played.mode === 'free' && r.played.seed === 4242 && !r.played.ask, r.played);
+
     console.log('The controls on the table');
     await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
     r = await step(`

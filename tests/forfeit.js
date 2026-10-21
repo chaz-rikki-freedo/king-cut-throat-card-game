@@ -30,6 +30,9 @@ const PLAY = ({ hand, setup, seed }) => {
 
 /* Leaves the wave game with a menu button, agrees, and returns the question and the tries after. */
 async function leave(page, button) {
+  /* The Waves buttons are in the menu's Waves view: Home → New game → Waves. */
+  await page.click('.mview:not([hidden]) [data-action="menu-view"][data-view="new"]');
+  await page.click('.mview:not([hidden]) [data-action="menu-view"][data-view="mode-waves"]');
   await page.click('[data-action="' + button + '"]');
   await page.waitForSelector('#askText', { timeout: 5000 });
   const text = await page.textContent('#askText');

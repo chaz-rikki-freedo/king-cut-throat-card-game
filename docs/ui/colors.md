@@ -116,12 +116,12 @@ Generated from `palette.json`.
 |---|---|---|---|
 | `--page` | surface | `#0a2a19` | The page behind the table, and the browser theme color. |
 | `--felt` | surface | `#155a36` | The table felt. |
-| `--felt-edge` | surface | `#0c3a22` | The felt border, the seats, and the fields in the menu. |
+| `--felt-edge` | surface | `#0c3a22` | The felt border and the seats. |
 | `--felt-showdown` | surface | `#5a1f45` | The felt during a Showdown. |
 | `--felt-showdown-edge` | surface | `#3a1230` | The felt border during a Showdown. |
 | `--panel` | surface | `rgba(0,0,0,.26)` | A dark tint over the felt: chips, boxes and seats. |
 | `--panel-strong` | surface | `rgba(0,0,0,.42)` | A stronger tint over the felt: the trump chip. |
-| `--sheet` | surface | `#123f28` | The background of every panel: the menu, Your profile, Rules, the pop-ups and the questions. |
+| `--sheet` | surface | `#123f28` | The background of every panel: Your profile, the pop-ups and the questions. |
 | `--ink` | text | `#f5f2e9` | Main text on dark surfaces. |
 | `--muted` | text | `#bccbbf` | Secondary text on dark surfaces. |
 | `--gold` | action | `#f2c14e` | Act here, or important now: primary buttons, the selected tab, trump, the caller, the turn, the trick winner. |
@@ -207,5 +207,5 @@ The pairs that fail today, each with its planned fix. Generated from `palette.js
 Colors written in `index.html` outside a token. Each one becomes a token, or reuses one, in a later change. Generated from `palette.json`.
 
 <!-- palette:untokenized -->
-76 colors: `#000000`, `#00838f`, `#070a08`, `#07233a`, `#0b0f0c`, `#0b1a12`, `#0c3a22`, `#1b1b1b`, `#1e8e3e`, `#222222`, `#2a1212`, `#2e7d32`, `#2f4337`, `#33507a`, `#3d5747`, `#4a5a6a`, `#5b2a86`, `#5e7d5e`, `#69db7c`, `#6b6b6b`, `#7a1f2b`, `#7a5c13`, `#7f9a86`, `#8a9a8f`, `#8e5aa8`, `#8fb89a`, `#93303d`, `#9be59b`, `#b8f5c4`, `#c2185b`, `#c792ff`, `#cfe0d4`, `#d32f2f`, `#e07b28`, `#ece6d4`, `#f2c14e`, `#f3e9ff`, `#f5f2e9`, `#ff4fd8`, `#ff8a80`, `#ff9ad5`, `#ffa94d`, `#ffb4ab`, `#fffdf6`, `#ffffff`, `rgba(0,0,0,0)`, `rgba(0,0,0,0.14)`, `rgba(0,0,0,0.2)`, `rgba(0,0,0,0.22)`, `rgba(0,0,0,0.25)`, `rgba(0,0,0,0.28)`, `rgba(0,0,0,0.3)`, `rgba(0,0,0,0.35)`, `rgba(0,0,0,0.4)`, `rgba(0,0,0,0.45)`, `rgba(0,0,0,0.5)`, `rgba(0,0,0,0.55)`, `rgba(0,0,0,0.6)`, `rgba(0,0,0,0.75)`, `rgba(242,193,78,0.25)`, `rgba(255,255,255,0.04)`, `rgba(255,255,255,0.07)`, `rgba(255,255,255,0.08)`, `rgba(255,255,255,0.1)`, `rgba(255,255,255,0.12)`, `rgba(255,255,255,0.14)`, `rgba(255,255,255,0.16)`, `rgba(255,255,255,0.18)`, `rgba(255,255,255,0.2)`, `rgba(255,255,255,0.22)`, `rgba(255,255,255,0.3)`, `rgba(255,255,255,0.35)`, `rgba(255,255,255,0.45)`, `rgba(255,255,255,0.55)`, `rgba(52,199,89,0)`, `rgba(52,199,89,0.8)`.
+75 colors: `#000000`, `#00838f`, `#070a08`, `#07233a`, `#0b0f0c`, `#0b1a12`, `#0c3a22`, `#1b1b1b`, `#1e8e3e`, `#222222`, `#2a1212`, `#2e7d32`, `#2f4337`, `#33507a`, `#3d5747`, `#4a5a6a`, `#5b2a86`, `#5e7d5e`, `#69db7c`, `#6b6b6b`, `#7a1f2b`, `#7a5c13`, `#7f9a86`, `#8a9a8f`, `#8e5aa8`, `#8fb89a`, `#93303d`, `#9be59b`, `#b8f5c4`, `#c2185b`, `#c792ff`, `#cfe0d4`, `#d32f2f`, `#e07b28`, `#ece6d4`, `#f2c14e`, `#f3e9ff`, `#f5f2e9`, `#ff4fd8`, `#ff8a80`, `#ff9ad5`, `#ffa94d`, `#ffb4ab`, `#fffdf6`, `#ffffff`, `rgba(0,0,0,0)`, `rgba(0,0,0,0.14)`, `rgba(0,0,0,0.22)`, `rgba(0,0,0,0.25)`, `rgba(0,0,0,0.28)`, `rgba(0,0,0,0.3)`, `rgba(0,0,0,0.35)`, `rgba(0,0,0,0.4)`, `rgba(0,0,0,0.45)`, `rgba(0,0,0,0.5)`, `rgba(0,0,0,0.55)`, `rgba(0,0,0,0.6)`, `rgba(0,0,0,0.75)`, `rgba(242,193,78,0.25)`, `rgba(255,255,255,0.04)`, `rgba(255,255,255,0.07)`, `rgba(255,255,255,0.08)`, `rgba(255,255,255,0.1)`, `rgba(255,255,255,0.12)`, `rgba(255,255,255,0.14)`, `rgba(255,255,255,0.16)`, `rgba(255,255,255,0.18)`, `rgba(255,255,255,0.2)`, `rgba(255,255,255,0.22)`, `rgba(255,255,255,0.3)`, `rgba(255,255,255,0.35)`, `rgba(255,255,255,0.45)`, `rgba(255,255,255,0.55)`, `rgba(52,199,89,0)`, `rgba(52,199,89,0.8)`.
 <!-- /palette:untokenized -->

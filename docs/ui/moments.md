@@ -6,7 +6,7 @@ A *game moment* is one step of a hand, as the player sees it. Each moment has a 
 
 | Moment | Engine phase | Status line (S) | What you do |
 |---|---|---|---|
-| No game | `setup` | "No game is running." | The About screen replaces the table: **Menu**, **Rules** or Settings. |
+| No game | `setup` | "No game is running." | The About screen replaces the table: **Tutorial** (coming soon) and **Play** (opens the menu). |
 | Choosing seats | `setup`, Free play | "Choosing seats." | — (the seat-swap dialog is open). |
 | Deal | `handStart` | "Hand 2 · West deals." | Nothing. |
 | Opening discard | `discard` | "West is discarding 3 cards face-down to the outside pile." (in turn from the dealer's left; "Your turn to discard…" on yours) | Pick 3 cards, then **Discard 3**. |
