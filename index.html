@@ -8201,11 +8201,19 @@ const App = (() => {
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
   }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
+  /* The areas in the order the summary lists them: a hand from deal to score, the bots, whole games, the modes,
+     what is saved, the page, and offline play. A section missing here is listed last, by its own name. */
   const TEST_AREAS = {
-    cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
-    planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', seats: 'Seat settings', habits: 'Habits', 'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
+    cards: 'Card order', deal: 'Dealing', 'discard order': 'Discards', bidding: 'Bidding', follow: 'Follow suit',
+    scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart',
+    'ai knowledge': 'AI knowledge', planner: 'AI planner', 'hand stats': 'Hand stats', habits: 'Habits',
+    'random games': 'Random games', simulation: 'Simulations',
+    waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats',
+    memory: 'Saves', replay: 'Replays', backup: 'Backup',
+    interface: 'Interface', 'app logic': 'App logic',
+    'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
   };
+  const AREA_ORDER = Object.keys(TEST_AREAS);
   let testsRunning = false;
   function showTests(res) {
     const areas = new Map();
@@ -8217,7 +8225,8 @@ const App = (() => {
     const total = res.results.length;
     const sum = res.failed ? '⚠️ ' + res.failed + ' of ' + total + ' checks failed' : '✅ All ' + total + ' checks passed';
     let html = '<div class="t-sum ' + (res.failed ? 'bad' : 'ok') + '">' + sum + ' <span class="k-hint">(' + (res.ms / 1000).toFixed(1) + ' s)</span></div><ul>';
-    for (const [sec, a] of areas) html += '<li class="' + (a.ok === a.all ? '' : 'bad') + '">' + (a.ok === a.all ? '✔ ' : '✖ ') + escHTML(TEST_AREAS[sec] || sec) + ' <span class="k-hint">' + a.ok + '/' + a.all + '</span></li>';
+    const rank = sec => { const i = AREA_ORDER.indexOf(sec); return i < 0 ? AREA_ORDER.length : i; };
+    for (const [sec, a] of [...areas].sort((x, y) => rank(x[0]) - rank(y[0]))) html += '<li class="' + (a.ok === a.all ? '' : 'bad') + '">' + (a.ok === a.all ? '✔ ' : '✖ ') + escHTML(TEST_AREAS[sec] || sec) + ' <span class="k-hint">' + a.ok + '/' + a.all + '</span></li>';
     html += '</ul>';
     for (const r of res.results.filter(x => !x.ok)) html += '<div class="t-fail">✖ ' + escHTML(TEST_AREAS[r.section] || r.section) + ': ' + escHTML(r.name) + (r.detail ? '<small>' + escHTML(r.detail) + '</small>' : '') + '</div>';
     const st = res.stats;
