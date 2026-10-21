@@ -3,7 +3,8 @@
    and a real new version is, both when the page opens and when the app comes back to the screen, also one that changes
    only the theme packs. A page that an
    ad blocker filled with scripts from another site still opens offline, while those scripts' requests hang, and the
-   in-app self-tests for the service worker and airplane mode pass. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
+   in-app self-tests for the service worker and airplane mode pass. Inside another app's browser, the menu and Settings
+   say to open the game in a real browser, and the Install checklist gives up on a request that hangs. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { launch, ROOT } = require('./lib/browser');
@@ -132,6 +133,34 @@ srv.listen(0, '127.0.0.1', async () => {
       expect('offline, with the ad blocker\'s page saved: the in-app airplane mode checks pass', offApp === true, offApp);
     }
     await ctx.close();
+    /* Inside another app's browser (Facebook here), the menu and Settings → Install say to open the game in a real browser. */
+    const fbCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/440.0.0.0;]', serviceWorkers: 'block' });
+    const fb = await fbCtx.newPage();
+    serve = 'game';
+    await fb.goto(url);
+    await fb.waitForTimeout(800);
+    const fbMenu = await fb.evaluate(() => (document.querySelector('#overlay') || document.body).textContent || '');
+    expect('in Facebook\'s browser: the menu says to open the game in Chrome', fbMenu.includes('inside Facebook') && fbMenu.includes('Open in browser'), fbMenu.slice(0, 200));
+    await fb.goto(url + '?settings=1');
+    await fb.waitForFunction(() => !/Checking/.test(document.querySelector('#setInstall').textContent), null, { timeout: 10000 });
+    const fbInstall = await fb.evaluate(() => document.querySelector('#setInstall').textContent);
+    expect('in Facebook\'s browser: Settings → Install says so', fbInstall.includes('inside Facebook'), fbInstall);
+    await fbCtx.close();
+    /* A real browser shows no such note. */
+    serve = 'game';
+    await page.goto(url);
+    await page.waitForTimeout(800);
+    const plainMenu = await page.evaluate(() => document.querySelector('#overlay').innerText);
+    expect('in a real browser: the menu shows, with no note about another app', plainMenu.includes('King Cut-Throat') && !plainMenu.includes('You opened the game inside'), plainMenu.slice(0, 200));
+    /* Offline behind a VPN that blocks traffic, requests hang: the Install checklist gives up after 5 s. */
+    const hangCtx = await browser.newContext({ serviceWorkers: 'block' });
+    await hangCtx.route(/manifest\.webmanifest/, () => { /* never answers */ });
+    const hang = await hangCtx.newPage();
+    await hang.goto(url + '?settings=1');
+    const t0 = Date.now();
+    const done = await hang.waitForFunction(() => /no answer in 5 s/.test(document.querySelector('#setInstall').textContent), null, { timeout: 12000 }).then(() => true, () => false);
+    expect('a hanging manifest request: the Install checklist finishes within 12 s and says why', done, Date.now() - t0);
+    await hangCtx.close();
   } catch (e) {
     failed++;
     console.log('  ✖ ' + (e instanceof Error ? e.message : String(e)));
