@@ -34,7 +34,7 @@ Each part in the [vocabulary](vocabulary.md) has a text kind. A level shows or h
 |---|---|---|---|---|
 | Control | All. | All. | All. | All, compact. |
 | Label | All, in words. | All, in words. | All, in words. | Short: symbols and numbers where they are clear. |
-| Descriptor | All: tooltips, setting hints, menu subtitles, profile texts, Rules. | Tooltips and the Rules dialog only. | The Rules dialog only. | The Rules dialog only. |
+| Descriptor | All: tooltips, setting hints, menu subtitles, profile texts, the quick rules. | Tooltips and the quick rules only. | The quick rules only. | The quick rules only. |
 | Instruction | Prompt and hint. | Prompt and hint. | Prompt only, in short form. | A few words while it is your move and no button says it, such as "Play a card." (the move label). The hand and the buttons show the rest. |
 | Status | Status line, bubbles, discard notes, all toasts. | As Guided. | Status line, bubbles, discard notes. Toasts for points only. | Bubbles, turn highlight and points only. |
 | Record | Log, last-trick strip, stats tables. | As Guided. | As Guided. | As Guided. The log can be closed. |

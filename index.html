@@ -342,29 +342,10 @@ button.card{cursor:pointer}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:50;padding:1rem}
 /* On phones, the menu and the long panels (Your profile, Rules) fill the screen: no frame or margin around them. */
 @media (max-width:600px){
-  .overlay:has(> .modal.profile,> .modal.rules,> .modal.lore,> .modal.menu){padding:0}
-  .modal.profile,.modal.rules,.modal.lore,.modal.menu{max-width:none;width:100%;height:100%;max-height:none;border:0;border-radius:0}
-  .modal.profile .sheet-body,.modal.rules .sheet-body,.modal.lore .sheet-body,.modal.menu .sheet-body{padding:1rem}
+  .overlay:has(> .modal.profile){padding:0}
+  .modal.profile{max-width:none;width:100%;height:100%;max-height:none;border:0;border-radius:0}
+  .modal.profile .sheet-body{padding:1rem}
 }
-/* Rules: two tabs (Quick rules, Full rules). Quick rules are short titled sections; the trump order is a row of chips. */
-.rules .set-tabs{display:flex;gap:0.25rem;margin-bottom:1rem;padding:0.25rem;border-radius:0.75rem;background:rgba(0,0,0,.25)}
-.rules .set-tab{flex:1;appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:0.5rem 0.75rem;min-height:2.5rem;border-radius:0.5625rem;cursor:pointer}
-.rules .set-tab:hover{color:var(--ink)}
-.rules .set-tab[aria-selected="true"]{background:var(--gold);color:var(--gold-ink)}
-.rules .set-tab:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.rules-sec{margin:0 0 1.125rem}
-.rules-sec h3,.lore h3{margin:0 0 0.375rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-.rules-sec p,.rules-sec li,.lore p{line-height:1.5}
-.rules-sec p{margin:0 0 0.375rem}
-.rules-sec ul{margin:0;padding-left:1.25rem}
-.rules-sec li{margin-bottom:0.25rem}
-.rules-sec .aside{font-size:0.875rem;color:var(--muted)}
-.trump-order{display:flex;flex-wrap:wrap;gap:0.375rem;margin:0.25rem 0 0.5rem;padding:0;list-style:none}
-.trump-order li{margin:0;padding:0.1875rem 0.5rem;border-radius:0.375rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);font-weight:700;font-size:0.875rem}
-.trump-order li:first-child{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
-.rules-sec table{margin:0.25rem 0 0.5rem}
-.rules-sec td.num{text-align:right;font-weight:700;color:var(--gold);white-space:nowrap}
-.placeholder{padding:1rem;border:1px dashed rgba(255,255,255,.22);border-radius:0.75rem;color:var(--muted);text-align:center}
 .overlay[hidden]{display:none}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
 .modal h2{margin:0 0 0.625rem}
@@ -480,37 +461,35 @@ body.set-open{overflow:hidden}
 
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.menu{width:min(27.5rem,100%);max-width:27.5rem}
-/* The menu: a card per mode, then the tools. Fixed shapes, so no button moves (see showMenu). */
-.mcard{margin-top:0.75rem;padding:0.75rem 0.875rem;border-radius:0.75rem;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:0.625rem}
-.mhead{display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
-/* The mode's name: the same chip as the mode chip in the top bar. */
-.mhead h3{margin:0}
-/* The mode's goal: opens Your profile for the mode. The padding makes a touch target; the margin keeps the card's shape. */
-.mtail{font-size:0.75rem;color:var(--muted);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.5rem 0.375rem;margin:-0.5rem -0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
+.wave-note{margin:0.5rem 0;padding:0.5rem 0.75rem;border-radius:0.5rem;background:rgba(0,0,0,.25);font-weight:600}
+.menu .wave-note{margin:0}
+/* The menu is built like Settings (.settings.menu): the same header, tabs, headings, cards, rows and foot. It sits in
+   the dialog layer, under Settings, so Settings opens over it. A mode's heading has its goal at the right. */
+.overlay > .settings.menu{place-self:stretch}
+.menu .mhead{display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;margin-top:var(--s3)}
+.menu .mhead:first-child{margin-top:0}
+.menu .mhead .set-head{margin:0}
+.mtail{font-size:0.8125rem;color:var(--set-hint);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.5rem 0.375rem;margin:-0.5rem -0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
 .mtail:hover{color:var(--ink)}
 .mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0}
-.mstat{margin:0;display:flex;flex-direction:column;font-size:0.8125rem;line-height:1.125rem;color:var(--muted)}
-.mstat span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mstat span:first-child{color:var(--ink)}
-/* Discard game: a faint icon beside the status lines of a card with a game. It sits over the padding, so nothing moves. */
-.mstat.has-del{position:relative;padding-right:2.25rem}
-.mdel{position:absolute;right:-0.625rem;top:50%;transform:translateY(-50%);width:2.75rem;height:2.75rem;display:grid;place-items:center;padding:0;background:none;border:0;border-radius:0.625rem;color:var(--ink);opacity:.35;cursor:pointer}
+.menu .set-btns .btn{margin:0;min-width:6.5rem;min-height:2.75rem}
+.menu .set-row[hidden]{display:none}
+.menu #waveSel{max-width:17rem}
+.menu .code-in{grid-column:1 / -1;width:100%;max-width:none;background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
+.menu .code-in:focus-visible,.menu select:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.menu #codeRead:empty{display:none}
+.menu .rules-card .set-desc{color:var(--ink);font-size:0.875rem;line-height:1.5}
+.menu .about-card{width:100%;background:var(--set-card);border-color:var(--set-line);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* Discard game: a faint icon before Resume, only on a card with a game, so it never competes with Resume. */
+.mdel{width:2.75rem;height:2.75rem;display:grid;place-items:center;padding:0;background:none;border:0;border-radius:0.625rem;color:var(--ink);opacity:.35;cursor:pointer}
 .mdel:hover,.mdel:focus-visible{opacity:.8}
 .mdel svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
-.mbtns .btn{margin:0;min-height:2.75rem;width:100%}
-.mcard select{background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.5rem;font:inherit;width:100%}
-/* The first card (or note) sits at the top of the menu's body. */
-.menu .sheet-body > :first-child{margin-top:0}
-/* The menu's tools, under the mode cards: two labeled rows (Play, Learn) of icon buttons with a label under each. */
-.mtools{margin-top:0.875rem;display:grid;gap:0.75rem}
-.mgroup h3{margin:0 0 0.375rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.mgroup-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0.5rem}
-.mtool{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.25rem;min-height:4rem;padding:0.5rem 0.25rem;font-size:0.8125rem;font-weight:600;line-height:1.15;color:inherit}
-.mtool svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.mtool:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.wave-note{margin:0.5rem 0;padding:0.5rem 0.75rem;border-radius:0.5rem;background:rgba(0,0,0,.25);font-weight:600}
+@media (max-width:620px){
+  .menu .mrow{grid-template-columns:minmax(0,1fr)}
+  .menu .mrow .set-btns{display:grid;grid-template-columns:auto 1fr 1fr;justify-content:stretch}
+  .menu .mrow .set-btns:not(:has(.mdel)){grid-template-columns:1fr 1fr}
+  .menu .set-btns .btn{min-width:0}
+}
 .swap{max-width:32.5rem;text-align:center}
 .swap-seats{display:flex;align-items:stretch;justify-content:center;gap:0.75rem;margin:0.875rem 0}
 .swap-seat{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0.25rem;padding:0.625rem;border-radius:0.75rem;background:rgba(0,0,0,.25)}
@@ -533,13 +512,6 @@ body.set-open{overflow:hidden}
 .ask h2{font-size:1.25rem}
 .ask p{margin:0 0 0.25rem;line-height:1.5}
 /* The restore confirm: this device and the backup side by side. */
-/* Load a code: one field, what the app read in it, a mode list for a seed, and where backups go. */
-.loadcode{position:relative;max-width:28rem}
-.loadcode input,.loadcode select{width:100%;margin:0.25rem 0 0.5rem;padding:0.5rem 0.625rem;min-height:2.75rem;background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;font:inherit}
-.loadcode input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.875rem}
-.loadcode label{display:block;font-size:0.875rem;font-weight:700}
-.loadcode .code-read{min-height:1.5em;font-weight:600}
-.loadcode .code-hint{margin-top:0.75rem;padding-top:0.625rem;border-top:1px solid rgba(255,255,255,.12);font-size:0.875rem;color:var(--muted)}
 .ask table.data-cmp{width:100%;border-collapse:collapse;margin:0.25rem 0 0.75rem;font-size:0.875rem}
 .ask table.data-cmp th,.ask table.data-cmp td{padding:0.25rem 0.375rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.12)}
 .ask table.data-cmp th{font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
@@ -842,10 +814,6 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .about-tag{max-width:22rem;color:var(--muted)}
 .about-btns{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-top:0.25rem}
 .about-btns .btn{min-width:7rem;min-height:2.75rem;font-weight:700}
-/* About from the menu: the same card, in a sheet over whatever is on screen. */
-.about-sheet{max-width:31rem}
-.about-sheet .sheet-body{display:grid;place-items:center;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
-.about-sheet .about-card{box-shadow:none}
 .about-credit{margin-top:0.5rem!important;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);align-self:stretch;font-size:0.875rem}
 .about-credit span{display:block;margin-bottom:0.125rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .about-credit b{color:var(--ink);letter-spacing:.06em}
@@ -5710,13 +5678,6 @@ const App = (() => {
   /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
   const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
   const ICON_WATCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-  /* The menu's tools (toolButton). Load a code uses the Watch eye. */
-  const ICON_TUTORIAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"/></svg>';
-  const ICON_INSTALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>';
-  const ICON_PROFILE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
-  const ICON_RULES = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
-  const ICON_LORE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>';
-  const ICON_ABOUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>';
   const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
   /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer), Try again (the
      same deal), New deal (new cards at the same table) and Export. A won wave adds Next wave. The menu is the header's. */
@@ -6878,15 +6839,43 @@ const App = (() => {
     const sl = slots.get(m);
     return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n, false) : null;
   }
-  const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' +
+  const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' + (o.attrs || '') +
     (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
-  /* A menu tool: an icon with its label under it (docs/ui/plan.md). */
-  const toolButton = (action, label, icon, o = {}) => '<button class="btn mtool" type="button" data-action="' + action + '"' + (o.attrs || '') +
-    (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + icon + '<span>' + label + '</span></button>';
   /* Said once, on the next menu: a ?seed= or ?wave= link that names no game. */
   let linkNote = '';
+  /* The menu, built like Settings: a full-screen panel with the title, three tabs (Play, Learn, About) and ✕, gold
+     section headings over cards of rows, and the build at the foot. The tab is kept while the app runs; opening at
+     launch starts on Play. */
+  const MENU_TABS = ['Play', 'Learn', 'About'];
+  let menuTab = 'Play';
   function showMenu(launch) {
     clearTimer();
+    if (launch && !app.menuOpen) menuTab = 'Play';
+    const resumable = MODES.filter(m => slots.get(m) && !(gameOn() && app.mode === m));
+    const tab = (/** @type {string} */ t) => '<button class="set-tab" type="button" role="tab" id="menuTab' + t + '" aria-controls="menuPane" data-action="menu-tab" data-tab="' + t + '" aria-selected="' + (t === menuTab) + '">' + t + '</button>';
+    /* The header, as Settings: the game's name (at launch with a saved game, a greeting), the tabs, then ✕. At launch,
+       ✕ leaves the table empty: the menu and Settings work. */
+    const html = '<div class="settings menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><header class="set-top">' +
+      '<h2 class="set-title" id="menuTitle">' + (launch && resumable.length ? 'Welcome back' : 'King Cut-Throat') + '</h2>' +
+      '<div class="set-tabs" role="tablist" aria-label="Menu sections">' + MENU_TABS.map(tab).join('') + '</div>' +
+      '<button class="btn set-close" type="button" data-action="' + (launch ? 'just-enter' : 'close-menu') + '" aria-label="Close menu">✕<span class="set-close-word"> Close</span></button></header>' +
+      '<div class="set-body"><section class="set-pane" id="menuPane" role="tabpanel" aria-labelledby="menuTab' + menuTab + '">' +
+      (menuTab === 'Learn' ? menuLearnHTML() : menuTab === 'About' ? menuAboutHTML() : menuPlayHTML(launch, resumable)) +
+      '</section></div><p class="set-build">' + escHTML($('setBuild').textContent || '') + '</p></div>';
+    const ov = $('overlay');
+    ov.innerHTML = html;
+    ov.hidden = false;
+    app.menuOpen = true;
+    app.menuLaunch = !!launch;
+    maybeOfferUpdate();
+  }
+  /* A gold section heading, as in Settings. tail: a link at its right (a mode's goal). */
+  const menuHead = (/** @type {string} */ text, tail = '') => '<div class="mhead"><h3 class="set-head">' + text + '</h3>' + tail + '</div>';
+  /* A row: a name and a line under it, then its controls at the right. */
+  const menuRow = (/** @type {string} */ name, /** @type {string} */ desc, controls = '', cls = '') => '<div class="set-row' + cls + '"><span class="set-text"><span class="set-name">' + name + '</span>' +
+    (desc ? '<span class="set-desc">' + desc + '</span>' : '') + '</span>' + (controls ? '<div class="set-btns mbtns">' + controls + '</div>' : '') + '</div>';
+  /* Play: a card for each mode (its game in two lines, its buttons), Load a code, and Your profile. */
+  function menuPlayHTML(launch, resumable) {
     const p = Waves.progress();
     const playing = gameOn();
     const lost = slots.dropped();
@@ -6899,10 +6888,9 @@ const App = (() => {
     const waveOptions = p.sharkOpen
       ? '<optgroup label="Waves">' + openWaves.filter(w => !w.shark).map(waveOption).join('') + '</optgroup><optgroup label="Shark run">' + openWaves.filter(w => w.shark).map(waveOption).join('') + '</optgroup>'
       : openWaves.map(waveOption).join('');
-    const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     const main = launch ? slots.last() || resumable[0] : null;
-    /* A mode's card: its status (two lines) and its buttons. Resume returns to the game: the one being played (the
-       menu closes), or the saved one. */
+    /* A mode's card: its game (two lines) and its buttons. Resume returns to the game: the one being played (the menu
+       closes), or the saved one. extra: rows above the buttons' row (the Waves list). */
     const card = (m, title, extra, tail, buttons) => {
       const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
       const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', MODE_TAGLINE[m]];
@@ -6910,35 +6898,46 @@ const App = (() => {
       /* Discard game: only on a card with a game, and quiet, so it never competes with Resume. */
       const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '';
-      return '<section class="mcard" data-mode="' + m + '"><div class="mhead"><h3 class="mode-chip ' + m + '">' + title + '</h3>' + (tail || '') + '</div><p class="mstat' + (del ? ' has-del' : '') + '"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span>' + del + '</p>' +
-        (extra || '') + '<div class="mbtns">' + resume + buttons + '</div></section>';
+      return menuHead(title, tail) + '<div class="set-card mcard" data-mode="' + m + '">' + (extra || '') + menuRow(lines[0], lines[1] || '', del + resume + buttons, ' mrow') + '</div>';
     };
-    /* The Settings header: the game's name (at launch with a saved game, a greeting), then ✕. At launch, ✕ leaves
-       the table empty: the menu and Settings work. */
-    let html = sheetHTML('menu', launch ? 'Welcome back' : 'Menu', '<h2>' + (launch && resumable.length ? 'Welcome back' : 'King Cut-Throat') + '</h2>', launch ? 'just-enter' : 'close-menu');
+    let html = '';
     if (linkNote) { html += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
     if (lost.length) html += '<p class="wave-note">The game was updated. ' + (lost.length > 1 ? 'Your unfinished games' : 'Your unfinished ' + modeName(lost[0]) + ' game') + ' could not be loaded. Wave progress and results are kept.</p>';
-    /* A card's goal, in its top right. It opens Your profile for the mode. */
+    /* A card's goal, at the right of its heading. It opens Your profile for the mode. */
     const tail = (m, text) => '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + text + '</button>';
     html += card('dynamic', 'Dynamic', '', tail('dynamic', 'Beaten ' + beatenCount(stats.get(), 'dynamic') + ' of ' + PERSONAS.length), menuButton('new-dynamic', 'New game'));
-    html += card('waves', 'Waves', '<label class="sr" for="waveSel">Wave</label><select id="waveSel">' + waveOptions + '</select>',
+    html += card('waves', 'Waves', '<div class="set-row"><span class="set-text"><label class="set-name" for="waveSel">' + (p.sharkOpen ? 'Table' : 'Wave') + '</label></span><select id="waveSel">' + waveOptions + '</select></div>',
       tail('waves', p.sharkOpen ? 'Sharks: ' + p.sharks + ' of ' + p.total + ' cleared' : p.waves + ' of ' + p.total + ' cleared'), menuButton('play-wave', p.sharkOpen ? 'Play table' : 'Play wave'));
     /* Free play's goal, like the Waves count: the opponents you have won a Free play game against. */
     html += card('free', 'Free play', '', tail('free', 'Beaten ' + beatenCount(stats.get()) + ' of ' + PERSONAS.length), menuButton('new-free', 'New game'));
-    /* The tools: Play (a code, the tutorial, Install when the browser offers it), then Learn. */
-    const group = (name, buttons) => '<section class="mgroup"><h3>' + name + '</h3><div class="mgroup-row">' + buttons + '</div></section>';
-    html += '<div class="mtools">' +
-      group('Play', toolButton('load-code', 'Load a code', ICON_WATCH, { title: 'Watch a replay code, or play a seed' }) + toolButton('tutorial', 'Tutorial', ICON_TUTORIAL, { disabled: true, title: 'Coming soon' }) +
-        (install.prompt ? toolButton('install-app', 'Install', ICON_INSTALL, { title: 'Play it from your home screen, also offline' }) : '')) +
-      group('Learn', toolButton('menu-profile', 'Your profile', ICON_PROFILE, { attrs: ' data-mode="all"' }) + toolButton('menu-rules', 'Rules', ICON_RULES) +
-        toolButton('menu-lore', 'Lore', ICON_LORE) + toolButton('menu-about', 'About', ICON_ABOUT)) + '</div>';
-    html += '</div></div>';
-    const ov = $('overlay');
-    ov.innerHTML = html;
-    ov.hidden = false;
-    app.menuOpen = true;
-    app.menuLaunch = !!launch;
-    maybeOfferUpdate();
+    /* Load a code: the field reads what it holds as you type (readCodeField). Only open waves are listed for a seed. */
+    const waves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen)).map(w => '<option value="w' + w.n + '">' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + '</option>').join('');
+    html += menuHead('Load a code') + '<div class="set-card" id="menuCode">' +
+      '<div class="set-row set-row-wide"><span class="set-text"><label class="set-name" for="codeIn">Replay code or seed</label><span class="set-desc">Paste a replay code to watch a game, or a seed to play its deals. A link with either works too.</span></span>' +
+      '<input id="codeIn" class="code-in" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></div>' +
+      '<p class="k-hint set-note" id="codeRead" aria-live="polite"></p>' +
+      '<div class="set-row" id="codeWhere" hidden><span class="set-text"><label class="set-name" for="codeMode">Play it in</label></span><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
+      (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
+      '<div class="set-row set-row-end"><button class="btn primary" type="button" data-action="code-load" disabled>Load</button></div>' +
+      '<p class="k-hint set-note">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p></div>';
+    html += menuHead('You') + '<div class="set-card">' + menuRow('Your profile', 'Your games, wins and last games in this browser.', menuButton('menu-profile', 'Open', { attrs: ' data-mode="all"' })) + '</div>';
+    return html;
+  }
+  /* Learn: the tutorial, the quick rules as rows, then the full rules and the lore (to come). */
+  function menuLearnHTML() {
+    return menuHead('Tutorial') + '<div class="set-card">' + menuRow('Learn by playing', 'A guided first game.', menuButton('tutorial', 'Coming soon', { disabled: true })) + '</div>' +
+      menuHead('Quick rules') + '<div class="set-card rules-card">' + QUICK_RULES.map(([name, text]) => menuRow(name, text)).join('') + '</div>' +
+      menuHead('Full rules') + '<div class="set-card"><p class="k-hint set-note">The full rules are coming soon.</p></div>' +
+      menuHead('Lore') + '<div class="set-card"><p class="k-hint set-note">The lore is coming soon.</p></div>';
+  }
+  /* About: the About screen's card (Play goes to the Play tab; the build is at the foot), then Install when the browser
+     offers it. */
+  function menuAboutHTML() {
+    const card = /** @type {HTMLElement} */ ($('about').querySelector('.about-card').cloneNode(true));
+    card.querySelectorAll('[id], .about-build').forEach(x => { if (x.classList.contains('about-build')) x.remove(); else x.removeAttribute('id'); });
+    const play = card.querySelector('[data-action="menu"]');
+    if (play) { play.setAttribute('data-action', 'menu-tab'); play.setAttribute('data-tab', 'Play'); }
+    return card.outerHTML + (install.prompt ? menuHead('App') + '<div class="set-card">' + menuRow('Install', 'Play it from your home screen, also offline.', menuButton('install-app', 'Install')) + '</div>' : '');
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
@@ -7419,53 +7418,22 @@ const App = (() => {
 
   /* The rules open from the menu; Back returns to it (the game stays paused). */
   /* back: what the Back button does (the menu's Rules returns to the menu; the About screen's closes). */
-  /* Rules: Quick rules and Full rules, as two tabs. back is the ✕ action; a tab change keeps it. */
-  let rulesBack = 'menu-back';
+  /* The quick rules, one row each in Menu → Learn: a name, then the rule. */
   const QUICK_RULES = [
-    ['The game', '<p>3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.</p>'],
-    ['Deck and deal', '<p>33 cards: 7 to Ace in four suits, plus the Joker.</p><p>Deal 3 each, 3 to the kitty, 4 each, then 3 each.</p>'],
-    ['Trump order', '<ol class="trump-order"><li>Joker</li><li>Right Bower</li><li>Left Bower</li><li>A</li><li>K</li><li>Q</li><li>10</li><li>9</li><li>8</li><li>7</li></ol>' +
-      '<p>The <b>Right Bower</b> is the Jack of trump. The <b>Left Bower</b> is the other Jack of the same color, and counts as trump.</p>' +
-      '<p class="aside"><i>Bower</i> comes from the German <i>Bauer</i>, “farmer”. The Jacks are the farmers.</p>'],
-    ['Discard', '<p>Before bidding, each player discards 3 cards face down to the outside pile, leaving 7. The discards go in turn from the dealer\'s left, the dealer last.</p>'],
-    ['Naming trump', '<ul><li><b>Round 1:</b> the dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1. ' +
-      'A turned-up Joker voids the hand. With the house rule <b>Turned-up Joker</b>, it offers the suit set in Settings instead, shown under its corner star for this hand.</li>' +
-      '<li><b>Round 2:</b> name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned.</li></ul>' +
-      '<p class="aside">The gift to the player left of the caller is the only price of trump. The caller loses no points for a failed call.</p>'],
-    ['Play', '<p>7 tricks. The player left of the dealer leads. Follow suit if you can.</p>'],
-    ['Scoring', '<table><tbody><tr><td>A King wins a trick (scored at once; a losing King scores nothing)</td><td class="num">+1</td></tr>' +
-      '<tr><td>Most tricks in the hand</td><td class="num">+1</td></tr><tr><td>The namer takes all 7</td><td class="num">+2</td></tr>' +
-      '<tr><td>A non-namer takes all 7</td><td class="num">+3</td></tr></tbody></table>'],
-    ['Showdown', '<p>On a 3–3–1 split, the 1-trick player mediates. The mediator shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left. They play 5 tricks with the same trump.</p>' +
-      '<p>The mediator picks who leads (a house rule, on by default; when it is off, the player who won the latest main trick between them leads).</p><p>Winner <b>+1</b>, loser <b>−1</b> (not below 0).</p>']
+    ['The game', '3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.'],
+    ['Deck and deal', '33 cards: 7 to Ace in four suits, plus the Joker. Deal 3 each, 3 to the kitty, 4 each, then 3 each.'],
+    ['Trump order', '<b>Joker, Right Bower, Left Bower, A, K, Q, 10, 9, 8, 7.</b> The Right Bower is the Jack of trump. The Left Bower is the other Jack of the same color, and counts as trump. ' +
+      '<i>Bower</i> comes from the German <i>Bauer</i>, “farmer”: the Jacks are the farmers.'],
+    ['Discard', 'Before bidding, each player discards 3 cards face down to the outside pile, leaving 7. The discards go in turn from the dealer\'s left, the dealer last.'],
+    ['Naming trump: round 1', 'The dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1. ' +
+      'A turned-up Joker voids the hand; with the house rule <b>Turned-up Joker</b>, it offers the suit set in Settings instead, shown under its corner star for this hand.'],
+    ['Naming trump: round 2', 'Name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned. ' +
+      'The gift to the player left of the caller is the only price of trump: the caller loses no points for a failed call.'],
+    ['Play', '7 tricks. The player left of the dealer leads. Follow suit if you can.'],
+    ['Scoring', '<b>+1</b> at once when a King wins a trick (a losing King scores nothing). End of hand: most tricks <b>+1</b>, the namer takes all 7 <b>+2</b>, a non-namer takes all 7 <b>+3</b>.'],
+    ['Showdown', 'On a 3–3–1 split, the 1-trick player mediates: shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. ' +
+      'The mediator picks who leads (a house rule, on by default; off: the player who won the latest main trick between them leads). Winner <b>+1</b>, loser <b>−1</b> (not below 0).']
   ];
-  function showRules(back = rulesBack, tab = 'quick') {
-    rulesBack = back;
-    const t = (id, label) => '<button class="set-tab" type="button" role="tab" id="rulesTab-' + id + '" data-action="rules-tab" data-tab="' + id + '" aria-selected="' + (tab === id) + '" aria-controls="rulesPane">' + label + '</button>';
-    const body = tab === 'full'
-      ? '<p class="placeholder">The full rules are coming soon.</p>'
-      : QUICK_RULES.map(([h, x]) => '<section class="rules-sec"><h3>' + h + '</h3>' + x + '</section>').join('');
-    const ov = $('overlay');
-    ov.innerHTML = sheetHTML('rules', 'Rules', '<h2>Rules</h2>', back) + '<div class="set-tabs" role="tablist" aria-label="Rules">' + t('quick', 'Quick rules') + t('full', 'Full rules') + '</div>' +
-      '<div id="rulesPane" role="tabpanel" aria-labelledby="rulesTab-' + tab + '">' + body + '</div></div></div>';
-    ov.hidden = false;
-  }
-  /* Lore: the game's story. */
-  function showLore() {
-    const ov = $('overlay');
-    ov.innerHTML = sheetHTML('lore', 'Lore', '<h2>Lore</h2>', 'menu-back') + '<p class="placeholder">The lore is coming soon.</p></div></div>';
-    ov.hidden = false;
-  }
-  /* About from the menu: the About screen's card in a sheet, so a game behind it stays as it is. Play returns to the menu. */
-  function showAboutSheet() {
-    const card = /** @type {HTMLElement} */ ($('about').querySelector('.about-card').cloneNode(true));
-    card.querySelectorAll('[id]').forEach(x => x.removeAttribute('id'));
-    const play = card.querySelector('[data-action="menu"]');
-    if (play) play.setAttribute('data-action', 'menu-back');
-    const ov = $('overlay');
-    ov.innerHTML = sheetHTML('about-sheet', 'About', '<h2>About</h2>', 'menu-back') + card.outerHTML + '</div></div>';
-    ov.hidden = false;
-  }
 
   /* Your tries in one run (the waves, or the Shark run), newest table first, for the mode chip's pop-up and Your profile.
      Locked tables are not listed: their opponents are a surprise. The table being played is marked. */
@@ -7731,11 +7699,7 @@ const App = (() => {
       }
       case 'mode-results': if (watch) watchExit(); else showResults(); break;
       case 'menu': showMenu(false); break;
-      case 'menu-rules': showRules('menu-back'); break;
-      case 'rules-tab': showRules(rulesBack, el.getAttribute('data-tab') || 'quick'); { const b = /** @type {HTMLElement | null} */ ($('overlay').querySelector('[data-action="rules-tab"][aria-selected="true"]')); if (b) b.focus(); } break;
-      case 'menu-lore': showLore(); break;
-      case 'menu-about': showAboutSheet(); break;
-      case 'load-code': showLoadCode(); break;
+      case 'menu-tab': menuTab = MENU_TABS.includes(el.getAttribute('data-tab') || '') ? el.getAttribute('data-tab') || 'Play' : 'Play'; showMenu(app.menuLaunch); { const b = document.getElementById('menuTab' + menuTab); if (b) b.focus(); } break;
       case 'code-load': loadCode(); break;
       case 'menu-back': showMenu(app.menuLaunch); break;
       case 'close-menu': closeMenu(); break;
@@ -8091,36 +8055,13 @@ const App = (() => {
     if (/^\d+$/.test(c)) return c.length <= 10 && Number(c) <= SEED_MAX ? { kind: 'seed', seed: Number(c), wave } : { kind: 'bad', why: 'A seed is a whole number from 0 to ' + SEED_MAX + '.' };
     return { kind: 'bad', why: 'This is not a replay code or a seed.' };
   }
-  /* The dialog: one field. As you type or paste, it says what it read: a replay to watch, a seed to play (with a list
-     of where: Free play, Dynamic or an open wave), or why it cannot load it. Backups are restored in Settings. */
-  function showLoadCode() {
-    if (askDone) askDone(false);
-    const p = Waves.progress();
-    const waves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen)).map(w => '<option value="w' + w.n + '">' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + '</option>').join('');
-    const layer = $('askLayer');
-    layer.innerHTML = '<div class="modal ask loadcode" role="dialog" aria-modal="true" aria-labelledby="askTitle">' +
-      '<button class="btn modal-x" type="button" data-action="ask-cancel" aria-label="Close" title="Close">✕</button>' +
-      '<h2 id="askTitle">Load a code</h2><p>Paste a replay code to watch a game, or a seed to play its deals. A link with either works too.</p>' +
-      '<label for="codeIn">Code</label><input id="codeIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">' +
-      '<p class="code-read" id="codeRead" aria-live="polite"></p>' +
-      '<div id="codeWhere" hidden><label for="codeMode">Play it in</label><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
-      (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
-      '<div class="row"><button class="btn" type="button" data-action="ask-cancel">Cancel</button><button class="btn primary" type="button" data-action="code-load" disabled>Load</button></div>' +
-      '<p class="code-hint">To restore a backup, go to <b>Settings → Tools → Your data</b>.</p></div>';
-    layer.hidden = false;
-    const input = /** @type {HTMLInputElement} */ ($('codeIn'));
-    input.addEventListener('input', readCodeField);
-    input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); loadCode(); } });
-    input.focus();
-    askDone = () => { askDone = null; layer.hidden = true; layer.innerHTML = ''; };
-  }
   /* Shows what the field holds and sets the Load button: Watch for a replay, Play for a seed. */
   function readCodeField() {
     const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
     if (!input) return null;
-    const r = readCode(input.value), btn = /** @type {HTMLButtonElement} */ ($('askLayer').querySelector('[data-action="code-load"]'));
+    const r = readCode(input.value), btn = /** @type {HTMLButtonElement} */ ($('menuCode').querySelector('[data-action="code-load"]'));
     $('codeRead').textContent = r.kind === 'replay' ? 'A replay code. Watch opens it in the replay viewer.' : r.kind === 'seed' ? 'Seed ' + r.seed + '. Choose where to play its deals.' :
-      r.kind === 'backup' ? 'This is a backup, not a game. To restore it, go to Settings → Tools → Your data.' : r.why || '';
+      r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.why || '';
     $('codeWhere').hidden = r.kind !== 'seed';
     const sel = /** @type {HTMLSelectElement} */ ($('codeMode'));
     if (r.kind === 'seed' && r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
@@ -8134,7 +8075,6 @@ const App = (() => {
     const r = readCodeField();
     if (!r || (r.kind !== 'replay' && r.kind !== 'seed')) return;
     const where = /** @type {HTMLSelectElement} */ ($('codeMode')).value;
-    if (askDone) askDone(false);
     if (r.kind === 'replay') {
       if (!watchGame(r.code || '', 'code')) { linkNote = 'This replay code does not hold a game that this app can show.'; showMenu(app.menuLaunch); }
       return;
@@ -8238,6 +8178,8 @@ const App = (() => {
         return;
       }
       if (ev.key === 'Escape' && needsSwap() && !$('overlay').hidden && $('overlay').querySelector('.swap')) { ev.preventDefault(); swapBack(); return; }
+      /* Escape closes the menu, as it closes Settings (at launch, to the About screen). */
+      if (ev.key === 'Escape' && app.menuOpen && !$('overlay').hidden && $('overlay').querySelector('.settings.menu')) { ev.preventDefault(); onAction(app.menuLaunch ? 'just-enter' : 'close-menu', $('overlay')); return; }
       if (ev.key === 'Escape' && !$('logDrop').hidden && $('overlay').hidden) { openLog(false); $('latestCell').focus(); return; }
       /* The replay viewer: Escape exits, the arrow keys step, and Space or Enter plays or pauses (below). */
       if (watch && $('overlay').hidden && !(ev.target instanceof Element && /^(SELECT|INPUT|TEXTAREA)$/.test(ev.target.tagName))) {
@@ -8259,6 +8201,9 @@ const App = (() => {
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
     /* Picking another table in the Waves card makes Play the card's main button, so Resume (the game you had) is
        not the obvious tap for the table you just picked. */
+    /* Menu → Play → Load a code: the field says what it holds as you type, and Enter loads it. */
+    $('overlay').addEventListener('input', ev => { if (ev.target instanceof HTMLElement && ev.target.id === 'codeIn') readCodeField(); });
+    $('overlay').addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target instanceof HTMLElement && ev.target.id === 'codeIn') { ev.preventDefault(); loadCode(); } });
     $('overlay').addEventListener('change', ev => {
       const sel = /** @type {HTMLElement} */ (ev.target);
       if (sel.id !== 'waveSel') return;

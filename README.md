@@ -6,11 +6,9 @@ A browser game in one file, `index.html`. Open it in a browser to play, or insta
 
 Each launch opens on the menu. To open it during a game, click **☰** in the header (the game waits).
 
-The menu has a card for each mode, **Dynamic**, **Waves** and **Free play**, and two rows of tools. Each card's name is the same colored chip as the mode chip in the header: Dynamic purple, Waves deep sea, Free play blue. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode. Every button stays in the same place whatever is saved or running. The menu has the same header as **Settings**: **King Cut-Throat** (at launch with a saved game, **Welcome back**), then **✕** to close it. On a phone it fills the screen.
+The menu is built like **Settings**: it fills the window, with the title (**King Cut-Throat**, or **Welcome back** at launch with a saved game), three tabs, **Play**, **Learn** and **About**, and **✕** to close it (**Esc** closes it too). Gold headings sit over cards of rows, and the build is at the foot. Settings opens over the menu. The menu keeps its tab while the app runs; at launch it opens on Play.
 
-The goal in the top right of each card (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. Its **✕** returns to the menu.
-
-Your profile, a bot's profile, the results pop-up, Rules, Lore and About have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile, Rules and Lore fill the screen, like the menu.
+**Play** has a card for each mode, **Dynamic**, **Waves** and **Free play**. Each card shows its game in two lines (who, then the hand and the scores), or **No saved game** and a short description of the mode, and its buttons. Every button stays in the same place whatever is saved or running. The goal at the right of each mode's heading (**Beaten 2 of 10**, **15 of 18 cleared**) opens **Your profile** for that mode. Its **✕** returns to the menu.
 
 | Item | What it does |
 |---|---|
@@ -18,23 +16,19 @@ Your profile, a bot's profile, the results pop-up, Rules, Lore and About have th
 | **New game** (Free play) | The seed picks two opponents, unless Settings → Bots sets who sits. If an unfinished Free play game has begun, the app asks first. |
 | **New game** (Dynamic) | Two opponents picked for your level, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
 | **Play wave** (Waves) | Starts the wave chosen in the list. The list starts on the Waves game you are playing or have saved (the one **Resume** returns to), or else on the highest open wave. Picking another table in the list makes **Play wave** the card's main button. A ✓ marks a cleared wave. Once the Shark run is open, the button is **Play table**. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
+| **Load a code** | Paste a replay code to watch the game, or a seed to play its deals in Free play, Dynamic or an open wave. A `?replay=` or `?seed=` link works too. The card says what it read as you type, and the button says **Watch** or **Play**. A backup code is not loaded here: the card says to restore it in **Settings → Tools → Your data**. |
+| **Your profile** | Your profile on all modes. **✕** returns to the menu. |
 | **✕** (header) | Closes the menu. At launch, it leaves the **About screen** (see below): the menu, Settings and the profiles work. |
 
-Under the cards, two rows of tools, each an icon with its label:
+**Learn** has the **Tutorial** (coming soon), the **Quick rules**, one row per rule, and **Full rules** and **Lore** (coming soon).
 
-| Tool | What it does |
-|---|---|
-| **Load a code** (Play) | Paste a replay code to watch the game, or a seed to play its deals in Free play, Dynamic or an open wave. A `?replay=` or `?seed=` link works too. The dialog says what it read as you type. A backup code is not loaded here: the dialog says to restore it in **Settings → Tools → Your data**. |
-| **Tutorial** (Play) | Coming soon (disabled). |
-| **Install** (Play) | Shown when the browser offers it: play from your home screen, also offline. |
-| **Your profile** (Learn) | Your profile on all modes. **✕** returns to the menu. |
-| **Rules** (Learn) | Two tabs: **Quick rules**, in short sections, and **Full rules** (coming soon). **✕** returns to the menu. |
-| **Lore** (Learn) | The game's story (coming soon). |
-| **About** (Learn) | The About screen's card, over whatever is on screen. **Play** returns to the menu. |
+**About** has the About screen's card (its **Play** goes to the Play tab), and **Install** when the browser offers it: play from your home screen, also offline.
+
+Your profile, a bot's profile and the results pop-up have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile fills the screen, like the menu.
 
 ## About screen
 
-When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **✕** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. 2009–2011**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴 and 👑) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. To see the card again during a game, open **About** in the menu.
+When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **✕** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. 2009–2011**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴 and 👑) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. To see the card again during a game, open the menu's **About** tab.
 
 A link with `?replay=` and a replay code opens that game in the replay viewer (see **Watch a game**). A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed`, `wave` and `replay` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
@@ -42,7 +36,7 @@ A link with `?replay=` and a replay code opens that game in the replay viewer (s
 
 The header stays at the top of the window, and the page scrolls under it. From left to right:
 
-- **☰** opens the menu (games and Rules).
+- **☰** opens the menu (games, rules and About).
 - The title (hidden on narrow phones) and the mode: **Wave N of 18** (**Shark N of 18** in the Shark run), **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).

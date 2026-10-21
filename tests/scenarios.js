@@ -30,23 +30,23 @@ function expect(name, ok, detail) {
       out.btns = [...document.querySelectorAll('#about .about-btns button')].map(b => [b.textContent, b.getAttribute('data-action'), b.disabled, b.classList.contains('primary')]);
       click('#about [data-action="menu"]'); await sleep(20);
       out.menu = !!q('#overlay .menu') && overlayOpen();
-      out.tools = [...document.querySelectorAll('#overlay .mgroup')].map(g => [g.querySelector('h3').textContent, [...g.querySelectorAll('.mtool')].map(b => b.textContent)]);
-      click('#overlay [data-action="menu-about"]'); await sleep(20);
-      out.aboutSheet = !!q('#overlay .about-sheet .about-title') && !q('#overlay [id="aboutTitle"]');
-      click('#overlay .about-sheet .about-btns [data-action="menu-back"]'); await sleep(20);
-      out.aboutBack = !!q('#overlay .menu');
-      click('#overlay [data-action="menu-rules"]'); await sleep(20);
-      out.rules = !!q('#overlay .rules') && document.querySelectorAll('#overlay .rules .rules-sec').length;
-      click('#overlay [data-action="rules-tab"][data-tab="full"]'); await sleep(20);
-      out.full = !!q('#overlay .rules .placeholder') && q('#overlay [data-tab="full"]').getAttribute('aria-selected') === 'true';
-      click('#overlay .rules .sheet-top [data-action="menu-back"]'); await sleep(20);
-      click('#overlay [data-action="menu-lore"]'); await sleep(20);
-      out.lore = !!q('#overlay .lore .placeholder');
-      click('#overlay .lore .sheet-top [data-action="menu-back"]'); await sleep(20);
-      click('#overlay [data-action="menu-profile"][data-mode="all"]'); await sleep(20);
+      out.settingsLike = { tabs: [...document.querySelectorAll('#overlay .menu .set-top .set-tab')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')),
+        heads: [...document.querySelectorAll('#overlay .menu .set-head')].map(h => h.textContent), build: (q('#overlay .menu .set-build') || {}).textContent === q('#setBuild').textContent };
+      click('#overlay [data-action="menu-tab"][data-tab="Learn"]'); await sleep(20);
+      out.learn = { heads: [...document.querySelectorAll('#overlay .menu .set-head')].map(h => h.textContent), rules: document.querySelectorAll('#overlay .rules-card .set-row').length, tutorialOff: q('#overlay [data-action="tutorial"]').disabled };
+      click('#overlay [data-action="menu-tab"][data-tab="About"]'); await sleep(20);
+      out.about = { card: !!q('#overlay .menu .about-title') && !q('#overlay [id="aboutTitle"]'), build: !q('#overlay .menu .about-build') };
+      click('#overlay .menu .about-btns [data-action="menu-tab"]'); await sleep(20);
+      out.aboutPlay = !!q('#overlay .mcard') && q('#menuTabPlay').getAttribute('aria-selected') === 'true';
+      click('#overlay [data-action="menu-tab"][data-tab="Learn"]'); await sleep(20);
+      click('#overlay [data-action="menu-tab"][data-tab="Play"]'); await sleep(20);
+      click('#overlay .menu [data-action="menu-profile"][data-mode="all"]'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       click('#overlay .profile .sheet-top [data-action="menu-back"]'); await sleep(20);
       out.menuAgain = !!q('#overlay .menu');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
+      out.escape = !overlayOpen() && !q('#about').hidden;
+      click('#about [data-action="menu"]'); await sleep(20);
       return out;`);
     expect('at launch the menu opens over the About screen', r.launch, r);
     expect('closing the menu leaves the About screen, not an empty table', r.idle, r);
@@ -56,12 +56,12 @@ function expect(name, ok, detail) {
     expect('the About card has Tutorial (coming soon) on the left and Play, the main button, on the right',
       JSON.stringify(r.btns) === JSON.stringify([['Tutorial', 'tutorial', true, false], ['Play', 'menu', false, true]]), r.btns);
     expect('Play opens the menu', r.menu, r);
-    expect('the menu has a Play row and a Learn row of tools', JSON.stringify(r.tools.map(g => g[0])) === '["Play","Learn"]' && r.tools[0][1][0] === 'Load a code' &&
-      JSON.stringify(r.tools[1][1]) === JSON.stringify(['Your profile', 'Rules', 'Lore', 'About']), r.tools);
-    expect('About in the menu opens the About card in a sheet, and Play returns to the menu', r.aboutSheet && r.aboutBack, r);
-    expect('Rules opens on Quick rules, in sections, with a Full rules tab', r.rules >= 6 && r.full, r);
-    expect('Lore opens', r.lore, r);
+    expect('the menu is built like Settings: Play, Learn and About tabs, gold headings, the build at the foot',
+      JSON.stringify(r.settingsLike.tabs) === '["Play*","Learn","About"]' && JSON.stringify(r.settingsLike.heads) === '["Dynamic","Waves","Free play","Load a code","You"]' && r.settingsLike.build, r.settingsLike);
+    expect('Learn: the tutorial (coming soon), the quick rules as rows, the full rules and the lore', JSON.stringify(r.learn.heads) === '["Tutorial","Quick rules","Full rules","Lore"]' && r.learn.rules >= 8 && r.learn.tutorialOff, r.learn);
+    expect('About: the About card, its build only at the foot; its Play goes to the Play tab', r.about.card && r.about.build && r.aboutPlay, r);
     expect('Your profile opens from the menu, and closes back to it', r.profile && r.menuAgain, r);
+    expect('Escape closes the menu (at launch, to the About screen)', r.escape, r);
 
     console.log('Game 1: Free play');
     r = await step(`
@@ -154,8 +154,8 @@ function expect(name, ok, detail) {
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
     r = await step(`
-      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#overlay .menu .sheet-top h2') || {}).textContent,
-        exits: Array.from(document.querySelectorAll('#overlay .menu [data-action="close-menu"]'), x => x.closest('.sheet-top') ? 'header' : x.textContent) };
+      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#overlay .menu .set-top h2') || {}).textContent,
+        exits: Array.from(document.querySelectorAll('#overlay .menu [data-action="close-menu"]'), x => x.closest('.set-top') ? 'header' : x.textContent) };
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
