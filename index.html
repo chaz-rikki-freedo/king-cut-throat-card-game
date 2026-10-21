@@ -394,6 +394,9 @@ body.set-open{overflow:hidden}
 .menu-stage{place-self:stretch;position:relative;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
 .menu-stage .about-kings{position:fixed}
 .menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem}
+.code-ver{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;margin:0;padding:0.375rem 0.875rem;white-space:nowrap;font-size:0.75rem;color:var(--muted);background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:999px;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem);pointer-events:none}
+.code-ver[hidden]{display:none}
+.menu-stage:has(> .code-ver:not([hidden])){padding-bottom:4rem}
 .mview{display:flex;flex-direction:column;align-items:center;gap:0.875rem;width:100%}
 .mview[hidden]{display:none}
 .mepi{font-style:italic;font-size:0.875rem}
@@ -914,7 +917,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '4c1b2a1', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: '1b26ad1', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1076,8 +1079,13 @@ const Logger = (() => {
     t0: now(),
     lines: [],
     listeners: [],
+    header: null,
     log(type, data) {
       if (!this.enabled) return;
+      if (!this.lines.length && this.header) this.write(...this.header());
+      this.write(type, data);
+    },
+    write(type, data) {
       const ms = Math.round(now() - this.t0);
       const parts = [];
       if (data) {
@@ -1142,6 +1150,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
+    if (rules > 4) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
   }
@@ -1249,7 +1258,7 @@ const Engine = (() => {
       default: return ADVANCE_PHASES.includes(state.phase) ? { type: 'ADVANCE' } : null;
     }
   }
-  const RULES_VERSION = 4;
+  const RULES_VERSION = 5;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   function decisionOf(a) {
     switch (a.type) {
@@ -1439,11 +1448,12 @@ const Engine = (() => {
     events.push(Object.assign({ type: 'SHOWDOWN_LEAD' }, lead));
     startTrick(state, events);
   }
+  const sideRng = state => state.sideRng || state.rng;
   function dealShowdown(state, events) {
     const sd = state.showdown;
     const pool = state.outside.splice(0);
     if (pool.length !== C.OUTSIDE_SIZE) throw new Error('Outside pile must hold 12 cards, has ' + pool.length);
-    RNG.shuffle(pool, state.rng);
+    RNG.shuffle(pool, sideRng(state));
     const first = seatAfter(sd.mediator);
     const second = seatAfter(first);
     for (let i = 0; i < C.SHOWDOWN_DEAL; i++) {
@@ -1512,7 +1522,7 @@ const Engine = (() => {
     FLIP(state, a, events) {
       state.flippedId = state.kitty[0];
       if (R.card(state.flippedId).isJoker && state.jokerFlip) {
-        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(state.rng, R.SUITS.length)] : state.jokerFlip;
+        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state), R.SUITS.length)] : state.jokerFlip;
       }
       events.push(state.jokerSuit ? { type: 'KITTY_FLIPPED', card: state.flippedId, jokerSuit: state.jokerSuit } : { type: 'KITTY_FLIPPED', card: state.flippedId });
       if (R.card(state.flippedId).isJoker && !state.jokerSuit) {
@@ -3191,15 +3201,16 @@ const Dynamic = (() => {
     });
   }
   const num = ( x) => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : 0);
+  const PROFILE_VERSION = 1;
   const blankProfile = () => ({
-    v: 1, hands: 0, games: 0,
+    v: PROFILE_VERSION, hands: 0, games: 0,
     share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     habits: { calls: 0, made: 0, value: 0 },
     mark: false, at:  (null)
   });
   function cleanProfile(x) {
     const p = blankProfile();
-    if (!x || typeof x !== 'object' || x.v !== 1) return p;
+    if (!x || typeof x !== 'object' || x.v !== PROFILE_VERSION) return p;
     const o = ( y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
     const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
@@ -3366,7 +3377,7 @@ const Dynamic = (() => {
       reset() { p = blankProfile(); js.save(p); }
     });
   }
-  return Object.freeze({ FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 const SUIT_SVG = Object.freeze({
   S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
@@ -4422,6 +4433,8 @@ const App = (() => {
   };
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
+  Logger.header = () => ['VERSIONS', { engine: Engine.RULES_VERSION, replay: 'KCT' + Replay.VERSION, save: SAVE_FORMAT, backup: 'KCTS' + Backup.VERSION,
+    profile: Dynamic.PROFILE_VERSION, build: BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '') }];
   const slots = createSlots(localStore('kct.slots'));
   const stats = createStats(localStore('kct.stats'));
   const replays = createReplays(localStore('kct.replays'));
@@ -5547,7 +5560,8 @@ const App = (() => {
     if (launch && !app.menuOpen) menuView = 'home';
     const ov = $('overlay');
     ov.innerHTML = '<div class="menu menu-stage" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><div class="about-kings" aria-hidden="true">' + driftHTML() + '</div>' +
-      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section></div>';
+      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
+      '<p class="code-ver" id="codeVersion" hidden>Replay KCT' + Replay.VERSION + ' · Engine ' + Engine.RULES_VERSION + '</p></div>';
     ov.hidden = false;
     app.menuOpen = true;
     app.menuLaunch = !!launch;
@@ -5559,6 +5573,7 @@ const App = (() => {
     if (!views.some(v => v.getAttribute('data-view') === view)) view = 'home';
     menuView = view;
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
+    const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
       const shown = views.find(v => !v.hidden), first = shown &&  (shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
@@ -7093,6 +7108,29 @@ const SelfTest = (() => {
       s = revealState(9, 1, '9H'); s.jokerFlip = 'C';
       D(s, { type: 'FLIP' });
       eq('another turned card is not changed by jokerFlip', ['jokerSuit' in s, buildView(s, 0).flippedSuit], [false, 'H']);
+      const other = AI.config(AI.DEFAULT_CONFIG, { style: { realTable: !AI.DEFAULT_CONFIG.style.realTable } });
+      const dealsOf = (seed, rules, cfg) => {
+        const g = Engine.createGame(seed, null, rules, { jokerFlip: 'random' }), deals = [];
+        let sd = false;
+        for (let k = 0; k < 5000 && !g.gameOver && deals.length < 6; k++) {
+          const ac = Engine.actors(g);
+          for (const e of D(g, ac.length ? AI.fastAction(g, ac[0], ac[0] === 0 ? cfg : undefined) : Engine.systemAction(g)).events) {
+            if (e.type === 'DEAL') deals.push(JSON.stringify([g.dealer, g.hands, g.kitty]));
+            if (e.type === 'SHOWDOWN_DEAL') sd = true;
+          }
+        }
+        return { deals, sd, decisions: JSON.stringify(g.decisions) };
+      };
+      const differ = (a, b) => { const n = Math.min(a.deals.length, b.deals.length); return a.deals.slice(0, n).join() !== b.deals.slice(0, n).join(); };
+      let seed4 = 0;
+      for (let seed = 1; seed < 60 && !seed4; seed++) if (differ(dealsOf(seed, 4), dealsOf(seed, 4, other))) seed4 = seed;
+      check('rules version 4: a seed where seat 0\'s play changes a later deal', seed4 > 0);
+      if (seed4) {
+        const a = dealsOf(seed4, Engine.RULES_VERSION), b = dealsOf(seed4, Engine.RULES_VERSION, other);
+        const n = Math.min(a.deals.length, b.deals.length);
+        check('that seed plays differently and has a Showdown', a.decisions !== b.decisions && (a.sd || b.sd) && n > 1);
+        eq('the same seed deals the same cards, however seat 0 plays', b.deals.slice(0, n), a.deals.slice(0, n));
+      }
     });
     safeRun('ai knowledge', () => {
       const full = AI.config(AI.DEFAULT_CONFIG, { knowledge: AI.KNOWLEDGE_ALL_ON, thinking: AI.THINKING_FULL });
@@ -7756,6 +7794,18 @@ const SelfTest = (() => {
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
+        const kept = { enabled: Logger.enabled, lines: Logger.lines, listeners: Logger.listeners, t0: Logger.t0 };
+        try {
+          Object.assign(Logger, { enabled: true, lines: [], listeners: [] });
+          Logger.log('TEST_A'); Logger.log('TEST_B');
+          const types = () => Logger.lines.map(l => l.split(' ')[1]);
+          const first = Logger.lines[0].replace(/^\[\+\d+ms\] /, '');
+          eq('the event log opens with the versions', [types(), first], [['VERSIONS', 'TEST_A', 'TEST_B'],
+            'VERSIONS engine=' + Engine.RULES_VERSION + ' replay=KCT' + Replay.VERSION + ' save=' + SAVE_FORMAT + ' backup=KCTS' + Backup.VERSION +
+            ' profile=' + Dynamic.PROFILE_VERSION + ' build=' + BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '')]);
+          Logger.clear(); Logger.log('TEST_C');
+          eq('Clear log: the versions open it again', types(), ['VERSIONS', 'TEST_C']);
+        } finally { Object.assign(Logger, kept); }
       }
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
       const memOf = (t, k, tu, vo) => ({ trumps: t, kings: k, turned: tu, voids: vo });
