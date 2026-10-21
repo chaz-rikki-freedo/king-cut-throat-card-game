@@ -393,7 +393,14 @@ body.set-open{overflow:hidden}
 .settings .felt-radio:checked + .felt-swatch{outline:0.1875rem solid var(--gold);outline-offset:0.125rem}
 .settings .felt-radio:focus-visible + .felt-swatch{outline:0.1875rem solid var(--accent);outline-offset:0.125rem}
 .settings .felt-radio:checked ~ .felt-name{color:var(--ink);font-weight:700}
-.settings .set-row-wide .install-check{grid-column:1 / -1;grid-row:2}
+.settings .set-row-wide .install-box{grid-column:1 / -1;grid-row:2}
+/* The Install checklist: collapsed to a one-line summary until opened. */
+.install-box > summary{display:flex;align-items:center;gap:var(--s2);min-height:2.75rem;cursor:pointer;list-style:none;font-size:0.8125rem;font-weight:700}
+.install-box > summary::-webkit-details-marker{display:none}
+.install-box > summary::before{content:'▸';color:var(--gold);transition:transform .15s}
+.install-box[open] > summary::before{transform:rotate(90deg)}
+.install-box > summary.ok{color:#9be59b}.install-box > summary.bad{color:#ff8a80}
+@media (prefers-reduced-motion:reduce){.install-box > summary::before{transition:none}}
 .settings .set-row-wide .set-btns{grid-column:2;grid-row:1}
 .settings .set-row-end{display:flex;justify-content:flex-end;min-height:0;padding:var(--s2) 0 var(--s3)}
 .settings .set-text{display:flex;flex-direction:column;gap:0.125rem;min-width:0}
@@ -1023,7 +1030,7 @@ window.kctTheme = (() => {
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline.</span></span>
-          <ul class="install-check" id="setInstall"><li>Checking…</li></ul>
+          <details class="install-box" id="setInstallBox"><summary id="setInstallSum">Checking…</summary><ul class="install-check" id="setInstall"><li>Checking…</li></ul></details>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></span></div>
         <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
       </div>
@@ -7377,7 +7384,8 @@ const App = (() => {
   /* Lists what the browser needs for an install, as this browser sees it. */
   async function checkInstall() {
     const rows = [];
-    const row = (state, text) => rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>');
+    const tally = { ok: 0, bad: 0, wait: 0 };
+    const row = (state, text) => { tally[state]++; rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>'); };
     /* A local copy cannot install or play offline, so the checks below do not apply: file://, or content:// when a
        phone opens a downloaded file. There the service worker calls reject. */
     const local = !/^https?:$/.test(location.protocol);
@@ -7386,6 +7394,12 @@ const App = (() => {
     const show = () => {
       const box = $('setInstall');
       if (box) box.innerHTML = rows.join('');
+      /* The summary line of the collapsed checklist: what needs fixing, else how many checks passed. */
+      const sum = $('setInstallSum');
+      if (sum) {
+        sum.className = tally.bad ? 'bad' : tally.ok ? 'ok' : '';
+        sum.textContent = tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes');
+      }
       const btn = $('setInstallBtn');
       if (btn) btn.hidden = local || !install.prompt;
       return rows;
