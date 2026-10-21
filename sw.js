@@ -60,7 +60,7 @@ async function refreshAsset(url) {
 
 async function cachedPage(req) {
   const hit = await (await caches.open(SHELL)).match(PAGE);
-  if (hit) return hit;
+  if (hit) return fromCache(hit);
   const res = await fetch(req);
   if (res.ok && isGame(await res.clone().text())) (await caches.open(SHELL)).put(PAGE, res.clone());
   return res;
@@ -88,13 +88,41 @@ async function checkPage() {
 const isGame = html => /^const BUILD = Object\.freeze\(\{ commit: '/m.test(html);
 /* The part of the page that counts as a new version. Ad blockers such as AdGuard change the page
    as it downloads: they remove <link> tags and add tags of their own. Turning one on or off must not
-   look like a new version, so <link> tags, <script> and <style> tags with attributes (the game's own
-   have none) and whitespace are left out. A change to the page's <link> tags alone is therefore not
+   look like a new version, so <link> tags, <script> and <style> tags with attributes and whitespace are
+   left out. The game's own tags with attributes stay in: OWN_TAGS lists their ids (tests/sw.js fails when
+   index.html has one that is not listed). A change to the page's <link> tags alone is therefore not
    offered as an update; it arrives with the next change to anything else. */
+const OWN_TAGS = ['themePacks', 'themeBoot'];
+const isOwn = tag => { const m = /^<[^>]*\bid="([^"]*)"/.exec(tag); return !!m && OWN_TAGS.includes(m[1]); };
 const core = html => html
   .replace(/<link\b[^>]*>/gi, '')
-  .replace(/<(script|style)\b[^>]+>[\s\S]*?<\/\1>/gi, '')
+  .replace(/<(script|style)\b[^>]+>[\s\S]*?<\/\1>/gi, tag => isOwn(tag) ? tag : '')
   .replace(/\s+/g, ' ');
+/* The cached page without the <script src> and <link> tags that load from another site. Ad blockers that filter
+   HTTPS (AdGuard) add such tags as the page downloads, so the cached copy holds them. Offline, the ad blocker's VPN
+   cannot answer and the script request hangs: the page never draws and an installed app stays on its logo.
+   The game loads nothing from another site, so removing them changes nothing it needs. */
+const LOADS = /<script\b[^>]*\bsrc\s*=[^>]*>[\s\S]*?<\/script\s*>|<link\b[^>]*>/gi;
+const offSite = tag => {
+  const src = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
+  if (!src) return false;
+  try { return new URL(src[1] ?? src[2] ?? src[3], PAGE).origin !== self.location.origin; } catch (e) { return false; }
+};
+const local = html => html.replace(LOADS, tag => offSite(tag) ? '' : tag);
+/** The page as served from the cache. @param {Response} hit */
+const fromCache = async hit => new Response(local(await hit.text()), { status: hit.status, statusText: hit.statusText, headers: { 'content-type': hit.headers.get('content-type') || 'text/html' } });
+/** @returns {number} the tags in html that load from another site */
+const offSiteTags = html => (html.match(LOADS) || []).filter(offSite).length;
+/* For the self-tests (Settings → Tools → Self-tests): what this worker serves in airplane mode, from the cache
+   alone. It never uses the network. */
+async function offlineReport() {
+  const shell = await caches.open(SHELL);
+  const hit = await shell.match(PAGE);
+  const served = hit ? await (await fromCache(hit)).text() : '';
+  const missing = [];
+  for (const u of ASSETS) if (!await shell.match(u)) missing.push(u.slice(self.registration.scope.length));
+  return { page: !!hit, game: isGame(served), offSite: offSiteTags(served), missing };
+}
 async function tell(msg, client) {
   const list = client ? [client] : await self.clients.matchAll({ type: 'window' });
   for (const c of list) c.postMessage(msg);
@@ -106,6 +134,7 @@ self.addEventListener('message', ev => {
     if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
   })());
   if (type === 'check-update') ev.waitUntil(checkPage());
+  if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));
   if (type === 'apply-update') ev.waitUntil((async () => {
     const waiting = await (await caches.open(PENDING)).match(PAGE);
     if (waiting) await (await caches.open(SHELL)).put(PAGE, waiting);
