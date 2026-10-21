@@ -2,14 +2,11 @@
 
 This wiki names every area of the King Cut-Throat interface and every part inside each area. Use these names in issues, pull requests, code comments and design notes, so that one word always means one thing.
 
-The vocabulary supports the planned **UI levels**: four versions of the interface that show more or less help text. See [UI levels](levels.md).
-
 ## Pages
 
 | Page | Contents |
 |---|---|
 | [Vocabulary](vocabulary.md) | The name, code anchor and text kind of each area and part. |
-| [UI levels](levels.md) | The four UI levels, the text kinds, and a draft of what each level shows. |
 | [Game moments](moments.md) | The names of the steps of a hand, and what the action bar asks at each step. |
 | [UI plan](plan.md) | Where the replay, seed, backup and theme features go in the interface, in phases. |
 | [Colors](colors.md) | The color families and tokens, the rules that keep colors apart, the checker, and theme packs. The [palette page](palette.html) shows them (development only). |
