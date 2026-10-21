@@ -286,6 +286,18 @@
    "family": "settings",
    "value": "#8fb89a",
    "job": "Hint text in Settings."
+  },
+  {
+   "name": "--set-switch",
+   "family": "settings",
+   "value": "#2f4337",
+   "job": "A switch that is off, in Settings."
+  },
+  {
+   "name": "--set-switch-edge",
+   "family": "settings",
+   "value": "#3d5747",
+   "job": "The edge of a switch that is off, in Settings."
   }
  ],
  "groups": {
@@ -554,6 +566,31 @@
     "--panel@--felt"
    ],
    "min": 4.5
+  },
+  {
+   "text": "--ink",
+   "on": [
+    "--set-bg",
+    "--set-card",
+    "--set-field"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--set-hint",
+   "on": [
+    "--set-bg",
+    "--set-card",
+    "--set-field"
+   ],
+   "min": 4.5
+  },
+  {
+   "text": "--muted",
+   "on": [
+    "--set-card"
+   ],
+   "min": 4.5
   }
  ],
  "untokenized": [
@@ -569,9 +606,7 @@
   "#222222",
   "#2a1212",
   "#2e7d32",
-  "#2f4337",
   "#33507a",
-  "#3d5747",
   "#4a5a6a",
   "#5b2a86",
   "#5e7d5e",
@@ -582,7 +617,6 @@
   "#7f9a86",
   "#8a9a8f",
   "#8e5aa8",
-  "#8fb89a",
   "#93303d",
   "#9be59b",
   "#b8f5c4",
