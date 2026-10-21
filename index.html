@@ -7030,7 +7030,8 @@ const App = (() => {
       '<h4 class="mhead">Full rules</h4><p class="mnote">The full rules are coming soon.</p>');
   }
   function menuLoreHTML() { return menuViewHTML('lore', 'Lore', '<p class="mlore">' + LORE + '</p>'); }
-  /* Load a code: the field reads what it holds as you type (readCodeField). Only open waves are listed for a seed. */
+  /* Load a code: the field reads what it holds as you type (readCodeField). Only open waves are listed for a seed.
+     The last line names the replay code version and the rules version that this app writes. */
   function menuCodeHTML() {
     const p = Waves.progress();
     const waves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen)).map(w => '<option value="w' + w.n + '">' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + '</option>').join('');
@@ -7040,7 +7041,8 @@ const App = (() => {
       '<div class="mrow" id="codeWhere" hidden><label for="codeMode"><b>Play it in</b></label><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
       (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
       '<button class="btn primary mload" type="button" data-action="code-load" disabled>Load</button>' +
-      '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>', ' id="menuCode"');
+      '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>' +
+      '<p class="mnote" id="codeVersion">Replay version in use: KCT' + Replay.VERSION + ' · rules ' + Engine.RULES_VERSION + '</p>', ' id="menuCode"');
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
   /* Starting a game in a mode replaces that mode's unfinished game. Ask first if it has begun. */
@@ -9442,6 +9444,8 @@ const SelfTest = (() => {
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
+        const ver = document.getElementById('codeVersion');
+        check('Load a code ends with the replay version in use', !!ver && !ver.nextElementSibling && ver.textContent === 'Replay version in use: KCT' + Replay.VERSION + ' · rules ' + Engine.RULES_VERSION);
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
