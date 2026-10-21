@@ -20,6 +20,7 @@
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
+  --set-bg:#0b0f0c; --set-card:#111b15; --set-line:#24382c; --set-field:#16261d; --set-hint:#8fb89a; --set-switch:#2f4337; --set-switch-edge:#3d5747;
   --mode-free:#7cc4ff; --mode-free-ink:#07233a; --mode-dynamic:#b9a3ff; --mode-dynamic-ink:#1c1240; --mode-waves:#0e7490; --mode-waves-ink:#ecfeff;
   --bot-vex:#ff7a7a; --bot-doc:#9db0ff; --bot-ace:#5fdc8f; --bot-mei:#ff9fd0; --bot-gus:#5cb8ff;
   --bot-lou:#ffad5c; --bot-viv:#c99bff; --bot-tex:#d9a874; --bot-kit:#d8e45a; --bot-zen:#cfd8dc;
@@ -286,7 +287,7 @@ button.card{cursor:pointer}
 .sheet-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0.75rem;padding:0.75rem 1rem 0.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.12);flex:none}
 .sheet-top h2{margin:0;font-size:1.125rem;font-weight:800}
 .sheet-body{overflow:auto;min-height:0;padding:1.25rem;position:relative}
-.settings{--s1:0.25rem;--s2:0.5rem;--s3:0.75rem;--s4:1rem;--s5:1.5rem;--set-bg:#0b0f0c;--set-card:#111b15;--set-line:#24382c;--set-field:#16261d;--set-hint:#8fb89a;
+.settings{--s1:0.25rem;--s2:0.5rem;--s3:0.75rem;--s4:1rem;--s5:1.5rem;
   position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--set-bg);font-size:0.9375rem;line-height:1.4}
 .settings[hidden]{display:none}
 body.set-open{overflow:hidden}
@@ -333,7 +334,7 @@ body.set-open{overflow:hidden}
 .settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums;text-align:right}
 .settings .set-btns{display:inline-flex;gap:var(--s2);flex-wrap:wrap;justify-content:flex-end}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
-.settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:#2f4337;border:1px solid #3d5747;position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
 .settings input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
 .settings input.sw:checked{background:var(--gold);border-color:var(--gold)}
 .settings input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
@@ -366,7 +367,7 @@ body.set-open{overflow:hidden}
 .settings .set-tests li.bad{color:#ff8a80;font-weight:700}
 .settings .set-tests .t-fail{margin:0.375rem 0;padding:0.375rem 0.5rem;background:#2a1212;border-radius:0.375rem}
 .settings .set-tests .t-fail small{display:block;color:#ffb4ab;word-break:break-word}
-.settings .set-tests .t-stats{color:#8fb89a}
+.settings .set-tests .t-stats{color:var(--set-hint)}
 .settings pre:empty::before{content:'The event log is empty. It records new events while Event log is on.';color:#7f9a86;font-style:italic}
 .settings pre{margin:var(--s3) 0 0;padding:var(--s3);border-radius:0.5rem;background:#070a08;overflow:auto;font:0.75rem/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;min-height:5rem;max-height:40vh;white-space:pre-wrap;word-break:break-word}
 @media (max-width:620px){
@@ -456,7 +457,7 @@ body.set-open{overflow:hidden}
 .swap .row .swap-back{margin-right:auto}
 @media (max-width:599px){ .swap-side{min-height:2.6em;display:flex;align-items:center} }
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0.25rem;font-size:0.8125rem}
-.install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:#8fb89a}
+.install-check .ok{color:#9be59b}.install-check .bad{color:#ff8a80}.install-check .wait{color:var(--set-hint)}
 .ask-layer{z-index:75}
 .stale-layer{z-index:90}
 .stale{max-width:26.25rem}
@@ -739,10 +740,10 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 <script type="application/json" id="themePacks">
 {"felts":{
   "classic":{"name":"Classic","tokens":{}},
-  "spring":{"name":"Spring","tokens":{"--page":"#24172a","--felt":"#553a5e","--felt-edge":"#3a2742","--sheet":"#3a2741","--muted":"#d9c9dd","--felt-showdown":"#1d4f4f","--felt-showdown-edge":"#123535"}},
-  "summer":{"name":"Summer","tokens":{"--page":"#062a34","--felt":"#0e5566","--felt-edge":"#093a47","--sheet":"#093844","--muted":"#b9d3d9"}},
-  "fall":{"name":"Fall","tokens":{"--page":"#2f180a","--felt":"#6b3a1c","--felt-edge":"#4a2712","--sheet":"#55301a","--muted":"#dcc8b4","--felt-showdown":"#283a6b","--felt-showdown-edge":"#1a2648"}},
-  "winter":{"name":"Winter","tokens":{"--page":"#131f2d","--felt":"#2d4560","--felt-edge":"#1d2f43","--sheet":"#243a52","--muted":"#c3cfdb"}}
+  "spring":{"name":"Spring","tokens":{"--page":"#24172a","--felt":"#553a5e","--felt-edge":"#3a2742","--sheet":"#3a2741","--muted":"#d9c9dd","--felt-showdown":"#1d4f4f","--felt-showdown-edge":"#123535","--set-bg":"#0f0d10","--set-card":"#1b161c","--set-line":"#382f3b","--set-field":"#271f28","--set-hint":"#b7a4c1","--set-switch":"#433a46","--set-switch-edge":"#574b5b"}},
+  "summer":{"name":"Summer","tokens":{"--page":"#062a34","--felt":"#0e5566","--felt-edge":"#093a47","--sheet":"#093844","--muted":"#b9d3d9","--set-bg":"#0b0f10","--set-card":"#111a1d","--set-line":"#24363c","--set-field":"#162429","--set-hint":"#8ab4c0","--set-switch":"#2f4147","--set-switch-edge":"#3c545c"}},
+  "fall":{"name":"Fall","tokens":{"--page":"#2f180a","--felt":"#6b3a1c","--felt-edge":"#4a2712","--sheet":"#55301a","--muted":"#dcc8b4","--felt-showdown":"#283a6b","--felt-showdown-edge":"#1a2648","--set-bg":"#110d0b","--set-card":"#1f1611","--set-line":"#3f2e24","--set-field":"#2c1f17","--set-hint":"#caa28e","--set-switch":"#4a392f","--set-switch-edge":"#614a3d"}},
+  "winter":{"name":"Winter","tokens":{"--page":"#131f2d","--felt":"#2d4560","--felt-edge":"#1d2f43","--sheet":"#243a52","--muted":"#c3cfdb","--set-bg":"#0c0e10","--set-card":"#15191e","--set-line":"#2c333d","--set-field":"#1d222a","--set-hint":"#9bafc4","--set-switch":"#373e48","--set-switch-edge":"#47515e"}}
 },"colors":{
   "colorblind":{"name":"Color-blind safe","tokens":{"--name0":"#55ebe0","--bot-vex":"#fe7f9d","--bot-doc":"#9eb2fe","--bot-ace":"#0bebb1","--bot-mei":"#ffa7d2","--bot-gus":"#c2e0fe","--bot-lou":"#f4a95e","--bot-viv":"#9babb6","--bot-tex":"#ceac90","--bot-kit":"#dce860","--bot-zen":"#c5d0cb","--name1":"#adf52e","--name2":"#a4b2ff","--mode-free":"#b5cefe","--mode-dynamic":"#ac95f1","--mode-waves":"#3d8dab","--accent":"#7ebee6","--mode-free-ink":"#0e1116","--mode-dynamic-ink":"#0e1116","--mode-waves-ink":"#0e1116"}}
 }}
@@ -907,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'c6494d1', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: '752b742', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
