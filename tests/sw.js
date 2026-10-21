@@ -2,7 +2,8 @@
 /* Service worker: a page that loads but is not the game (a network sign-in page) is never offered as an update,
    and a real new version is, both when the page opens and when the app comes back to the screen, also one that changes
    only the theme packs. A page that an
-   ad blocker filled with scripts from another site still opens offline, while those scripts' requests hang. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
+   ad blocker filled with scripts from another site still opens offline, while those scripts' requests hang, and the
+   in-app self-tests for the service worker and airplane mode pass. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { launch, ROOT } = require('./lib/browser');
@@ -50,6 +51,14 @@ const srv = http.createServer((req, res) => {
   expect('every <script> and <style> tag with attributes in index.html is in OWN_TAGS in sw.js', tags.length > 0 && !missing.length, missing);
 }
 
+/* The in-app self-tests for the service worker and airplane mode (Settings → Tools → Self-tests): true when they ran
+   and passed, else what failed. */
+const selfTests = page => page.evaluate(async () => {
+  const res = await KCT.SelfTest.runAsync({ only: ['service worker', 'airplane mode'] });
+  const ran = new Set(res.results.map(x => x.section));
+  return ran.has('service worker') && ran.has('airplane mode') && !res.failed ? true : res.results.filter(x => !x.ok).map(x => x.name + ': ' + x.detail).concat(ran.has('airplane mode') ? [] : ['airplane mode did not run']);
+});
+
 srv.listen(0, '127.0.0.1', async () => {
   const url = 'http://127.0.0.1:' + srv.address().port + '/index.html';
   const browser = await launch();
@@ -67,6 +76,8 @@ srv.listen(0, '127.0.0.1', async () => {
     await reload();
     let r = await state();
     expect('the worker controls the page, with no update waiting', r.game && r.controlled && !r.pending && !r.note, r);
+    const inApp = await selfTests(page);
+    expect('the in-app self-tests: service worker and airplane mode pass', inApp === true, inApp);
     serve = 'portal';
     await reload();
     r = await state();
@@ -109,6 +120,10 @@ srv.listen(0, '127.0.0.1', async () => {
     const off = await ctx.newPage();
     const opened = await off.goto(url, { timeout: 10000 }).then(() => off.evaluate(() => !!window.KCT), e => String(e).split('\n')[0]);
     expect('an ad blocker\'s scripts in the cached page: the game still opens offline', opened === true, opened);
+    if (opened === true) {
+      const offApp = await selfTests(off);
+      expect('offline, with the ad blocker\'s page saved: the in-app airplane mode checks pass', offApp === true, offApp);
+    }
     await ctx.close();
   } catch (e) {
     failed++;

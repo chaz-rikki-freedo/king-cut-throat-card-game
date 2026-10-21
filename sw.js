@@ -60,7 +60,7 @@ async function refreshAsset(url) {
 
 async function cachedPage(req) {
   const hit = await (await caches.open(SHELL)).match(PAGE);
-  if (hit) return new Response(local(await hit.text()), { status: hit.status, statusText: hit.statusText, headers: { 'content-type': hit.headers.get('content-type') || 'text/html' } });
+  if (hit) return fromCache(hit);
   const res = await fetch(req);
   if (res.ok && isGame(await res.clone().text())) (await caches.open(SHELL)).put(PAGE, res.clone());
   return res;
@@ -102,11 +102,27 @@ const core = html => html
    HTTPS (AdGuard) add such tags as the page downloads, so the cached copy holds them. Offline, the ad blocker's VPN
    cannot answer and the script request hangs: the page never draws and an installed app stays on its logo.
    The game loads nothing from another site, so removing them changes nothing it needs. */
-const local = html => html.replace(/<script\b[^>]*\bsrc\s*=[^>]*>[\s\S]*?<\/script\s*>|<link\b[^>]*>/gi, tag => {
+const LOADS = /<script\b[^>]*\bsrc\s*=[^>]*>[\s\S]*?<\/script\s*>|<link\b[^>]*>/gi;
+const offSite = tag => {
   const src = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
-  if (!src) return tag;
-  try { return new URL(src[1] ?? src[2] ?? src[3], PAGE).origin === self.location.origin ? tag : ''; } catch (e) { return tag; }
-});
+  if (!src) return false;
+  try { return new URL(src[1] ?? src[2] ?? src[3], PAGE).origin !== self.location.origin; } catch (e) { return false; }
+};
+const local = html => html.replace(LOADS, tag => offSite(tag) ? '' : tag);
+/** The page as served from the cache. @param {Response} hit */
+const fromCache = async hit => new Response(local(await hit.text()), { status: hit.status, statusText: hit.statusText, headers: { 'content-type': hit.headers.get('content-type') || 'text/html' } });
+/** @returns {number} the tags in html that load from another site */
+const offSiteTags = html => (html.match(LOADS) || []).filter(offSite).length;
+/* For the self-tests (Settings → Tools → Self-tests): what this worker serves in airplane mode, from the cache
+   alone. It never uses the network. */
+async function offlineReport() {
+  const shell = await caches.open(SHELL);
+  const hit = await shell.match(PAGE);
+  const served = hit ? await (await fromCache(hit)).text() : '';
+  const missing = [];
+  for (const u of ASSETS) if (!await shell.match(u)) missing.push(u.slice(self.registration.scope.length));
+  return { page: !!hit, game: isGame(served), offSite: offSiteTags(served), missing };
+}
 async function tell(msg, client) {
   const list = client ? [client] : await self.clients.matchAll({ type: 'window' });
   for (const c of list) c.postMessage(msg);
@@ -118,6 +134,7 @@ self.addEventListener('message', ev => {
     if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
   })());
   if (type === 'check-update') ev.waitUntil(checkPage());
+  if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));
   if (type === 'apply-update') ev.waitUntil((async () => {
     const waiting = await (await caches.open(PENDING)).match(PAGE);
     if (waiting) await (await caches.open(SHELL)).put(PAGE, waiting);

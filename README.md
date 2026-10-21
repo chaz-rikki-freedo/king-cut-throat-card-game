@@ -183,7 +183,7 @@ These fine-tune **Skill** for one seat (Settings → Bots → a seat → **Skill
 |---|---|
 | **Event log** | Starts the timestamped event log (public information only), shown below it. `KCT.App.explain(n)` adds a line for each bot decision of a finished game (see **Console**). |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
-| **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. |
+| **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. On the hosted game, the last two areas check offline play: **Service worker** (it is active, controls the page and answers) and **Airplane mode** (from the cache alone, without the network: the game page, manifest and icons are saved, and the page loads nothing from another site). |
 | **Clear log** | Clears the log and the test results. |
 
 ## King points
