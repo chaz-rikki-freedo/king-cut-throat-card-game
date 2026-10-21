@@ -468,6 +468,9 @@ body.set-open{overflow:hidden}
 .overlay > .settings.menu{place-self:stretch}
 .menu .mhead{display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;margin-top:var(--s3)}
 .menu .mhead:first-child{margin-top:0}
+.menu .mcard{display:flex;flex-direction:column;gap:var(--s3);margin-top:var(--s3)}
+.menu .mcard:first-child{margin-top:0}
+.menu .mcard > .mhead{margin-top:0}
 .menu .mhead .set-head{margin:0}
 .mtail{font-size:0.8125rem;color:var(--set-hint);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.5rem 0.375rem;margin:-0.5rem -0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
 .mtail:hover{color:var(--ink)}
@@ -6890,7 +6893,8 @@ const App = (() => {
       : openWaves.map(waveOption).join('');
     const main = launch ? slots.last() || resumable[0] : null;
     /* A mode's card: its game (two lines) and its buttons. Resume returns to the game: the one being played (the menu
-       closes), or the saved one. extra: rows above the buttons' row (the Waves list). */
+       closes), or the saved one. extra: rows above the buttons' row (the Waves list). The heading and its card are one
+     section, so the mode's goal and buttons sit together. */
     const card = (m, title, extra, tail, buttons) => {
       const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
       const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', MODE_TAGLINE[m]];
@@ -6898,7 +6902,7 @@ const App = (() => {
       /* Discard game: only on a card with a game, and quiet, so it never competes with Resume. */
       const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '';
-      return menuHead(title, tail) + '<div class="set-card mcard" data-mode="' + m + '">' + (extra || '') + menuRow(lines[0], lines[1] || '', del + resume + buttons, ' mrow') + '</div>';
+      return '<section class="mcard" data-mode="' + m + '">' + menuHead(title, tail) + '<div class="set-card">' + (extra || '') + menuRow(lines[0], lines[1] || '', del + resume + buttons, ' mrow') + '</div></section>';
     };
     let html = '';
     if (linkNote) { html += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
