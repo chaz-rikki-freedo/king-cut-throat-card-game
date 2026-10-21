@@ -908,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'e480479', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: '63543f6', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6656,7 +6656,7 @@ const App = (() => {
   const TEST_AREAS = {
     cards: 'Card ranking', follow: 'Following suit', deal: 'Dealing', bidding: 'Bidding', 'ai knowledge': 'AI knowledge',
     planner: 'AI planner', scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart', simulation: 'Simulated games',
-    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', seats: 'Seat settings', habits: 'Habits'
+    waves: 'Waves', memory: 'Saved games and results', replay: 'Replay codes', backup: 'Backup', 'hand stats': 'Hand stats', interface: 'Interface', dynamic: 'Dynamic mode', seats: 'Seat settings', habits: 'Habits', 'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
   };
   let testsRunning = false;
   function showTests(res) {
@@ -6870,6 +6870,10 @@ const SelfTest = (() => {
       await new Promise(r => setTimeout(r, 0));
       t.runOne(q);
     }
+    for (const q of t.asyncQueue) {
+      if (onSection) onSection(q[0]);
+      await t.runOneAsync(q);
+    }
     return t.finish();
   }
   function sections(o) {
@@ -6880,7 +6884,14 @@ const SelfTest = (() => {
     const eq = (name, a, b) => check(name, JSON.stringify(a) === JSON.stringify(b), 'got ' + JSON.stringify(a) + ', want ' + JSON.stringify(b));
     const D = (s, a) => Engine.dispatch(s, a);
     const queue = [];
-    const safeRun = (name, fn) => { queue.push([name, fn]); };
+    const want = name => !o.only || o.only.includes(name);
+    const safeRun = (name, fn) => { if (want(name)) queue.push([name, fn]); };
+    const asyncQueue = [];
+    const safeRunAsync = (name, fn) => { if (want(name)) asyncQueue.push([name, fn]); };
+    const runOneAsync = async ([name, fn]) => {
+      section = name;
+      try { await fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); }
+    };
     const runOne = ([name, fn]) => {
       section = name;
       const wasLogging = Logger.enabled;
@@ -8144,11 +8155,39 @@ const SelfTest = (() => {
       check('simulated ' + games + (o.planner ? ' planner' : ' play-out policy') + ' games with no rule violations', problems.length === 0, problems.slice(0, 5).join('; '));
       results.stats = stats;
     });
+    const hosted = /^https?:$/.test(location.protocol) && window.isSecureContext;
+    let offline = null;
+    const askOffline = () => offline || (offline = new Promise(resolve => {
+      const sw = navigator.serviceWorker;
+      const on = ev => { if (ev.data && ev.data.type === 'offline-report') { clearTimeout(timer); sw.removeEventListener('message', on); resolve(ev.data.report); } };
+      const timer = setTimeout(() => { sw.removeEventListener('message', on); resolve(null); }, 5000);
+      sw.addEventListener('message', on);
+      sw.controller.postMessage({ type: 'offline-check' });
+    }));
+    safeRunAsync('service worker', async () => {
+      if (!hosted) return;
+      check('the browser has service workers', 'serviceWorker' in navigator);
+      if (!('serviceWorker' in navigator)) return;
+      const reg = await navigator.serviceWorker.getRegistration();
+      check('the service worker is active', !!(reg && reg.active), 'open the app once while online');
+      check('the service worker controls this page', !!navigator.serviceWorker.controller, 'reload the app once while online');
+      if (!navigator.serviceWorker.controller) return;
+      check('the service worker answers', !!await askOffline(), 'no answer in 5 s: an older service worker. Reopen the app while online');
+    });
+    safeRunAsync('airplane mode', async () => {
+      if (!hosted || !('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+      const r = await askOffline();
+      if (!r) return;
+      check('the game page is saved for offline play', r.page, 'open the app once while online');
+      check('the saved page is the game', r.game, 'the saved page is not the game: open the app once while online');
+      check('the saved page loads nothing from another site', r.offSite === 0, r.offSite + ' tag(s) would wait on the network');
+      check('the manifest and icons are saved', r.missing.length === 0, 'missing: ' + r.missing.join(', '));
+    });
     const finish = () => {
       const passed = results.filter(r => r.ok).length;
       return { passed, failed: results.length - passed, results, stats: results.stats, ms: Date.now() - t0 };
     };
-    return { queue, runOne, finish };
+    return { queue, runOne, asyncQueue, runOneAsync, finish };
     function playState(hands, trump, leader, scores) {
       const s = Engine.createGame(7);
       Engine.dispatch(s, { type: 'START_GAME' });
