@@ -100,7 +100,7 @@ A theme pack gives new values to tokens. The game's packs are JSON in the head o
 
 | Kind | Sets | In Settings | Check |
 |---|---|---|---|
-| **Felt** | Surfaces: `--page`, `--felt`, `--felt-edge`, the Showdown felt, `--sheet`, `--muted`. | **Felt** tiles: Classic (no tokens: the defaults), Spring, Summer, Fall, Winter. | A felt may keep a known problem of the defaults only when it changes neither color of the pair. Every contrast pair must pass on its surfaces. |
+| **Felt** | Surfaces: `--page`, `--felt`, `--felt-edge`, the Showdown felt, `--sheet`, `--muted`, and the Settings surfaces (`--set-*`). | **Felt** tiles: Classic (no tokens: the defaults), Spring, Summer, Fall, Winter. | A felt may keep a known problem of the defaults only when it changes neither color of the pair. Every contrast pair must pass on its surfaces. |
 | **Color** | Names, mode chips, the selection. | **Color-blind safe colors**, over any felt. | Strict: with each felt, no problem at all, known or not. |
 
 `node palette.js` checks every felt alone and every felt with every color pack, and fails on a token that does not exist or a value that is not a color. The pack colors are not stray colors. A small script in the head (`#themeBoot`) applies the saved packs before the page draws: it sets each token on `:root` and `<meta name="theme-color">` to the felt edge.
@@ -158,6 +158,8 @@ Generated from `palette.json`.
 | `--set-line` | settings | `#24382c` | Lines in Settings. |
 | `--set-field` | settings | `#16261d` | Fields and the tab row in Settings. |
 | `--set-hint` | settings | `#8fb89a` | Hint text in Settings. |
+| `--set-switch` | settings | `#2f4337` | A switch that is off, in Settings. |
+| `--set-switch-edge` | settings | `#3d5747` | The edge of a switch that is off, in Settings. |
 <!-- /palette:tokens -->
 
 ## Known problems
@@ -207,5 +209,5 @@ The pairs that fail today, each with its planned fix. Generated from `palette.js
 Colors written in `index.html` outside a token. Each one becomes a token, or reuses one, in a later change. Generated from `palette.json`.
 
 <!-- palette:untokenized -->
-75 colors: `#000000`, `#00838f`, `#070a08`, `#07233a`, `#0b0f0c`, `#0b1a12`, `#0c3a22`, `#1b1b1b`, `#1e8e3e`, `#222222`, `#2a1212`, `#2e7d32`, `#2f4337`, `#33507a`, `#3d5747`, `#4a5a6a`, `#5b2a86`, `#5e7d5e`, `#69db7c`, `#6b6b6b`, `#7a1f2b`, `#7a5c13`, `#7f9a86`, `#8a9a8f`, `#8e5aa8`, `#8fb89a`, `#93303d`, `#9be59b`, `#b8f5c4`, `#c2185b`, `#c792ff`, `#cfe0d4`, `#d32f2f`, `#e07b28`, `#ece6d4`, `#f2c14e`, `#f3e9ff`, `#f5f2e9`, `#ff4fd8`, `#ff8a80`, `#ff9ad5`, `#ffa94d`, `#ffb4ab`, `#fffdf6`, `#ffffff`, `rgba(0,0,0,0)`, `rgba(0,0,0,0.14)`, `rgba(0,0,0,0.22)`, `rgba(0,0,0,0.25)`, `rgba(0,0,0,0.28)`, `rgba(0,0,0,0.3)`, `rgba(0,0,0,0.35)`, `rgba(0,0,0,0.4)`, `rgba(0,0,0,0.45)`, `rgba(0,0,0,0.5)`, `rgba(0,0,0,0.55)`, `rgba(0,0,0,0.6)`, `rgba(0,0,0,0.75)`, `rgba(242,193,78,0.25)`, `rgba(255,255,255,0.04)`, `rgba(255,255,255,0.07)`, `rgba(255,255,255,0.08)`, `rgba(255,255,255,0.1)`, `rgba(255,255,255,0.12)`, `rgba(255,255,255,0.14)`, `rgba(255,255,255,0.16)`, `rgba(255,255,255,0.18)`, `rgba(255,255,255,0.2)`, `rgba(255,255,255,0.22)`, `rgba(255,255,255,0.3)`, `rgba(255,255,255,0.35)`, `rgba(255,255,255,0.45)`, `rgba(255,255,255,0.55)`, `rgba(52,199,89,0)`, `rgba(52,199,89,0.8)`.
+72 colors: `#000000`, `#00838f`, `#070a08`, `#07233a`, `#0b0f0c`, `#0b1a12`, `#0c3a22`, `#1b1b1b`, `#1e8e3e`, `#222222`, `#2a1212`, `#2e7d32`, `#33507a`, `#4a5a6a`, `#5b2a86`, `#5e7d5e`, `#69db7c`, `#6b6b6b`, `#7a1f2b`, `#7a5c13`, `#7f9a86`, `#8a9a8f`, `#8e5aa8`, `#93303d`, `#9be59b`, `#b8f5c4`, `#c2185b`, `#c792ff`, `#cfe0d4`, `#d32f2f`, `#e07b28`, `#ece6d4`, `#f2c14e`, `#f3e9ff`, `#f5f2e9`, `#ff4fd8`, `#ff8a80`, `#ff9ad5`, `#ffa94d`, `#ffb4ab`, `#fffdf6`, `#ffffff`, `rgba(0,0,0,0)`, `rgba(0,0,0,0.14)`, `rgba(0,0,0,0.22)`, `rgba(0,0,0,0.25)`, `rgba(0,0,0,0.28)`, `rgba(0,0,0,0.3)`, `rgba(0,0,0,0.35)`, `rgba(0,0,0,0.4)`, `rgba(0,0,0,0.45)`, `rgba(0,0,0,0.5)`, `rgba(0,0,0,0.55)`, `rgba(0,0,0,0.6)`, `rgba(0,0,0,0.75)`, `rgba(242,193,78,0.25)`, `rgba(255,255,255,0.04)`, `rgba(255,255,255,0.07)`, `rgba(255,255,255,0.08)`, `rgba(255,255,255,0.1)`, `rgba(255,255,255,0.12)`, `rgba(255,255,255,0.14)`, `rgba(255,255,255,0.16)`, `rgba(255,255,255,0.18)`, `rgba(255,255,255,0.2)`, `rgba(255,255,255,0.22)`, `rgba(255,255,255,0.3)`, `rgba(255,255,255,0.35)`, `rgba(255,255,255,0.45)`, `rgba(255,255,255,0.55)`, `rgba(52,199,89,0)`, `rgba(52,199,89,0.8)`.
 <!-- /palette:untokenized -->
