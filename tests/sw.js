@@ -145,6 +145,8 @@ srv.listen(0, '127.0.0.1', async () => {
     await fb.waitForFunction(() => !/Checking/.test(document.querySelector('#setInstall').textContent), null, { timeout: 10000 });
     const fbInstall = await fb.evaluate(() => document.querySelector('#setInstall').textContent);
     expect('in Facebook\'s browser: Settings → Install says so', fbInstall.includes('inside Facebook'), fbInstall);
+    const fbSum = await fb.evaluate(() => [document.querySelector('#setInstallBox').open, document.querySelector('#setInstallSum').textContent]);
+    expect('the Install checklist starts collapsed, and its summary counts what to fix', fbSum[0] === false && /^✖ \d+ to fix, \d+ passed$/.test(fbSum[1]), fbSum);
     await fbCtx.close();
     /* A real browser shows no such note. */
     serve = 'game';
