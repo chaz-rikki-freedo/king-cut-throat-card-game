@@ -867,7 +867,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '8b88f18', date: '2026-10-20' });
+const BUILD = Object.freeze({ commit: '6e7b155', date: '2026-10-20' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5488,7 +5488,9 @@ const App = (() => {
     const p = Waves.progress();
     const playing = gameOn();
     const lost = slots.dropped();
-    const waveOption = ( w) => '<option value="' + w.n + '"' + (w.n === p.unlocked ? ' selected' : '') + '>' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>';
+    const wavesSlot = slots.get('waves'), gameWave = playing && app.mode === 'waves' ? app.wave.n : wavesSlot && wavesSlot.wave.n;
+    const picked = Waves.isUnlocked(gameWave) ? gameWave : p.unlocked;
+    const waveOption = ( w) => '<option value="' + w.n + '"' + (w.n === picked ? ' selected' : '') + '>' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + (p.cleared.includes(w.n) ? ' ✓' : '') + '</option>';
     const openWaves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen));
     const waveOptions = p.sharkOpen
       ? '<optgroup label="Waves">' + openWaves.filter(w => !w.shark).map(waveOption).join('') + '</optgroup><optgroup label="Shark run">' + openWaves.filter(w => w.shark).map(waveOption).join('') + '</optgroup>'
@@ -5950,25 +5952,31 @@ const App = (() => {
       '</ul></div></div>';
     ov.hidden = false;
   }
+  function triesOf( shark) {
+    const pr = Waves.progress(), run = WAVES.filter(w => w.shark === shark), word = shark ? 'table' : 'wave';
+    const rows = run.filter(w => w.n <= pr.unlocked).reverse().map(w => {
+      const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
+      const tries = done ? t + ' ✓' : t ? t + ' so far' : '<span class="dim">—</span>';
+      return '<tr' + (gameOn() && w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.k + '</td><td>' + pfWho(w.west) + ' / ' + pfWho(w.east) + '</td><td class="num">' + tries + '</td></tr>';
+    }).join('');
+    const cleared = pr.cleared.filter(n => run.some(w => w.n === n));
+    const total = cleared.reduce((t, n) => t + Waves.tries(n), 0);
+    const locked = run.filter(w => w.n > pr.unlocked).length;
+    return {
+      title: shark ? 'Shark tries' : 'Wave tries',
+      summary: 'Cleared ' + cleared.length + ' of ' + pr.total + (cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared ' + word + '.',
+      table: '<table><tr><th>' + (shark ? 'Shark' : 'Wave') + '</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>',
+      locked: locked ? locked + (locked === 1 ? ' more ' + word + ' opens' : ' more ' + word + 's open') + ' as you clear them.' : '',
+      note: 'A try is a game that counts for the ' + word + '. A game where the AI played your seat is not a try.'
+    };
+  }
   function resultsHTML() {
     const who = id => { const x = PERSONA_BY_ID[id]; return '<span style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</span>'; };
     const close = '</div></div>';
     if (app.mode === 'waves') {
-      const pr = Waves.progress(), shark = inShark();
-      const run = WAVES.filter(w => w.shark === shark), word = shark ? 'table' : 'wave', title = shark ? 'Shark tries' : 'Wave tries';
-      const rows = run.filter(w => w.n <= pr.unlocked).reverse().map(w => {
-        const t = Waves.tries(w.n), done = pr.cleared.includes(w.n);
-        const tries = done ? t + ' ✓' : t ? t + ' so far' : '<span class="dim">—</span>';
-        return '<tr' + (w.n === app.wave.n ? ' class="now"' : '') + '><td>' + w.k + '</td><td>' + who(w.west) + ' / ' + who(w.east) + '</td><td class="num">' + tries + '</td></tr>';
-      }).join('');
-      const cleared = pr.cleared.filter(n => run.some(w => w.n === n));
-      const total = cleared.reduce((t, n) => t + Waves.tries(n), 0);
-      const locked = run.filter(w => w.n > pr.unlocked).length;
-      return sheetHTML('results', title, '<h2>' + title + '</h2>') +
-        '<p>Cleared ' + cleared.length + ' of ' + pr.total + (cleared.length ? ' in ' + total + (total === 1 ? ' try' : ' tries') : '') + '. ✓ marks a cleared ' + word + '.</p>' +
-        '<table><tr><th>' + (shark ? 'Shark' : 'Wave') + '</th><th>West / East</th><th class="num">Tries</th></tr>' + rows + '</table>' +
-        (locked ? '<p class="note">' + locked + (locked === 1 ? ' more ' + word + ' opens' : ' more ' + word + 's open') + ' as you clear them.</p>' : '') +
-        '<p class="note">A try is a game that counts for the ' + word + '. A game where the AI played your seat is not a try.</p>' + close;
+      const t = triesOf(inShark());
+      return sheetHTML('results', t.title, '<h2>' + t.title + '</h2>') + '<p>' + t.summary + '</p>' + t.table +
+        (t.locked ? '<p class="note">' + t.locked + '</p>' : '') + '<p class="note">' + t.note + '</p>' + close;
     }
     const mode = app.mode === 'dynamic' ? 'dynamic' : 'free', title = modeName(mode) + ' wins';
     const mine = (stats.get().modeOpponents[mode]) || {};
@@ -6053,6 +6061,10 @@ const App = (() => {
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.waves + ' <small>of ' + pr.total + '</small>') + (pr.sharkOpen ? tile('Sharks cleared', pr.sharks + ' <small>of ' + pr.total + '</small>') : '') : '') + '</div>';
+    if (m === 'waves') for (const shark of pr.sharkOpen ? [true, false] : [false]) {
+      const t = triesOf(shark);
+      html += '<h3>' + t.title + '</h3><p class="pf-sub">' + t.summary + (t.locked ? ' ' + t.locked : '') + '</p><div class="pf-tries">' + t.table + '</div>';
+    }
     if (!tot.played && !games.length) {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
         close;
@@ -6581,6 +6593,13 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
+    $('overlay').addEventListener('change', ev => {
+      const sel =  (ev.target);
+      if (sel.id !== 'waveSel') return;
+      const box = sel.closest('.mcard');
+      if (!box) return;
+      box.querySelectorAll('.mbtns .btn').forEach(b => b.classList.toggle('primary', b.getAttribute('data-action') === 'play-wave'));
+    });
     loadSettings();
     for (const [k, id] of Object.entries(MEMORY_SWITCHES)) {
       const key =  (k);
