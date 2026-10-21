@@ -20,7 +20,7 @@ The menu is built like **Settings**: it fills the window, with the title (**King
 | **Your profile** | Your profile on all modes. **✕** returns to the menu. |
 | **✕** (header) | Closes the menu. At launch, it leaves the **About screen** (see below): the menu, Settings and the profiles work. |
 
-**Learn** has the **Tutorial** (coming soon), the **Quick rules**, one row per rule, and **Full rules** and **Lore** (coming soon).
+**Learn** has the **Tutorial** (coming soon), the **Quick rules**, one row per rule, **Full rules** (coming soon), and the **Lore**: the story of the Kings of the valleys, the three Bowers and the Joker.
 
 **About** has the About screen's card (its **Play** goes to the Play tab), and **Install** when the browser offers it: play from your home screen, also offline.
 

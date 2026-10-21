@@ -187,7 +187,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Tutorial row | `tutorial` | C | Disabled: "Coming soon". |
 | Quick rules | `.rules-card`, `QUICK_RULES` | D | One row per rule: The game, Deck and deal, Trump order, Discard, Naming trump (rounds 1 and 2), Play, Scoring, Showdown. |
 | Full rules | `.set-note` | D | Placeholder: "The full rules are coming soon." |
-| Lore | `.set-note` | D | Placeholder: "The lore is coming soon." |
+| Lore | `.set-note.lore`, `LORE` | D | The game's story: the Kings of the valleys, the three Bowers and the Joker. |
 
 **About tab** (`menuAboutHTML()`): the About screen's card, without its build line (the build is at the foot). Its **Play** goes to the Play tab. Then **Install** (`install-app`), when the browser offers it.
 

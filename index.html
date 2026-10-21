@@ -481,6 +481,7 @@ body.set-open{overflow:hidden}
 .menu .code-in{grid-column:1 / -1;width:100%;max-width:none;background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
 .menu .code-in:focus-visible,.menu select:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 .menu #codeRead:empty{display:none}
+.menu .set-note.lore{margin:0;padding:var(--s4) 0;line-height:1.6;font-style:italic}
 .menu .rules-card .set-desc{color:var(--ink);font-size:0.875rem;line-height:1.5}
 .menu .about-card{width:100%;background:var(--set-card);border-color:var(--set-line);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 /* Discard game: a faint icon before Resume, only on a card with a game, so it never competes with Resume. */
@@ -6927,12 +6928,12 @@ const App = (() => {
     html += menuHead('You') + '<div class="set-card">' + menuRow('Your profile', 'Your games, wins and last games in this browser.', menuButton('menu-profile', 'Open', { attrs: ' data-mode="all"' })) + '</div>';
     return html;
   }
-  /* Learn: the tutorial, the quick rules as rows, then the full rules and the lore (to come). */
+  /* Learn: the tutorial, the quick rules as rows, the full rules (to come), and the lore. */
   function menuLearnHTML() {
     return menuHead('Tutorial') + '<div class="set-card">' + menuRow('Learn by playing', 'A guided first game.', menuButton('tutorial', 'Coming soon', { disabled: true })) + '</div>' +
       menuHead('Quick rules') + '<div class="set-card rules-card">' + QUICK_RULES.map(([name, text]) => menuRow(name, text)).join('') + '</div>' +
       menuHead('Full rules') + '<div class="set-card"><p class="k-hint set-note">The full rules are coming soon.</p></div>' +
-      menuHead('Lore') + '<div class="set-card"><p class="k-hint set-note">The lore is coming soon.</p></div>';
+      menuHead('Lore') + '<div class="set-card"><p class="set-note lore">' + LORE + '</p></div>';
   }
   /* About: the About screen's card (Play goes to the Play tab; the build is at the foot), then Install when the browser
      offers it. */
@@ -7422,6 +7423,11 @@ const App = (() => {
 
   /* The rules open from the menu; Back returns to it (the game stays paused). */
   /* back: what the Back button does (the menu's Rules returns to the menu; the About screen's closes). */
+  /* The game's story, in Menu → Learn. */
+  const LORE = 'Throughout the land, the Kings of the valleys wanted supporters... but most of all, they wanted the farmers to make them rich and bow in service. ' +
+    'So the Kings came together and awarded three lucky farmers great honor. One was named the Best Bower, the second The Right Bower, and the third The Left Bower. ' +
+    'And they were looked upon highly. The people that lived in the valleys and the other farmers were torn, however, and sometimes quarreled in the streets. ' +
+    'Should they have supported their Kings? Or should they have persuaded the farmers to join their march? It seems the Joker knew the conflict was intentional all along...';
   /* The quick rules, one row each in Menu → Learn: a name, then the rule. */
   const QUICK_RULES = [
     ['The game', '3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.'],
