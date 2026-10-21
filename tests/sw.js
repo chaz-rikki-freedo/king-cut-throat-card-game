@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Service worker: a page that loads but is not the game (a network sign-in page) is never offered as an update,
-   and a real new version is, both when the page opens and when the app comes back to the screen. A page that an
+   and a real new version is, both when the page opens and when the app comes back to the screen, also one that changes
+   only the theme packs. A page that an
    ad blocker filled with scripts from another site still opens offline, while those scripts' requests hang. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -21,7 +22,9 @@ const srv = http.createServer((req, res) => {
     let body = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     if (serve === 'portal') body = '<!doctype html><title>Sign in</title><p>Sign in to the Wi-Fi to continue.</p>';
     if (serve === 'new') body = body.replace('<body>', '<body><!-- a new version -->');
-    if (serve === 'newer') body = body.replace('<body>', '<body><!-- a newer version -->');
+    if (serve === 'newer' || serve === 'theme') body = body.replace('<body>', '<body><!-- a newer version -->');
+    /* The newer version with a change inside the theme packs only: a <script> tag with attributes, but the game's own. */
+    if (serve === 'theme') body = body.replace('"classic":{"name":"Classic"', '"classic":{"name":"Classic felt"');
     /* What an ad blocker that filters HTTPS (AdGuard) does to the page as it downloads. */
     if (serve === 'adblock') body = body.replace(/<link rel="manifest"[^>]*>/, '').replace('<head>', '<head>' + ADBLOCK);
     res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' });
@@ -36,6 +39,16 @@ const srv = http.createServer((req, res) => {
     res.end(data);
   });
 });
+
+/* The update check leaves out <script> and <style> tags with attributes, except the game's own (OWN_TAGS in sw.js).
+   Each such tag in index.html must be listed there, or a change inside it would never be offered as an update. */
+{
+  const list = /const OWN_TAGS = (\[[^\]]*\])/.exec(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'));
+  const own = list ? JSON.parse(list[1].replace(/'/g, '"')) : [];
+  const tags = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/<(script|style)\b[^>]+>/gi) || [];
+  const missing = tags.filter(t => { const m = /\bid="([^"]*)"/.exec(t); return !m || !own.includes(m[1]); });
+  expect('every <script> and <style> tag with attributes in index.html is in OWN_TAGS in sw.js', tags.length > 0 && !missing.length, missing);
+}
 
 srv.listen(0, '127.0.0.1', async () => {
   const url = 'http://127.0.0.1:' + srv.address().port + '/index.html';
@@ -76,6 +89,12 @@ srv.listen(0, '127.0.0.1', async () => {
     await reload();
     r = await state();
     expect('a real new version is offered', r.game && r.pending && r.note, r);
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    serve = 'theme';
+    await reload();
+    r = await state();
+    expect('a change in the theme packs alone is offered', r.game && r.pending && r.note, r);
     /* The ad blocker answers its own scripts while there is a network. Offline its VPN cannot, and the request hangs. */
     serve = 'adblock';
     const ctx = await browser.newContext();

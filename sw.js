@@ -88,12 +88,15 @@ async function checkPage() {
 const isGame = html => /^const BUILD = Object\.freeze\(\{ commit: '/m.test(html);
 /* The part of the page that counts as a new version. Ad blockers such as AdGuard change the page
    as it downloads: they remove <link> tags and add tags of their own. Turning one on or off must not
-   look like a new version, so <link> tags, <script> and <style> tags with attributes (the game's own
-   have none) and whitespace are left out. A change to the page's <link> tags alone is therefore not
+   look like a new version, so <link> tags, <script> and <style> tags with attributes and whitespace are
+   left out. The game's own tags with attributes stay in: OWN_TAGS lists their ids (tests/sw.js fails when
+   index.html has one that is not listed). A change to the page's <link> tags alone is therefore not
    offered as an update; it arrives with the next change to anything else. */
+const OWN_TAGS = ['themePacks', 'themeBoot'];
+const isOwn = tag => { const m = /^<[^>]*\bid="([^"]*)"/.exec(tag); return !!m && OWN_TAGS.includes(m[1]); };
 const core = html => html
   .replace(/<link\b[^>]*>/gi, '')
-  .replace(/<(script|style)\b[^>]+>[\s\S]*?<\/\1>/gi, '')
+  .replace(/<(script|style)\b[^>]+>[\s\S]*?<\/\1>/gi, tag => isOwn(tag) ? tag : '')
   .replace(/\s+/g, ' ');
 /* The cached page without the <script src> and <link> tags that load from another site. Ad blockers that filter
    HTTPS (AdGuard) add such tags as the page downloads, so the cached copy holds them. Offline, the ad blocker's VPN
