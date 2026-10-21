@@ -4,7 +4,7 @@
 
 Each table lists the parts of one region. The terms are in the order in which they appear on the screen, from top to bottom and from left to right.
 
-**Code anchor** is the `id`, class or `data-action` in `index.html` that draws or handles the part. **Kind** is the text kind of the part. The UI levels use it to choose what to show (see [UI levels](levels.md)).
+**Code anchor** is the `id`, class or `data-action` in `index.html` that draws or handles the part. **Kind** is the text kind of the part.
 
 | Kind | Meaning |
 |---|---|

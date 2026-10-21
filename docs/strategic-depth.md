@@ -160,9 +160,6 @@ The house rule switch already lets a table choose. With it off, the latest main-
 1. **Measure the forced Showdown.** Add a test seat to `tests/showdown.js` that, holding 2 tricks in a 3–2–2 position, gives a trick to the other 2-trick player. Compare its win rate with the same seat that doesn't.
 
    *Status: open.*
-2. **Teach it in the Tutorial.** The Showdown is the one rule that gives a weak hand a strong choice. A tutorial step on the 3–3–1 split and the mediator's pick would show new players that a bad hand still matters.
-
-   *Status: open. The Tutorial is not built yet.*
-3. **Show the lever in Table memory.** When a hand is one trick from a 3–3–1 split, a popup could say so, next to the trump and King counts that Table memory already adds.
+2. **Show the lever in Table memory.** When a hand is one trick from a 3–3–1 split, a popup could say so, next to the trump and King counts that Table memory already adds.
 
    *Status: open.*

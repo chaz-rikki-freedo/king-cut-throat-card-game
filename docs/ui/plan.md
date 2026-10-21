@@ -90,7 +90,3 @@ No Copy code and no paste box: a full backup is about 16 KB of text, too long to
 | 3 | Watch from another seat in the viewer (tap a seat). |
 | 4 | The backup UI. |
 | 5 | Themes: the felts (Classic and the four seasons) and Color-blind safe colors. |
-
-## Not in this plan
-
-The UI levels (Normal, Guided) and the Tutorial. See [UI levels](levels.md).

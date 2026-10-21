@@ -1,6 +1,6 @@
 # Game moments
 
-A *game moment* is one step of a hand, as the player sees it. Each moment has a name, an Engine phase (`Engine.P`), and its own content in the action bar. The UI levels change the text of each moment, so a design note names the moment and the part, for example "Round 1 bid · hint".
+A *game moment* is one step of a hand, as the player sees it. Each moment has a name, an Engine phase (`Engine.P`), and its own content in the action bar. A design note names the moment and the part, for example "Round 1 bid · hint".
 
 ## Moments
 
@@ -29,8 +29,6 @@ A *game moment* is one step of a hand, as the player sees it. Each moment has a 
 | Game over | `gameOver` | "West wins the game!" | The game-over dialog and the end buttons. |
 
 ## Action bar text by moment
-
-The prompt and the hint are the two text parts that the UI levels change the most.
 
 | Moment | Prompt (I) | Hint (I or D) |
 |---|---|---|
