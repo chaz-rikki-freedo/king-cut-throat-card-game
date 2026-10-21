@@ -1,7 +1,9 @@
 /* King Cut-Throat service worker: offline play and update prompts.
    The game page is served from the cache, so the app opens offline and never
-   changes in the middle of a session. Each time the page opens, the worker
-   fetches the page from the network in the background. If it differs from the
+   changes in the middle of a session. Each time the page opens, and each time
+   the app asks ("check-update": it comes back to the screen, which an installed
+   app does without opening the page again), the worker fetches the page from
+   the network in the background. If it differs from the
    cached page, the new page waits in a separate cache and the app is told
    ("update-ready"). The app asks you, between games, and then sends
    "apply-update": the waiting page becomes the cached page and the app reloads.
@@ -103,6 +105,7 @@ self.addEventListener('message', ev => {
   if (type === 'update-status') ev.waitUntil((async () => {
     if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
   })());
+  if (type === 'check-update') ev.waitUntil(checkPage());
   if (type === 'apply-update') ev.waitUntil((async () => {
     const waiting = await (await caches.open(PENDING)).match(PAGE);
     if (waiting) await (await caches.open(SHELL)).put(PAGE, waiting);

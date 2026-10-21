@@ -7409,6 +7409,15 @@ const App = (() => {
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
       if (reg.active) reg.active.postMessage({ type: 'update-status' });
     }).catch(() => { /* no offline play, the game still works */ });
+    /* An installed app comes back from the background without opening the page again, so the worker would
+       never look for a new version: it looks each time the app is back on the screen, at most once a minute. */
+    let checked = 0;
+    document.addEventListener('visibilitychange', () => {
+      const sw = navigator.serviceWorker.controller;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 60000) return;
+      checked = Date.now();
+      sw.postMessage({ type: 'check-update' });
+    });
     requestPersist();
   }
   /* Asks the browser to keep this site's storage (progress, results, saves, replay codes)
