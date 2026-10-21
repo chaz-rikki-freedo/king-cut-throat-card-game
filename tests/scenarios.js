@@ -27,24 +27,41 @@ function expect(name, ok, detail) {
       out.build = q('#aboutBuild').textContent === q('#setBuild').textContent && /^Build /.test(q('#aboutBuild').textContent);
       out.credit = q('#about .about-credit').textContent.replace(/\\s+/g, ' ').trim();
       out.kings = document.querySelectorAll('#aboutKings .about-king').length;
-      click('#about [data-action="about-rules"]'); await sleep(20);
-      out.rules = !!q('#overlay .rules') && overlayOpen();
-      click('#overlay .rules .sheet-top [data-action="close-overlay"]'); await sleep(20);
-      out.rulesBack = !overlayOpen() && shown('about');
-      click('#about [data-action="toggle-settings"]'); await sleep(20);
-      out.settings = !q('#settingsPanel').hidden;
-      click('#settingsPanel [data-action="toggle-settings"]'); await sleep(20);
+      out.btns = [...document.querySelectorAll('#about .about-btns button')].map(b => [b.textContent, b.getAttribute('data-action'), b.disabled, b.classList.contains('primary')]);
       click('#about [data-action="menu"]'); await sleep(20);
       out.menu = !!q('#overlay .menu') && overlayOpen();
+      out.tools = [...document.querySelectorAll('#overlay .mgroup')].map(g => [g.querySelector('h3').textContent, [...g.querySelectorAll('.mtool')].map(b => b.textContent)]);
+      click('#overlay [data-action="menu-about"]'); await sleep(20);
+      out.aboutSheet = !!q('#overlay .about-sheet .about-title') && !q('#overlay [id="aboutTitle"]');
+      click('#overlay .about-sheet .about-btns [data-action="menu-back"]'); await sleep(20);
+      out.aboutBack = !!q('#overlay .menu');
+      click('#overlay [data-action="menu-rules"]'); await sleep(20);
+      out.rules = !!q('#overlay .rules') && document.querySelectorAll('#overlay .rules .rules-sec').length;
+      click('#overlay [data-action="rules-tab"][data-tab="full"]'); await sleep(20);
+      out.full = !!q('#overlay .rules .placeholder') && q('#overlay [data-tab="full"]').getAttribute('aria-selected') === 'true';
+      click('#overlay .rules .sheet-top [data-action="menu-back"]'); await sleep(20);
+      click('#overlay [data-action="menu-lore"]'); await sleep(20);
+      out.lore = !!q('#overlay .lore .placeholder');
+      click('#overlay .lore .sheet-top [data-action="menu-back"]'); await sleep(20);
+      click('#overlay [data-action="menu-profile"][data-mode="all"]'); await sleep(20);
+      out.profile = !!q('#overlay .profile');
+      click('#overlay .profile .sheet-top [data-action="menu-back"]'); await sleep(20);
+      out.menuAgain = !!q('#overlay .menu');
       return out;`);
     expect('at launch the menu opens over the About screen', r.launch, r);
     expect('closing the menu leaves the About screen, not an empty table', r.idle, r);
     expect('the About screen names the build, as Settings does', r.build, r);
     expect('the About screen credits the original design', r.credit === 'Original game design by C.R.F.B. 2009–2011', r.credit);
     expect('kings drift behind the About card', r.kings > 0, r.kings);
-    expect('Rules opens from the About screen and closes back to it', r.rules && r.rulesBack, r);
-    expect('the Settings icon opens Settings', r.settings, r);
-    expect('Menu opens the menu', r.menu, r);
+    expect('the About card has Tutorial (coming soon) on the left and Play, the main button, on the right',
+      JSON.stringify(r.btns) === JSON.stringify([['Tutorial', 'tutorial', true, false], ['Play', 'menu', false, true]]), r.btns);
+    expect('Play opens the menu', r.menu, r);
+    expect('the menu has a Play row and a Learn row of tools', JSON.stringify(r.tools.map(g => g[0])) === '["Play","Learn"]' && r.tools[0][1][0] === 'Load a code' &&
+      JSON.stringify(r.tools[1][1]) === JSON.stringify(['Your profile', 'Rules', 'Lore', 'About']), r.tools);
+    expect('About in the menu opens the About card in a sheet, and Play returns to the menu', r.aboutSheet && r.aboutBack, r);
+    expect('Rules opens on Quick rules, in sections, with a Full rules tab', r.rules >= 6 && r.full, r);
+    expect('Lore opens', r.lore, r);
+    expect('Your profile opens from the menu, and closes back to it', r.profile && r.menuAgain, r);
 
     console.log('Game 1: Free play');
     r = await step(`

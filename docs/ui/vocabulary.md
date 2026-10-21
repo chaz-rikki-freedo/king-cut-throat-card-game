@@ -165,15 +165,36 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Wave picker | `.menu-wave`, `#waveSel` | C | The list of open waves, with each wave's West / East names. ✓ marks a cleared wave. |
 | Play wave item | `play-wave` | C | Starts the picked wave. |
 | New game item | `new-free` | C | Starts Free play with two random opponents. |
-| Tutorial item | `tutorial` | C | Disabled: "Coming soon". |
-| Install item | `install-app` | C | Shows only when the browser offers an install. |
-| Rules item | `menu-rules` | C | Opens the rules dialog. |
+| Menu tools | `.mtools`, `.mgroup`, `toolButton()` | — | Under the mode cards: two labeled rows, **Play** and **Learn**, of tool buttons. |
+| Tool button | `.btn.mtool` | C | An icon with its label under it. |
+| Load a code tool | `load-code` | C | The Watch eye. Opens the Load a code dialog (section 4). |
+| Tutorial tool | `tutorial` | C | Disabled: "Coming soon". |
+| Install tool | `install-app` | C | Shows only when the browser offers an install. |
+| Your profile tool | `menu-profile`, `data-mode="all"` | C | Opens Your profile on All modes. ✕ returns to the menu. |
+| Rules tool | `menu-rules` | C | Opens the rules dialog. |
+| Lore tool | `menu-lore` | C | Opens the lore dialog. |
+| About tool | `menu-about` | C | Opens the About sheet. |
 | Just enter item | `just-enter` | C | At launch only: closes the menu and shows the empty table. |
 | Close item | `close-menu` | C | From the menu button: closes the menu. |
 
 ### 3.2 Rules dialog
 
-`showRules()`. Heading "King Cut-Throat — quick rules". A list of rules (D) and a **Back** button (`menu-back`) that returns to the menu.
+`showRules()`, `.modal.rules`. Heading "Rules". ✕ (`menu-back`) returns to the menu.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Rules tabs | `.set-tabs`, `rules-tab`, `data-tab` | C | **Quick rules** (`quick`) and **Full rules** (`full`). |
+| Rules section | `.rules-sec`, `QUICK_RULES` | D | A titled part of the quick rules: The game, Deck and deal, Trump order, Discard, Naming trump, Play, Scoring, Showdown. |
+| Trump order | `.trump-order` | D | The trump ranks as a row of chips, the Joker first in gold. |
+| Placeholder | `.placeholder` | D | Stands in for text not written yet: the full rules, the lore. |
+
+### 3.2a Lore dialog
+
+`showLore()`, `.modal.lore`. Heading "Lore". ✕ (`menu-back`) returns to the menu.
+
+### 3.2b About sheet
+
+`showAboutSheet()`, `.modal.about-sheet`. The About screen's card in a sheet, so a game behind it stays as it is. Its **Play** (`menu-back`) and ✕ return to the menu.
 
 ### 3.3 Seat-swap dialog
 
@@ -262,6 +283,18 @@ Instances:
 | Replace-game confirm | "Start a new Waves game?" or "Start a new Free play game?" | Start new game / Keep it |
 | Discard-game confirm | "Discard your Waves game?" or "Discard your Free play game?" | Discard / Keep it |
 | Seat hand-over confirm | "Let the AI play your seat?" | Let the AI play / Keep my seat |
+
+### 4.1 Load a code dialog
+
+`showLoadCode()`, `.modal.ask.loadcode`, role `dialog`. Opens from the menu's Load a code tool. ✕, Cancel, Escape or a click outside closes it.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Enter loads. |
+| Code reading | `#codeRead`, `readCode()` | S | What the field holds, as you type: a replay code, a seed, a backup (restore it in Settings), or why it cannot load. |
+| Play it in | `#codeWhere`, `#codeMode` | C | For a seed only: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
+| Load button | `code-load` | C | **Watch** for a replay code, **Play** for a seed, else disabled **Load**. |
+| Backup hint | `.code-hint` | D | Always shown: "To restore a backup, go to Settings → Tools → Your data." |
 
 ## 5. Settings panel
 

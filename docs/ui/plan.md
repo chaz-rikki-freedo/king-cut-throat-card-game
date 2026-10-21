@@ -4,7 +4,7 @@ Status: **agreed**, in phases. All five phases are built. This page records wher
 
 ## Principles
 
-- **No codes in the interface.** No seed or replay code shows as text. The only way to get one is **Export**, at the end of a game. A player who wants to share a game uses the copied code in a link (`?seed=` or `?replay=`).
+- **Codes come in and out through two doors.** No seed or replay code shows as text on the table. A code goes out through **Export**, at the end of a game, and comes in through **Load a code** in the menu, or in a link (`?seed=` or `?replay=`). A backup is not a game code: it is restored in Settings → Tools → Your data.
 - **The same end buttons in every mode.** Watch, Try again, New deal and Export. Only a won wave adds one: Next wave. The menu is the header's ☰ button, so the end buttons have no Menu.
 - **Small icons on the lines they act on.** A game's actions sit on that game's line: the row in Your profile, or the end buttons of the game just played.
 
