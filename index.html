@@ -890,8 +890,8 @@ window.kctTheme = (() => {
       <h3 class="set-head">Diagnostics</h3>
       <div class="set-card">
         <div class="set-row"><span class="set-text"><span class="set-name">Self-tests</span><span class="set-desc">Check the game in this browser.</span></span><button class="btn" type="button" data-action="run-tests">Run</button></div>
-        <label class="set-row"><span class="set-text"><span class="set-name">Event log</span><span class="set-desc">Record each game event below, from now on.</span></span><input class="sw" type="checkbox" id="setEnable"></label>
         <div class="set-tests" id="setTests" hidden></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Event log</span><span class="set-desc">Record each game event below, from now on.</span></span><input class="sw" type="checkbox" id="setEnable"></label>
         <pre id="setLog"></pre>
         <div class="set-row set-row-end"><button class="btn btn-sm" type="button" data-action="clear-log">Clear log</button></div>
       </div>
@@ -908,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '8dfcb2f', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: 'e7af100', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
