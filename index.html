@@ -9867,7 +9867,7 @@ const SelfTest = (() => {
       check('the game page is saved for offline play', r.page, 'open the app once while online');
       check('the saved page is the game', r.game, 'the saved page is not the game: open the app once while online');
       check('the saved page loads nothing from another site', r.offSite === 0, r.offSite + ' tag(s) would wait on the network');
-      check('the manifest and icons are saved', r.missing.length === 0, 'missing: ' + r.missing.join(', '));
+      check('the manifest and icons are saved', r.missing.length === 0, 'missing: ' + r.missing.join(', ') + '. Open the app once while online to save them again');
     });
 
     const finish = () => {

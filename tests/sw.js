@@ -78,6 +78,13 @@ srv.listen(0, '127.0.0.1', async () => {
     expect('the worker controls the page, with no update waiting', r.game && r.controlled && !r.pending && !r.note, r);
     const inApp = await selfTests(page);
     expect('the in-app self-tests: service worker and airplane mode pass', inApp === true, inApp);
+    /* Android never asks for the Apple icon, so only a page open can save a lost copy again. */
+    await page.evaluate(async () => (await caches.open('kct-shell')).delete(new URL('./icons/apple-touch-icon.png', location.href).href));
+    const lost = await selfTests(page);
+    expect('a lost icon fails the in-app airplane mode check', lost !== true && String(lost).includes('apple-touch-icon.png'), lost);
+    await reload();
+    const back = await selfTests(page);
+    expect('the next page open saves the lost icon again', back === true, back);
     serve = 'portal';
     await reload();
     r = await state();

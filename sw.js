@@ -10,7 +10,9 @@
    A new version therefore needs no version number here: publishing a changed
    index.html is enough. Change this file only to change how caching works.
    The manifest and icons are served from the cache too, and each request also
-   fetches them in the background, so a changed icon arrives on the next load. */
+   fetches them in the background, so a changed icon arrives on the next load.
+   Each page open and "check-update" also saves again any of them missing from the cache: Android never
+   asks for the Apple icon, so a lost copy of it would otherwise stay lost. */
 'use strict';
 const SHELL = 'kct-shell', PENDING = 'kct-pending';
 const PAGE = new URL('./index.html', self.registration.scope).href;
@@ -37,7 +39,7 @@ self.addEventListener('fetch', ev => {
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   if (req.mode === 'navigate' && isPage(req.url)) {
     ev.respondWith(cachedPage(req));
-    ev.waitUntil(checkPage());
+    ev.waitUntil(Promise.all([checkPage(), refill()]));
     return;
   }
   const asset = ASSETS.find(u => isSame(u, req.url));
@@ -56,6 +58,12 @@ async function refreshAsset(url) {
     if (res.ok) await (await caches.open(SHELL)).put(url, res.clone());
     return res;
   } catch (e) { return null; }
+}
+
+/* Saves again the manifest and icons missing from the cache. Offline it saves nothing. */
+async function refill() {
+  const shell = await caches.open(SHELL);
+  for (const u of ASSETS) if (!await shell.match(u)) await refreshAsset(u);
 }
 
 async function cachedPage(req) {
@@ -120,7 +128,12 @@ async function offlineReport() {
   const hit = await shell.match(PAGE);
   const served = hit ? await (await fromCache(hit)).text() : '';
   const missing = [];
-  for (const u of ASSETS) if (!await shell.match(u)) missing.push(u.slice(self.registration.scope.length));
+  for (const u of ASSETS) {
+    if (await shell.match(u)) continue;
+    /* Saved but not found: the response's Vary header stops the match. */
+    const kept = await shell.match(u, { ignoreVary: true });
+    missing.push(u.slice(self.registration.scope.length) + (kept ? ' (saved, but Vary: ' + kept.headers.get('vary') + ' stops a match)' : ''));
+  }
   return { page: !!hit, game: isGame(served), offSite: offSiteTags(served), missing };
 }
 async function tell(msg, client) {
@@ -133,7 +146,7 @@ self.addEventListener('message', ev => {
   if (type === 'update-status') ev.waitUntil((async () => {
     if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
   })());
-  if (type === 'check-update') ev.waitUntil(checkPage());
+  if (type === 'check-update') ev.waitUntil(Promise.all([checkPage(), refill()]));
   if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));
   if (type === 'apply-update') ev.waitUntil((async () => {
     const waiting = await (await caches.open(PENDING)).match(PAGE);
