@@ -587,8 +587,8 @@ body.set-open{overflow:hidden}
 .outpile{position:relative;width:var(--kw);height:calc(var(--kw)*1.4)}
 .table > .seat,.table > .me{position:relative;z-index:5;background:linear-gradient(var(--panel),var(--panel)),var(--felt-edge)!important}
 .table.showdown > .seat,.table.showdown > .me{background:linear-gradient(var(--panel),var(--panel)),var(--felt-showdown-edge)!important}
-.table > .center{z-index:1}
-.table > .center.lift{z-index:6}
+.table > .center{z-index:6}
+.table > .seat.rise{z-index:7}
 .outpile .olayer{position:absolute;inset:0;transform:translate(var(--dx),var(--lift)) rotate(var(--rest));animation:olayer var(--ms) ease-out both}
 .outpile .olayer .card{animation:ofan var(--ms) ease-out both}
 @keyframes olayer{from{transform:var(--from)}to{transform:translate(var(--dx),var(--lift)) rotate(var(--rest))}}
@@ -907,7 +907,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '7ab21ce', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: 'c6494d1', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3986,7 +3986,7 @@ const Fx = (() => {
   const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
   let handAt = null;
   const slotFrom = {};
-  let liftTimer = 0, moveTimer = 0;
+  let moveTimer = 0; const riseTimer = {};
   let tuckStart = { hand: -1, t0: 0 };
   function discardOrder(v) {
     me = v.seat;
@@ -4307,7 +4307,7 @@ const Fx = (() => {
           : 'translate(' + (center(seat)[0] - cx) + 'px,' + (center(seat)[1] - cy) + 'px) ';
         card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: rest || 'none', opacity: 1 }],
           { duration: t, easing: 'ease-out', fill: 'backwards' }).currentTime = e;
-        if (from) { const c = q('#center'); c.classList.add('lift'); clearTimeout(liftTimer); liftTimer = setTimeout(() => c.classList.remove('lift'), t - e); }
+        if (!from) { seat.classList.add('rise'); clearTimeout(riseTimer[p]); riseTimer[p] = setTimeout(() => { const s = q('#seat' + p); if (s) s.classList.remove('rise'); }, t - e); }
       }
       if (isWin) {
         if (winStart[p] == null) winStart[p] = now;
@@ -4368,7 +4368,7 @@ const Fx = (() => {
   }
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
-    clearTimeout(liftTimer); clearTimeout(moveTimer); const c = q('#center'); if (c) c.classList.remove('lift');
+    clearTimeout(moveTimer); for (const p in riseTimer) { clearTimeout(riseTimer[p]); delete riseTimer[p]; } qa('.table > .seat.rise').forEach(s => s.classList.remove('rise'));
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
