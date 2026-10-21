@@ -908,7 +908,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '63543f6', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: '9858b85', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -8181,7 +8181,7 @@ const SelfTest = (() => {
       check('the game page is saved for offline play', r.page, 'open the app once while online');
       check('the saved page is the game', r.game, 'the saved page is not the game: open the app once while online');
       check('the saved page loads nothing from another site', r.offSite === 0, r.offSite + ' tag(s) would wait on the network');
-      check('the manifest and icons are saved', r.missing.length === 0, 'missing: ' + r.missing.join(', '));
+      check('the manifest and icons are saved', r.missing.length === 0, 'missing: ' + r.missing.join(', ') + '. Open the app once while online to save them again');
     });
     const finish = () => {
       const passed = results.filter(r => r.ok).length;
