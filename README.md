@@ -17,7 +17,7 @@ Your profile, a bot's profile, the results pop-up and Rules have the same header
 | **Resume** (in each card) | Continues that mode's game: the one you are playing (the menu closes), or the saved one. Disabled when there is none. At launch, the last game played is the main button. |
 | **New game** (Free play) | The seed picks two opponents, unless Settings → Bots sets who sits. If an unfinished Free play game has begun, the app asks first. |
 | **New game** (Dynamic) | Two opponents picked for your level, who ease off while you learn (see **Dynamic**). If an unfinished Dynamic game has begun, the app asks first. |
-| **Play wave** (Waves) | Starts the wave chosen in the list (the highest open wave by default). A ✓ marks a cleared wave. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
+| **Play wave** (Waves) | Starts the wave chosen in the list. The list starts on the Waves game you are playing or have saved (the one **Resume** returns to), or else on the highest open wave. Picking another table in the list makes **Play wave** the card's main button. A ✓ marks a cleared wave. Once the Shark run is open, the button is **Play table**. If an unfinished Waves game has begun, the app asks first. From hand 2, leaving it counts as a try (see **Waves**). |
 | **Rules** | The quick rules. **✕** returns to the menu. |
 | **Tutorial** | Coming soon (disabled). |
 | **Install** | Shown when the browser offers it: play from your home screen, also offline. |
@@ -315,6 +315,7 @@ Clearing wave 18 opens the Shark run. Nothing in the app shows it before then.
 
 - The Shark run is the same eighteen tables in the same order, as **Shark 1** to **Shark 18**. Both bots play at **Shark** skill: 40 hunches, 0% brain farts and every knowledge switch on. Each bot keeps its own courage, Real table switch, habits, reads and feints, and its profile shows full card sense during a Shark game.
 - The app says **Shark** where it says **Wave** in the first run: the mode chip (**Shark N of 18**), the end notes, **Shark tries**, the log and the replay list. The menu's Waves card lists both runs and counts the Shark tables cleared, and its button becomes **Play table**.
+- **Your profile → Waves** lists your tries for each run: **Shark tries** (once the run is open) and **Wave tries**. The menu's "Sharks: N of 18 cleared" link opens it. During a game, the mode chip opens the tries for that game's run.
 - Progress, tries, locked tables and **Next Shark** work as in the first run. Shark 1 opens when wave 18 is cleared, and each cleared Shark table opens the next one.
 - Inside the app and in replay codes, Shark N is wave 18 + N (`?wave=19` is Shark 1). Progress saved before the Shark run, with wave 18 cleared, opens Shark 1 when the page loads.
 
