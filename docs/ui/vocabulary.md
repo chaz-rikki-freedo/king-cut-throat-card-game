@@ -149,47 +149,53 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 ### 3.1 Menu
 
-`showMenu()`, `.settings.menu` in `#overlay`. Opens at launch and from the menu button. Built like the Settings panel (section 5), from the same parts: the header (`.set-top`) with the title, the tabs and ✕; gold section headings (`.set-head`); cards of rows (`.set-card`, `.set-row`); and the build at the foot (`.set-build`). It fills the window. Settings opens over it. Escape closes it.
+`showMenu()`, `.menu.menu-stage` in `#overlay`. Opens at launch and from the menu button. The menu is the About card: the felt fills the window, kings, crowns and suit pips drift up it (`driftHTML()`), and one card (`.about-card.menu-card`) holds the menu. The card shows one view at a time (`.mview`, `data-view`, `setMenuView()`); every view but home has **‹ Back** (`.mback`). Escape goes back one view (`MENU_PARENT`), and at home closes the menu (at launch, to the About screen). Opening the menu starts at home; a redraw (a question answered, Your profile closed) keeps the view. Settings opens over it.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Welcome menu | `showMenu(true)` | — | The menu at launch. Title "Welcome back" when a game can resume, else "King Cut-Throat". Opens on the Play tab. |
-| Menu title | `#menuTitle` | L | "Welcome back" or "King Cut-Throat". |
-| Menu tabs | `.set-tab`, `menu-tab`, `data-tab`, `menuTab` | C | **Play**, **Learn** and **About**. The tab is kept while the app runs. |
-| Close button | `.set-close`, `just-enter` or `close-menu` | C | At launch, `just-enter`: closes the menu and shows the About screen. Otherwise `close-menu`. |
+| Menu view | `.mview`, `data-view`, `menuView` | — | `home`, `new`, `mode-dynamic`, `mode-waves`, `mode-free`, `rules`, `lore` or `code`. |
+| Menu line | `.mlist button`, `menu-view`, `data-view` | C | A plain line between thin rules: a name, a short note and ›. Opens a view. |
 | Update-loss note | `.wave-note` | S | Says that an update could not load your unfinished games. |
 
-**Play tab** (`menuPlayHTML()`):
+**Home** (`menuHomeHTML()`):
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Mode heading | `.mhead`, `.set-head` | L | **Dynamic**, **Waves** or **Free play**, with the mode's goal at its right. |
-| Mode goal | `.mtail` | C | "Beaten 6 of 10" (Dynamic, Free play: the bots you have won a game of that mode against) or "15 of 18 cleared" (Waves). Opens Your profile for the mode. |
-| Mode card | `.set-card.mcard`, `data-mode` | — | One per mode. |
-| Game row | `.set-row.mrow` | S | The game in two lines (who, then the hand and scores), or **No saved game** and the mode's tagline; then the card's buttons. |
-| Discard game icon | `.mdel`, `discard-waves`, `discard-free`, `discard-dynamic` | C | A faint trash icon before Resume, only on a card with an unfinished game. Asks first, then clears that mode's saved game without starting another. Not a result: no loss, and wave progress stays. |
-| Resume button | `resume-waves`, `resume-free`, `resume-dynamic` | C | Continues that mode's game. Disabled when there is none. |
+| Menu title | `#menuTitle` | L | "King Cut-Throat", under the four suits. |
+| Epigraph | `.mepi` | D | A line of the lore: "It seems the Joker knew the conflict was intentional all along…" |
+| Big button | `.mgo` | C | **Continue**, with the game in two short lines: the game being played (`close-menu`) or the last one saved (`resume-<mode>`). With no game, **New game**, which opens the New game view. |
+| Home lines | `.mlist` | C | **New game** (when the big button is Continue), **How to play** and **Lore**. |
+| Small links | `.mfoot` | C | **Your profile** (`menu-profile`, all modes), **Load a code**, **Settings** (`toggle-settings`), and **Install** (`install-app`) when the browser offers it. |
+| Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. |
+
+**New game** (`menuNewHTML()`): a line per mode with its color (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
+
+**A mode's view** (`menuModesHTML()`, `.mview.mcard`, `data-mode`):
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Mode title | `.mtop .mode-chip` | L | The mode's chip: **Dynamic**, **Waves** or **Free play**. |
+| Game lines | `.mstat` | S | The game in two lines (who, then the hand and scores), or **No saved game** and the mode's tagline. |
+| Mode goal | `.mtail` | C | "Beaten 6 of 10" (Dynamic, Free play) or "15 of 18 cleared" (Waves). Opens Your profile for the mode. |
 | Wave picker | `#waveSel` | C | The open waves (and the open Shark run tables), with each table's West / East names. ✓ marks a cleared wave. |
+| Discard game icon | `.mdel`, `discard-<mode>` | C | A faint trash icon before Resume, only with an unfinished game. Asks first, then clears that mode's saved game without starting another. Not a result: no loss, and wave progress stays. |
+| Resume button | `resume-<mode>` | C | Continues that mode's game. Disabled when there is none. |
 | Play wave button | `play-wave` | C | Starts the picked wave. **Play table** once the Shark run is open. |
 | New game button | `new-free`, `new-dynamic` | C | Starts a game of that mode. |
-| Load a code card | `#menuCode` | — | Under the mode cards. |
+
+**How to play** (`menuRulesHTML()`): the **Tutorial** row (`tutorial`, disabled: "Coming soon"), **Quick rules** (`.mrules`, `QUICK_RULES`: The game, Deck and deal, Trump order, Discard, Naming trump rounds 1 and 2, Play, Scoring, Showdown), and **Full rules** ("coming soon").
+
+**Lore** (`menuLoreHTML()`, `.mlore`, `LORE`): the game's story: the Kings of the valleys, the three Bowers and the Joker.
+
+**Load a code** (`menuCodeHTML()`, `#menuCode`):
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
 | Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Enter loads. |
 | Code reading | `#codeRead`, `readCode()` | S | What the field holds, as you type: a replay code, a seed, a backup (restore it in Settings), or why it cannot load. |
 | Play it in | `#codeWhere`, `#codeMode` | C | For a seed only: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
 | Load button | `code-load` | C | **Watch** for a replay code, **Play** for a seed, else disabled **Load**. |
-| Backup hint | `#menuCode .set-note` | D | "A backup is not a game code: restore it in Settings → Tools → Your data." |
-| Your profile row | `menu-profile`, `data-mode="all"` | C | **Open**: Your profile on all modes. Its ✕ returns to the menu. |
-
-**Learn tab** (`menuLearnHTML()`):
-
-| Term | Code anchor | Kind | What it is |
-|---|---|---|---|
-| Tutorial row | `tutorial` | C | Disabled: "Coming soon". |
-| Quick rules | `.rules-card`, `QUICK_RULES` | D | One row per rule: The game, Deck and deal, Trump order, Discard, Naming trump (rounds 1 and 2), Play, Scoring, Showdown. |
-| Full rules | `.set-note` | D | Placeholder: "The full rules are coming soon." |
-| Lore | `.set-note.lore`, `LORE` | D | The game's story: the Kings of the valleys, the three Bowers and the Joker. |
-
-**About tab** (`menuAboutHTML()`): the About screen's card, without its build line (the build is at the foot). Its **Play** goes to the Play tab. Then **Install** (`install-app`), when the browser offers it.
+| Backup hint | `.mnote` | D | "A backup is not a game code: restore it in Settings → Tools → Your data." |
 
 ### 3.3 Seat-swap dialog
 

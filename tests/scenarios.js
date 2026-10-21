@@ -22,7 +22,7 @@ function expect(name, ok, detail) {
     let r = await step(`
       const shown = id => !q('#' + id).hidden;
       const out = { launch: shown('about') && !shown('table') && !shown('info') };
-      click('#overlay [data-action="just-enter"]'); await sleep(20);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
       out.idle = shown('about') && !shown('table') && !overlayOpen();
       out.build = q('#aboutBuild').textContent === q('#setBuild').textContent && /^Build /.test(q('#aboutBuild').textContent);
       out.credit = q('#about .about-credit').textContent.replace(/\\s+/g, ' ').trim();
@@ -30,21 +30,26 @@ function expect(name, ok, detail) {
       out.btns = [...document.querySelectorAll('#about .about-btns button')].map(b => [b.textContent, b.getAttribute('data-action'), b.disabled, b.classList.contains('primary')]);
       click('#about [data-action="menu"]'); await sleep(20);
       out.menu = !!q('#overlay .menu') && overlayOpen();
-      out.settingsLike = { tabs: [...document.querySelectorAll('#overlay .menu .set-top .set-tab')].map(b => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')),
-        heads: [...document.querySelectorAll('#overlay .menu .set-head')].map(h => h.textContent), build: (q('#overlay .menu .set-build') || {}).textContent === q('#setBuild').textContent };
-      click('#overlay [data-action="menu-tab"][data-tab="Learn"]'); await sleep(20);
-      out.learn = { heads: [...document.querySelectorAll('#overlay .menu .set-head')].map(h => h.textContent), rules: document.querySelectorAll('#overlay .rules-card .set-row').length, tutorialOff: q('#overlay [data-action="tutorial"]').disabled };
-      click('#overlay [data-action="menu-tab"][data-tab="About"]'); await sleep(20);
-      out.about = { card: !!q('#overlay .menu .about-title') && !q('#overlay [id="aboutTitle"]'), build: !q('#overlay .menu .about-build') };
-      click('#overlay .menu .about-btns [data-action="menu-tab"]'); await sleep(20);
-      out.aboutPlay = !!q('#overlay .mcard') && q('#menuTabPlay').getAttribute('aria-selected') === 'true';
-      click('#overlay [data-action="menu-tab"][data-tab="Learn"]'); await sleep(20);
-      click('#overlay [data-action="menu-tab"][data-tab="Play"]'); await sleep(20);
-      click('#overlay .menu [data-action="menu-profile"][data-mode="all"]'); await sleep(20);
+      const view = () => (q('#overlay .menu-card > .mview:not([hidden])') || {}).getAttribute('data-view');
+      const go = v => click('#overlay .mview:not([hidden]) [data-action="menu-view"][data-view="' + v + '"]');
+      const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      const lines = () => [...document.querySelectorAll('#overlay .mview:not([hidden]) .mlist .mname')].map(x => x.textContent);
+      out.home = { view: view(), title: q('#menuTitle').textContent, go: q('#overlay .mview:not([hidden]) .mgo').textContent.startsWith('New game'), lines: lines(),
+        foot: [...document.querySelectorAll('#overlay .mfoot button')].map(b => b.textContent).filter(t => t !== 'Install'), drift: document.querySelectorAll('#overlay .about-kings .about-king.pip').length,
+        build: (q('#overlay .menu-card .about-build') || {}).textContent === q('#setBuild').textContent };
+      go('new'); out.newView = { view: view(), lines: lines() };
+      go('mode-waves'); out.waves = { view: view(), sel: !!q('#overlay .mview:not([hidden]) #waveSel'), play: !!q('#overlay .mview:not([hidden]) [data-action="play-wave"]') };
+      esc(); await sleep(20); out.escBack = view();
+      esc(); await sleep(20); out.escHome = view();
+      go('rules'); out.rules = { view: view(), rules: document.querySelectorAll('#overlay .mview:not([hidden]) .mrules dt').length, tutorialOff: q('#overlay .mview:not([hidden]) [data-action="tutorial"]').disabled };
+      click('#overlay .mview:not([hidden]) .mback'); await sleep(20);
+      go('lore'); out.lore = { view: view(), text: /Joker knew the conflict was intentional/.test(q('#overlay .mview:not([hidden]) .mlore').textContent) };
+      click('#overlay .mview:not([hidden]) .mback'); await sleep(20);
+      click('#overlay .mfoot [data-action="menu-profile"][data-mode="all"]'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       click('#overlay .profile .sheet-top [data-action="menu-back"]'); await sleep(20);
-      out.menuAgain = !!q('#overlay .menu');
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(20);
+      out.menuAgain = !!q('#overlay .menu') && view() === 'home';
+      esc(); await sleep(20);
       out.escape = !overlayOpen() && !q('#about').hidden;
       click('#about [data-action="menu"]'); await sleep(20);
       return out;`);
@@ -56,12 +61,16 @@ function expect(name, ok, detail) {
     expect('the About card has Tutorial (coming soon) on the left and Play, the main button, on the right',
       JSON.stringify(r.btns) === JSON.stringify([['Tutorial', 'tutorial', true, false], ['Play', 'menu', false, true]]), r.btns);
     expect('Play opens the menu', r.menu, r);
-    expect('the menu is built like Settings: Play, Learn and About tabs, gold headings, the build at the foot',
-      JSON.stringify(r.settingsLike.tabs) === '["Play*","Learn","About"]' && JSON.stringify(r.settingsLike.heads) === '["Dynamic","Waves","Free play","Load a code","You"]' && r.settingsLike.build, r.settingsLike);
-    expect('Learn: the tutorial (coming soon), the quick rules as rows, the full rules and the lore', JSON.stringify(r.learn.heads) === '["Tutorial","Quick rules","Full rules","Lore"]' && r.learn.rules >= 8 && r.learn.tutorialOff, r.learn);
-    expect('About: the About card, its build only at the foot; its Play goes to the Play tab', r.about.card && r.about.build && r.aboutPlay, r);
+    expect('the menu is the About card: the title, New game (no game yet), How to play and Lore, then the small links and the build',
+      r.home.view === 'home' && r.home.title === 'King Cut-Throat' && r.home.go && JSON.stringify(r.home.lines) === '["How to play","Lore"]' &&
+      JSON.stringify(r.home.foot) === '["Your profile","Load a code","Settings"]' && r.home.build, r.home);
+    expect('suit pips drift with the kings and crowns behind the menu', r.home.drift > 0, r.home.drift);
+    expect('New game lists Dynamic, Waves and Free play; Waves has the wave list and Play wave', JSON.stringify(r.newView.lines) === '["Dynamic","Waves","Free play"]' && r.waves.view === 'mode-waves' && r.waves.sel && r.waves.play, r);
+    expect('Escape goes back one view, then home', r.escBack === 'new' && r.escHome === 'home', r);
+    expect('How to play: the tutorial (coming soon) and the quick rules', r.rules.view === 'rules' && r.rules.rules >= 8 && r.rules.tutorialOff, r.rules);
+    expect('Lore tells the story', r.lore.view === 'lore' && r.lore.text, r.lore);
     expect('Your profile opens from the menu, and closes back to it', r.profile && r.menuAgain, r);
-    expect('Escape closes the menu (at launch, to the About screen)', r.escape, r);
+    expect('at home, Escape closes the menu (at launch, to the About screen)', r.escape, r);
 
     console.log('Game 1: Free play');
     r = await step(`
@@ -96,7 +105,7 @@ function expect(name, ok, detail) {
     const mid = r;
     await reload();
     r = await step(`
-      const out = { title: q('#overlay h2').textContent, primary: !!q('[data-action="resume-free"].primary') };
+      const out = { go: (q('#overlay .mgo') || {}).getAttribute('data-action'), primary: !!q('[data-action="resume-free"].primary') };
       click('[data-action="resume-free"]'); await sleep(50); speed('fast');
       out.version = app.state.version;
       out.log = Array.from(document.querySelectorAll('#gameLog li')).map(li => li.outerHTML);
@@ -119,7 +128,7 @@ function expect(name, ok, detail) {
       out.popup = q('#overlay h2').textContent; click('[data-action="close-overlay"]');
       out.skip = skip;
       return out;`);
-    expect('after a reload the menu says Welcome back, Resume is the main button', r.title === 'Welcome back' && r.primary, r);
+    expect('after a reload the menu\'s Continue resumes the saved game', r.go === 'resume-free' && r.primary, r);
     expect('the resumed game is at the saved move', r.version === mid.version, [r.version, mid.version]);
     expect('the resumed log is the same', JSON.stringify(r.log.slice(0, mid.log.length)) === JSON.stringify(mid.log) && r.log.length === mid.log.length + 1);
     expect('a new game asks first; Keep it keeps the game', r.ask === 'Start a new Free play game?' && r.keptGame, r);
@@ -154,8 +163,8 @@ function expect(name, ok, detail) {
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
     r = await step(`
-      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#overlay .menu .set-top h2') || {}).textContent,
-        exits: Array.from(document.querySelectorAll('#overlay .menu [data-action="close-menu"]'), x => x.closest('.set-top') ? 'header' : x.textContent) };
+      const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#menuTitle') || {}).textContent,
+        exits: document.querySelectorAll('#overlay .menu [data-action="close-menu"]').length };
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
@@ -163,8 +172,8 @@ function expect(name, ok, detail) {
       click('#overlay .profile .sheet-top .set-close'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
-    expect('the menu: the Settings header, then Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
-    expect('with no game being played, the menu closes only from its header \u2715', JSON.stringify(r.exits) === '["header"]', r);
+    expect('the menu: the title, then a view each for Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
+    expect('with no game being played, nothing in the menu says Continue to the table (Escape closes it)', r.exits === 0, r);
     expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
     expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
 
