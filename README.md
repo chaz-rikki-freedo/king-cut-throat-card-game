@@ -16,7 +16,7 @@ Each line opens a view in the same card, with **‹ Back** at its top left. **Es
 | A mode | Its game in two lines (who, then the hand and the scores), or **No saved game** and a short description. Its goal opens **Your profile** for that mode. Then the faint Discard icon (only with a game), **Resume**, and **New game**. In Waves, the list of open waves and **Play wave**: the list starts on the Waves game you are playing or have saved, or else on the highest open wave; picking another table makes **Play wave** the main button; a ✓ marks a cleared wave; once the Shark run is open, the button is **Play table**. If an unfinished game of that mode has begun, **New game** and **Play wave** ask first, and from hand 2 leaving a Waves game counts as a try (see **Waves**). |
 | **How to play** | The **Tutorial** (coming soon), the **Quick rules**, and the **Full rules** (coming soon). |
 | **Lore** | The story of the Kings of the valleys, the three Bowers and the Joker. |
-| **Load a code** | Paste a replay code to watch the game, or a seed to play its deals in Free play, Dynamic or an open wave. A `?replay=` or `?seed=` link works too. The card says what it read as you type, and the button says **Watch** or **Play**. A backup code is not loaded here: the card says to restore it in **Settings → Tools → Your data**. |
+| **Load a code** | Paste a replay code to watch the game, or a seed to play its deals in Free play, Dynamic or an open wave. A `?replay=` or `?seed=` link works too. The card says what it read as you type, and the button says **Watch** or **Play**. A backup code is not loaded here: the card says to restore it in **Settings → Tools → Your data**. Under the card, a floating line names the versions that this app writes: the replay code version and the Engine version, for example `Replay KCT3 · Engine 5` (see [docs/versions.md](docs/versions.md)). |
 
 **Resume** continues that mode's game: the one you are playing (the menu closes), or the saved one. **New game** in Free play seats the two opponents the seed picks, unless Settings → Bots sets who sits; in Dynamic, two opponents picked for your level, who ease off while you learn (see **Dynamic**).
 
@@ -181,7 +181,7 @@ These fine-tune **Skill** for one seat (Settings → Bots → a seat → **Skill
 
 | Control | What it does |
 |---|---|
-| **Event log** | Starts the timestamped event log (public information only), shown below it. `KCT.App.explain(n)` adds a line for each bot decision of a finished game (see **Console**). |
+| **Event log** | Starts the timestamped event log (public information only), shown below it. Its first line, also after **Clear log**, lists every version the app uses: `VERSIONS engine=5 replay=KCT3 save=1 backup=KCTS1 profile=1 build=dev` (see [docs/versions.md](docs/versions.md)). `KCT.App.explain(n)` adds a line for each bot decision of a finished game (see **Console**). |
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. On the hosted game, the last two areas check offline play: **Service worker** (it is active, controls the page and answers) and **Airplane mode** (from the cache alone, without the network: the game page, manifest and icons are saved, and the page loads nothing from another site). |
 | **Clear log** | Clears the log and the test results. |
@@ -378,13 +378,13 @@ A mode for new players: the bots ease off while you learn, and tighten back to n
 
 Turn on **Settings → Game → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the bot from **Settings → Bots → Your seat → Who sits**, or one that the seed picks, with that seat's changes. It keeps them for the rest of the game, however often you switch.
 
-The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Try again** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game.
+The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Try again** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game. The deals stay the same, so after a loss you can hand your seat to the AI in **Try again** and see whether it wins with your cards.
 
 The hand-over is for that game only. The next game starts with you in your seat, also after **Try again** or **New deal**. A saved game resumed with the Your seat switch off (always so after a reload) gives you your seat back; the game stays assisted.
 
 ## Replay a game
 
-The same seed gives the same deals: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has two icons: **Watch** (an eye) opens the game in the replay viewer, and **Try again** (a counter-clockwise arrow) plays that table again, with the same mode, wave, opponents, deals and house rules. The plan for these parts: [docs/ui/plan.md](docs/ui/plan.md).
+The same seed gives the same deals, however the hands are played: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has two icons: **Watch** (an eye) opens the game in the replay viewer, and **Try again** (a counter-clockwise arrow) plays that table again, with the same mode, wave, opponents, deals and house rules. The plan for these parts: [docs/ui/plan.md](docs/ui/plan.md).
 
 ### End of a game
 
@@ -415,7 +415,7 @@ To see a bot's side of the game, tap its figure or name (a small circular arrow 
 
 A game where the AI played your seat shows your seat as **AI**, with the personality it played as.
 
-The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
+The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the first dealer and the shuffles. The deck shuffles have their own random stream, apart from the Showdown shuffle and a random Joker suit, so deal *k* does not change with play. It cannot hold more data. A **replay code** holds the full game: the seed, the mode and wave, the seats, every player decision (discards, bids, plays), the result, and the AI settings that the bots used as generic variables: the Settings-panel values (tier, courage, real table, hunches, brain farts and each knowledge switch) when a bot played with them, and a flag when a bot played as its personality (see [docs/replay-code.md](docs/replay-code.md), 4.4). The Engine keeps the decisions in `state.decisions`. System steps (deal, flip, advance) are not kept, because the state sets them. A code is about 950 to 2,200 characters, for example `KCT3-AwEGBJIhAgMA…`.
 
 The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). The format holds at least 20 hands with a showdown in each hand (about 2,850 characters). Codes from the first release (`KCT1-`) still read.
 
@@ -483,7 +483,7 @@ tools/publish.sh --dry-run "0.6.35: the build shows in Settings"   # check first
 tools/publish.sh "0.6.35: the build shows in Settings"
 ```
 
-The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll` from `origin/main` to `gh-pages`. It writes the short `main` commit and that commit's date into the `BUILD` constant in the published `index.html`, removes every comment from the published `index.html` (HTML, CSS and JavaScript, with `tools/strip-comments.js` from `main`; the code itself is not changed), commits as `Publish 0.6.35 (main edf93c8): the build shows in Settings` and pushes. The source on `main` keeps its comments. Keep `BUILD` at `{ commit: 'dev', date: '' }` on `main`: the script stops if it does not find that line. `BUILD` is not related to `RULES_VERSION` or the replay-code `VERSION`.
+The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll` from `origin/main` to `gh-pages`. It writes the short `main` commit and that commit's date into the `BUILD` constant in the published `index.html`, removes every comment from the published `index.html` (HTML, CSS and JavaScript, with `tools/strip-comments.js` from `main`; the code itself is not changed), commits as `Publish 0.6.35 (main edf93c8): the build shows in Settings` and pushes. The source on `main` keeps its comments. Keep `BUILD` at `{ commit: 'dev', date: '' }` on `main`: the script stops if it does not find that line. `BUILD` is not related to `RULES_VERSION` or the replay-code `VERSION`. Every version the app uses is listed in [docs/versions.md](docs/versions.md).
 
 ## Tests
 

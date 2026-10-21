@@ -477,6 +477,10 @@ body.set-open{overflow:hidden}
 .menu-stage{place-self:stretch;position:relative;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
 .menu-stage .about-kings{position:fixed}
 .menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem}
+/* The versions under Load a code: a pill floating at the foot of the window, with room kept under the card. */
+.code-ver{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;margin:0;padding:0.375rem 0.875rem;white-space:nowrap;font-size:0.75rem;color:var(--muted);background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:999px;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem);pointer-events:none}
+.code-ver[hidden]{display:none}
+.menu-stage:has(> .code-ver:not([hidden])){padding-bottom:4rem}
 .mview{display:flex;flex-direction:column;align-items:center;gap:0.875rem;width:100%}
 .mview[hidden]{display:none}
 .mepi{font-style:italic;font-size:0.875rem}
@@ -1244,7 +1248,8 @@ const RNG = (() => {
 /* ---------------------------------------------------------------------
    3. LOGGER — one timestamped logger. Off by default. Public info only.
    --------------------------------------------------------------------- */
-/* The Logger keeps the last LOGGER_MAX lines. */
+/* The Logger keeps the last LOGGER_MAX lines. header (set by the App): the first line of each log, written before the
+   first line after the log is turned on or cleared. */
 const LOGGER_MAX = 1500;
 const Logger = (() => {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1255,8 +1260,14 @@ const Logger = (() => {
     lines: [],
     /** @type {((line: string) => void)[]} */
     listeners: [],
+    /** @type {(() => [string, Object]) | null} */
+    header: null,
     log(type, data) {
       if (!this.enabled) return;
+      if (!this.lines.length && this.header) this.write(...this.header());
+      this.write(type, data);
+    },
+    write(type, data) {
       const ms = Math.round(now() - this.t0);
       const parts = [];
       if (data) {
@@ -1296,7 +1307,7 @@ const Logger = (() => {
  * @typedef {{ name: string, human: boolean }} PlayerInfo
  * @typedef {{
  *   version: number, seed: number, rules?: number, mediatorLead?: boolean, jokerFlip?: string, jokerSuit?: string,
- *   rng: { s: number }, playRng?: { s: number }, decisions?: Decision[],
+ *   rng: { s: number }, sideRng?: { s: number }, playRng?: { s: number }, decisions?: Decision[],
  *   players: PlayerInfo[], scores: number[], dealer: number | null, handNumber: number,
  *   redeals?: number, redeal?: boolean, phase: string, gameOver: boolean, winner: number | null,
  *   endEvent: EndEvent | null,
@@ -1310,7 +1321,7 @@ const Logger = (() => {
  *   showdown: Showdown | null, played: string[], playLog: Play[], voids: string[][],
  *   memory: { out: string[] }[], handSummary: HandSummary | null, handStats?: HandStats,
  *   planSeat?: number, plan?: string
- * }} GameState  rules, mediatorLead, jokerFlip: see createGame. jokerSuit: see FLIP. playRng, planSeat, plan: AI play-out states only.
+ * }} GameState  rules, mediatorLead, jokerFlip, sideRng: see createGame. jokerSuit: see FLIP. playRng, planSeat, plan: AI play-out states only.
  *   decisions, redeals, redeal, handStats: real games only.
  */
 /* ---------------------------------------------------------------------
@@ -1348,7 +1359,9 @@ const Engine = (() => {
      of version 1 has no rules field, so a version-1 save rebuilds to the same state.
      options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on.
      options.jokerFlip (house rule, from version 4): a Joker turned up from the kitty takes a suit instead of a redeal:
-     'S', 'H', 'D', 'C', or 'random' (drawn from the game's RNG at the turn). Kept only when on. */
+     'S', 'H', 'D', 'C', or 'random' (drawn from the game's RNG at the turn). Kept only when on.
+     sideRng (from version 5): the draws that depend on play (the Showdown shuffle, a random Joker suit), so that rng
+     makes only the dealer and the deck shuffles: deal k of a seed is the same however the hands are played. */
   function createGame(seed, names, rules = RULES_VERSION, options) {
     const n = names || ['You', 'West', 'East'];
     /* The per-hand fields come from resetHand below. */
@@ -1378,6 +1391,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
+    if (rules > 4) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
   }
@@ -1510,9 +1524,10 @@ const Engine = (() => {
   /* Raise RULES_VERSION when a change makes the same seed and decisions give a different game
      (a rule, the deal or the RNG). Replay codes and saves carry it: a replay plays by its own version and refuses
      a newer one. Version 2: the discards go in turn (see discardTurn). Version 3: the house rule mediatorLead
-     (createGame) can be on. Version 4: the house rule jokerFlip (createGame) can be on. */
+     (createGame) can be on. Version 4: the house rule jokerFlip (createGame) can be on. Version 5: the Showdown
+     shuffle and a random Joker suit draw from sideRng (createGame), so the deals no longer depend on play. */
   /** @type {number} */
-  const RULES_VERSION = 4;
+  const RULES_VERSION = 5;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
   function decisionOf(a) {
@@ -1731,12 +1746,16 @@ const Engine = (() => {
     startTrick(state, events);
   }
 
+  /* The RNG for draws that depend on play: sideRng from version 5, else (older games, AI play-outs) rng. */
+  /** @param {GameState} state */
+  const sideRng = state => state.sideRng || state.rng;
+
   /** @param {GameState} state */
   function dealShowdown(state, events) {
     const sd = state.showdown;
     const pool = state.outside.splice(0);
     if (pool.length !== C.OUTSIDE_SIZE) throw new Error('Outside pile must hold 12 cards, has ' + pool.length);
-    RNG.shuffle(pool, state.rng);
+    RNG.shuffle(pool, sideRng(state));
     const first = seatAfter(sd.mediator);
     const second = seatAfter(first);
     for (let i = 0; i < C.SHOWDOWN_DEAL; i++) {
@@ -1811,7 +1830,7 @@ const Engine = (() => {
       state.flippedId = state.kitty[0];
       if (R.card(state.flippedId).isJoker && state.jokerFlip) {
         /* House rule: the Joker takes a suit instead of a redeal. Only 'random' draws from the RNG. */
-        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(state.rng, R.SUITS.length)] : state.jokerFlip;
+        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state), R.SUITS.length)] : state.jokerFlip;
       }
       events.push(state.jokerSuit ? { type: 'KITTY_FLIPPED', card: state.flippedId, jokerSuit: state.jokerSuit } : { type: 'KITTY_FLIPPED', card: state.flippedId });
       if (R.card(state.flippedId).isJoker && !state.jokerSuit) {
@@ -3958,8 +3977,10 @@ const Dynamic = (() => {
 
   /* ---- The profile (kct.profile) and the snapshot a game starts from ---- */
   const num = (/** @type {any} */ x) => (typeof x === 'number' && isFinite(x) && x >= 0 ? x : 0);
+  /* Raise PROFILE_VERSION when the profile's fields change meaning: a profile of another version starts blank. */
+  const PROFILE_VERSION = 1;
   const blankProfile = () => ({
-    v: 1, hands: 0, games: 0,
+    v: PROFILE_VERSION, hands: 0, games: 0,
     /* Decayed sums. share: points won by you and by everyone (Dynamic games only). calls: your calls, the failed ones
        and their fitted values. bids: your bids and the bid errors. discards: first discards and their loss.
        plays: your main-hand card plays and the slips among them (Habits: a King thrown under, a wasted winner, a dead
@@ -3973,7 +3994,7 @@ const Dynamic = (() => {
   /** A profile as the app can trust it (it can come from a backup). @param {any} x */
   function cleanProfile(x) {
     const p = blankProfile();
-    if (!x || typeof x !== 'object' || x.v !== 1) return p;
+    if (!x || typeof x !== 'object' || x.v !== PROFILE_VERSION) return p;
     const o = (/** @type {any} */ y) => (y && typeof y === 'object' ? y : {});
     p.hands = Math.floor(num(x.hands)); p.games = Math.floor(num(x.games));
     const s = o(x.share), c = o(x.calls), b = o(x.bids), d = o(x.discards), h = o(x.habits), pl = o(x.plays);
@@ -4180,7 +4201,7 @@ const Dynamic = (() => {
     });
   }
 
-  return Object.freeze({ FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -5528,6 +5549,9 @@ const App = (() => {
   /** The controls are inputs, selects and other elements, so the result is not typed. @param {string} id @returns {any} */
   const $ = id => document.getElementById(id);
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
+  /* The event log opens with every version the app uses (docs/versions.md). */
+  Logger.header = () => ['VERSIONS', { engine: Engine.RULES_VERSION, replay: 'KCT' + Replay.VERSION, save: SAVE_FORMAT, backup: 'KCTS' + Backup.VERSION,
+    profile: Dynamic.PROFILE_VERSION, build: BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '') }];
   const slots = createSlots(localStore('kct.slots'));
   const stats = createStats(localStore('kct.stats'));
   const replays = createReplays(localStore('kct.replays'));
@@ -6924,7 +6948,10 @@ const App = (() => {
     if (launch && !app.menuOpen) menuView = 'home';
     const ov = $('overlay');
     ov.innerHTML = '<div class="menu menu-stage" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><div class="about-kings" aria-hidden="true">' + driftHTML() + '</div>' +
-      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section></div>';
+      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
+      /* Under Load a code, floating at the foot of the window: the replay code version and the Engine version (RULES_VERSION)
+         that this app writes (docs/versions.md). Outside the card, whose backdrop filter would hold a fixed child. */
+      '<p class="code-ver" id="codeVersion" hidden>Replay KCT' + Replay.VERSION + ' · Engine ' + Engine.RULES_VERSION + '</p></div>';
     ov.hidden = false;
     app.menuOpen = true;
     app.menuLaunch = !!launch;
@@ -6937,6 +6964,7 @@ const App = (() => {
     if (!views.some(v => v.getAttribute('data-view') === view)) view = 'home';
     menuView = view;
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
+    const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
       const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
@@ -8686,6 +8714,33 @@ const SelfTest = (() => {
       s = revealState(9, 1, '9H'); s.jokerFlip = 'C';
       D(s, { type: 'FLIP' });
       eq('another turned card is not changed by jokerFlip', ['jokerSuit' in s, buildView(s, 0).flippedSuit], [false, 'H']);
+
+      /* Rules version 5: deal k of a seed is the same however seat 0 plays (Try again with the AI in your seat).
+         deals: each deal's hands and kitty; sd: whether a Showdown came before the last deal. */
+      const other = AI.config(AI.DEFAULT_CONFIG, { style: { realTable: !AI.DEFAULT_CONFIG.style.realTable } });
+      const dealsOf = (seed, rules, cfg) => {
+        const g = Engine.createGame(seed, null, rules, { jokerFlip: 'random' }), deals = [];
+        let sd = false;
+        for (let k = 0; k < 5000 && !g.gameOver && deals.length < 6; k++) {
+          const ac = Engine.actors(g);
+          for (const e of D(g, ac.length ? AI.fastAction(g, ac[0], ac[0] === 0 ? cfg : undefined) : Engine.systemAction(g)).events) {
+            if (e.type === 'DEAL') deals.push(JSON.stringify([g.dealer, g.hands, g.kitty]));
+            if (e.type === 'SHOWDOWN_DEAL') sd = true;
+          }
+        }
+        return { deals, sd, decisions: JSON.stringify(g.decisions) };
+      };
+      /* A seed where, by rules version 4, seat 0's play changes a later deal (the Showdown shuffle drew from rng). */
+      const differ = (a, b) => { const n = Math.min(a.deals.length, b.deals.length); return a.deals.slice(0, n).join() !== b.deals.slice(0, n).join(); };
+      let seed4 = 0;
+      for (let seed = 1; seed < 60 && !seed4; seed++) if (differ(dealsOf(seed, 4), dealsOf(seed, 4, other))) seed4 = seed;
+      check('rules version 4: a seed where seat 0\'s play changes a later deal', seed4 > 0);
+      if (seed4) {
+        const a = dealsOf(seed4, Engine.RULES_VERSION), b = dealsOf(seed4, Engine.RULES_VERSION, other);
+        const n = Math.min(a.deals.length, b.deals.length);
+        check('that seed plays differently and has a Showdown', a.decisions !== b.decisions && (a.sd || b.sd) && n > 1);
+        eq('the same seed deals the same cards, however seat 0 plays', b.deals.slice(0, n), a.deals.slice(0, n));
+      }
     });
 
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */
@@ -9407,6 +9462,19 @@ const SelfTest = (() => {
         check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
+        /* The event log opens with the versions, once, also after Clear log. */
+        const kept = { enabled: Logger.enabled, lines: Logger.lines, listeners: Logger.listeners, t0: Logger.t0 };
+        try {
+          Object.assign(Logger, { enabled: true, lines: [], listeners: [] });
+          Logger.log('TEST_A'); Logger.log('TEST_B');
+          const types = () => Logger.lines.map(l => l.split(' ')[1]);
+          const first = Logger.lines[0].replace(/^\[\+\d+ms\] /, '');
+          eq('the event log opens with the versions', [types(), first], [['VERSIONS', 'TEST_A', 'TEST_B'],
+            'VERSIONS engine=' + Engine.RULES_VERSION + ' replay=KCT' + Replay.VERSION + ' save=' + SAVE_FORMAT + ' backup=KCTS' + Backup.VERSION +
+            ' profile=' + Dynamic.PROFILE_VERSION + ' build=' + BUILD.commit + (BUILD.date ? ' ' + BUILD.date : '')]);
+          Logger.clear(); Logger.log('TEST_C');
+          eq('Clear log: the versions open it again', types(), ['VERSIONS', 'TEST_C']);
+        } finally { Object.assign(Logger, kept); }
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
