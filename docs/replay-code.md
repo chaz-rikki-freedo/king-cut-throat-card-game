@@ -69,8 +69,9 @@ GAME fields:
   - 3: house rules can be on (see **options**). With no house rule on, the game is the same as in version 2.
   - 4: the house rule `jokerFlip` can be on (see **options**). With it off, the game is the same as in version 3.
   - 5: the Showdown shuffle and a random Joker suit draw from a second RNG made from the seed. The game RNG makes only the first dealer and the deck shuffles, so deal *k* of a seed is the same however the hands are played.
+  - 6: the Showdown shuffle and a random Joker suit draw from a stream made for each deal from the seed and the deal number (every deal counts, a redeal too). They depend only on that deal's play, not on earlier hands.
 - **options** (rules version 3 and up): a bit field of house rules. Bit 0 (value 1), `mediatorLead`: after the Showdown discards, the mediator picks the leader with a SHOWDOWN_LEAD decision. Without it, the Showdown player who won the latest main trick leads. A record keeps it as `mediatorLead` (true or false).
-  - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the RNG (the second RNG from rules version 5) when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
+  - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the RNG (the second RNG in rules version 5, the deal's stream from version 6) when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`), 3 = Dynamic (`dynamic`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave. Waves 19 to 36 are the Shark run (Shark 1 to 18: the tables of waves 1 to 18 with both bots at Shark skill).
@@ -200,7 +201,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 ```js
 {
   v: 3,                       // format version of the code (2 or 1 for an older code)
-  rules: 5,                   // the game's rules version (Engine.RULES_VERSION for a new game)
+  rules: 6,                   // the game's rules version (Engine.RULES_VERSION for a new game)
   mediatorLead: true,         // house rule: the mediator picks the Showdown leader
   jokerFlip: null,            // house rule: the suit a turned-up Joker takes ('S', 'D', 'C', 'H', 'random'), or null
   seed: 4242,

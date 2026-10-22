@@ -1360,8 +1360,8 @@ const Engine = (() => {
      options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on.
      options.jokerFlip (house rule, from version 4): a Joker turned up from the kitty takes a suit instead of a redeal:
      'S', 'H', 'D', 'C', or 'random' (drawn from the game's RNG at the turn). Kept only when on.
-     sideRng (from version 5): the draws that depend on play (the Showdown shuffle, a random Joker suit), so that rng
-     makes only the dealer and the deck shuffles: deal k of a seed is the same however the hands are played. */
+     sideRng (version 5 only): the draws that depend on play (the Showdown shuffle, a random Joker suit), so that rng
+     makes only the dealer and the deck shuffles. From version 6 these draws come from dealRng instead. */
   function createGame(seed, names, rules = RULES_VERSION, options) {
     const n = names || ['You', 'West', 'East'];
     /* The per-hand fields come from resetHand below. */
@@ -1391,7 +1391,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
-    if (rules > 4) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
+    if (rules === 5) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
   }
@@ -1525,9 +1525,10 @@ const Engine = (() => {
      (a rule, the deal or the RNG). Replay codes and saves carry it: a replay plays by its own version and refuses
      a newer one. Version 2: the discards go in turn (see discardTurn). Version 3: the house rule mediatorLead
      (createGame) can be on. Version 4: the house rule jokerFlip (createGame) can be on. Version 5: the Showdown
-     shuffle and a random Joker suit draw from sideRng (createGame), so the deals no longer depend on play. */
+     shuffle and a random Joker suit draw from sideRng (createGame), so the deals no longer depend on play. Version 6:
+     they draw from dealRng, so they depend only on the seed, the deal and that deal's play, not on earlier hands. */
   /** @type {number} */
-  const RULES_VERSION = 5;
+  const RULES_VERSION = 6;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   /* Only the fields that the handler reads, so a decision list holds no extra data. */
   function decisionOf(a) {
@@ -1746,16 +1747,27 @@ const Engine = (() => {
     startTrick(state, events);
   }
 
-  /* The RNG for draws that depend on play: sideRng from version 5, else (older games, AI play-outs) rng. */
-  /** @param {GameState} state */
-  const sideRng = state => state.sideRng || state.rng;
+  /* A random-number stream for one draw in the current deal, from the seed, the deal number (handNumber counts every
+     deal, redeals too) and salt (which draw). Mixed with the murmur3 finalizer, so near inputs give far streams.
+     @param {GameState} state @param {number} salt */
+  function dealRng(state, salt) {
+    let h = (state.seed ^ Math.imul(state.handNumber, 0x9E3779B1) ^ Math.imul(salt, 0x85EBCA6B)) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
+    h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+    return { s: (h ^ (h >>> 16)) >>> 0 };
+  }
+  const SALT = Object.freeze({ JOKER_SUIT: 1, SHOWDOWN: 2 });
+  /* The RNG for a draw that depends on play: dealRng from version 6, sideRng in version 5, else rng (older games).
+     AI play-outs (they carry playRng) keep their world's rng, so each sampled world gets its own Showdown shuffle.
+     @param {GameState} state @param {number} salt */
+  const sideRng = (state, salt) => (state.rules >= 6 && !state.playRng ? dealRng(state, salt) : state.sideRng || state.rng);
 
   /** @param {GameState} state */
   function dealShowdown(state, events) {
     const sd = state.showdown;
     const pool = state.outside.splice(0);
     if (pool.length !== C.OUTSIDE_SIZE) throw new Error('Outside pile must hold 12 cards, has ' + pool.length);
-    RNG.shuffle(pool, sideRng(state));
+    RNG.shuffle(pool, sideRng(state, SALT.SHOWDOWN));
     const first = seatAfter(sd.mediator);
     const second = seatAfter(first);
     for (let i = 0; i < C.SHOWDOWN_DEAL; i++) {
@@ -1830,7 +1842,7 @@ const Engine = (() => {
       state.flippedId = state.kitty[0];
       if (R.card(state.flippedId).isJoker && state.jokerFlip) {
         /* House rule: the Joker takes a suit instead of a redeal. Only 'random' draws from the RNG. */
-        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state), R.SUITS.length)] : state.jokerFlip;
+        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state, SALT.JOKER_SUIT), R.SUITS.length)] : state.jokerFlip;
       }
       events.push(state.jokerSuit ? { type: 'KITTY_FLIPPED', card: state.flippedId, jokerSuit: state.jokerSuit } : { type: 'KITTY_FLIPPED', card: state.flippedId });
       if (R.card(state.flippedId).isJoker && !state.jokerSuit) {
@@ -8741,6 +8753,30 @@ const SelfTest = (() => {
         check('that seed plays differently and has a Showdown', a.decisions !== b.decisions && (a.sd || b.sd) && n > 1);
         eq('the same seed deals the same cards, however seat 0 plays', b.deals.slice(0, n), a.deals.slice(0, n));
       }
+
+      /* Rules version 6: a Showdown deal and a random Joker suit depend only on the seed, the deal and its play. Moving
+         the game's streams, as earlier hands with other Showdowns would, changes neither. */
+      const moved = st => { st.rng = { s: 12345 }; if (st.sideRng) st.sideRng = { s: 54321 }; return st; };
+      /* The state just before the action that deals a Showdown, and that action. */
+      const beforeShowdown = rules => {
+        for (let seed = 1; seed < 40; seed++) {
+          const g = Engine.createGame(seed, null, rules);
+          for (let k = 0; k < 5000 && !g.gameOver; k++) {
+            const ac = Engine.actors(g), act = ac.length ? AI.fastAction(g, ac[0]) : Engine.systemAction(g), pre = JSON.stringify(g);
+            if (D(g, act).events.some(e => e.type === 'SHOWDOWN_DEAL')) return { pre, act };
+          }
+        }
+        return null;
+      };
+      const sdHands = (sd, move) => { const g = JSON.parse(sd.pre); D(move ? moved(g) : g, sd.act); return JSON.stringify(g.hands); };
+      const sd6 = beforeShowdown(Engine.RULES_VERSION), sd5 = beforeShowdown(5);
+      check('test games reach a Showdown', !!sd6 && !!sd5);
+      if (sd6 && sd5) {
+        eq('a Showdown deal does not depend on earlier hands', sdHands(sd6, true), sdHands(sd6, false));
+        check('rules version 5: it did', sdHands(sd5, true) !== sdHands(sd5, false));
+      }
+      const jokerSuits = move => [1, 2, 3, 4, 5, 6, 7, 8].map(seed => { const r = revealState(seed, 1, 'JK'); r.jokerFlip = 'random'; D(move ? moved(r) : r, { type: 'FLIP' }); return r.jokerSuit; });
+      eq('a random Joker suit does not depend on earlier hands', jokerSuits(true), jokerSuits(false));
     });
 
     /* --- AI knowledge: sampled worlds, information boundary, win chances --- */

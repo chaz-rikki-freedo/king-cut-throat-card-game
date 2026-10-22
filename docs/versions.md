@@ -2,12 +2,12 @@
 
 This page lists each number or ID that the app uses as a version, what it covers, and when to change it. It also lists the things that have no version, and why.
 
-**Load a code** shows the two versions that decide whether a replay code plays back: `Replay KCT3 · Engine 5`.
+**Load a code** shows the two versions that decide whether a replay code plays back: `Replay KCT3 · Engine 6`.
 
 The event log (**Settings → Tools → Event log**) lists all of them in its first line, after the log is turned on or cleared:
 
 ```
-VERSIONS engine=5 replay=KCT3 save=1 backup=KCTS1 profile=1 build=dev
+VERSIONS engine=6 replay=KCT3 save=1 backup=KCTS1 profile=1 build=dev
 ```
 
 The log keeps its last 1,500 lines, so a very long log loses that line. After **Clear log**, the line comes back with the next event.
