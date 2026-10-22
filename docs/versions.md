@@ -16,7 +16,7 @@ The log keeps its last 1,500 lines, so a very long log loses that line. After **
 
 | Name | Where | Now | What it covers | Change it when |
 |---|---|---|---|---|
-| Engine version | `Engine.RULES_VERSION` in `index.html` | 5 | How a seed and a list of decisions become a game: the rules, the deal and the random-number streams. Replay codes and saved games carry it (the `rules` field). A replay plays by its own Engine version and refuses a newer one. | The same seed and decisions would give a different game. |
+| Engine version | `Engine.RULES_VERSION` in `index.html` | 6 | How a seed and a list of decisions become a game: the rules, the deal and the random-number streams. Replay codes and saved games carry it (the `rules` field). A replay plays by its own Engine version and refuses a newer one. | The same seed and decisions would give a different game. |
 | Replay code version | `Replay.VERSION` in `index.html` | 3 | The layout of a replay code: the `KCT3-` prefix, the sections and their fields. See [replay-code.md](replay-code.md). The app also reads versions 1 and 2. | The byte layout changes in a way that an older reader can't skip. A new optional section doesn't need a new version. |
 | Save format | `SAVE_FORMAT` in `index.html` | 1 | The unfinished game kept for each mode (`kct.slots`). A save in another format is dropped, and the app says so once. | A saved Engine state from an older app can't be resumed. |
 | Backup version | `Backup.VERSION` in `index.html` | 1 | The backup envelope (`format: 'kct-backup'`) and its code prefix, `KCTS1-`. See [backup.md](backup.md). A backup newer than the app is refused. | The envelope changes. The data inside it is the `kct.` keys as stored, so it doesn't need its own version. |
