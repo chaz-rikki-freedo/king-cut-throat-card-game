@@ -2,7 +2,8 @@
 
    node palette.js               checks the game's colors; exits with code 1 when a check fails
    node palette.js --pack f.json  checks a theme pack file: its tokens over the defaults (see packProblems)
-   node palette.js --write-doc   rewrites the generated tables in docs/ui/colors.md from the registry
+   node palette.js --write-doc   rewrites the generated tables in docs/ui/colors.md and the embedded data in
+                                 docs/ui/palette.html from the registry
 
    The checks:
    - Registry: every color token in index.html is in the registry with the same value, and every registry token is
@@ -17,8 +18,8 @@
    - Theme packs: the packs embedded in index.html (#themePacks): every felt alone, and every felt with every color
      pack (see packProblems).
 
-   The palette page (docs/ui/palette.html) loads this file too, for the same color math and checks: only main()
-   uses Node. */
+   The palette page (docs/ui/palette.html) embeds this file, the registry and the game's tokens, so it opens from a
+   file with no server: the same color math and checks. Only main() uses Node. */
 'use strict';
 
 /* ---- Color math ---- */
@@ -208,13 +209,35 @@ function withTables(doc, reg) {
   return put(put(put(doc, 'tokens', tokenTable(reg)), 'known', knownTable(reg)), 'untokenized', reg.untokenized.length + ' colors: ' + reg.untokenized.map(x => '`' + x + '`').join(', ') + '.');
 }
 
+/* ---- The embedded data in palette.html ---- */
+/** The page with the registry, the game's tokens and stray colors, and this file's code written in. */
+function withPage(page, reg, game, code) {
+  const json = x => JSON.stringify(x).replace(/</g, '\\u003c');
+  /* In a script, <!-- and <script change how the browser finds </script>: write the < as \x3C. */
+  const js = code.replace(/<(?=!--|\/?script)/gi, '\\x3C');
+  const data = { reg, game: { tokens: game.tokens.map(t => ({ name: t.name, value: t.value })), stray: [...game.stray.keys()] } };
+  const put = (text, name, body) => {
+    const re = new RegExp('(<!-- palette:' + name + ' -->)[\\s\\S]*?(<!-- /palette:' + name + ' -->)');
+    if (!re.test(text)) throw new Error('palette.html: no <!-- palette:' + name + ' --> block');
+    return text.replace(re, () => '<!-- palette:' + name + ' -->\n' + body + '\n<!-- /palette:' + name + ' -->');
+  };
+  return put(put(page, 'data', '<script type="application/json" id="paletteData">' + json(data) + '</script>'), 'code', '<script>\n' + js + '</script>');
+}
+
 /* ---- Main ---- */
 function main(argv) {
   const fs = require('fs'), path = require('path');
   const ROOT = path.resolve(__dirname, '..');
-  const REG_FILE = path.join(ROOT, 'docs/ui/palette.json'), DOC_FILE = path.join(ROOT, 'docs/ui/colors.md');
+  const REG_FILE = path.join(ROOT, 'docs/ui/palette.json'), DOC_FILE = path.join(ROOT, 'docs/ui/colors.md'), PAGE_FILE = path.join(ROOT, 'docs/ui/palette.html');
   const reg = JSON.parse(fs.readFileSync(REG_FILE, 'utf8'));
-  if (argv[0] === '--write-doc') { fs.writeFileSync(DOC_FILE, withTables(fs.readFileSync(DOC_FILE, 'utf8'), reg)); console.log('colors.md: tables rewritten'); return 0; }
+  const game = readGame(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+  const page = () => withPage(fs.readFileSync(PAGE_FILE, 'utf8'), reg, game, fs.readFileSync(__filename, 'utf8'));
+  if (argv[0] === '--write-doc') {
+    fs.writeFileSync(DOC_FILE, withTables(fs.readFileSync(DOC_FILE, 'utf8'), reg));
+    fs.writeFileSync(PAGE_FILE, page());
+    console.log('colors.md: tables rewritten; palette.html: data rewritten');
+    return 0;
+  }
   const fails = [], note = s => console.log('  ' + s), fail = s => { fails.push(s); console.log('  ✖ ' + s); };
   const values = new Map(reg.tokens.map(t => [t.name, norm(t.value)]));
 
@@ -236,7 +259,6 @@ function main(argv) {
   }
   note('CIEDE2000 matches the published test pairs');
 
-  const game = readGame(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
   console.log('Registry');
   const regByName = new Map(reg.tokens.map(t => [t.name, t]));
   for (const t of game.tokens) {
@@ -271,6 +293,7 @@ function main(argv) {
   console.log('Docs');
   const doc = fs.readFileSync(DOC_FILE, 'utf8');
   if (withTables(doc, reg) !== doc) fail('colors.md is out of date: run node palette.js --write-doc');
+  if (page() !== fs.readFileSync(PAGE_FILE, 'utf8')) fail('palette.html is out of date: run node palette.js --write-doc');
 
   console.log(fails.length ? 'FAIL: ' + fails.length + ' check(s) failed' : 'OK: no new collisions');
   return fails.length ? 1 : 0;

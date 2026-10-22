@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KCT palette</title>
 <link rel="icon" href="data:,">
-<!-- Development only: tools/publish.sh does not publish docs/. Serve the repository root and open
-     /docs/ui/palette.html, for example: python3 -m http.server, then http://localhost:8000/docs/ui/palette.html
-     It reads palette.json and index.html, and uses the checker's own code (tests/palette.js). -->
+<!-- Development only: tools/publish.sh does not publish docs/. Open this file in a browser; it needs no server.
+     The registry (palette.json), the game's tokens (index.html) and the checker's own code (tests/palette.js) are
+     written in below by node palette.js --write-doc. Do not edit between the palette markers. -->
 <style>
 :root{--bg:#0d1511;--panel:#16211b;--line:#2a3a31;--ink:#eef2ee;--muted:#9fb3a6;--focus:#8ab4ff;
   --lv-identical:#e5484d;--lv-lookalike:#f08c00;--lv-similar:#c9a227;--lv-distinct:#2f3b34}
@@ -54,8 +54,318 @@ textarea{width:100%;min-height:110px;padding:8px;font:12px/1.4 ui-monospace,Menl
   <label>Vision <select id="vision"></select></label>
   <div class="status" id="status"></div>
 </header>
-<main id="main"><p class="msg">Loading palette.json and index.html…</p></main>
-<script src="../../tests/palette.js"></script>
+<main id="main"><p class="msg">Loading…</p></main>
+<!-- palette:data -->
+<script type="application/json" id="paletteData">{"reg":{"about":"The color registry: every color token in index.html, its family and its job, and the rules that keep colors apart. tests/palette.js checks it; docs/ui/colors.md explains it.","levels":{"lookalike":3,"similar":10,"distinct":20},"levelsNote":"CIEDE2000 lower bounds. Identical: under 3, cannot be told apart even side by side. Lookalike: 3 to 10, different only side by side. Similar: 10 to 20, told apart at a glance. Distinct: 20 and over, recognized alone.","visions":["deuteranopia","protanopia"],"colorBlindMin":"lookalike","families":{"surface":"What things sit on.","text":"Words on dark surfaces.","action":"Act here, or important now. Never a label, a mode or a name.","status":"How something went.","card":"Cards and suits.","seat":"Which seat: you, West, East.","mode":"Which game: always a chip, a fill with its ink.","bot":"Which personality: always colored text next to the name.","settings":"The Settings panel's own surfaces."},"tokens":[{"name":"--page","family":"surface","value":"#0a2a19","job":"The page behind the table, and the browser theme color."},{"name":"--felt","family":"surface","value":"#155a36","job":"The table felt."},{"name":"--felt-edge","family":"surface","value":"#0c3a22","job":"The felt border and the seats."},{"name":"--felt-showdown","family":"surface","value":"#5a1f45","job":"The felt during a Showdown."},{"name":"--felt-showdown-edge","family":"surface","value":"#3a1230","job":"The felt border during a Showdown."},{"name":"--panel","family":"surface","value":"rgba(0,0,0,.26)","job":"A dark tint over the felt: chips, boxes and seats."},{"name":"--panel-strong","family":"surface","value":"rgba(0,0,0,.42)","job":"A stronger tint over the felt: the trump chip."},{"name":"--sheet","family":"surface","value":"#123f28","job":"The background of every panel: Your profile, the pop-ups and the questions."},{"name":"--ink","family":"text","value":"#f5f2e9","job":"Main text on dark surfaces."},{"name":"--muted","family":"text","value":"#bccbbf","job":"Secondary text on dark surfaces."},{"name":"--gold","family":"action","value":"#f2c14e","job":"Act here, or important now: primary buttons, the selected tab, trump, the caller, the turn, the trick winner."},{"name":"--gold-ink","family":"action","value":"#3a2a00","job":"Text on gold."},{"name":"--accent","family":"action","value":"#7cc4ff","job":"Selection: the selected and playable cards, the lead mark, trump in the log."},{"name":"--danger","family":"status","value":"#ff8a80","job":"Something went wrong, or a loss."},{"name":"--good","family":"status","value":"#9be59b","job":"Something worked, or a gain."},{"name":"--card","family":"card","value":"#fffdf6","job":"The face of a card."},{"name":"--card-edge","family":"card","value":"#d6cfbd","job":"The edge of a card."},{"name":"--red","family":"card","value":"#c62828","job":"Red suits on a card face."},{"name":"--black","family":"card","value":"#1c1c1e","job":"Black suits on a card face, and text on light surfaces."},{"name":"--pip-red","family":"card","value":"#ff6b6b","job":"Red suits on dark surfaces: the trump chip, the log, the Advanced panels."},{"name":"--name0","family":"seat","value":"#5eead4","job":"You: your seat, your name, and your wins in the chart."},{"name":"--name1","family":"seat","value":"#a3e635","job":"West, with no personality seated. A seated bot replaces it with its own --bot color."},{"name":"--name2","family":"seat","value":"#a5b4fc","job":"East, with no personality seated. A seated bot replaces it with its own --bot color."},{"name":"--mode-free","family":"mode","value":"#7cc4ff","job":"The Free play chip."},{"name":"--mode-free-ink","family":"mode","value":"#07233a","job":"Text on the Free play chip."},{"name":"--mode-dynamic","family":"mode","value":"#b9a3ff","job":"The Dynamic chip."},{"name":"--mode-dynamic-ink","family":"mode","value":"#1c1240","job":"Text on the Dynamic chip."},{"name":"--mode-waves","family":"mode","value":"#0e7490","job":"The Waves chip."},{"name":"--mode-waves-ink","family":"mode","value":"#ecfeff","job":"Text on the Waves chip."},{"name":"--bot-vex","family":"bot","value":"#ff7a7a","job":"Vex's name, wherever it shows."},{"name":"--bot-doc","family":"bot","value":"#9db0ff","job":"Doc's name, wherever it shows."},{"name":"--bot-ace","family":"bot","value":"#5fdc8f","job":"Ace's name, wherever it shows."},{"name":"--bot-mei","family":"bot","value":"#ff9fd0","job":"Mei's name, wherever it shows."},{"name":"--bot-gus","family":"bot","value":"#5cb8ff","job":"Gus's name, wherever it shows."},{"name":"--bot-lou","family":"bot","value":"#ffad5c","job":"Lou's name, wherever it shows."},{"name":"--bot-viv","family":"bot","value":"#c99bff","job":"Viv's name, wherever it shows."},{"name":"--bot-tex","family":"bot","value":"#d9a874","job":"Tex's name, wherever it shows."},{"name":"--bot-kit","family":"bot","value":"#d8e45a","job":"Kit's name, wherever it shows."},{"name":"--bot-zen","family":"bot","value":"#cfd8dc","job":"Zen's name, wherever it shows."},{"name":"--set-bg","family":"settings","value":"#0b0f0c","job":"The Settings panel background."},{"name":"--set-card","family":"settings","value":"#111b15","job":"A Settings card."},{"name":"--set-line","family":"settings","value":"#24382c","job":"Lines in Settings."},{"name":"--set-field","family":"settings","value":"#16261d","job":"Fields and the tab row in Settings."},{"name":"--set-hint","family":"settings","value":"#8fb89a","job":"Hint text in Settings."},{"name":"--set-switch","family":"settings","value":"#2f4337","job":"A switch that is off, in Settings."},{"name":"--set-switch-edge","family":"settings","value":"#3d5747","job":"The edge of a switch that is off, in Settings."}],"groups":{"people":["--name0","--bot-vex","--bot-doc","--bot-ace","--bot-mei","--bot-gus","--bot-lou","--bot-viv","--bot-tex","--bot-kit","--bot-zen"],"seats":["--name0","--name1","--name2"],"modes":["--mode-free","--mode-dynamic","--mode-waves"],"signals":["--gold","--accent","--pip-red","--danger","--good"]},"rules":[{"id":"people","between":["people","people"],"min":"similar","why":"Any two bots can share a table, and all ten share a list in Your profile."},{"id":"seats","between":["seats","seats"],"min":"similar","why":"The three seats with no personality seated."},{"id":"modes","between":["modes","modes"],"min":"similar","why":"The modes share the menu and the game history."},{"id":"people-signals","between":["people","signals"],"min":"similar","why":"Names sit next to gold, red suits and results in the log and on the table."},{"id":"seats-signals","between":["seats","signals"],"min":"similar","why":"As people-signals, for the seats with no personality seated."},{"id":"modes-signals","between":["modes","signals"],"min":"similar","why":"A mode chip is a fill, like a gold button and the selection outline."},{"id":"modes-people","between":["modes","people"],"min":"lookalike","why":"A mode is a chip and a name is text, so their form tells them apart; their colors must not be identical."}],"contrast":[{"text":"--ink","on":["--page","--panel@--felt","--sheet"],"min":4.5},{"text":"--muted","on":["--panel@--felt","--sheet"],"min":4.5},{"text":"--gold-ink","on":["--gold"],"min":4.5},{"text":"--mode-free-ink","on":["--mode-free"],"min":4.5},{"text":"--mode-dynamic-ink","on":["--mode-dynamic"],"min":4.5},{"text":"--mode-waves-ink","on":["--mode-waves"],"min":4.5},{"text":"--red","on":["--card"],"min":4.5},{"text":"--black","on":["--card"],"min":4.5},{"text":"--danger","on":["--sheet"],"min":4.5},{"text":"--good","on":["--sheet"],"min":4.5},{"text":"--pip-red","on":["--sheet","--panel@--felt"],"min":3},{"text":"--name0","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-vex","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-doc","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-ace","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-mei","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-gus","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-lou","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-viv","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-tex","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-kit","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--bot-zen","on":["--sheet","--panel@--felt"],"min":4.5},{"text":"--ink","on":["--set-bg","--set-card","--set-field"],"min":4.5},{"text":"--set-hint","on":["--set-bg","--set-card","--set-field"],"min":4.5},{"text":"--muted","on":["--set-card"],"min":4.5}],"untokenized":["#000000","#00838f","#070a08","#07233a","#0b0f0c","#0b1a12","#0c3a22","#1b1b1b","#1e8e3e","#222222","#2a1212","#2e7d32","#33507a","#4a5a6a","#5b2a86","#5e7d5e","#69db7c","#6b6b6b","#7a1f2b","#7a5c13","#7f9a86","#8a9a8f","#8e5aa8","#93303d","#9be59b","#b8f5c4","#c2185b","#c792ff","#cfe0d4","#d32f2f","#e07b28","#ece6d4","#f2c14e","#f3e9ff","#f5f2e9","#ff4fd8","#ff8a80","#ff9ad5","#ffa94d","#ffb4ab","#fffdf6","#ffffff","rgba(0,0,0,0)","rgba(0,0,0,0.14)","rgba(0,0,0,0.22)","rgba(0,0,0,0.25)","rgba(0,0,0,0.28)","rgba(0,0,0,0.3)","rgba(0,0,0,0.35)","rgba(0,0,0,0.4)","rgba(0,0,0,0.45)","rgba(0,0,0,0.5)","rgba(0,0,0,0.55)","rgba(0,0,0,0.6)","rgba(0,0,0,0.75)","rgba(242,193,78,0.25)","rgba(255,255,255,0.04)","rgba(255,255,255,0.07)","rgba(255,255,255,0.08)","rgba(255,255,255,0.1)","rgba(255,255,255,0.12)","rgba(255,255,255,0.14)","rgba(255,255,255,0.16)","rgba(255,255,255,0.18)","rgba(255,255,255,0.2)","rgba(255,255,255,0.22)","rgba(255,255,255,0.3)","rgba(255,255,255,0.35)","rgba(255,255,255,0.45)","rgba(255,255,255,0.55)","rgba(52,199,89,0)","rgba(52,199,89,0.8)"],"known":[{"key":"people --bot-lou --bot-tex normal","fix":"Recolor Tex: it is a lookalike of Lou."},{"key":"people --bot-zen --name0 deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people --bot-doc --bot-gus deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people --bot-doc --bot-viv deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people --bot-gus --bot-viv deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people --bot-doc --bot-gus protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes --mode-dynamic --mode-free deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --bot-vex --pip-red normal","fix":"Recolor Vex away from red: red means hearts, diamonds and errors."},{"key":"people-signals --bot-vex --danger normal","fix":"Recolor Vex away from red: red means hearts, diamonds and errors."},{"key":"people-signals --bot-ace --good normal","fix":"Recolor Ace away from the success green."},{"key":"people-signals --accent --bot-gus normal","fix":"Fixed with --accent / --mode-free."},{"key":"people-signals --bot-vex --pip-red deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --bot-vex --danger deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --accent --bot-doc deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --bot-lou --gold deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --accent --bot-viv deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --bot-tex --danger deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"people-signals --bot-ace --good protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"seats-signals --gold --name1 deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"seats-signals --accent --name2 deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"seats-signals --accent --name2 protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-signals --accent --mode-free normal","fix":"Give the selection (--accent) its own color: today it is the Free play color."},{"key":"modes-signals --accent --mode-free deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-signals --accent --mode-dynamic deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-signals --accent --mode-free protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-doc --mode-free deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-viv --mode-free deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-doc --mode-dynamic deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-gus --mode-dynamic deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-viv --mode-dynamic deuteranopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-doc --mode-dynamic protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-gus --mode-dynamic protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."},{"key":"modes-people --bot-viv --mode-dynamic protanopia","fix":"Color-blind pass: set these apart by lightness, not hue alone."}],"contrastNote":"WCAG 2 contrast. A background written \"--panel@--felt\" is the --panel tint over the felt, which is what the seats and the log sit on."},"game":{"tokens":[{"name":"--felt","value":"#155a36"},{"name":"--felt-edge","value":"#0c3a22"},{"name":"--felt-showdown","value":"#5a1f45"},{"name":"--felt-showdown-edge","value":"#3a1230"},{"name":"--page","value":"#0a2a19"},{"name":"--panel","value":"rgba(0,0,0,0.26)"},{"name":"--panel-strong","value":"rgba(0,0,0,0.42)"},{"name":"--ink","value":"#f5f2e9"},{"name":"--muted","value":"#bccbbf"},{"name":"--gold","value":"#f2c14e"},{"name":"--gold-ink","value":"#3a2a00"},{"name":"--accent","value":"#7cc4ff"},{"name":"--danger","value":"#ff8a80"},{"name":"--good","value":"#9be59b"},{"name":"--card","value":"#fffdf6"},{"name":"--card-edge","value":"#d6cfbd"},{"name":"--red","value":"#c62828"},{"name":"--black","value":"#1c1c1e"},{"name":"--name0","value":"#5eead4"},{"name":"--name1","value":"#a3e635"},{"name":"--name2","value":"#a5b4fc"},{"name":"--sheet","value":"#123f28"},{"name":"--pip-red","value":"#ff6b6b"},{"name":"--set-bg","value":"#0b0f0c"},{"name":"--set-card","value":"#111b15"},{"name":"--set-line","value":"#24382c"},{"name":"--set-field","value":"#16261d"},{"name":"--set-hint","value":"#8fb89a"},{"name":"--set-switch","value":"#2f4337"},{"name":"--set-switch-edge","value":"#3d5747"},{"name":"--mode-free","value":"#7cc4ff"},{"name":"--mode-free-ink","value":"#07233a"},{"name":"--mode-dynamic","value":"#b9a3ff"},{"name":"--mode-dynamic-ink","value":"#1c1240"},{"name":"--mode-waves","value":"#0e7490"},{"name":"--mode-waves-ink","value":"#ecfeff"},{"name":"--bot-vex","value":"#ff7a7a"},{"name":"--bot-doc","value":"#9db0ff"},{"name":"--bot-ace","value":"#5fdc8f"},{"name":"--bot-mei","value":"#ff9fd0"},{"name":"--bot-gus","value":"#5cb8ff"},{"name":"--bot-lou","value":"#ffad5c"},{"name":"--bot-viv","value":"#c99bff"},{"name":"--bot-tex","value":"#d9a874"},{"name":"--bot-kit","value":"#d8e45a"},{"name":"--bot-zen","value":"#cfd8dc"}],"stray":["#0c3a22","rgba(255,255,255,0.08)","rgba(0,0,0,0.35)","rgba(255,255,255,0.18)","rgba(0,0,0,0.45)","rgba(255,255,255,0.12)","rgba(255,255,255,0.1)","rgba(255,255,255,0.22)","rgba(0,0,0,0.3)","rgba(242,193,78,0.25)","rgba(0,0,0,0.25)","rgba(255,255,255,0.14)","rgba(255,255,255,0.3)","rgba(0,0,0,0.22)","#8a9a8f","rgba(255,255,255,0.07)","rgba(255,255,255,0.2)","rgba(0,0,0,0.4)","rgba(255,255,255,0.16)","#33507a","#7a5c13","#ece6d4","#222222","#5e7d5e","#8e5aa8","#c2185b","#f5f2e9","#7a1f2b","#93303d","rgba(0,0,0,0.14)","#5b2a86","#fffdf6","#f3e9ff","#07233a","rgba(0,0,0,0.5)","rgba(0,0,0,0.28)","rgba(0,0,0,0.55)","#ff9ad5","#c792ff","#ffa94d","#69db7c","#ff4fd8","#000000","#0b1a12","#ffffff","#6b6b6b","#d32f2f","rgba(52,199,89,0.8)","rgba(52,199,89,0)","#1e8e3e","rgba(0,0,0,0.6)","#9be59b","#ff8a80","#cfe0d4","#2a1212","#ffb4ab","#7f9a86","#070a08","#b8f5c4","#0b0f0c","rgba(255,255,255,0.45)","rgba(255,255,255,0.04)","#f2c14e","#1b1b1b","#e07b28","rgba(255,255,255,0.35)","#00838f","#4a5a6a","rgba(255,255,255,0.55)","#2e7d32","rgba(0,0,0,0.75)","rgba(0,0,0,0)"]}}</script>
+<!-- /palette:data -->
+<!-- palette:code -->
+<script>
+/* The color checker (docs/ui/colors.md). No browser: it reads index.html and the registry, docs/ui/palette.json.
+
+   node palette.js               checks the game's colors; exits with code 1 when a check fails
+   node palette.js --pack f.json  checks a theme pack file: its tokens over the defaults (see packProblems)
+   node palette.js --write-doc   rewrites the generated tables in docs/ui/colors.md and the embedded data in
+                                 docs/ui/palette.html from the registry
+
+   The checks:
+   - Registry: every color token in index.html is in the registry with the same value, and every registry token is
+     in index.html.
+   - Stray colors: every color written in index.html outside a token is on the registry's untokenized list, and every
+     color on that list is still in index.html. The list can only shrink.
+   - Collisions: each rule's pairs are at least as far apart as the rule's level, for normal vision and for the
+     simulated color blindness in the registry.
+   - Contrast: each text and background pair has at least its WCAG contrast ratio.
+   - Known problems: a failing pair passes only while it is listed under known, and a listed pair that no longer
+     fails must be removed, so the list stays true.
+   - Theme packs: the packs embedded in index.html (#themePacks): every felt alone, and every felt with every color
+     pack (see packProblems).
+
+   The palette page (docs/ui/palette.html) embeds this file, the registry and the game's tokens, so it opens from a
+   file with no server: the same color math and checks. Only main() uses Node. */
+'use strict';
+
+/* ---- Color math ---- */
+/** @returns {{ r: number, g: number, b: number, a: number } | null} 0–255 channels, alpha 0–1 */
+function parse(text) {
+  const t = text.trim().toLowerCase();
+  let m = /^#([0-9a-f]{3,8})$/.exec(t);
+  if (m) {
+    let h = m[1];
+    if (h.length === 3 || h.length === 4) h = h.split('').map(c => c + c).join('');
+    if (h.length !== 6 && h.length !== 8) return null;
+    const n = i => parseInt(h.slice(i, i + 2), 16);
+    return { r: n(0), g: n(2), b: n(4), a: h.length === 8 ? n(6) / 255 : 1 };
+  }
+  m = /^rgba?\(([^)]*)\)$/.exec(t);
+  if (m) {
+    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    if (p.length < 3 || p.some(x => Number.isNaN(x))) return null;
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+  }
+  return null;
+}
+/** One spelling per color, so #fff and #ffffff are the same entry. */
+function norm(text) {
+  const c = parse(text);
+  if (!c) return text.trim().toLowerCase();
+  const hex = v => Math.round(v).toString(16).padStart(2, '0');
+  return c.a === 1 ? '#' + hex(c.r) + hex(c.g) + hex(c.b) : 'rgba(' + [c.r, c.g, c.b].map(Math.round).join(',') + ',' + +c.a.toFixed(3) + ')';
+}
+const toLinear = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+const fromLinear = v => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
+/* Color blindness, simulated with the matrices of Machado, Oliveira and Fernandes (2009), severity 1, in linear RGB. */
+const VISION = {
+  normal: null,
+  deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+  protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  tritanopia: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]]
+};
+function seenAs(c, vision) {
+  const M = VISION[vision];
+  if (!M) return c;
+  const v = [toLinear(c.r), toLinear(c.g), toLinear(c.b)];
+  const o = M.map(row => Math.min(1, Math.max(0, row[0] * v[0] + row[1] * v[1] + row[2] * v[2])));
+  return { r: fromLinear(o[0]), g: fromLinear(o[1]), b: fromLinear(o[2]), a: c.a };
+}
+function lab(c) {
+  const r = toLinear(c.r), g = toLinear(c.g), b = toLinear(c.b);
+  const f = v => v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116;
+  const x = f((r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047), y = f(r * 0.2126 + g * 0.7152 + b * 0.0722), z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+/** CIEDE2000: how different two colors look. */
+const deltaE = (c1, c2) => deltaELab(lab(c1), lab(c2));
+function deltaELab([L1, a1, b1], [L2, a2, b2]) {
+  const rad = Math.PI / 180;
+  const Cb = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2, G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+  const a1p = (1 + G) * a1, a2p = (1 + G) * a2, C1 = Math.hypot(a1p, b1), C2 = Math.hypot(a2p, b2);
+  const hue = (x, y) => (Math.atan2(y, x) / rad + 360) % 360;
+  const h1 = hue(a1p, b1), h2 = hue(a2p, b2);
+  let dh = C1 * C2 === 0 ? 0 : h2 - h1;
+  if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+  const dL = L2 - L1, dC = C2 - C1, dH = 2 * Math.sqrt(C1 * C2) * Math.sin(dh * rad / 2);
+  const Lb = (L1 + L2) / 2, Cp = (C1 + C2) / 2;
+  const hb = C1 * C2 === 0 ? h1 + h2 : Math.abs(h1 - h2) <= 180 ? (h1 + h2) / 2 : h1 + h2 < 360 ? (h1 + h2 + 360) / 2 : (h1 + h2 - 360) / 2;
+  const T = 1 - 0.17 * Math.cos((hb - 30) * rad) + 0.24 * Math.cos(2 * hb * rad) + 0.32 * Math.cos((3 * hb + 6) * rad) - 0.2 * Math.cos((4 * hb - 63) * rad);
+  const SL = 1 + 0.015 * (Lb - 50) ** 2 / Math.sqrt(20 + (Lb - 50) ** 2), SC = 1 + 0.045 * Cp, SH = 1 + 0.015 * Cp * T;
+  const RT = -Math.sin(2 * 30 * Math.exp(-(((hb - 275) / 25) ** 2)) * rad) * 2 * Math.sqrt(Cp ** 7 / (Cp ** 7 + 25 ** 7));
+  return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
+}
+/** WCAG 2 contrast ratio. */
+function contrast(c1, c2) {
+  const lum = c => 0.2126 * toLinear(c.r) + 0.7152 * toLinear(c.g) + 0.0722 * toLinear(c.b);
+  const [hi, lo] = [lum(c1), lum(c2)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/* ---- Reading the game ---- */
+const COLOR_RE = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g;
+/** The color tokens declared in the CSS ({ name, value, scope }), every other color written in index.html, and the
+    embedded theme packs (#themePacks: { felts, colors }), whose colors are not stray. */
+function readGame(html) {
+  const packRe = /\x3Cscript type="application\/json" id="themePacks">([\s\S]*?)<\/script>/;
+  const pm = packRe.exec(html);
+  const packs = pm ? JSON.parse(pm[1]) : { felts: {}, colors: {} };
+  if (pm) html = html.slice(0, pm.index) + ' '.repeat(pm[0].length) + html.slice(pm.index + pm[0].length);
+  const css = html.slice(0, html.indexOf('</style>'));
+  const tokens = [], decl = /([^{}]+)\{([^{}]*)\}/g, prop = /(--[\w-]+)\s*:\s*([^;]+)/g;
+  let m, p;
+  const spans = [];
+  while ((m = decl.exec(css))) {
+    const scope = m[1].trim().split('\n').pop().trim();
+    prop.lastIndex = 0;
+    while ((p = prop.exec(m[2]))) {
+      if (!parse(p[2])) continue;
+      tokens.push({ name: p[1], value: norm(p[2]), scope });
+      const at = m.index + m[1].length + 1 + p.index;
+      spans.push([at, at + p[0].length]);
+    }
+  }
+  /* Comments name colors too (issue numbers like #117 look like hex): leave them out, and anything inside a token. */
+  const blank = (s, re) => s.replace(re, x => ' '.repeat(x.length));
+  let code = blank(blank(html, /\/\*[\s\S]*?\*\//g), /\x3C!--[\s\S]*?-->/g);
+  for (const [a, b] of spans) code = code.slice(0, a) + ' '.repeat(b - a) + code.slice(b);
+  const stray = new Map();
+  for (const x of code.match(COLOR_RE) || []) if (parse(x)) { const k = norm(x); stray.set(k, (stray.get(k) || 0) + 1); }
+  return { tokens, stray, packs };
+}
+
+/* ---- The checks ---- */
+const LEVELS = ['identical', 'lookalike', 'similar', 'distinct'];
+function levelOf(reg, d) {
+  const t = reg.levels;
+  return d < t.lookalike ? 'identical' : d < t.similar ? 'lookalike' : d < t.distinct ? 'similar' : 'distinct';
+}
+const pairKey = (check, a, b, vision) => [check, ...[a, b].sort(), vision].join(' ');
+function members(reg, group) {
+  const g = reg.groups[group];
+  if (!g) throw new Error('palette.json: no group ' + group);
+  return g;
+}
+/** Every collision and contrast failure for a set of token values. */
+function problems(reg, values) {
+  const out = [];
+  const color = name => { const c = values.get(name); if (!c) throw new Error('palette.json: no token ' + name); return parse(c); };
+  for (const rule of reg.rules) {
+    const A = members(reg, rule.between[0]), B = members(reg, rule.between[1]);
+    const pairs = [];
+    if (rule.between[0] === rule.between[1]) A.forEach((a, i) => A.slice(i + 1).forEach(b => pairs.push([a, b])));
+    else A.forEach(a => B.forEach(b => { if (a !== b) pairs.push([a, b]); }));
+    for (const vision of Object.keys(VISION)) {
+      const need = vision === 'normal' ? rule.min : rule.minColorBlind || reg.colorBlindMin;
+      if (vision !== 'normal' && !reg.visions.includes(vision)) continue;
+      for (const [a, b] of pairs) {
+        const d = deltaE(seenAs(color(a), vision), seenAs(color(b), vision)), seen = levelOf(reg, d);
+        if (LEVELS.indexOf(seen) < LEVELS.indexOf(need)) out.push({ key: pairKey(rule.id, a, b, vision), check: rule.id, a, b, vision, text: seen + ' (' + d.toFixed(1) + '), needs ' + need });
+      }
+    }
+  }
+  /* A background can be a tint over a surface, written "--panel@--felt": the seats and the log are a tint over the felt. */
+  const surface = name => {
+    const [top, under] = name.split('@');
+    if (!under) return color(top);
+    const t = color(top), u = surface(under), mix = k => t[k] * t.a + u[k] * (1 - t.a);
+    return { r: mix('r'), g: mix('g'), b: mix('b'), a: 1 };
+  };
+  for (const c of reg.contrast) for (const bg of c.on) {
+    const r = contrast(color(c.text), surface(bg));
+    if (r < c.min) out.push({ key: pairKey('contrast', c.text, bg, 'normal'), check: 'contrast', a: c.text, b: bg, vision: 'normal', text: r.toFixed(2) + ':1, needs ' + c.min + ':1' });
+  }
+  return out;
+}
+
+/** The problems of a theme: its tokens laid over the defaults. A theme may keep a known problem of the defaults only
+    when it changes neither color of the pair; a strict theme (a color pack) may keep none. Returns the problems
+    that fail, as text, and the problems for tokens that are not tokens or values that are not colors.
+    @param {Map<string, string>} defaults @param {Record<string, string>} tokens */
+function packProblems(reg, defaults, tokens, strict) {
+  const out = [], values = new Map(defaults), known = new Set(reg.known.map(k => k.key));
+  for (const [name, v] of Object.entries(tokens)) {
+    if (!values.has(name)) out.push(name + ' is not a token');
+    else if (!parse(v)) out.push(name + ': ' + v + ' is not a color');
+    else values.set(name, norm(v));
+  }
+  if (out.length) return out;
+  for (const p of problems(reg, values)) {
+    if (!strict && known.has(p.key) && !(p.a in tokens) && !(p.b in tokens)) continue;
+    out.push(p.check + ': ' + p.a + ' / ' + p.b + (p.vision === 'normal' ? '' : ' (' + p.vision + ')') + ': ' + p.text);
+  }
+  return out;
+}
+
+/* ---- The generated tables in colors.md ---- */
+function tokenTable(reg) {
+  const rows = reg.tokens.map(t => '| `' + t.name + '` | ' + t.family + ' | `' + t.value + '` | ' + t.job + ' |');
+  return ['| Token | Family | Default | Job |', '|---|---|---|---|', ...rows].join('\n');
+}
+function knownTable(reg) {
+  const rows = reg.known.map(k => { const [check, a, b, vision] = k.key.split(' '); return '| ' + check + ' | `' + a + '` / `' + b + '` | ' + vision + ' | ' + k.fix + ' |'; });
+  return rows.length ? ['| Check | Pair | Vision | Planned fix |', '|---|---|---|---|', ...rows].join('\n') : 'None.';
+}
+function withTables(doc, reg) {
+  const put = (text, name, table) => {
+    const re = new RegExp('(\x3C!-- palette:' + name + ' -->)[\\s\\S]*?(\x3C!-- /palette:' + name + ' -->)');
+    if (!re.test(text)) throw new Error('colors.md: no \x3C!-- palette:' + name + ' --> block');
+    return text.replace(re, '$1\n' + table + '\n$2');
+  };
+  return put(put(put(doc, 'tokens', tokenTable(reg)), 'known', knownTable(reg)), 'untokenized', reg.untokenized.length + ' colors: ' + reg.untokenized.map(x => '`' + x + '`').join(', ') + '.');
+}
+
+/* ---- The embedded data in palette.html ---- */
+/** The page with the registry, the game's tokens and stray colors, and this file's code written in. */
+function withPage(page, reg, game, code) {
+  const json = x => JSON.stringify(x).replace(/</g, '\\u003c');
+  /* In a script, \x3C!-- and \x3Cscript change how the browser finds \x3C/script>: write the < as \x3C. */
+  const js = code.replace(/<(?=!--|\/?script)/gi, '\\x3C');
+  const data = { reg, game: { tokens: game.tokens.map(t => ({ name: t.name, value: t.value })), stray: [...game.stray.keys()] } };
+  const put = (text, name, body) => {
+    const re = new RegExp('(\x3C!-- palette:' + name + ' -->)[\\s\\S]*?(\x3C!-- /palette:' + name + ' -->)');
+    if (!re.test(text)) throw new Error('palette.html: no \x3C!-- palette:' + name + ' --> block');
+    return text.replace(re, () => '\x3C!-- palette:' + name + ' -->\n' + body + '\n\x3C!-- /palette:' + name + ' -->');
+  };
+  return put(put(page, 'data', '\x3Cscript type="application/json" id="paletteData">' + json(data) + '\x3C/script>'), 'code', '\x3Cscript>\n' + js + '\x3C/script>');
+}
+
+/* ---- Main ---- */
+function main(argv) {
+  const fs = require('fs'), path = require('path');
+  const ROOT = path.resolve(__dirname, '..');
+  const REG_FILE = path.join(ROOT, 'docs/ui/palette.json'), DOC_FILE = path.join(ROOT, 'docs/ui/colors.md'), PAGE_FILE = path.join(ROOT, 'docs/ui/palette.html');
+  const reg = JSON.parse(fs.readFileSync(REG_FILE, 'utf8'));
+  const game = readGame(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+  const page = () => withPage(fs.readFileSync(PAGE_FILE, 'utf8'), reg, game, fs.readFileSync(__filename, 'utf8'));
+  if (argv[0] === '--write-doc') {
+    fs.writeFileSync(DOC_FILE, withTables(fs.readFileSync(DOC_FILE, 'utf8'), reg));
+    fs.writeFileSync(PAGE_FILE, page());
+    console.log('colors.md: tables rewritten; palette.html: data rewritten');
+    return 0;
+  }
+  const fails = [], note = s => console.log('  ' + s), fail = s => { fails.push(s); console.log('  ✖ ' + s); };
+  const values = new Map(reg.tokens.map(t => [t.name, norm(t.value)]));
+
+  if (argv[0] === '--pack') {
+    const pack = JSON.parse(fs.readFileSync(path.resolve(argv[1]), 'utf8'));
+    console.log('Theme pack: ' + (pack.name || argv[1]));
+    for (const p of packProblems(reg, values, pack.tokens || {}, !!pack.strict)) fail(p);
+    note(reg.untokenized.length + ' colors in the game are not tokens yet, so no theme can change them.');
+    console.log(fails.length ? 'FAIL: ' + fails.length + ' problem(s)' : 'OK: the pack has no collisions');
+    return fails.length ? 1 : 0;
+  }
+
+  /* Published test pairs for CIEDE2000 (Sharma, Wu and Dalal, 2005: pairs 1, 7, 17 and 25). */
+  console.log('Color math');
+  for (const [x, y, want] of [[[50, 2.6772, -79.7751], [50, 0, -82.7485], 2.0425], [[50, 0, 0], [50, -1, 2], 2.3669],
+    [[50, 2.5, 0], [73, 25, -18], 27.1492], [[60.2574, -34.0099, 36.2677], [60.4626, -34.1751, 39.4387], 1.2644]]) {
+    const got = deltaELab(x, y);
+    if (Math.abs(got - want) > 1e-4) fail('CIEDE2000 gives ' + got.toFixed(4) + ' for a published pair of ' + want);
+  }
+  note('CIEDE2000 matches the published test pairs');
+
+  console.log('Registry');
+  const regByName = new Map(reg.tokens.map(t => [t.name, t]));
+  for (const t of game.tokens) {
+    const r = regByName.get(t.name);
+    if (!r) fail(t.name + ' (' + t.value + ', in ' + t.scope + ') is not in palette.json');
+    else if (norm(r.value) !== t.value) fail(t.name + ' is ' + t.value + ' in index.html but ' + r.value + ' in palette.json');
+  }
+  for (const r of reg.tokens) if (!game.tokens.some(t => t.name === r.name)) fail(r.name + ' is in palette.json but not in index.html');
+  note(game.tokens.length + ' tokens');
+
+  console.log('Stray colors');
+  const listed = new Set(reg.untokenized.map(norm));
+  for (const [c, n] of game.stray) if (!listed.has(c)) fail(c + ' is written in index.html ' + n + ' time(s): make it a token, or reuse one');
+  for (const c of listed) if (!game.stray.has(c)) fail(c + ' is no longer in index.html: remove it from untokenized');
+  note(game.stray.size + ' colors not yet tokens (the list can only shrink)');
+
+  console.log('Collisions and contrast');
+  const found = problems(reg, values), known = new Map(reg.known.map(k => [k.key, k]));
+  for (const p of found) if (!known.has(p.key)) fail(p.check + ': ' + p.a + ' / ' + p.b + (p.vision === 'normal' ? '' : ' (' + p.vision + ')') + ': ' + p.text);
+  for (const k of reg.known) if (!found.some(p => p.key === k.key)) fail('known "' + k.key + '" passes now: remove it from known');
+  note(found.length + ' problems, ' + reg.known.length + ' of them known');
+
+  console.log('Theme packs');
+  const felts = Object.entries(game.packs.felts || {}), colorPacks = Object.entries(game.packs.colors || {});
+  if (!felts.length) fail('index.html has no felt packs (#themePacks)');
+  for (const [id, f] of felts) {
+    for (const p of packProblems(reg, values, f.tokens, false)) fail('felt ' + id + ': ' + p);
+    for (const [cid, c] of colorPacks) for (const p of packProblems(reg, values, { ...f.tokens, ...c.tokens }, true)) fail('felt ' + id + ' with ' + cid + ': ' + p);
+  }
+  note(felts.length + ' felts, ' + colorPacks.length + ' color pack(s): every felt alone and with every color pack');
+
+  console.log('Docs');
+  const doc = fs.readFileSync(DOC_FILE, 'utf8');
+  if (withTables(doc, reg) !== doc) fail('colors.md is out of date: run node palette.js --write-doc');
+  if (page() !== fs.readFileSync(PAGE_FILE, 'utf8')) fail('palette.html is out of date: run node palette.js --write-doc');
+
+  console.log(fails.length ? 'FAIL: ' + fails.length + ' check(s) failed' : 'OK: no new collisions');
+  return fails.length ? 1 : 0;
+}
+if (typeof module !== 'undefined') {
+  module.exports = { parse, norm, deltaE, deltaELab, contrast, seenAs, readGame, problems, packProblems, levelOf, VISION, LEVELS };
+  if (require.main === module) process.exitCode = main(process.argv.slice(2));
+}
+</script>
+<!-- /palette:code -->
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -134,7 +444,7 @@ function render() {
   const found = problems(reg, state.values), known = new Set(state.pack ? [] : reg.known.map(k => k.key));
   const fresh = found.filter(p => !known.has(p.key)).length;
   const drift = reg.tokens.filter(t => { const g = game.tokens.find(x => x.name === t.name); return !g || g.value !== norm(t.value); }).length + game.tokens.filter(g => !reg.tokens.some(t => t.name === g.name)).length;
-  $('status').innerHTML = '<span class="pill">' + reg.tokens.length + ' tokens</span><span class="pill">' + game.stray.size + ' not yet tokens</span>' +
+  $('status').innerHTML = '<span class="pill">' + reg.tokens.length + ' tokens</span><span class="pill">' + game.stray.length + ' not yet tokens</span>' +
     '<span class="pill ' + (fresh ? 'bad' : 'ok') + '">' + found.length + ' problems, ' + fresh + ' new</span>' +
     '<span class="pill ' + (drift ? 'bad' : 'ok') + '">' + (drift ? drift + ' tokens differ from index.html' : 'index.html matches the registry') + '</span>' +
     (state.pack ? '<span class="pill">Pack: ' + esc(state.pack.name || 'unnamed') + '</span>' : '');
@@ -165,18 +475,15 @@ function applyPack() {
   state.pack = pack; state.values = values; render();
 }
 
-(async () => {
-  try {
-    const [reg, html] = await Promise.all([fetch('palette.json').then(r => r.json()), fetch('../../index.html').then(r => r.text())]);
-    state.reg = reg; state.game = readGame(html); state.values = defaults();
-    $('vision').innerHTML = Object.keys(VISION).map(k => '<option value="' + k + '">' + k[0].toUpperCase() + k.slice(1) + '</option>').join('');
-    $('vision').onchange = e => { state.vision = e.target.value; render(); };
-    render();
-  } catch (e) {
-    $('main').innerHTML = '<div class="err"><b>Could not load palette.json and index.html.</b><p>Browsers block reading files from a file:// page. Serve the repository root, then open this page from the server:</p>' +
-      '<pre>python3 -m http.server\nhttp://localhost:8000/docs/ui/palette.html</pre><p class="msg">' + esc(e.message) + '</p></div>';
-  }
-})();
+try {
+  const { reg, game } = JSON.parse($('paletteData').textContent);
+  state.reg = reg; state.game = game; state.values = defaults();
+  $('vision').innerHTML = Object.keys(VISION).map(k => '<option value="' + k + '">' + k[0].toUpperCase() + k.slice(1) + '</option>').join('');
+  $('vision').onchange = e => { state.vision = e.target.value; render(); };
+  render();
+} catch (e) {
+  $('main').innerHTML = '<div class="err"><b>Could not read the palette data.</b><p>Run <code>node palette.js --write-doc</code> in tests/ to write it in again.</p><p class="msg">' + esc(e.message) + '</p></div>';
+}
 </script>
 </body>
 </html>
