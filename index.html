@@ -917,7 +917,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '1b26ad1', date: '2026-10-21' });
+const BUILD = Object.freeze({ commit: '7419485', date: '2026-10-21' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1150,7 +1150,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
-    if (rules > 4) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
+    if (rules === 5) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
   }
@@ -1258,7 +1258,7 @@ const Engine = (() => {
       default: return ADVANCE_PHASES.includes(state.phase) ? { type: 'ADVANCE' } : null;
     }
   }
-  const RULES_VERSION = 5;
+  const RULES_VERSION = 6;
   const SYSTEM_TYPES = new Set(['START_GAME', 'DEAL', 'FLIP', 'ADVANCE']);
   function decisionOf(a) {
     switch (a.type) {
@@ -1448,12 +1448,19 @@ const Engine = (() => {
     events.push(Object.assign({ type: 'SHOWDOWN_LEAD' }, lead));
     startTrick(state, events);
   }
-  const sideRng = state => state.sideRng || state.rng;
+  function dealRng(state, salt) {
+    let h = (state.seed ^ Math.imul(state.handNumber, 0x9E3779B1) ^ Math.imul(salt, 0x85EBCA6B)) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
+    h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+    return { s: (h ^ (h >>> 16)) >>> 0 };
+  }
+  const SALT = Object.freeze({ JOKER_SUIT: 1, SHOWDOWN: 2 });
+  const sideRng = (state, salt) => (state.rules >= 6 && !state.playRng ? dealRng(state, salt) : state.sideRng || state.rng);
   function dealShowdown(state, events) {
     const sd = state.showdown;
     const pool = state.outside.splice(0);
     if (pool.length !== C.OUTSIDE_SIZE) throw new Error('Outside pile must hold 12 cards, has ' + pool.length);
-    RNG.shuffle(pool, sideRng(state));
+    RNG.shuffle(pool, sideRng(state, SALT.SHOWDOWN));
     const first = seatAfter(sd.mediator);
     const second = seatAfter(first);
     for (let i = 0; i < C.SHOWDOWN_DEAL; i++) {
@@ -1522,7 +1529,7 @@ const Engine = (() => {
     FLIP(state, a, events) {
       state.flippedId = state.kitty[0];
       if (R.card(state.flippedId).isJoker && state.jokerFlip) {
-        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state), R.SUITS.length)] : state.jokerFlip;
+        state.jokerSuit = state.jokerFlip === 'random' ? R.SUITS[RNG.int(sideRng(state, SALT.JOKER_SUIT), R.SUITS.length)] : state.jokerFlip;
       }
       events.push(state.jokerSuit ? { type: 'KITTY_FLIPPED', card: state.flippedId, jokerSuit: state.jokerSuit } : { type: 'KITTY_FLIPPED', card: state.flippedId });
       if (R.card(state.flippedId).isJoker && !state.jokerSuit) {
@@ -7131,6 +7138,26 @@ const SelfTest = (() => {
         check('that seed plays differently and has a Showdown', a.decisions !== b.decisions && (a.sd || b.sd) && n > 1);
         eq('the same seed deals the same cards, however seat 0 plays', b.deals.slice(0, n), a.deals.slice(0, n));
       }
+      const moved = st => { st.rng = { s: 12345 }; if (st.sideRng) st.sideRng = { s: 54321 }; return st; };
+      const beforeShowdown = rules => {
+        for (let seed = 1; seed < 40; seed++) {
+          const g = Engine.createGame(seed, null, rules);
+          for (let k = 0; k < 5000 && !g.gameOver; k++) {
+            const ac = Engine.actors(g), act = ac.length ? AI.fastAction(g, ac[0]) : Engine.systemAction(g), pre = JSON.stringify(g);
+            if (D(g, act).events.some(e => e.type === 'SHOWDOWN_DEAL')) return { pre, act };
+          }
+        }
+        return null;
+      };
+      const sdHands = (sd, move) => { const g = JSON.parse(sd.pre); D(move ? moved(g) : g, sd.act); return JSON.stringify(g.hands); };
+      const sd6 = beforeShowdown(Engine.RULES_VERSION), sd5 = beforeShowdown(5);
+      check('test games reach a Showdown', !!sd6 && !!sd5);
+      if (sd6 && sd5) {
+        eq('a Showdown deal does not depend on earlier hands', sdHands(sd6, true), sdHands(sd6, false));
+        check('rules version 5: it did', sdHands(sd5, true) !== sdHands(sd5, false));
+      }
+      const jokerSuits = move => [1, 2, 3, 4, 5, 6, 7, 8].map(seed => { const r = revealState(seed, 1, 'JK'); r.jokerFlip = 'random'; D(move ? moved(r) : r, { type: 'FLIP' }); return r.jokerSuit; });
+      eq('a random Joker suit does not depend on earlier hands', jokerSuits(true), jokerSuits(false));
     });
     safeRun('ai knowledge', () => {
       const full = AI.config(AI.DEFAULT_CONFIG, { knowledge: AI.KNOWLEDGE_ALL_ON, thinking: AI.THINKING_FULL });
