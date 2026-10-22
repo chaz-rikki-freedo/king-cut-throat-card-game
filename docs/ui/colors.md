@@ -9,7 +9,7 @@ The system has three parts:
 | Tokens | `index.html`, the `:root` block | The color values the game uses. Every rule draws its colors from a token (`var(--gold)`), not from a written value. |
 | Registry | [`palette.json`](palette.json) | Every token with its family and job, the groups, the rules, the contrast pairs, the colors not yet tokens, and the known problems. |
 | Checker | [`tests/palette.js`](../../tests/palette.js) | Checks the tokens against the registry and the rules. It runs in the Checks workflow on every pull request. |
-| Palette page | [`palette.html`](palette.html) | For development only, never published: every token, the colors in context, the collision table and the problems, with color blindness simulated, and a box to try a theme pack. |
+| Palette page | [`palette.html`](palette.html) | For development only, never published, and opens from a file: every token, the colors in context, the collision table and the problems, with color blindness simulated, and a box to try a theme pack. |
 
 ## The families
 
@@ -61,16 +61,11 @@ The checker measures how different two colors look with CIEDE2000, a measure bui
 ```sh
 cd tests
 node palette.js                  # check the game's colors
-node palette.js --write-doc      # rewrite the generated tables on this page from palette.json
+node palette.js --write-doc      # rewrite the generated tables on this page and the palette page's data from palette.json
 node palette.js --pack pack.json # check a theme pack
 ```
 
-To see the colors, serve the repository root and open the palette page. It uses the checker's own code, so it shows the same results:
-
-```sh
-python3 -m http.server          # from the repository root
-# then open http://localhost:8000/docs/ui/palette.html
-```
+To see the colors, open [`palette.html`](palette.html) in a browser. It needs no server: `--write-doc` writes the registry, the game's tokens and the checker's own code into it, so it shows the same results.
 
 The checker fails when:
 
@@ -78,14 +73,14 @@ The checker fails when:
 - a color is written in `index.html` outside a token and is not on the untokenized list;
 - a rule or a contrast pair fails, and the pair is not on the known list;
 - a known pair passes now, or an untokenized color is gone, and the registry still lists it;
-- the tables on this page do not match the registry.
+- the tables on this page, or the data in the palette page, do not match the registry.
 
 ## Add or change a color
 
 1. Reuse a token when one has the job. If none has, add a token to `:root` in `index.html`.
 2. Add the token to `palette.json`, with its family and its job. If it is a name, a mode or a signal, add it to its group.
 3. Run `node palette.js`. A new collision fails: choose another value, not a new known entry.
-4. Run `node palette.js --write-doc` and commit this page with the change.
+4. Run `node palette.js --write-doc` and commit this page and `palette.html` with the change.
 
 Do not add to the known list or the untokenized list. They record the state when the system started, and only shrink.
 
