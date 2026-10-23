@@ -23,7 +23,7 @@ A *game moment* is one step of a hand, as the player sees it. Each moment has a 
 | Showdown setup | `showdownSetup` | — | **Deal the Showdown**. |
 | Showdown discard | `showdownDiscard` | "Showdown · each Showdown player discards 1 card." | Pick 1 card, then **Discard 1**. |
 | Showdown lead | `showdownLead` | "Showdown · Lou (mediator) is picking who leads the first trick." (house rule) | The mediator picks: one button for each Showdown player ("Mei leads"). |
-| Showdown play | `showdownPlay` | As in trick play. | As in trick play. The mediator watches, or uses **Skip ▶**. |
+| Showdown play | `showdownPlay` | As in trick play. | As in trick play. The mediator watches, or presses **Skip ▶** once to go straight to the Showdown result. |
 | Showdown trick end | `showdownTrickDone` | As in trick end. | As in trick end. |
 | Showdown result | `showdownScore` | — | **Next hand**. |
 | Game over | `gameOver` | "West wins the game!" | The game-over dialog and the end buttons. |

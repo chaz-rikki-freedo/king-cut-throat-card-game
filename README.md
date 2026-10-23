@@ -36,6 +36,7 @@ The header stays at the top of the window, and the page scrolls under it. From l
 - The title (hidden on narrow phones) and the mode: **Wave N of 18** (**Shark N of 18** in the Shark run), **Free play** or **Dynamic**. The mode is a button that opens your results for that mode (see **Results pop-up**). With no game, the mode is not shown.
 - The trump suit and the hand and trick number. Below 900 px, these move to a second row.
 - The **speed** menu (Slow, Normal, Fast, Instant).
+- **Skip ▶**, when you are the mediator and the two bots play their Showdown, once its lead is set. One press plays the rest of the Showdown at Instant and goes straight to its result. It then stays hidden until the next Showdown. It does not show in the replay viewer or while the AI plays your seat.
 - **Settings** (the sliders icon).
 
 ### Free play and Dynamic: choose seats

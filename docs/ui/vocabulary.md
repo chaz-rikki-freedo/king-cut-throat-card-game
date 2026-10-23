@@ -137,7 +137,7 @@ Area: `.actionbar`. Its parts depend on the game moment (see [Game moments](mome
 | Lead button | Showdown lead pick | `sd-lead` (`data-seat`) | C | "Mei leads": the mediator's pick of the Showdown leader (house rule). |
 | Confirm button | Discard button | `confirm-discard`, `confirm-exchange`, `confirm-sd-discard` | C | "Discard 3", "Discard 1" or "Discard 2". Enabled when you picked enough cards and, for the opening and Showdown discards, it is your turn. |
 | Continue button | Next button | `data-action="continue"` | C | The button that moves past a hand summary. Its label is from `CONTINUE_LABEL`. |
-| Skip button | — | `data-action="skip"` | C | "Skip ▶", during a Showdown between the two bots. |
+| Skip button | — | `data-action="skip"` | C | "Skip ▶", in a live game with you in your seat, while the two bots play their Showdown (its lead set). One press plays the rest of it at Instant, up to its result; then it is gone until the next Showdown. |
 | End buttons | Game-over buttons | `ui.endButtons` | C | The buttons after the game ends. See [3.6](#36-game-over-dialog). |
 | Replay controls | Viewer controls | `ui.watch`, `.watch-ctl` | C | In the replay viewer, in place of every other button: five icon buttons, Play in the middle: **Previous hand** (`watch-prev`), **Back** (`watch-back`), **Play** or **Pause** (`watch-play`), **Forward** (`watch-fwd`) and **Next hand** (`watch-next`). Exit is the mode chip. |
 | Seat button | Sit button | `.seat-sit`, `data-action="watch-seat"`, `data-seat`, `.sit-ico` | C | In the replay viewer, a side seat's figure, name and a small circular arrow: watch from that seat. It moves to the bottom with its own view. |
