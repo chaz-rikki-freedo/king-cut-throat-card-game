@@ -7,7 +7,7 @@ Started 2026-10-23. It grew out of a question: is the price of naming trump high
 ## In plain terms
 
 - **Naming trump is not free.** In round 1, naming is only worth it with a strong hand. With an average hand, you score more by passing.
-- **Naming pays the same in both rounds.** A hand of a given strength earns the same points whether you name it in round 1 or round 2. What changes is the price of *passing*. In round 1, passing keeps a second chance to name in round 2. In round 2, passing can end the hand with no points for anyone. So the real cost of naming in round 1 is the chance you give up by not waiting.
+- **Naming pays the same in both rounds.** A hand of a given strength earns the same points whether you name it in round 1 or round 2. What changes is the price of *passing*. In round 1, passing keeps a second chance to name in round 2. In round 2, passing can end the hand with no points for anyone. So the real cost of naming in round 1 is the chance you give up by not waiting. A test that removes that chance confirms this for the first and second bidder (see **The value of waiting**).
 - **How strong is "strong" depends on your seat.** The player who bids first needs the strongest hand. The dealer, who bids last, needs the weakest.
 - **The bots name too early.** They use about the same bar in every seat, and the bar is too low. A bot that names with a middling hand in round 1 loses about a fifth of a point each time.
 - **The first bidder is bad at naming, not necessarily bad overall.** That seat leads the first trick, and it gets the gift whenever the dealer names. Over a whole hand it comes out level with the other seats, or ahead of them. What that seat does badly is *naming*.
@@ -89,7 +89,7 @@ The gain from naming is name minus pass. In round 1 it goes from −0.18 to +0.8
 - **Passing pays much less in round 2,** by a factor of 3 to 4 at the same hand value (0.14 against 0.72 at 3 to 3.5). That is the whole difference between the rounds.
 - **The natural run agrees.** Round 2 minus round 1 is +0.25 to +0.54 points in each hand-value bin, with the same sign. It has only 1,684 round 2 bids, 68% of them at 4 and up.
 
-*Hypothesis, from the rules:* a round 1 pass keeps the round 2 chance to name your best suit. A round 2 pass has nothing behind it: if all three pass, the hand is abandoned and nobody scores. So the cost of naming in round 1 is the value of waiting. In round 2 that value is gone, and naming is almost always at least as good as passing in this bot play. This was not tested by removing the round 2 chance.
+*Hypothesis, from the rules:* a round 1 pass keeps the round 2 chance to name your best suit. A round 2 pass has nothing behind it: if all three pass, the hand is abandoned and nobody scores. So the cost of naming in round 1 is the value of waiting. In round 2 that value is gone, and naming is almost always at least as good as passing in this bot play. The next section tests it by removing the player's own round 2 chance.
 
 Cautions:
 
@@ -119,15 +119,50 @@ Cautions:
 - **The seat gap over a whole hand shrinks.** Natural run: first bidder 0.81, dealer 0.78, second 0.71.
 
 
+### The value of waiting
+
+*Measurement, 2026-10-23.* A third branch tests the claim above. At each round 1 bid, the bidder passes and is then barred from naming in round 2. The others still bid as they would. The gap between a normal pass and this barred pass is the **value of the bidder's own round 2 chance**. Forced run, rule-based play, 6,000 deals, 17,430 round 1 bids, margins of ±0.01 to ±0.03.
+
+| Hand value | Name | Pass (normal) | Pass (no round 2 chance) | Value of the round 2 chance | Naming minus barred pass |
+|---|---|---|---|---|---|
+| under 2 | 0.11 | 0.29 | 0.24 | +0.05 | −0.12 |
+| 2 to 2.5 | 0.24 | 0.49 | 0.39 | +0.10 | −0.14 |
+| 2.5 to 3 | 0.35 | 0.59 | 0.43 | +0.16 | −0.07 |
+| 3 to 3.5 | 0.53 | 0.70 | 0.49 | +0.20 | +0.03 |
+| 3.5 to 4 | 0.91 | 0.66 | 0.49 | +0.17 | +0.42 |
+| 4 and up | 1.67 | 0.81 | 0.59 | +0.23 | +1.08 |
+
+- **The round 2 chance is worth 0.15 points per hand on average** (±0.004), and 0.20 to 0.23 at a hand value of 3 and up.
+- **It explains much of the round 1 loss at middle hand values.** At 3 to 3.5, naming loses 0.17 against a normal pass and is level with a barred pass. The break-even moves from about 3.4 down to about 3.
+- **It does not explain all of it.** Below a hand value of 3, naming still loses 0.07 to 0.14 against a barred pass. That remainder is the gift, the smaller sweep bonus, and whatever else naming gives up, such as being the receiver.
+
+By seat, at a hand value of 3 to 4:
+
+| Seat | Value of the round 2 chance | Naming minus normal pass | Naming minus barred pass |
+|---|---|---|---|
+| Seat 1, bids first | +0.44 ± 0.02 | −0.34 | +0.10 |
+| Seat 2, bids second | +0.13 ± 0.02 | +0.02 | +0.14 |
+| Seat 0, the dealer | +0.00 | +0.35 | +0.36 |
+
+- **The first bidder's whole penalty is the round 2 chance.** Remove it and naming goes from −0.34 to +0.10.
+- **The dealer has no round 2 chance to give up.** In a check of 1,448 deals where all three pass in round 1, the first bidder named in round 2 in 91% of deals, the second bidder in 8% and the dealer in 0.3%. The dealer almost never gets to name in round 2. Nobody left a hand unnamed in that check, so with these bots the hand is never abandoned after three round 1 passes.
+- **Why the first bidder's chance is worth so much:** passing in round 1 and then naming in round 2 is, in practice, a delayed call, with the best of the other three suits and a different gift. The bots almost always do it.
+
+Cautions:
+
+- This is the bidder's own chance only. The others keep theirs, and a round 1 pass still lets them name first.
+- Every hand in this check is forced to pass round 1. Real round 2 hands follow three passes, so the others' hands are weaker than average.
+- Bot play only, with the rule-based play after the bid. The full-strength runs above did not include this branch.
+
 ## Where the cost comes from
 
 *Observation, from the code and the tables above.*
 
 1. **The gift.** The player on your left gets one known card in round 1, or two hidden cards in round 2. The receiver averages 0.59 points against 0.27 for the third player, in natural round 1 calls.
 2. **A smaller sweep bonus.** A namer who takes all 7 tricks scores +2. A non-namer who does it scores +3.
-3. **Giving up the wait.** In round 1, passing keeps the round 2 chance, the chance to be the receiver, and the lead if you bid first. The round comparison above suggests this is the main part of the cost. It is the difference between the two rounds, since the gift and the sweep rule are the same in both.
+3. **Giving up the wait.** In round 1, passing keeps the round 2 chance, the chance to be the receiver, and the lead if you bid first. The round 2 chance is measured: it is worth 0.15 points per hand on average and 0.44 for the first bidder at a hand value of 3 to 4.
 
-Only the gift's value is measured directly. The wait is inferred from the round comparison. A test that removes each part in turn is listed under **Next steps**.
+The gift's value is measured directly (the receiver's gain above) and the round 2 chance is measured by the barred-pass branch. The sweep bonus is read from the rules, and the remainder below a hand value of 3 is not yet split between the gift and the sweep. A test that removes each of those is listed under **Next steps**.
 
 ## What this means for the bots
 
@@ -142,22 +177,22 @@ Only the gift's value is measured directly. The wait is inferred from the round 
 *Observation.* No rule change is proposed. Read as evidence about the game as designed:
 
 - **The bid is a priced decision.** In round 1, naming has a measurable cost and a strong hand pays it back. A reviewer looking for a real decision at the bid will find one.
-- **The price is the value of waiting.** Naming pays the same in both rounds. Round 1 is dearer only because passing keeps a second chance. That is a coherent structure: each pass spends an option, and round 2 has none left.
+- **The price is largely the value of waiting.** Naming pays the same in both rounds. Round 1 is dearer because passing keeps a second chance, worth 0.15 points per hand and 0.44 for the first bidder. That is a coherent structure: each pass spends an option, and round 2 has none left.
 - **The price depends on the seat.** The first bidder pays the most, and the dealer pays the least. The dealer rotates, so no player holds a seat for long, and the asymmetry is a skill to learn and not a fairness fault.
 - **The seat gap over a whole hand is unsettled.** It is clear with rule-based play and within noise under full play.
 - **The weak point is the bots, not the rules.** A bot that names at a hand value of about 2 in round 1 loses points in every seat. Better bots would not require a rule change.
-- **Open for a reviewer to press on:** nothing here uses human play or the score, and the cost split is inferred, not isolated.
+- **Open for a reviewer to press on:** nothing here uses human play or the score. The round 2 chance is measured, but the gift and the sweep bonus are not yet separated from each other.
 
 ## What we don't know
 
 - **Humans.** All of this is bot play. The bots read other seats as playing like themselves.
 - **Score pressure.** Every hand starts at 3-3-3. A player near 10, or far behind, faces a different price.
-- **The share of each cost.** The gift, the sweep bonus and the lost wait are not separated by a test. The wait is inferred from the round comparison.
+- **The share of the remaining cost.** The round 2 chance is measured. Below a hand value of 3, the gift and the sweep bonus together account for the rest and are not separated.
 - **Exact full-strength figures.** The full-play samples are small, so their per-seat figures are directional.
 
 ## Next steps
 
-1. Test the three costs one at a time: no gift, a +3 namer sweep, and no round 2 chance. The last one would confirm or reject the reading of the round comparison.
+1. Test the two remaining costs one at a time: no gift, and a +3 namer sweep. The round 2 chance is done.
 2. Try a seat-aware round 1 bar in a bot and measure its win rate against the current bots.
 3. Check the bots' round 2 bars against the data above.
 
@@ -166,7 +201,7 @@ Only the gift's value is measured directly. The wait is inferred from the round 
 ```sh
 cd tests
 node namer.js 8000 4 fast natural 2000   # about 10 minutes
-node namer.js 8000 4 fast forced         # about 6 minutes
+node namer.js 8000 4 fast forced         # about 6 minutes; also gives the value of waiting
 node namer.js 450 4 shark forced 20000   # about 15 minutes
 ```
 
