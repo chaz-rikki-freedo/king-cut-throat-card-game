@@ -4755,8 +4755,6 @@ const Render = (() => {
   const finalTrick = v => v.phase === P.GAME_OVER && !!v.lastTrick;
   /* The trick the Led tag names: the one in play, or the one just done while its cards stay in the centre. */
   const ledTrick = v => v.trick.plays.length ? v.trick : (trickDone(v) || finalTrick(v)) && v.lastTrick ? v.lastTrick : null;
-  /* A Showdown between the two bots: the viewer only watches (Skip shows while the game waits). */
-  const botShowdown = v => !!(v.showdown && v.showdown.active && !v.showdown.participants.includes(v.seat));
 
   /* Tags: one shape, in one fixed order as they come up: Human or AI, Dealer, Namer, Kitty, Turn, Led, then
      Mediator (MED) or Showdown (SD). Every tag has the same width (--tag-w, see Fit). */
@@ -4968,7 +4966,7 @@ const Render = (() => {
     const order = Fx.discardOrder(v);
     const parts = /** @type {[HTMLElement, string][]} */ ([...around(v).map(p => /** @type {[HTMLElement, string]} */ ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
-    const skip = ctx.waiting && botShowdown(v) && !CONTINUE_LABEL[v.phase] ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
+    const skip = ctx.skip ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
     if (key === drawnKey) return false;
     drawnKey = key;
@@ -4984,7 +4982,7 @@ const Render = (() => {
     $('seat' + v.seat).classList.toggle('turn', isTurn(v, v.seat));
     $('seat' + v.seat).classList.toggle('out', false);
     $('seat' + v.seat).classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
-    Fx.after(v, ui);
+    Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
     return true;
   }
 
@@ -5536,6 +5534,8 @@ const App = (() => {
        for Replay Seed. said: the bots that have said their read line this game (never saved: a line shows once). */
     dyn: /** @type {any} */ (null),
     said: /** @type {Record<number, boolean>} */ ({}),
+    /* Skip was pressed in this Showdown: the rest of it, up to its result, plays at Instant (see skipping). */
+    sdSkip: false,
     /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
     /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what every player has seen this hand, one switch per fact (MEMORY_SWITCHES). All are kept. */
@@ -6375,7 +6375,22 @@ const App = (() => {
     const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
     app.timer = setTimeout(tick, ms);
   }
+  /* Skip: in a live game, while the two bots play their Showdown with you as the mediator (its lead is set), one
+     press plays the rest of it at Instant, up to its result. Then it is gone until the next Showdown. */
+  const SKIP_PHASES = [P.SHOWDOWN_PLAY, P.SHOWDOWN_TRICK_DONE];
+  function skipping() {
+    const sd = app.state && app.state.showdown;
+    if (app.sdSkip && !(sd && sd.active)) app.sdSkip = false;
+    return app.sdSkip;
+  }
+  function canSkip() {
+    const st = app.state, sd = st && st.showdown;
+    return !watch && !!app.mode && !skipping() && !app.ui.autoplay && !!app.timerFn && !st.gameOver &&
+      !!(sd && sd.active && !sd.participants.includes(HUMAN)) && SKIP_PHASES.includes(st.phase);
+  }
+  /* Ends the current wait at once: a click on the center, Space or Enter. */
   function skip() { if (app.timerFn) { const f = app.timerFn; clearTimeout(app.timer); f(); } }
+  function skipShowdown() { if (!canSkip()) return; app.sdSkip = true; skip(); }
 
   /** @param {object[]} [events] the events of the action just played, for the animations */
   function schedule(events) {
@@ -6390,11 +6405,11 @@ const App = (() => {
        wait (at least Normal's, Instant aside), before the game-over dialog covers it. A click on the table opens it
        at once. */
     if (st.gameOver) {
-      const t = DELAYS[app.ui.speed].trick;
+      const t = DELAYS[skipping() ? 'instant' : app.ui.speed].trick;
       draw(ev); later(t && Math.max(t, DELAYS.normal.trick), showGameOver); return;
     }
     if (needsSwap()) { draw(ev); showSwap(); return; }
-    const d = DELAYS[app.ui.speed];
+    const d = DELAYS[skipping() ? 'instant' : app.ui.speed];
     const actors = Engine.actors(st);
     const ai = actors.filter(p => !st.players[p].human || (app.ui.autoplay && p === HUMAN));
     if (ai.length) {
@@ -6471,7 +6486,7 @@ const App = (() => {
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
     for (const id of Array.from(app.ui.selected)) if (!v.hand.includes(id)) app.ui.selected.delete(id);
-    const ctx = { flashSeats: new Set(), newCards: new Set(), waiting: !!app.timerFn };
+    const ctx = { flashSeats: new Set(), newCards: new Set(), waiting: !!app.timerFn, skip: canSkip(), instant: !watch && skipping() };
     for (const e of events) {
       if (e.type === 'SCORE_CHANGED' && e.delta !== 0) ctx.flashSeats.add(e.player);
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
@@ -7850,7 +7865,7 @@ const App = (() => {
       case 'name-suit': act({ type: 'NAME', player: HUMAN, suit: el.getAttribute('data-suit') }); break;
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
-      case 'skip': skip(); break;
+      case 'skip': skipShowdown(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
       case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;

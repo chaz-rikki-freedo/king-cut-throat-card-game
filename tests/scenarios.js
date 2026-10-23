@@ -266,14 +266,19 @@ function expect(name, ok, detail) {
       click('[data-action="continue"]');
       const t0 = Date.now();
       while (Date.now() - t0 < 20000 && !q('[data-action="skip"]')) await sleep(10);
-      const out = { shown: !!q('[data-action="skip"]') };
-      const v = app.state.version; click('[data-action="skip"]'); out.atOnce = app.state.version === v + 1;
+      const out = { shown: !!q('[data-action="skip"]'), leadSet: [P.SHOWDOWN_PLAY, P.SHOWDOWN_TRICK_DONE].includes(app.state.phase) };
+      /* One Showdown trick at Slow, then Skip: the rest plays at once, up to the result. */
+      out.trick = await drive(() => app.state.showdown.trickWinners.length >= 1 && !!q('[data-action="skip"]'), 60000);
+      const t1 = Date.now(); click('[data-action="skip"]');
+      while (Date.now() - t1 < 3000 && !(app.state.phase === P.SHOWDOWN_SCORE || app.state.gameOver)) await sleep(10);
+      out.fast = app.state.phase === P.SHOWDOWN_SCORE || app.state.gameOver; out.ms = Date.now() - t1;
+      out.gone = !q('[data-action="skip"]');
       out.stop = await drive(() => !(app.state.showdown && app.state.showdown.active), 120000);
       out.skip = skip;
       return out;`);
-    expect('Skip shows while the bots play their Showdown', r.shown);
-    expect('Skip makes the next move at once', r.atOnce);
-    expect('Skip shows at every bot wait in the Showdown, and nowhere else', r.skip.missingInBotSd === 0 && r.skip.shownElsewhere === 0 && r.skip.botSdWaits > 0, r.skip);
+    expect('Skip shows once the bots play their Showdown', r.shown && r.leadSet, r);
+    expect('one press plays the rest of the Showdown at once, up to its result, and Skip is gone', r.fast && r.gone, r);
+    expect('Skip shows at every bot wait in the Showdown until pressed, and nowhere else', r.skip.missingInBotSd === 0 && r.skip.shownElsewhere === 0 && r.skip.botSdWaits > 0, r.skip);
 
     console.log('An old save without its moves');
     await step(`
