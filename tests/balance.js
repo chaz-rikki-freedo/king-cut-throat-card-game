@@ -4,7 +4,7 @@
    did not call trump and holds a weak hand (fitted estimate below `weak` tricks), the hand is branched: the deal, the
    discards and the other two seats' cards and AI are the same, and T plays the main tricks (and picks the Showdown
    lead, if it mediates) by one policy per branch:
-     fold     lowest legal card every time, never tries to win a trick; picks the Showdown lead by the rule (fair)
+     coast    lowest legal card every time, never tries to win a trick; picks the Showdown lead by the rule (fair)
      greedy   plays to win tricks (Casual-style plan), fair pick
      duck     plays to lose tricks (aims for 1 trick and a 3-3-1 Showdown), shrewd pick
      balance  takes 1 trick, then gives each trick to the opponent with fewer, shrewd pick
@@ -40,7 +40,7 @@ function servePatched(html) {
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ url: 'http://127.0.0.1:' + srv.address().port + '/index.html', close: () => srv.close() })));
 }
 
-const POLICIES = ['fold', 'greedy', 'duck', 'balance', 'shark', 'deny'];
+const POLICIES = ['coast', 'greedy', 'duck', 'balance', 'shark', 'deny'];
 
 const PAGE = `
   const { Engine, AI, Rules: R, Dynamic, buildView } = KCT;
@@ -62,11 +62,11 @@ const PAGE = `
   const act = (s, p, T, pol, leader) => {
     const v = buildView(s, p);
     let a;
-    if (p === T && s.phase === P.TRICK_PLAY && pol === 'fold') {
+    if (p === T && s.phase === P.TRICK_PLAY && pol === 'coast') {
       const low = v.legal.slice().sort((x, y) => R.getCardStrength(x, s.trump) - R.getCardStrength(y, s.trump))[0];
       a = { type: 'PLAY', player: p, card: low };
     } else if (p === T && (s.phase === P.TRICK_PLAY || s.phase === P.SHOWDOWN_LEAD) && pol) {
-      const cfg = s.phase === P.SHOWDOWN_LEAD ? (pol === 'fold' || pol === 'greedy' ? fair : base) : policyCfg(pol, leader);
+      const cfg = s.phase === P.SHOWDOWN_LEAD ? (pol === 'coast' || pol === 'greedy' ? fair : base) : policyCfg(pol, leader);
       a = AI.decide(v, cfg);
     } else a = AI.decide(v, base);
     if (Engine.validate(s, a)) a = AI.fallbackAction(v, base);

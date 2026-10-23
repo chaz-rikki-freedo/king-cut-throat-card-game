@@ -86,7 +86,7 @@ In two of the three replays, Doc and Viv, a strong bot's play-outs overruled the
 
 ## Forcing a Showdown
 
-*Hypothesis, from play.* A player who is sure to score little in a hand can lose a trick on purpose to make a 3–3–1 split.
+*Hypothesis, from play.* A player who is sure to score little in a hand can lose a trick on purpose to make a 3–3–1 split. Tested on 2026-10-23: it did not raise the Showdown rate (see **Playing a weak hand when behind**).
 
 ### When it works
 
@@ -135,7 +135,45 @@ What the numbers show:
 - **Light calls make more mediators.** In Wave 15, the caller was the 1-trick mediator in 1 Showdown in 6, against 1 in 11 for three Sharks. *Hypothesis:* Vex's Bold calls explain the difference.
 - **The seat order is fair at a table of equals.** Three Sharks win about a third each. The Wave 15 numbers come from the opponents, not the seats.
 
-Not measured: how often a 3–2–2 hand could have been turned into a 3–3–1 by the player who chose to, and what that does to a player's win rate. That needs a test seat that plays for the Showdown on purpose.
+Measured later (2026-10-23), see **Playing a weak hand when behind**: a weak hand that plays to lose tricks did not make a Showdown more likely.
+
+## Playing a weak hand when behind
+
+*Measurement (2026-10-23).* From `tests/balance.js`: 600 games of three Sharks, 3,206 hands. Each hand is one where a player who did not call trump trails the sole leader and holds a weak hand (under 2.2 expected tricks by the fitted estimate). The same deal is replayed from the first trick with the trailing player using each of six plays, and both opponents unchanged. The value of the end of the hand is the game's win-chance table (`AI.winChance`).
+
+### In plain terms
+
+You can't fold in this game, but you can stop trying. Playing a weak hand on autopilot, lowest card every time, costs you. Every way of actually playing it out left the leader a little less likely to win than coasting did, and left you a little more likely to.
+
+One hand makes a small difference. But a trailing player gets about two such hands per game, and the small differences add up. In this test, a player who worked against the leader on every weak hand lowered the leader's chance of winning the game by roughly 3 points. Your own chance rises only a little, because you are still far behind.
+
+Playing on does not stop the leader from scoring. Even against a player working to stop them, the leader scored in 59% of hands. The aim is to make them earn it.
+
+### Results
+
+Change from coasting, in percentage points, on the same hands. Margins are 95%.
+
+| Trailing player plays | Leader's win chance | You |
+|---|---|---|
+| **Coast**: lowest legal card every time, never tries to win a trick | 0 (leader at 68.2%) | 0 |
+| **Greedy**: wins every trick it can | −0.6 ±0.4 | +0.7 ±0.2 |
+| **Duck**: loses tricks on purpose | −0.8 ±0.4 | +0.6 ±0.2 |
+| **Balance**: takes 1 trick, then feeds the opponent with fewer | −0.8 ±0.4 | +0.6 ±0.2 |
+| **Shark**: tries all three plans, keeps the best by its own win chance | −0.7 ±0.4 | +0.8 ±0.2 |
+| **Deny**: Shark, but values only a lower win chance for the leader | −1.8 ±0.4 | +0.6 ±0.2 |
+
+- **Size.** One extra point for the leader is worth 11 to 13 points of win chance in mid-game positions. Deny's gain is about 0.15 of a point per weak hand.
+- **Where it comes from.** Deny took about 0.15 tricks per hand from the leader (2.82 against 2.97 when coasting). It changed the hand score in 45% of hands and lowered the leader's chance in 26% of hands. In 15% it raised it.
+- **Weakest hands.** For the 1,153 hands under 1.0 expected tricks the gains were smaller: Deny −1.2, Shark −0.6.
+- **The Showdown.** A Showdown came in 8.5% of hands when coasting, 8.0% when ducking, 8.1% when balancing and 8.5% when denying (each ±1.0). Playing to lose tricks did not make one more likely.
+- **Who called.** When coasting, the leader gained 1.38 points per hand when it had called trump and 0.63 when the other opponent had.
+
+### Limits
+
+- The players are bots. How people play was not measured.
+- The win chance assumes each hand's result does not depend on the scores.
+- Margins treat hands as independent. Hands from one game are correlated, so the real margins are a little wider.
+- 2,421 Shark branches matched the real hands exactly, so the branching does not change the game.
 
 ## Kingmaking
 
