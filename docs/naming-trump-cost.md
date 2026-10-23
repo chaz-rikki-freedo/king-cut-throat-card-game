@@ -9,7 +9,7 @@ Started 2026-10-23. It grew out of a question: is the price of naming trump high
 - **Naming trump is not free.** Naming is only worth it with a strong hand. With an average hand, you score more by passing.
 - **How strong is "strong" depends on your seat.** The player who bids first needs the strongest hand. The dealer, who bids last, needs the weakest.
 - **The bots name too early.** They use about the same bar in every seat, and the bar is too low. A bot that names with a middling hand loses about a fifth of a point each time.
-- **Waiting is worth something.** The player who bids first is the *best* off over a whole hand, not the worst. That seat leads the first trick, and it gets the gift whenever the dealer names. What that seat does badly is *naming*.
+- **The first bidder is bad at naming, not necessarily bad overall.** That seat leads the first trick, and it gets the gift whenever the dealer names. Over a whole hand it comes out level with the other seats or slightly ahead. What that seat does badly is *naming*.
 - **No player is stuck in a bad seat.** The dealer changes every hand, so each player takes each seat in turn. This is about *how to bid*, not about fairness.
 
 An example. You bid first and your hand is decent but not great. Naming trump scores you about 0.4 points less than passing and letting someone else name. Pass, and you still lead the first trick. If the dealer names, you also get a free card.
@@ -56,9 +56,29 @@ Reading the break-even off these coarse bins (an interpolation, not a direct mea
 | Seat 2, bids second | 0.76 |
 | Seat 0, the dealer | 0.75 |
 
-The first bidder earns the most. The gap of about 0.17 points is about four times its margin.
+Those figures are from the rule-based play. With full Shark play (see **Full-strength check**), the same table reads 0.81, 0.71 and 0.78, and the gaps are within the margin of about ±0.06. So the first bidder is not weak overall, but the data does not show it is clearly ahead either.
 
-*Hypothesis:* two things explain it. The first bidder leads the first trick. And the first bidder sits to the left of the dealer, so that seat gets the gift when the dealer names. A player who passes in seat 1 is paid for waiting. Naming gives that up.
+*Hypothesis, for the rule-based gap:* two things explain it. The first bidder leads the first trick. And the first bidder sits to the left of the dealer, so that seat gets the gift when the dealer names. A player who passes in seat 1 is paid for waiting. Naming gives that up.
+
+### Full-strength check
+
+*Measurement, 2026-10-23.* The same test with every bot playing the hand with full Shark play-outs: 389 deals (about 5 minutes). The direction holds in round 1 and the size of the effects moves.
+
+| Hand value | Calls | Gain from naming (full play) | Gain (rule-based play) |
+|---|---|---|---|
+| under 1.5 | 88 | −0.08 | −0.13 |
+| 1.5 to 2 | 83 | −0.12 | −0.16 |
+| 2 to 2.5 | 109 | −0.30 | −0.24 |
+| 2.5 to 3 | 108 | −0.24 | −0.14 |
+| 3 to 3.5 | 123 | −0.11 | −0.09 |
+| 3.5 to 4 | 95 | +0.05 | +0.27 |
+| 4 and up | 219 | +0.68 | +0.95 |
+
+- **Naming loses points up to a hand value of about 3.5,** against about 3.3 with rule-based play. At the bots' bar it loses 0.2 to 0.3 points.
+- **Strong hands gain less under full play** (+0.68 against +0.95). The other players defend better.
+- **The first bidder still names worst.** Gain from naming by seat, at hand value 2.5 to 3.5: first bidder −0.50, second +0.06, dealer +0.20. The first bidder is still negative at 3.5 to 4 (−0.20) and only turns positive at 4 and up (+0.13, within its margin of ±0.16).
+- **The seat advantage over a whole hand mostly disappears.** Average points: first bidder 0.81, dealer 0.78, second 0.71.
+- **Round 2 is unchanged** (+0.97 overall) and still too thin below a hand value of 4: 86 calls, 19 of them below that.
 
 ### Round 2
 
@@ -96,20 +116,29 @@ Only the gift is measured on its own (the receiver's gain above). Parts 2 and 3 
 
 *Hypothesis:* a seat-aware bar would play stronger. Raising the bar would also make bots name less often, so they would be mediators in fewer Showdowns (see **Measurements** in [strategic-depth.md](strategic-depth.md)). That has not been measured.
 
+## How a design review would read this
+
+*Observation.* No rule change is proposed. Read as evidence about the game as designed:
+
+- **The bid is a priced decision.** Naming trump has a measurable cost, and a strong hand pays it back. A reviewer looking for a real decision at the bid will find one.
+- **The price depends on the seat.** The first bidder pays the most, and the dealer pays the least. The dealer rotates, so no player holds a seat for long, and the asymmetry is a skill to learn and not a fairness fault.
+- **The seat gap is smaller than it first looked.** Under full-strength play, whole-hand points are within noise across seats.
+- **The weak point is the bots, not the rules.** A bot that names at a hand value of about 2 loses points in every seat. Better bots would not require a rule change.
+- **Open for a reviewer to press on:** round 2 is poorly sampled, and nothing here uses human play or the score.
+
 ## What we don't know
 
 - **Humans.** All of this is bot play. The bots read other seats as playing like themselves.
-- **Full-strength play.** A 60-deal run with Shark play-outs points the same way, but it is too small to confirm the numbers.
+- **Full-strength play at a larger sample.** The 389-deal run agrees with the rule-based run on direction. Its margins are about twice as wide, so the break-evens by seat are still approximate.
 - **Score pressure.** Every hand starts at 3-3-3. A player near 10, or far behind, faces a different price.
 - **Round 1 against round 2 at the same hand value.** This needs forced round 2 calls on weak hands.
 - **The share of each cost.** The gift, the sweep bonus and the lost wait are not yet separated.
 
 ## Next steps
 
-1. Re-run with full Shark play on a larger sample (slow).
-2. Add forced round 2 calls on weak hands, to compare the rounds fairly.
-3. Test the three costs one at a time: no gift, a +3 namer sweep, and a bar that depends on the seat.
-4. Try a seat-aware bar in a bot and measure its win rate against the current bots.
+1. Add forced round 2 calls on weak hands, to compare the rounds fairly.
+2. Test the three costs one at a time: no gift, a +3 namer sweep, and a bar that depends on the seat.
+3. Try a seat-aware bar in a bot and measure its win rate against the current bots.
 
 ## Reproduce
 
