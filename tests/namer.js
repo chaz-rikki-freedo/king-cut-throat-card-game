@@ -19,16 +19,17 @@ const PAGE = `
   const cfg = AI.personaConfig({ tier: 'shark', courage: 'normal', realTable: false, leadPick: 'shrewd' });
   const DONE = new Set([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED, P.GAME_OVER]);
   const clone = s => JSON.parse(JSON.stringify(s));
-  const step = (s, full) => {
+  const step = (s, full, bar) => {
     const actors = Engine.actors(s); let a;
     if (actors.length) {
       const p = actors[0];
-      if (full || s.phase === P.DISCARD) { const v = buildView(s, p); a = AI.decide(v, cfg); if (Engine.validate(s, a)) a = AI.fallbackAction(v, cfg); }
+      if (bar !== undefined && s.phase === P.BID2 && p === bar) a = { type: 'NAME', player: p, suit: null };
+      else if (full || s.phase === P.DISCARD) { const v = buildView(s, p); a = AI.decide(v, cfg); if (Engine.validate(s, a)) a = AI.fallbackAction(v, cfg); }
       else a = AI.fastAction(s, p, cfg);
     } else a = Engine.systemAction(s);
     return !!a && Engine.dispatch(s, a).ok;
   };
-  const finish = (s, full) => { let n = 0; while (!DONE.has(s.phase) && n++ < 400) if (!step(s, full)) return false; return DONE.has(s.phase); };
+  const finish = (s, full, bar) => { let n = 0; while (!DONE.has(s.phase) && n++ < 400) if (!step(s, full, bar)) return false; return DONE.has(s.phase); };
   const SUITS = ['S', 'H', 'D', 'C'];
   const turned = s => KCT.Rules.turnedSuit(s.flippedId, s.jokerSuit);
   const gain = (s, before) => s.scores.map((x, i) => x - before[i]);
@@ -62,7 +63,13 @@ const PAGE = `
       const okB = Engine.dispatch(B, round === 1 ? { type: 'BID', player: p, accept: false } : { type: 'NAME', player: p, suit: null }).ok;
       let fb = false, gainB = null, outB = null;
       if (okB) { fb = finish(B, arg.full); gainB = gain(B, before); outB = B.handSummary && B.handSummary.outcome; }
-      if (rec && rec.fa && fb) rows.push({ p, round, seatFromDealer, hv, natural, ...rec, gainB, outB });
+      let gainC = null;
+      if (arg.option && round === 1 && okB) {
+        const C = clone(s);
+        Engine.dispatch(C, { type: 'BID', player: p, accept: false });
+        if (finish(C, arg.full, p)) gainC = gain(C, before);
+      }
+      if (rec && rec.fa && fb) rows.push({ p, round, seatFromDealer, hv, natural, ...rec, gainB, gainC, outB });
       if (natural && !arg.forced) break;
       Engine.dispatch(s, arg.forced ? (round === 1 ? { type: 'BID', player: p, accept: false } : { type: 'NAME', player: p, suit: null }) : nat);
     }
@@ -83,12 +90,12 @@ function summarize(rows) {
   const srv = await serve(), browser = await launch(), t0 = Date.now();
   const res = (await Promise.all(Array.from({ length: workers }, async (_, k) => {
     const mine = seeds.filter((_, i) => i % workers === k), { page } = await openPage(browser, srv.url), r = [];
-    for (let i = 0; i < mine.length; i += 10) r.push(...await run(page, PAGE, { seeds: mine.slice(i, i + 10), full: play === 'shark', forced }));
+    for (let i = 0; i < mine.length; i += 10) r.push(...await run(page, PAGE, { seeds: mine.slice(i, i + 10), full: play === 'shark', forced, option: forced }));
     await page.context().close(); return r;
   }))).flat();
   await browser.close(); srv.close();
   const rows = res.flat();
-  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
+  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, gc: r.gainC ? r.gainC[r.p] : null, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
   const byRound = {};
   for (const round of [1, 2]) {
     const rr = rows.filter(r => r.round === round);
