@@ -211,7 +211,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, four bars and its habits. **Card sense**, **Nerve**, **Reads you** (how much it believes your plays) and **Feints** go up to 4. **Set in their ways** marks a bot with human habits.
-- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games (under All, the latest 20 of every mode), and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your card play** shows a few of your card habits and your slips beside the bots', from your last 20 games played yourself. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
+- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games (under All, the latest 20 of every mode), your bidding and card play, then **Lists**, collapsed: the games (two lines each on a phone, with Watch, Try again and Export), your results against each opponent and each table, and in Waves your tries. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your card play** shows a few of your card habits and your slips beside the bots', from your last 20 games played yourself. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
 - Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick, habits, reads, feints and wariness. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
@@ -317,7 +317,7 @@ Clearing wave 18 opens the Shark run. Nothing in the app shows it before then.
 
 - The Shark run is the same eighteen tables in the same order, as **Shark 1** to **Shark 18**. Both bots play at **Shark** skill: 40 hunches, 0% brain farts and every knowledge switch on. Each bot keeps its own courage, Real table switch, habits, reads and feints, and its profile shows full card sense during a Shark game.
 - The app says **Shark** where it says **Wave** in the first run: the mode chip (**Shark N of 18**), the end notes, **Shark tries**, the log and the replay list. The menu's Waves card lists both runs and counts the Shark tables cleared, and its button becomes **Play table**.
-- **Your profile → Waves** lists your tries for each run: **Shark tries** (once the run is open) and **Wave tries**. Each shows its summary, and its table stays collapsed until you open it. The menu's "Sharks: N of 18 cleared" link opens it. During a game, the mode chip opens the tries for that game's run.
+- **Your profile → Waves** lists your tries for each run: **Shark tries** (once the run is open) and **Wave tries**. Each is a collapsed row under **Lists**, with its count; open it for the summary and the table. The menu's "Sharks: N of 18 cleared" link opens it. During a game, the mode chip opens the tries for that game's run.
 - Progress, tries, locked tables and **Next Shark** work as in the first run. Shark 1 opens when wave 18 is cleared, and each cleared Shark table opens the next one.
 - Inside the app and in replay codes, Shark N is wave 18 + N (`?wave=19` is Shark 1). Progress saved before the Shark run, with wave 18 cleared, opens Shark 1 when the page loads.
 
@@ -387,7 +387,7 @@ The hand-over is for that game only. The next game starts with you in your seat,
 
 ## Replay a game
 
-The same seed gives the same deals, however the hands are played: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**). In **Your profile**, each row of the last games table has two icons: **Watch** (an eye) opens the game in the replay viewer, and **Try again** (a counter-clockwise arrow) plays that table again, with the same mode, wave, opponents, deals and house rules. The plan for these parts: [docs/ui/plan.md](docs/ui/plan.md).
+The same seed gives the same deals, however the hands are played: `index.html?seed=123456`. No seed or code shows as text. To get one, use **Export** at the end of a game (see **End of a game**), or later from **Your profile → Lists → Games**. There each game has three icons: **Watch** (an eye) opens the game in the replay viewer, **Try again** (a counter-clockwise arrow) plays that table again, with the same mode, wave, opponents, deals and house rules, and **Export** (two sheets) shows its seed and copies the seed or the replay code. The plan for these parts: [docs/ui/plan.md](docs/ui/plan.md).
 
 ### End of a game
 
