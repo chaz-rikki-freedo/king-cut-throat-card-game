@@ -166,7 +166,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Big button | `.mgo` | C | **Continue**, with the game in two short lines: the game being played (`close-menu`) or the last one saved (`resume-<mode>`). With no game, **New game**, which opens the New game view. |
 | Home lines | `.mlist` | C | **New game** (when the big button is Continue), **How to play** and **Lore**. |
 | Small links | `.mfoot` | C | **Your profile** (`menu-profile`, all modes), **Load a code**, **Settings** (`toggle-settings`), and **Install** (`install-app`) when the browser offers it. |
-| Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. |
+| Credit, copyright and build | `.about-credit`, `.about-copy`, `.about-build` | D | As on the About screen. |
 
 **New game** (`menuNewHTML()`): a line per mode with its color (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
 

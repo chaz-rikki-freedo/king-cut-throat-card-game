@@ -6,6 +6,7 @@
 <title>King Cut-Throat</title>
 <meta name="description" content="A three-player trick-taking card game against ten bot personalities.">
 <meta name="theme-color" content="#0c3a22">
+<meta name="copyright" content="© 2009–2026 C.R.F.Barr. All rights reserved.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -873,6 +874,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .about-credit span{display:block;margin-bottom:0.125rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .about-credit b{color:var(--ink);letter-spacing:.06em}
 .about-build{font-size:0.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.about-copy{font-size:0.75rem;color:var(--muted)}
 @media (max-width:720px){
   .about{min-height:calc(100vh - 4.75rem);min-height:calc(100dvh - 4.75rem);padding:1rem 0.75rem}
   .about-card{padding:1.5rem 1rem 1rem}
@@ -960,6 +962,7 @@ window.kctTheme = (() => {
         <button class="btn primary" type="button" data-action="menu">Play</button>
       </div>
       <p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p>
+      <p class="about-copy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
       <p class="about-build" id="aboutBuild">Build dev</p>
     </div>
   </section>
@@ -7013,7 +7016,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p><p class="about-build">' + escHTML($('setBuild').textContent || '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p><p class="about-copy">© 2009–2026 C.R.F.Barr. All rights reserved.</p><p class="about-build">' + escHTML($('setBuild').textContent || '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {
