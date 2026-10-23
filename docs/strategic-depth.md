@@ -9,7 +9,7 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 - **The game has depth in four places:** the blind discard, the bid, the gift to the player left of the caller, and the 3–3–1 Showdown.
 - **A player with a weak hand still has choices.** Losing a trick on purpose can turn a 3–2–2 hand into a 3–3–1 Showdown. That takes the leader's point away and lets the weak player pick who leads the Showdown. In a three-player game, this is also kingmaking: a player who can't win the hand decides who gains.
 - **Seat order matters more than skill gaps suggest.** The gift always goes to the caller's left, so the same two bots make a wave of 35% or 18% depending on which side each one sits (Waves 11 and 15).
-- **Calling is cheap.** A failed call costs no points. The gift is the only price, so the bid is mostly a decision about who gets the gift.
+- **Calling is cheap.** A failed call costs no points. The gift is the only price, so the bid is mostly a decision about who gets the gift. *Update 2026-10-23:* measured, this is too simple. Naming costs what it gives up (the round 2 chance and the gift), and the price depends on the seat. See [naming-trump-cost.md](naming-trump-cost.md).
 - **The discard holds more than the hand value counts.** In replays, strong bots overrule it. They keep trump length over lone Kings, and keep a backup suit that shares a Jack with their best suit.
 
 ## Where the choices are
