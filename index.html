@@ -6,6 +6,7 @@
 <title>King Cut-Throat</title>
 <meta name="description" content="A three-player trick-taking card game against ten bot personalities.">
 <meta name="theme-color" content="#0c3a22">
+<meta name="copyright" content="© 2009–2026 C.R.F.Barr. All rights reserved.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -409,6 +410,7 @@ body.set-open{overflow:hidden}
 .settings .set-note{padding:var(--s2) 0}
 .settings .set-card > .set-note{border-bottom:1px solid var(--set-line);padding:var(--s3) 0 var(--s3) var(--s3)}
 .settings .set-card > .set-note:last-child{border-bottom:0}
+.settings .k-hint.set-copy{margin-top:var(--s4);text-align:center;font-size:0.6875rem;opacity:.7}
 .settings select,.settings input[type=number]{background:var(--set-field);color:inherit;border:1px solid var(--set-line);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.5rem;font:inherit;max-width:12rem}
 .settings input[type=number]{width:5.5em}
 .settings input[type=range]{accent-color:var(--gold);width:9rem}
@@ -869,9 +871,10 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .about-tag{max-width:22rem;color:var(--muted)}
 .about-btns{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-top:0.25rem}
 .about-btns .btn{min-width:7rem;min-height:2.75rem;font-weight:700}
-.about-credit{margin-top:0.5rem!important;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);align-self:stretch;font-size:0.875rem}
-.about-credit span{display:block;margin-bottom:0.125rem;font-size:0.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.about-credit b{color:var(--ink);letter-spacing:.06em}
+.about-credit{margin-top:0.5rem!important;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);align-self:stretch;font-size:0.75rem;color:var(--muted)}
+.about-credit span{display:block;margin-bottom:0.125rem;font-size:0.625rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.about-credit b{font-weight:500;color:var(--ink);letter-spacing:.06em}
+.about-credit small{font-size:0.625rem}
 .about-build{font-size:0.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
 @media (max-width:720px){
   .about{min-height:calc(100vh - 4.75rem);min-height:calc(100dvh - 4.75rem);padding:1rem 0.75rem}
@@ -959,7 +962,7 @@ window.kctTheme = (() => {
         <button class="btn" type="button" data-action="tutorial" disabled title="Coming soon">Tutorial</button>
         <button class="btn primary" type="button" data-action="menu">Play</button>
       </div>
-      <p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p>
+      <p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p>
       <p class="about-build" id="aboutBuild">Build dev</p>
     </div>
   </section>
@@ -1022,6 +1025,7 @@ window.kctTheme = (() => {
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
         <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
       </div>
+      <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
       <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
@@ -7013,7 +7017,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> 2009–2011</p><p class="about-build">' + escHTML($('setBuild').textContent || '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {

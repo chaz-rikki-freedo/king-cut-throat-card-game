@@ -24,7 +24,7 @@ Your profile, a bot's profile and the results pop-up have the same header as **S
 
 ## About screen
 
-When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **✕** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. 2009–2011**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴), crowns (👑) and suit pips (♠ ♥ ♣ ♦) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. During a game, the menu shows the same card.
+When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **✕** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. © 2009–2026**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴), crowns (👑) and suit pips (♠ ♥ ♣ ♦) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. During a game, the menu shows the same card.
 
 A link with `?replay=` and a replay code opens that game in the replay viewer (see **Watch a game**). A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed`, `wave` and `replay` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
@@ -115,6 +115,8 @@ All three settings are kept after a reload. A change to **Mediator picks the Sho
 **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code.
 
 Who the AI plays as in your seat, and how it plays, is set in **Settings → Bots → Your seat**.
+
+Under the Your seat group, the Game tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
 
 ### Bots
 
@@ -492,3 +494,9 @@ The `tests/` folder has browser tests: the self-tests, two full games through th
 ## Colors
 
 Every color is a token in `:root`, registered with its family and job in `docs/ui/palette.json`. `tests/palette.js` checks that no two colors with different meanings can be mistaken for each other, also with color blindness simulated, and runs on every pull request. Read [docs/ui/colors.md](docs/ui/colors.md) before adding or changing a color.
+
+## License
+
+Copyright © 2009–2026 C.R.F.Barr. All rights reserved.
+
+King Cut-Throat is not open source. You may play the published game and install it on your own devices for personal use. You may not copy, change, redistribute or reuse its code, rules, design, lore or artwork without written permission. See [LICENSE](LICENSE).

@@ -26,6 +26,7 @@ function expect(name, ok, detail) {
       out.idle = shown('about') && !shown('table') && !overlayOpen();
       out.build = q('#aboutBuild').textContent === q('#setBuild').textContent && /^Build /.test(q('#aboutBuild').textContent);
       out.credit = q('#about .about-credit').textContent.replace(/\\s+/g, ' ').trim();
+      out.copy = q('#setCopy').textContent;
       out.kings = document.querySelectorAll('#aboutKings .about-king').length;
       out.btns = [...document.querySelectorAll('#about .about-btns button')].map(b => [b.textContent, b.getAttribute('data-action'), b.disabled, b.classList.contains('primary')]);
       click('#about [data-action="menu"]'); await sleep(20);
@@ -56,7 +57,8 @@ function expect(name, ok, detail) {
     expect('at launch the menu opens over the About screen', r.launch, r);
     expect('closing the menu leaves the About screen, not an empty table', r.idle, r);
     expect('the About screen names the build, as Settings does', r.build, r);
-    expect('the About screen credits the original design', r.credit === 'Original game design by C.R.F.B. 2009–2011', r.credit);
+    expect('the About screen credits the original design', r.credit === 'Original game design by C.R.F.B. © 2009–2026', r.credit);
+    expect('Settings → Game shows the copyright under Your seat', r.copy === '© 2009–2026 C.R.F.Barr. All rights reserved.', r.copy);
     expect('kings drift behind the About card', r.kings > 0, r.kings);
     expect('the About card has Tutorial (coming soon) on the left and Play, the main button, on the right',
       JSON.stringify(r.btns) === JSON.stringify([['Tutorial', 'tutorial', true, false], ['Play', 'menu', false, true]]), r.btns);
