@@ -80,7 +80,6 @@ button{font:inherit;color:inherit}
   .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
   .end-btns [data-action="next-wave"]{grid-column:1 / -1}
 }
-.profile td.pf-acts{text-align:right;white-space:nowrap}
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
 .speed-pick svg{width:1.25rem;height:1.25rem;flex:none}
@@ -190,6 +189,22 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .pf-bar b{display:block;height:100%;background:var(--name0);border-radius:0 0.1875rem 0.1875rem 0}
 .profile details{margin-top:0.5rem;font-size:0.8125rem}
 .profile summary{cursor:pointer;color:var(--muted)}
+/* The long lists: one collapsed row each, its name and a short count. */
+.profile .pf-list{margin:0;border-top:1px solid rgba(255,255,255,.12)}
+.profile .pf-list:last-of-type{border-bottom:1px solid rgba(255,255,255,.12)}
+.profile .pf-list > summary{padding:0.625rem 0.25rem;font-size:0.875rem}
+.profile .pf-list > summary b{color:var(--ink)}
+.profile .pf-list[open] > summary{margin-bottom:0.25rem}
+/* A game: what it was on the first line, when and its actions on the second. Wide: one line. */
+.pf-glist{list-style:none;margin:0 0 0.5rem;padding:0}
+.pf-glist li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.25rem 0.75rem;padding:0.375rem 0.25rem;border-top:1px solid rgba(255,255,255,.07)}
+.pf-glist .pf-g1 .num{font-variant-numeric:tabular-nums;color:var(--muted)}
+.pf-glist .pf-g1 b{display:inline-block;min-width:2.5rem;font-size:0.75rem;text-transform:uppercase;letter-spacing:.04em}
+.pf-glist .pf-g1 b.won{color:var(--name0)}
+.pf-glist .pf-g1 b.lost{color:var(--muted)}
+.pf-glist .pf-g2{display:flex;align-items:center;gap:0.75rem;margin-left:auto}
+.pf-glist .pf-acts{display:inline-flex;gap:0.375rem}
+@media (max-width:600px){.pf-glist .pf-g1{flex-basis:100%}.pf-glist .pf-g2{margin-left:0;flex:1;justify-content:space-between}}
 @media (max-width:480px){.pf-bar,.profile .pf-loss{display:none}.profile td,.profile th{padding:0.3125rem 0.25rem}.profile .pf-tables td:first-child{max-width:7.5rem}}
 .tag{font-size:0.6875rem;font-weight:700;letter-spacing:.05em;padding:1px 0.375rem;border-radius:0.3125rem;background:rgba(255,255,255,.16);text-transform:uppercase}
 .tag.ai{background:#33507a}
@@ -5787,6 +5802,7 @@ const App = (() => {
   }
   /* Small icon buttons (docs/ui/plan.md). The name is in the button for screen readers, and in its tooltip. */
   const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></svg>';
+  const ICON_EXPORT = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   const ICON_WATCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   const tinyButton = (action, name, icon, attrs) => '<button class="tiny-btn" type="button" data-action="' + action + '" title="' + name + '"' + (attrs || '') + '>' + icon + '<span class="sr">' + name + '</span></button>';
   /* The end buttons are the same in every mode (docs/ui/plan.md): Watch (the replay viewer), Try again (the
@@ -7746,34 +7762,51 @@ const App = (() => {
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.waves + ' <small>of ' + pr.total + '</small>') + (pr.sharkOpen ? tile('Sharks cleared', pr.sharks + ' <small>of ' + pr.total + '</small>') : '') : '') + '</div>';
-    /* Waves: your tries in each run, as the mode chip shows them during a game. The Shark run only once it is open. */
-    if (m === 'waves') for (const shark of pr.sharkOpen ? [true, false] : [false]) {
-      const t = triesOf(shark);
-      html += '<h3>' + t.title + '</h3><p class="pf-sub">' + t.summary + (t.locked ? ' ' + t.locked : '') + '</p><div class="pf-tries">' + t.table + '</div>';
-    }
+    /* Every tab has the same order: the tiles, then the chart and the insights (open), then the long lists, collapsed
+       (pfListHTML): the games, by opponent, by table and, in Waves, the tries in each run. */
+    const lists = pfListsHTML(m, st, games, pr);
     if (!tot.played && !games.length) {
-      return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
-        close;
+      return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' + lists + close;
     }
     if (games.length) {
       const shown = games.slice().reverse();
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
-      html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown) +
-        '<details><summary>Show these games as a table</summary><table><thead><tr><th>When</th><th>Game</th><th>West / East</th><th class="num">You–W–E</th><th>Result</th><th><span class="sr">Actions</span></th></tr></thead><tbody>' +
-        games.map(e => '<tr><td>' + escHTML(pfWhen(e.at)) + '</td><td>' + pfModeName(e) + '</td><td>' + pfWho(e.west) + ' / ' + pfWho(e.east) + (e.tuned ? ' <small>(tuned)</small>' : '') + '</td><td class="num">' + e.scores.join('–') + '</td><td>' + (e.winner === 0 ? 'Won' : 'Lost') + '</td>' +
-          '<td class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, ' data-at="' + escHTML(String(e.at)) + '"') : '') +
-          (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, ' data-at="' + escHTML(String(e.at)) + '"') : '') + '</td></tr>').join('') +
-        '</tbody></table></details>';
+      html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown);
     }
-    html += habitsHTML() + cardPlayHTML();
-    const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
-    html += '<h3>By opponent</h3><p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
-      pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
-    const tables = m === 'all' ? st.tables : st.modeTables[m] || {};
-    const pairs = Object.entries(tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
-    if (pairs.length) html += '<details class="pf-tables"><summary>By table: ' + pairs.length + (pairs.length === 1 ? ' table' : ' tables') + ' (West / East: the two opponents and their seats)</summary>' + pfTableHTML('pair', 'West / East', pairs) + '</details>';
+    html += habitsHTML() + cardPlayHTML() + lists;
     if (m !== 'all') html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up, and by table with the version that added them here: older games count under All only.</p>';
     return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX + ' games; All shows the latest ' + REPLAYS_MAX + ' of them.</p>' + close;
+  }
+  /* A collapsed list in Your profile: its name and a short count as the summary. */
+  const pfListHTML = (/** @type {string} */ cls, /** @type {string} */ name, /** @type {string} */ count, /** @type {string} */ body) =>
+    '<details class="pf-list ' + cls + '"><summary><b>' + name + '</b> <span>' + count + '</span></summary>' + body + '</details>';
+  /* The long lists of Your profile, each collapsed. A game takes two lines: what it was, then when and its actions
+     (Watch, Try again, Export: its seed and replay code). @param {string} m @param {any} st @param {any[]} games @param {any} pr */
+  function pfListsHTML(m, st, games, pr) {
+    let html = '';
+    if (games.length) {
+      const at = (/** @type {any} */ e) => ' data-at="' + escHTML(String(e.at)) + '"';
+      html += pfListHTML('pf-games', 'Games', 'the last ' + games.length + ', newest first', '<ol class="pf-glist">' + games.map(e =>
+        '<li><span class="pf-g1"><b class="' + (e.winner === 0 ? 'won' : 'lost') + '">' + (e.winner === 0 ? 'Won' : 'Lost') + '</b> ' + pfModeName(e) + ' · ' + pfWho(e.west) + ' / ' + pfWho(e.east) +
+        (e.tuned ? ' <small>(tuned)</small>' : '') + ' <span class="num">' + e.scores.join('–') + '</span></span>' +
+        '<span class="pf-g2"><span class="dim">' + escHTML(pfWhen(e.at)) + '</span><span class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, at(e)) : '') +
+        (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, at(e)) : '') + tinyButton('replay-export', 'Export: seed and replay code', ICON_EXPORT, at(e)) + '</span></span></li>').join('') + '</ol>');
+    }
+    const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
+    const met = PERSONAS.filter(x => opp[x.id] && opp[x.id].played).length;
+    html += pfListHTML('pf-opps', 'By opponent', met + ' of ' + PERSONAS.length + ' played',
+      '<p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
+      pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 }))));
+    const tables = m === 'all' ? st.tables : st.modeTables[m] || {};
+    const pairs = Object.entries(tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
+    if (pairs.length) html += pfListHTML('pf-tables', 'By table', pairs.length + (pairs.length === 1 ? ' table' : ' tables'),
+      '<p class="pf-sub">West / East: the two opponents and their seats.</p>' + pfTableHTML('pair', 'West / East', pairs));
+    /* Waves: your tries in each run, as the mode chip shows them during a game. The Shark run only once it is open. */
+    if (m === 'waves') for (const shark of pr.sharkOpen ? [true, false] : [false]) {
+      const t = triesOf(shark);
+      html += pfListHTML('pf-tries', t.title, t.summary.replace(/\. ✓ .*$/, ''), '<p class="pf-sub">' + t.summary + (t.locked ? ' ' + t.locked : '') + '</p>' + t.table);
+    }
+    return html ? '<h3>Lists</h3>' + html : '';
   }
   /* Your bidding habits, from Dynamic's profile (decision 15): how often your calls are made, and your usual hand at a
      call, as the fitted estimate of tricks and Kings. Never the easing. Every mode feeds it, so it ignores the filter. */
@@ -7910,8 +7943,13 @@ const App = (() => {
       case 'ask-cancel': answerAsk(false); break;
       case 'new-deal': newDeal(); break;
       case 'export': exportGame(); break;
-      case 'export-seed': copyExport(String(app.state.seed)); break;
-      case 'export-code': if (endCode) copyExport(endCode); break;
+      case 'export-seed': copyExport(String(exported.seed)); break;
+      case 'export-code': if (exported.code) copyExport(exported.code); break;
+      case 'replay-export': {
+        const row = replays.list().find(x => String(x.at) === el.getAttribute('data-at')), rec = row && safe(() => Replay.decode(row.code));
+        if (row && rec) exportGame({ seed: rec.seed, code: row.code });
+        break;
+      }
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'replay-watch': {
         const row = el.hasAttribute('data-at') ? replays.list().find(x => String(x.at) === el.getAttribute('data-at')) : null;
@@ -8202,13 +8240,18 @@ const App = (() => {
   }
   /* Export: a small dialog in the confirm layer that copies the seed or the replay code. ‹ Back, Escape or a click
      outside closes it. */
-  function exportGame() {
+  /* The game Export copies: the game just ended, or a row of Your profile. */
+  let exported = /** @type {{ seed: number, code: string | null }} */ ({ seed: 0, code: null });
+  /** @param {{ seed: number, code: string | null }} [game] a finished game from Your profile; the game just ended without it */
+  function exportGame(game) {
     if (askDone) askDone(false);
+    exported = game || { seed: app.state.seed, code: endCode };
     const layer = $('askLayer');
     layer.innerHTML = '<div class="modal ask gameover" role="dialog" aria-modal="true" aria-labelledby="askTitle">' +
-      '<div class="mtop"><button class="mback" type="button" data-action="ask-cancel">‹ Back</button><h2 id="askTitle">Export this game</h2></div><p>The replay code holds the whole game, every move. The seed holds its deals only.</p>' +
+      '<div class="mtop"><button class="mback" type="button" data-action="ask-cancel">‹ Back</button><h2 id="askTitle">Export this game</h2></div><p>The replay code holds the whole game, every move. The seed holds its deals only' +
+      (game ? ': ' + game.seed : '') + '.</p>' +
       '<div class="row"><button class="btn" type="button" data-action="export-seed">Copy seed</button>' +
-      '<button class="btn primary" type="button" data-action="export-code"' + (endCode ? '' : ' disabled') + '>Copy replay code</button></div>' +
+      '<button class="btn primary" type="button" data-action="export-code"' + (exported.code ? '' : ' disabled') + '>Copy replay code</button></div>' +
       '<p class="export-copied" aria-live="polite"></p></div>';
     layer.hidden = false;
     const btn = /** @type {HTMLElement | null} */ (layer.querySelector('[data-action="export-code"]'));

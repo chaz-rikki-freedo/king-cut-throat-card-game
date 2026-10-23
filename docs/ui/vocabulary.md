@@ -231,14 +231,16 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play or Waves. Scopes every part below it. |
+| Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play, Dynamic or Waves. Scopes every part below it. Every tab has the same order: the tiles, the chart and the insights (open), then **Lists** (collapsed). |
 | Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
 | Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20 of the mode (under All, the latest 20 of every mode), oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
-| Last games table | `.profile details` | S | The same games as a table. Each row ends with its actions (`.pf-acts`). |
+| Lists | `.pf-list` | C | Collapsed rows under **Lists**, each its name and a short count: **Games** (`.pf-games`), **By opponent** (`.pf-opps`), **By table** (`.pf-tables`) and, in Waves, **Shark tries** and **Wave tries** (`.pf-tries`). |
+| Games list | `.pf-glist` | S | The same games, newest first. Each game takes two lines on a phone (one when wide): Won or Lost, the game, West / East and the scores; then when, and its actions (`.pf-acts`). |
 | Watch icon | `.tiny-btn`, `data-action="replay-watch"`, `data-at` | C | An eye on a Last games row: opens the game in the replay viewer. Exit returns to Your profile. Missing when the code has a newer rules version. |
 | Try again icon | `.tiny-btn`, `data-action="replay-seed"`, `data-at` | C | A counter-clockwise arrow on a Last games row: plays the same table again (mode, wave, opponents, deals and house rules). Missing when this app cannot play the game again. |
-| Opponent table | `data-table="opp"` | C, S | Games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
-| Table list | `.pf-tables` | C, S | Collapsed: the same columns for each West / East pair, in the mode shown. Per-mode tables count games from the version that added them; older games count under All only. |
+| Export icon | `.tiny-btn`, `data-action="replay-export"`, `data-at` | C | Two sheets on a Last games row: opens the Export dialog for that game, with its seed shown, **Copy seed** and **Copy replay code**. |
+| Opponent table | `data-table="opp"` | C, S | In **By opponent**: games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
+| Table list | `.pf-tables` | C, S | In **By table**: the same columns for each West / East pair, in the mode shown. Per-mode tables count games from the version that added them; older games count under All only. |
 
 ### 3.5 Results dialog
 
@@ -246,7 +248,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 | Term | Heading | Contents |
 |---|---|---|
-| Wave tries | "Wave tries" | One row for each open wave, newest first: wave, West / East, tries. ✓ marks a cleared wave. `.now` marks the current wave. |
+| Wave tries | "Wave tries" | In Your profile, a collapsed list (`.pf-tries`): the count in its row, the summary and the table inside. One row for each open wave, newest first: wave, West / East, tries. ✓ marks a cleared wave. `.now` marks the current wave. |
 | Free play wins | "Free play wins" | One row for each opponent: wins and games. |
 | Results note | `.note` | D: what counts as a try or a game. |
 

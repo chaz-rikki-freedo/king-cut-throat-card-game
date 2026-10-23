@@ -171,13 +171,23 @@ function expect(name, ok, detail) {
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
       out.exits = Array.from(document.querySelectorAll('#overlay .profile button[data-action="menu-back"], #overlay .profile button[data-action="close-overlay"]'), x => x.closest('.sheet-top') ? 'header' : 'body');
+      /* The chart is open; the lists are collapsed, in the same order on every tab. A game row exports its seed and code. */
+      out.chart = !!q('#overlay .pf-chart');
+      out.lists = Array.from(document.querySelectorAll('#overlay .pf-list'), d => d.className.replace('pf-list ', '') + (d.open ? ' open' : ''));
+      const row = q('#overlay .pf-games li'), at = row && row.querySelector('[data-action="replay-export"]').getAttribute('data-at');
+      const game = A.replays.list().find(e => String(e.at) === at);
+      click('#overlay .pf-games [data-action="replay-export"]'); await sleep(20);
+      out.export = { title: (q('#askTitle') || {}).textContent, seed: (q('#askLayer p') || {}).textContent.includes(': ' + KCT.Replay.decode(game.code).seed + '.'), code: !q('#askLayer [data-action="export-code"]').disabled };
+      click('#askLayer [data-action="ask-cancel"]'); await sleep(20);
       click('#overlay .profile .sheet-top .mback'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
     expect('the menu: the title, then a view each for Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);
     expect('with no game being played, nothing in the menu says Continue to the table (Escape closes it)', r.menuExits === 0, r);
-    expect("a card's goal opens Your profile for the mode; its header \u2715 returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
-    expect('Your profile has one way out, the \u2715 in its header', JSON.stringify(r.exits) === '["header"]', r);
+    expect("a card's goal opens Your profile for the mode; its header \u2039 Back returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
+    expect('Your profile has one way out, \u2039 Back in its header', JSON.stringify(r.exits) === '["header"]', r);
+    expect('Your profile: the chart open, then the lists collapsed (games, by opponent, by table)', r.chart && JSON.stringify(r.lists) === '["pf-games","pf-opps","pf-tables"]', r.lists);
+    expect('a game in Your profile exports its seed and its replay code', r.export.title === 'Export this game' && r.export.seed && r.export.code, r.export);
 
     console.log('Game 2: Waves, wave 1');
     r = await step(`
@@ -529,7 +539,7 @@ function expect(name, ok, detail) {
       out.style = A.botConfig(2).cfg.style.courage;
       click('#modeChip'); await sleep(20); out.popup = q('#overlay h2').textContent; click('[data-action="close-overlay"]');
       click('[data-action="me-profile"]'); await sleep(20); click('[data-action="profile-mode"][data-mode="waves"]'); await sleep(20);
-      out.profile = Array.from(document.querySelectorAll('#overlay h3')).map(h => h.textContent).filter(t => /tries/.test(t));
+      out.profile = Array.from(document.querySelectorAll('#overlay .pf-tries > summary b'), b => b.textContent);
       out.sharkRows = document.querySelectorAll('#overlay .pf-tries')[0].querySelectorAll('tr').length - 1;
       click('[data-action="close-overlay"]');
       return out;`);

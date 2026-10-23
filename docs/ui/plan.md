@@ -26,14 +26,15 @@ Each icon button has an `aria-label` and a `title`, because it has no visible te
 
 At the end of a game, the winner line congratulates the winner ("🏆 Congratulations! You win the game with 10 points." or "🏆 Congratulations to Viv, who wins the game with 10 points."). The Latest strip shows only that line. The new-game line no longer shows the seed.
 
-### Your profile: Last games table
+### Your profile: Games list
 
-Each row of **Show these games as a table** ends with two icons:
+Each game in **Lists → Games** ends with three icons:
 
 - **Try again icon.** Starts the same table again. A Dynamic game starts from the profile snapshot in its replay code (`dyn.snap`). If that mode has an unfinished game that has begun, the app asks first, as **New game** does.
 - **Watch icon.** Opens the replay viewer. Exit returns to Your profile.
+- **Export icon.** Opens the Export dialog for that game: its seed, **Copy seed** and **Copy replay code**.
 
-A row whose code this app cannot read (a newer rules version, or no mode) shows no icons.
+A row whose code this app cannot read (a newer rules version, or no mode) shows Export only.
 
 ### Game-over end buttons
 
