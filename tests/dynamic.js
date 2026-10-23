@@ -100,7 +100,7 @@ async function checks() {
     r = await step(`
       /* The review changed the profile: a new game would start from another snapshot. Replay Seed keeps the old one. */
       const out = { fresh: JSON.stringify(KCT.Dynamic.snapshotOf(A.profile.get())) };
-      /* The game-over box was closed (✕, Back): its buttons again. */
+      /* The game-over box was closed (‹ Back): its buttons again. */
       q('#overlay').innerHTML = '<div class="modal"><div class="row">' + app.ui.endButtons + '</div></div>'; q('#overlay').hidden = false;
       click('[data-action="replay-seed"]'); await sleep(50);
       out.snap = JSON.stringify(app.dyn.snap); out.seed = app.state.seed; out.mode = app.mode;

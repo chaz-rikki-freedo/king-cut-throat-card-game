@@ -20,11 +20,11 @@ Each line opens a view in the same card, with **‹ Back** at its top left. **Es
 
 **Resume** continues that mode's game: the one you are playing (the menu closes), or the saved one. **New game** in Free play seats the two opponents the seed picks, unless Settings → Bots sets who sits; in Dynamic, two opponents picked for your level, who ease off while you learn (see **Dynamic**).
 
-Your profile, a bot's profile and the results pop-up have the same header as **Settings**: the title, then **✕** to close. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile fills the screen, like the menu.
+Your profile, a bot's profile and the results pop-up have the same header as **Settings**: **‹ Back** on the left closes it, and the title is in the middle. The header stays in view while the panel scrolls. On a phone (600 px wide or less), Your profile fills the screen, like the menu.
 
 ## About screen
 
-When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **✕** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. © 2009–2026**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴), crowns (👑) and suit pips (♠ ♥ ♣ ♦) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. During a game, the menu shows the same card.
+When no game is loaded, the About screen takes the table's place: at launch behind the menu, after **Esc** closes the launch menu, and after **Discard game** ends the game being played. A card on the felt shows the game's name, a one-line description, **Tutorial** (coming soon) on the left and **Play** (opens the menu) on the right, the credit **Original game design by C.R.F.B. © 2009–2026**, and the build (the same text as at the foot of Settings). Behind the card, faint kings (🤴), crowns (👑) and suit pips (♠ ♥ ♣ ♦) drift slowly up the felt, each swaying at its own pace. The system setting to reduce motion holds them still. Starting or resuming a game, or watching a replay, replaces the About screen with the table. During a game, the menu shows the same card.
 
 A link with `?replay=` and a replay code opens that game in the replay viewer (see **Watch a game**). A link with `?seed=` or `?wave=` starts that game without the menu. If that mode has an unfinished game that has begun, the app asks first, as **New game** does. The app then removes `seed`, `wave` and `replay` from the address, so a reload resumes the game instead of starting it again. A link with a seed that is not a whole number from 0 to 4294967295, or a wave that does not exist, starts nothing: the menu opens with a note.
 
@@ -43,7 +43,7 @@ The header stays at the top of the window, and the page scrolls under it. From l
 In Free play and Dynamic, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Try again** and **New deal** offer it again. There is no dialog when the AI plays your seat at the start.
 
 - **New opponents** seats two other random opponents (a new seed), neither of the two shown.
-- **Back** (or **Esc**) does not start the game: the table empties and the menu opens. Your saved game of that mode, if any, stays as it was, because a game is saved only once **Play** is pressed.
+- **‹ Back** (top left) or **Esc** does not start the game: the table empties and the menu opens. Your saved game of that mode, if any, stays as it was, because a game is saved only once **Play** is pressed.
 - When you have finished a game of that mode, a line shows how the latest one ended: the winner and the three scores.
 
 ## Saved games, settings and results
@@ -79,7 +79,7 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Game**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **✕** or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Game**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **‹ Back** (top left) or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
 ### Game: Theme
 
@@ -400,7 +400,7 @@ The Latest Scroll's last line congratulates the winner. The results dialog and t
 | **Export** | Copy the seed (the deals) or the replay code (the whole game). |
 | **Next wave** | Only after a win that opens the next wave. In the Shark run, **Next Shark**; after wave 18, **Shark run**. |
 
-**✕** (Back) in the dialog's top right returns to the table. The menu is the **☰** button in the header.
+**‹ Back** in the dialog's top left returns to the table. The menu is the **☰** button in the header.
 
 ### Watch a game
 
