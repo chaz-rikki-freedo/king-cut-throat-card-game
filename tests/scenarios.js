@@ -171,7 +171,7 @@ function expect(name, ok, detail) {
       out.profile = !!q('#overlay .profile');
       out.pressed = (q('#overlay .pf-filter [aria-pressed="true"]') || {}).textContent;
       out.exits = Array.from(document.querySelectorAll('#overlay .profile button[data-action="menu-back"], #overlay .profile button[data-action="close-overlay"]'), x => x.closest('.sheet-top') ? 'header' : 'body');
-      click('#overlay .profile .sheet-top .set-close'); await sleep(20);
+      click('#overlay .profile .sheet-top .mback'); await sleep(20);
       out.back = !!q('#overlay .menu');
       return out;`);
     expect('the menu: the title, then a view each for Dynamic, Waves and Free play', r.heading === 'King Cut-Throat' && JSON.stringify(r.order) === '["dynamic","waves","free"]', r);

@@ -41,7 +41,7 @@ In every mode: **Watch** (dimmed for a game with no replay code), **Try again**,
 
 - **New deal** in Free play and Dynamic finds a new seed that seats the same two opponents in the same seats, because the seed picks the table.
 - **Export** opens a small dialog: **Copy seed** and **Copy replay code**.
-- The results dialog has **✕** (Back) in its top right instead of a View table button.
+- The results dialog has **‹ Back** in its top left instead of a View table button.
 
 ### Settings → Tools
 

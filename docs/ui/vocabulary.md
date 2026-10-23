@@ -208,7 +208,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Swap button | `.swap-btn`, `swap-preview` | C | "⇄": swaps West and East. The table behind redraws at once. |
 | Play button | `swap-done` | C | Keeps the seats, draws the dealer and starts the deal. |
 | New opponents button | `swap-new` | C | Two other random opponents (a new seed). |
-| Back button | `.swap-back`, `swap-back` | C | Does not start the game: the table empties and the menu opens. **Esc** does the same. |
+| Back button | `.swap-back`, `swap-back` | C | **‹ Back** in the top left, beside the centered title. Does not start the game: the table empties and the menu opens. **Esc** does the same. |
 | Last game line | `.swap-last` | I | "Last game: Doc won · You 7 · Ace 4 · Doc 10", the latest finished Free play game. |
 
 ### 3.4 Profile dialog
@@ -261,9 +261,9 @@ Opens when a player reaches 10 points.
 | Final scores | `table` | R | Only when there are no hand stats. |
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave. |
-| Back button | `.modal-x`, `close-overlay` | C | ✕ in the top right. Closes the dialog. The end buttons stay in the action bar. |
+| Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. Closes the dialog. The end buttons stay in the action bar. |
 | End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
-| Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. ✕, Escape or a click outside closes it. |
+| Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. **‹ Back**, Escape or a click outside closes it. |
 
 ## 4. Confirm layer
 
@@ -291,7 +291,7 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Settings header | `.set-top` | — | The title "Settings" and the **✕ Close** button. |
+| Settings header | `.set-top` | — | **‹ Back** on the left, the title "Settings" in the middle, and the tabs under them. |
 | Setting section | `.set-section`, `.set-head` | L | A group with a heading. |
 | Setting subgroup | `.set-group`, `.set-sub` | L | A smaller group inside a section. |
 | Setting hint | `.k-hint` | D | The small text under a setting: defaults and effects. |

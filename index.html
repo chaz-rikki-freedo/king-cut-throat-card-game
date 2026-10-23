@@ -52,10 +52,9 @@ button{font:inherit;color:inherit}
 .tiny-btn:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 .tiny-btn svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* A button with an icon before its label: the end buttons. */
-/* The results dialog: ✕ (Back) in its top right returns to the table. */
-.modal.gameover{position:relative}
-.modal.gameover .big{padding-right:2.5rem}
-.modal .modal-x{position:absolute;top:0.75rem;right:0.75rem}
+/* The results dialog: ‹ Back on the left of its title returns to the table. */
+.modal .mtop{margin:0 0 0.625rem}
+.modal .mtop h2,.modal .mtop .big{margin:0;text-align:center}
 .export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted);text-align:right}
 /* The end buttons, in the results dialog and the action bar: one row, centered (the dialog's at its right); on a
    phone a 2 x 2 grid of equal buttons, Next wave across the full width under it. */
@@ -357,8 +356,8 @@ button.card{cursor:pointer}
 .modal ul{padding-left:1.25rem}
 .modal .row{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.875rem;flex-wrap:wrap}
 .modal.sheet{padding:0;display:flex;flex-direction:column;overflow:hidden}
-.sheet-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0.75rem;padding:0.75rem 1rem 0.75rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.12);flex:none}
-.sheet-top h2{margin:0;font-size:1.125rem;font-weight:800}
+.sheet-top{display:grid;grid-template-columns:4.5rem 1fr 4.5rem;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);flex:none}
+.sheet-top h2{margin:0;font-size:1.125rem;font-weight:800;text-align:center}
 .sheet-body{overflow:auto;min-height:0;padding:1.25rem;position:relative}
 /* Settings: full screen, one tab at a time (Game, Bots, Expert, Tools). Each setting is a row: its name and a
    one-line description, then its control. On/off settings are switches; the whole row toggles them. */
@@ -366,10 +365,9 @@ button.card{cursor:pointer}
   position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--set-bg);font-size:0.9375rem;line-height:1.4}
 .settings[hidden]{display:none}
 body.set-open{overflow:hidden}
-.settings .set-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);background:var(--set-bg)}
-.settings .set-title{margin:0;font-size:1.125rem;font-weight:800}
-.set-close{justify-self:end;font-size:0.9375rem;font-weight:700;padding:0.5rem 1rem;min-height:2.75rem;margin:0}
-.settings .set-tabs{display:flex;gap:0.25rem;padding:0.25rem;border-radius:0.75rem;background:var(--set-field)}
+.settings .set-top{display:grid;grid-template-columns:4.5rem 1fr 4.5rem;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--set-line);background:var(--set-bg)}
+.settings .set-title{margin:0;font-size:1.125rem;font-weight:800;text-align:center}
+.settings .set-tabs{grid-column:1 / -1;justify-self:center;display:flex;gap:0.25rem;padding:0.25rem;border-radius:0.75rem;background:var(--set-field)}
 .settings .set-tab{appearance:none;border:0;background:transparent;color:var(--set-hint);font:inherit;font-weight:700;padding:0.5rem 1.125rem;min-height:2.5rem;border-radius:0.5625rem;cursor:pointer}
 .settings .set-tab:hover{color:var(--ink)}
 .settings .set-tab[aria-selected="true"]{background:var(--gold);color:var(--gold-ink)}
@@ -458,10 +456,8 @@ body.set-open{overflow:hidden}
 .settings pre:empty::before{content:'The event log is empty. It records new events while Event log is on.';color:#7f9a86;font-style:italic}
 .settings pre{margin:var(--s3) 0 0;padding:var(--s3);border-radius:0.5rem;background:#070a08;overflow:auto;font:0.75rem/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#b8f5c4;min-height:5rem;max-height:40vh;white-space:pre-wrap;word-break:break-word}
 @media (max-width:620px){
-  .set-close-word{display:none}
-  .set-close{padding:0.5rem 0.875rem}
-  .settings .set-top{grid-template-columns:1fr auto;padding:var(--s2) var(--s3) var(--s3)}
-  .settings .set-tabs{grid-column:1 / -1;grid-row:2}
+  .settings .set-top{padding:var(--s2) var(--s3) var(--s3)}
+  .settings .set-tabs{justify-self:stretch}
   .settings .set-tab{flex:1;padding:0.5rem 0.375rem}
   .settings .set-pane{padding:var(--s4) var(--s3) 2.5rem}
   .settings .set-card{padding:0 var(--s3)}
@@ -555,7 +551,6 @@ body.set-open{overflow:hidden}
 .swap-side{font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .swap-btn{font-size:1.375rem;padding:0.5rem 0.875rem;flex:none;align-self:center}
 .swap-last{margin:0;font-size:0.8125rem;color:var(--muted)}
-.swap .row .swap-back{margin-right:auto}
 /* On a phone a seat's label can take two lines: both keep room for two, so the two figures line up. */
 @media (max-width:599px){ .swap-side{min-height:2.6em;display:flex;align-items:center} }
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0.25rem;font-size:0.8125rem}
@@ -987,13 +982,13 @@ window.kctTheme = (() => {
 
 <div class="settings" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="setTitle" hidden>
   <header class="set-top">
+    <button class="mback" type="button" data-action="toggle-settings" aria-label="Back: close settings">‹ Back</button>
     <h2 class="set-title" id="setTitle">Settings</h2>
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
       <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
-    <button class="btn set-close" type="button" data-action="toggle-settings" aria-label="Close settings">✕<span class="set-close-word"> Close</span></button>
   </header>
   <div class="set-body">
     <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
@@ -1994,10 +1989,10 @@ const Base64url = Object.freeze({
 });
 /** @param {unknown} t @returns {string} the text, safe inside HTML and inside a quoted attribute */
 const escHTML = t => String(t).replace(/[&<>"']/g, c => /** @type {Record<string, string>} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-/* A panel with the Settings header: the title, then the ✕ button that closes it (action: what closing does). Only
+/* A panel with the Settings header: ‹ Back, which closes it (action: what closing does), then the title. Only
    the body scrolls, so the way out stays in view. cls: the panel's own class; title: the header's contents. */
 const sheetHTML = (cls, label, title, action = 'close-overlay') => '<div class="modal sheet ' + cls + '" role="dialog" aria-label="' + label + '">' +
-  '<header class="sheet-top">' + title + '<button class="btn set-close" type="button" data-action="' + action + '" aria-label="Close">✕<span class="set-close-word"> Close</span></button></header>' +
+  '<header class="sheet-top"><button class="mback" type="button" data-action="' + action + '">‹ Back</button>' + title + '</header>' +
   '<div class="sheet-body">';
 
 /* ---------------------------------------------------------------------
@@ -6911,7 +6906,7 @@ const App = (() => {
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><button class="btn modal-x" type="button" data-action="close-overlay" aria-label="Back" title="Back">✕</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div>' +
+    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
       '<div class="row">' + app.ui.endButtons + '</div></div>';
@@ -7536,11 +7531,11 @@ const App = (() => {
   function showSwap() {
     const [, west, east] = app.ui.personas;
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><h2>Choose seats</h2>' +
+    ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><div class="mtop"><button class="mback swap-back" type="button" data-action="swap-back">‹ Back</button><h2>Choose seats</h2></div>' +
       '<p>You may swap your two opponents now, before the deal. This is your only chance: once the cards are dealt, the seats stay for the whole game.</p>' +
       '<div class="swap-seats">' + seatCardHTML(west, 'Your left · West') + '<button class="btn swap-btn" type="button" data-action="swap-preview" aria-label="Swap the two seats">⇄</button>' + seatCardHTML(east, 'Your right · East') + '</div>' +
       lastGameHTML() +
-      '<div class="row"><button class="btn swap-back" type="button" data-action="swap-back">Back</button>' +
+      '<div class="row">' +
       '<button class="btn" type="button" data-action="swap-new">New opponents</button>' +
       '<button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;
@@ -8182,14 +8177,13 @@ const App = (() => {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
     else fallback();
   }
-  /* Export: a small dialog in the confirm layer that copies the seed or the replay code. ✕, Escape or a click
+  /* Export: a small dialog in the confirm layer that copies the seed or the replay code. ‹ Back, Escape or a click
      outside closes it. */
   function exportGame() {
     if (askDone) askDone(false);
     const layer = $('askLayer');
     layer.innerHTML = '<div class="modal ask gameover" role="dialog" aria-modal="true" aria-labelledby="askTitle">' +
-      '<button class="btn modal-x" type="button" data-action="ask-cancel" aria-label="Close" title="Close">✕</button>' +
-      '<h2 id="askTitle">Export this game</h2><p>The replay code holds the whole game, every move. The seed holds its deals only.</p>' +
+      '<div class="mtop"><button class="mback" type="button" data-action="ask-cancel">‹ Back</button><h2 id="askTitle">Export this game</h2></div><p>The replay code holds the whole game, every move. The seed holds its deals only.</p>' +
       '<div class="row"><button class="btn" type="button" data-action="export-seed">Copy seed</button>' +
       '<button class="btn primary" type="button" data-action="export-code"' + (endCode ? '' : ' disabled') + '>Copy replay code</button></div>' +
       '<p class="export-copied" aria-live="polite"></p></div>';
