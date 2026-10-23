@@ -288,5 +288,5 @@ The other sections (GAME, SEATS, RESULT, FLAGS, TIME, META) use about 220 bytes.
 
 ### 11.4 Other limits
 
-- The app keeps the codes of the last 20 finished games in `localStorage` (`kct.replays`). In the worst case, this is about 57 KB.
+- The app keeps the codes of the last 20 finished games of each mode, plus the last 20 where the AI played your seat, in `localStorage` (`kct.replays`): at most 80 codes. In the worst case, this is about 230 KB.
 - A game resumed from a save made before replay codes existed has no decision list, so it has no code.

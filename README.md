@@ -54,9 +54,9 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
 - **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, and the Game tab's settings. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
-- **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent in each mode. A game where the AI played your seat adds no results.
+- **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent and per table in each mode. A game where the AI played your seat adds no results.
 
-- **Replay codes** (`kct.replays`): the last 20 finished games (see **Replay a game**).
+- **Replay codes** (`kct.replays`): the last 20 finished games of each mode, plus the last 20 where the AI played your seat. A new game pushes out only the oldest of its own group, and each code is saved when the game ends, so there is nothing to copy (see **Replay a game**).
 - **Dynamic profile** (`kct.profile`): your bidding and discards across games, which set where a Dynamic game starts (see **Dynamic**). A game where the AI played your seat adds nothing. Resetting results (`KCT.App.stats.reset()`) does not clear it.
 
 If the browser refuses to save any of these (storage full or blocked), a note says so once per page load. The data then lasts until the page closes.
@@ -211,7 +211,7 @@ Ten named bots: Vex, Doc, Ace, Mei, Gus, Lou, Viv, Tex, Kit and Zen. Each game s
 
 - Each bot has its own color. The name has that color on the board, and the log shows it as a colored tag. You are teal.
 - Tap a bot's figure to see its profile: a quote, a hint, four bars and its habits. **Card sense**, **Nerve**, **Reads you** (how much it believes your plays) and **Feints** go up to 4. **Set in their ways** marks a bot with human habits.
-- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games, and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your card play** shows a few of your card habits and your slips beside the bots', from your last 20 games played yourself. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
+- Tap your own figure (the silhouette) to see **Your profile**: games, wins, win rate and streak, a chart of your last 20 games (under All, the latest 20 of every mode), and your results against each opponent and each table. Select a column header to sort. All, Free play, Dynamic and Waves filter everything below them. **Your card play** shows a few of your card habits and your slips beside the bots', from your last 20 games played yourself. **Your bidding** shows how many of your calls you made and your usual hand at a call, from every game you played yourself. The results stay in this browser, and games where the AI played your seat are not counted.
 - Each bot plays its own skill tier, bid courage, Real table setting, Showdown pick, habits, reads, feints and wariness. In Free play, Settings → Bots can choose who sits West and East and change how each plays (see **Bots**).
 
 | Bot | Skill | Bid courage | Real table | Showdown pick |
@@ -422,7 +422,7 @@ The seed is one 32-bit number. It sets the bots (Free play and Dynamic), the fir
 
 The format has room to grow: optional sections that old readers skip, a generic key/value section, notes (MARK) in the decision stream, and a rules version. The full spec is [docs/replay-code.md](docs/replay-code.md). The format holds at least 20 hands with a showdown in each hand (about 2,850 characters). Codes from the first release (`KCT1-`) still read.
 
-The app keeps the codes of the last 20 finished games in this browser (`kct.replays`). There is no replay UI yet. Use the console:
+The app keeps the codes of the last 20 finished games of each mode, plus the last 20 where the AI played your seat, in this browser (`kct.replays`). There is no replay UI yet. Use the console:
 
 ```js
 KCT.App.replayCode()                        // the current (or just finished) game as a code
@@ -454,7 +454,7 @@ KCT.App.habits()                            // habit rates from the finished gam
 KCT.App.explain(0)                          // each bot decision of your latest finished game, made again, with its options
 ```
 
-`KCT.App.habits()` and `KCT.App.explain(n)` read only finished games, the last 20 in Your profile. They never read the running game.
+`KCT.App.habits()` and `KCT.App.explain(n)` read only finished games, the latest 20 of any mode in Your profile. They never read the running game.
 
 - `habits()` counts how each seat leads, follows, trumps in, throws off when void, plays its Kings and bids. `labels` names each rate in plain words. Your column leaves out games where the AI played your seat, a bot's column leaves out games where it had changes from Settings → Bots, and every column leaves out the Showdown's tricks.
 - `explain(n)` plays game `n` again (0 is the latest) and asks each bot to decide again, with the settings it played with. In Dynamic, the easing moves after each hand as it did in the game. Each decision lists how the bot decided (`plan`: play-outs, `habit`: play-outs, then a habit picked a card within its habit strength of the best, `forced`: one choice, `rule`: a fixed rule), its options with their value (its chance to win the game) and best plan, and `match`. A bot decides from what it could see and its settings alone, so `match` is true unless the Settings panel changed during a Free play game (`changed`). With the event log on, each decision is also one `AI_DECISION` line.

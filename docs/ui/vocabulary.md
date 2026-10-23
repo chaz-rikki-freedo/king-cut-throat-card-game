@@ -233,12 +233,12 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 |---|---|---|---|
 | Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play or Waves. Scopes every part below it. |
 | Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
-| Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20, oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
+| Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20 of the mode (under All, the latest 20 of every mode), oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
 | Last games table | `.profile details` | S | The same games as a table. Each row ends with its actions (`.pf-acts`). |
 | Watch icon | `.tiny-btn`, `data-action="replay-watch"`, `data-at` | C | An eye on a Last games row: opens the game in the replay viewer. Exit returns to Your profile. Missing when the code has a newer rules version. |
 | Try again icon | `.tiny-btn`, `data-action="replay-seed"`, `data-at` | C | A counter-clockwise arrow on a Last games row: plays the same table again (mode, wave, opponents, deals and house rules). Missing when this app cannot play the game again. |
 | Opponent table | `data-table="opp"` | C, S | Games, wins, losses and win rate against each opponent. A column header sorts it (`data-action="profile-sort"`). |
-| Table list | `.pf-tables` | C, S | Under All only, collapsed: the same columns for each West / East pair. |
+| Table list | `.pf-tables` | C, S | Collapsed: the same columns for each West / East pair, in the mode shown. Per-mode tables count games from the version that added them; older games count under All only. |
 
 ### 3.5 Results dialog
 

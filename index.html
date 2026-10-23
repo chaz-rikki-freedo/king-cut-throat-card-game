@@ -2733,10 +2733,13 @@ function createSlots(store) {
   });
 }
 
-/* Replay codes of the last REPLAYS_MAX finished games, newest first. Saved entries can come
+/* Replay codes of finished games, newest first: the last REPLAYS_MAX of each mode, and apart from them the last
+   REPLAYS_MAX where the AI played your seat (replayGroup), so one mode never pushes out another. Saved entries can come
    from a backup, so each one is rebuilt from fields of the right type, and an entry without a
    replay code is dropped. The code itself is checked when it is decoded. */
 const REPLAYS_MAX = 20;
+/** The group a finished game counts in for REPLAYS_MAX: its mode, or 'assisted'. @param {any} e */
+const replayGroup = e => (e.assisted ? 'assisted' : e.mode || 'other');
 /** @param {any} e @returns {object | null} */
 function cleanReplayEntry(e) {
   if (!e || typeof e !== 'object' || typeof e.code !== 'string' || !/^KCT\d+-[A-Za-z0-9_-]*$/.test(e.code)) return null;
@@ -2751,19 +2754,26 @@ function cleanReplayEntry(e) {
 function createReplays(store) {
   const js = jsonStore(store);
   const saved = js.load();
-  let list = Array.isArray(saved) ? saved.map(cleanReplayEntry).filter(Boolean).slice(0, REPLAYS_MAX) : [];
+  /* Keeps the newest REPLAYS_MAX of each group, in order. */
+  const trim = (/** @type {any[]} */ all) => {
+    /** @type {Record<string, number>} */
+    const n = {};
+    return all.filter(e => { const g = replayGroup(e); n[g] = (n[g] || 0) + 1; return n[g] <= REPLAYS_MAX; });
+  };
+  let list = Array.isArray(saved) ? trim(saved.map(cleanReplayEntry).filter(Boolean)) : [];
   return Object.freeze({
-    add(entry) { list.unshift(entry); list.length = Math.min(list.length, REPLAYS_MAX); js.save(list); return entry; },
+    add(entry) { list = trim([entry, ...list]); js.save(list); return entry; },
     list: () => JSON.parse(JSON.stringify(list)),
     clear() { list = []; js.save(list); }
   });
 }
 
 /* Results of finished games: per mode, per table (West/East), per opponent, and per opponent
-   in each mode (modeOpponents, kept since the results pop-up: older games are not in it). */
+   in each mode (modeOpponents, kept since the results pop-up: older games are not in it), and per table in each
+   mode (modeTables, kept since per-mode tables in Your profile). */
 function createStats(store) {
   const js = jsonStore(store);
-  const blank = () => ({ modes: {}, tables: {}, opponents: {}, modeOpponents: {} });
+  const blank = () => ({ modes: {}, tables: {}, opponents: {}, modeOpponents: {}, modeTables: {} });
   /* Only { played, won } counts that make sense are kept: the results pop-up shows them. */
   const cleanGroup = g => {
     const out = {};
@@ -2777,9 +2787,9 @@ function createStats(store) {
   const saved = js.load();
   let s = blank();
   if (saved && typeof saved.modes === 'object' && typeof saved.tables === 'object' && typeof saved.opponents === 'object') {
-    s = { modes: cleanGroup(saved.modes), tables: cleanGroup(saved.tables), opponents: cleanGroup(saved.opponents), modeOpponents: {} };
-    if (saved.modeOpponents && typeof saved.modeOpponents === 'object') {
-      for (const [m, g] of Object.entries(saved.modeOpponents)) if (m !== '__proto__') s.modeOpponents[m] = cleanGroup(g);
+    s = { modes: cleanGroup(saved.modes), tables: cleanGroup(saved.tables), opponents: cleanGroup(saved.opponents), modeOpponents: {}, modeTables: {} };
+    for (const k of /** @type {const} */ (['modeOpponents', 'modeTables'])) {
+      if (saved[k] && typeof saved[k] === 'object') for (const [m, g] of Object.entries(saved[k])) if (m !== '__proto__') s[k][m] = cleanGroup(g);
     }
   }
   const add = (group, key, won) => { const r = group[key] || (group[key] = { played: 0, won: 0 }); r.played++; if (won) r.won++; };
@@ -2788,7 +2798,7 @@ function createStats(store) {
        the mode, but not for that bot, nor for the table. */
     record({ mode, west, east, won, tuned = [false, false] }) {
       add(s.modes, mode, won);
-      if (!tuned[0] && !tuned[1]) add(s.tables, west + '/' + east, won);
+      if (!tuned[0] && !tuned[1]) { add(s.tables, west + '/' + east, won); add(s.modeTables[mode] || (s.modeTables[mode] = {}), west + '/' + east, won); }
       const mine = s.modeOpponents[mode] || (s.modeOpponents[mode] = {});
       [west, east].forEach((id, i) => { if (!tuned[i]) { add(s.opponents, id, won); add(mine, id, won); } });
       js.save(s);
@@ -5827,7 +5837,7 @@ const App = (() => {
     }).then(yes => { if (yes) location.reload(); });
   }
   /* ---- Habits: KCT.App.habits() and KCT.App.explain(n) from the console. They read the finished games in Your
-     profile (the last REPLAYS_MAX), never the running game. ---- */
+     profile (the latest REPLAYS_MAX of any mode), never the running game. ---- */
   /** The settings each bot seat of a finished record played with. Seat 0 is skipped: a person, or the AI for part of
       the game at most. Dynamic's easing moves after each hand as it did in the game. @param {any} rec */
   function recordSettings(rec) {
@@ -5864,7 +5874,7 @@ const App = (() => {
   function habits() {
     const you = Habits.blank(), /** @type {Record<string, Record<string, number>>} */ bots = {};
     let games = 0, yours = 0, skipped = 0;
-    for (const e of replays.list()) {
+    for (const e of replays.list().slice(0, REPLAYS_MAX)) {
       const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
       if (!seats) { skipped++; continue; }
       games++;
@@ -7721,7 +7731,7 @@ const App = (() => {
     const close = '</div></div>';
     const sum = g => Object.values(g).reduce((t, r) => ({ played: t.played + r.played, won: t.won + r.won }), { played: 0, won: 0 });
     const tot = m === 'all' ? sum(st.modes) : st.modes[m] || { played: 0, won: 0 };
-    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m));
+    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m)).slice(0, REPLAYS_MAX);
     let streak = '—';
     if (games.length) {
       const w = games[0].winner === 0;
@@ -7759,13 +7769,11 @@ const App = (() => {
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
     html += '<h3>By opponent</h3><p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 })));
-    if (m === 'all') {
-      const pairs = Object.entries(st.tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
-      if (pairs.length) html += '<details class="pf-tables"><summary>By table: ' + pairs.length + (pairs.length === 1 ? ' table' : ' tables') + ' (West / East: the two opponents and their seats)</summary>' + pfTableHTML('pair', 'West / East', pairs) + '</details>';
-    } else {
-      html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up: older games count under All only.</p>';
-    }
-    return html + '<p class="pf-note">Games where the AI played your seat are not counted. The chart shows up to the last ' + REPLAYS_MAX + ' games.</p>' + close;
+    const tables = m === 'all' ? st.tables : st.modeTables[m] || {};
+    const pairs = Object.entries(tables).map(([k, r]) => { const [w, e] = k.split('/'); return Object.assign({ name: pfName(w) + ' ' + pfName(e), label: pfWho(w) + ' / ' + pfWho(e) }, r); });
+    if (pairs.length) html += '<details class="pf-tables"><summary>By table: ' + pairs.length + (pairs.length === 1 ? ' table' : ' tables') + ' (West / East: the two opponents and their seats)</summary>' + pfTableHTML('pair', 'West / East', pairs) + '</details>';
+    if (m !== 'all') html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up, and by table with the version that added them here: older games count under All only.</p>';
+    return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX + ' games; All shows the latest ' + REPLAYS_MAX + ' of them.</p>' + close;
   }
   /* Your bidding habits, from Dynamic's profile (decision 15): how often your calls are made, and your usual hand at a
      call, as the fitted estimate of tricks and Kings. Never the easing. Every mode feeds it, so it ignores the filter. */
@@ -9062,10 +9070,11 @@ const SelfTest = (() => {
       eq('results per table keep the seat order', [r.tables['vex/doc'], r.tables['doc/vex']], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
       eq('results per opponent', r.opponents.vex, { played: 2, won: 1 });
       eq('results per opponent in each mode', [r.modeOpponents.free.vex, r.modeOpponents.waves.vex], [{ played: 1, won: 1 }, { played: 1, won: 0 }]);
+      eq('results per table in each mode', [r.modeTables.free['vex/doc'], r.modeTables.waves['doc/vex'], r.modeTables.free['doc/vex']], [{ played: 1, won: 1 }, { played: 1, won: 0 }, undefined]);
       const oldStats = mem(); oldStats.set(JSON.stringify({ modes: { free: { played: 3, won: 1 } }, tables: {}, opponents: {} }));
       const oddStats = mem();
       oddStats.set('{"modes":{"free":{"played":"<b>9</b>","won":1}},"tables":{},"opponents":{"__proto__":{"played":1,"won":0}},"modeOpponents":{"free":{"vex":{"played":2,"won":3},"doc":{"played":2,"won":1}}}}');
-      eq('results keep only counts that make sense', createStats(oddStats).get(), { modes: {}, tables: {}, opponents: {}, modeOpponents: { free: { doc: { played: 2, won: 1 } } } });
+      eq('results keep only counts that make sense', createStats(oddStats).get(), { modes: {}, tables: {}, opponents: {}, modeOpponents: { free: { doc: { played: 2, won: 1 } } }, modeTables: {} });
       eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
@@ -9175,8 +9184,12 @@ const SelfTest = (() => {
       const old = JSON.parse(JSON.stringify(s)); delete old.decisions;
       eq('a state from before decisions were kept has no record', Replay.fromState(old), null);
       const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
-      for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k });
-      eq('replay list keeps the newest ' + REPLAYS_MAX, [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+      for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k, mode: 'waves' });
+      eq('replay list keeps the newest ' + REPLAYS_MAX + ' of a mode', [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+      for (let k = 0; k < 3; k++) rl.add({ code: 'f' + k, mode: 'free' });
+      rl.add({ code: 'a0', mode: 'waves', assisted: true });
+      eq('each mode keeps its own ' + REPLAYS_MAX + ', and a game the AI played does not push one out',
+        [rl.list().length, rl.list().filter(e => e.mode === 'free').length, rl.list().filter(e => e.mode === 'waves' && !e.assisted).length], [REPLAYS_MAX + 4, 3, REPLAYS_MAX]);
       const junk = JSON.stringify([null, 5, { code: 7 }, { code: '<b>x</b>' }, { code: 'KCT2-AA', west: '<i>', wave: 99, winner: 1, scores: [1, 2], extra: 1 }]);
       eq('saved replay entries are cleaned', createReplays({ get: () => junk, set: () => {} }).list(),
         [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, tuned: false, at: null }]);
@@ -9888,8 +9901,8 @@ const SelfTest = (() => {
       st.record({ mode: 'free', west: 'vex', east: 'doc', won: false });
       const r = st.get();
       eq('results: a tuned bot\'s game counts for the mode and the other bot, not for it or the table',
-        [r.modes.free, r.opponents.vex, r.opponents.doc, r.modeOpponents.free.vex, r.tables['vex/doc']],
-        [{ played: 2, won: 1 }, { played: 1, won: 0 }, { played: 2, won: 1 }, { played: 1, won: 0 }, { played: 1, won: 0 }]);
+        [r.modes.free, r.opponents.vex, r.opponents.doc, r.modeOpponents.free.vex, r.tables['vex/doc'], r.modeTables.free['vex/doc']],
+        [{ played: 2, won: 1 }, { played: 1, won: 0 }, { played: 2, won: 1 }, { played: 1, won: 0 }, { played: 1, won: 0 }, { played: 1, won: 0 }]);
     });
 
     /* --- Habits: the counts from a finished game, and the AI trace that explains each bot decision again.
