@@ -246,7 +246,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 | Term | Heading | Contents |
 |---|---|---|
-| Wave tries | "Wave tries" | One row for each open wave, newest first: wave, West / East, tries. ✓ marks a cleared wave. `.now` marks the current wave. |
+| Wave tries | "Wave tries" | In Your profile, collapsed (`details.pf-tries`) under its summary. One row for each open wave, newest first: wave, West / East, tries. ✓ marks a cleared wave. `.now` marks the current wave. |
 | Free play wins | "Free play wins" | One row for each opponent: wins and games. |
 | Results note | `.note` | D: what counts as a try or a game. |
 

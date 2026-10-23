@@ -317,7 +317,7 @@ Clearing wave 18 opens the Shark run. Nothing in the app shows it before then.
 
 - The Shark run is the same eighteen tables in the same order, as **Shark 1** to **Shark 18**. Both bots play at **Shark** skill: 40 hunches, 0% brain farts and every knowledge switch on. Each bot keeps its own courage, Real table switch, habits, reads and feints, and its profile shows full card sense during a Shark game.
 - The app says **Shark** where it says **Wave** in the first run: the mode chip (**Shark N of 18**), the end notes, **Shark tries**, the log and the replay list. The menu's Waves card lists both runs and counts the Shark tables cleared, and its button becomes **Play table**.
-- **Your profile → Waves** lists your tries for each run: **Shark tries** (once the run is open) and **Wave tries**. The menu's "Sharks: N of 18 cleared" link opens it. During a game, the mode chip opens the tries for that game's run.
+- **Your profile → Waves** lists your tries for each run: **Shark tries** (once the run is open) and **Wave tries**. Each shows its summary, and its table stays collapsed until you open it. The menu's "Sharks: N of 18 cleared" link opens it. During a game, the mode chip opens the tries for that game's run.
 - Progress, tries, locked tables and **Next Shark** work as in the first run. Shark 1 opens when wave 18 is cleared, and each cleared Shark table opens the next one.
 - Inside the app and in replay codes, Shark N is wave 18 + N (`?wave=19` is Shark 1). Progress saved before the Shark run, with wave 18 cleared, opens Shark 1 when the page loads.
 

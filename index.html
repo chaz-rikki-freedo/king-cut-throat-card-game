@@ -7746,10 +7746,10 @@ const App = (() => {
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.waves + ' <small>of ' + pr.total + '</small>') + (pr.sharkOpen ? tile('Sharks cleared', pr.sharks + ' <small>of ' + pr.total + '</small>') : '') : '') + '</div>';
-    /* Waves: your tries in each run, as the mode chip shows them during a game. The Shark run only once it is open. */
+    /* Waves: your tries in each run, as the mode chip shows them during a game, collapsed. The Shark run only once it is open. */
     if (m === 'waves') for (const shark of pr.sharkOpen ? [true, false] : [false]) {
       const t = triesOf(shark);
-      html += '<h3>' + t.title + '</h3><p class="pf-sub">' + t.summary + (t.locked ? ' ' + t.locked : '') + '</p><div class="pf-tries">' + t.table + '</div>';
+      html += '<h3>' + t.title + '</h3><p class="pf-sub">' + t.summary + (t.locked ? ' ' + t.locked : '') + '</p><details class="pf-tries"><summary>Show the tries for each ' + (shark ? 'table' : 'wave') + '</summary>' + t.table + '</details>';
     }
     if (!tot.played && !games.length) {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' +
