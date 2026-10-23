@@ -27,6 +27,9 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node theme.js` | Theme through the real controls: the Felt tiles (the first setting in the Game tab), the Color-blind safe colors switch over a felt, the browser bar color, the theme kept and applied again by the head script on a reload, Classic bringing back every default, and an unknown saved theme falling back to Classic. | about 10 s |
 | `node watch.js` | The replay viewer through the real controls: **Watch** at the end of a game, Previous hand, Back, Forward, Next hand (a redeal is the same hand) and Play, a discard raised before it goes, watching from West's and East's seats, the end result, Exit back to the results with the game and its log as they were, the Watch icon in Your profile and Escape, the `?replay=` link (used once; a bad code opens the menu with a note), and the controls on the table. | about 30 s |
 | `node dynamic.js rates 80 4` | Not a default check. Bot games that measure Dynamic's fast path: how often it catches a player who throws away their best cards within 3 visible hands, and how often it fires for players at ladder rows 4, 6 and 8. Fails under an 80% catch rate or over 3% false alarms. | about 40 s |
+| `node namingmodel.js` | The naming-trump model in `data/naming-model.json` (see [docs/naming-trump-cost.md](../docs/naming-trump-cost.md)): seat order, rounds, costs and fit quality still hold in the saved table, and the parts of `index.html` the model depends on (`handValue`, `round1Value`, the bid thresholds, the rules text, the rules version) are unchanged since it was fitted. No browser. | under 1 s |
+| `node lib/naming-model.js 3.2 1 first` | Not a check. The model as a lookup: the gain from naming at a hand value, round and seat, with its margin, the break-even, the value of the player's own round 2 chance and the effect of the two rule variants. | instant |
+| `node fit-naming-model.js base=ff.raw ...` | Not a check. Refits the model from the `RAW` files that `namer.js` writes (see its header). | seconds |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
 | `node soak.js 4 5` | 4 pages × 5 full games at Instant speed. Random mode, sometimes the AI plays your seat, reloads at random points. | 5–30 min |
@@ -43,7 +46,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 
 The last four scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
-`npm test` runs `typecheck.js`, `palette.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js`, `backup-ui.js`, `theme.js` and `stress.js all 4`.
+`npm test` runs `typecheck.js`, `palette.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js`, `backup-ui.js`, `theme.js`, `namingmodel.js` and `stress.js all 4`.
 
 GitHub Actions has two workflows:
 

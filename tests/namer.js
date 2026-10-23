@@ -102,7 +102,7 @@ function summarize(rows) {
   }))).flat();
   await browser.close(); srv.close();
   const rows = res.flat();
-  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ seed: r.seed, p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, gc: r.gainC ? r.gainC[r.p] : null, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
+  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ seed: r.seed, nat: r.natural ? 1 : 0, p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, gc: r.gainC ? r.gainC[r.p] : null, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
   const byRound = {};
   for (const round of [1, 2]) {
     const rr = rows.filter(r => r.round === round);
