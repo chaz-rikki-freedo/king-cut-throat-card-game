@@ -106,6 +106,11 @@ function summarize(rows) {
     if (Object.keys(line).length) seatByHandValue['round ' + round + ', seat ' + sf + ' from dealer (0 = dealer, 1 = first to bid)'] = line;
   }
   const nat = rows.filter(r => r.natural);
+  const pointsBySeat = {};
+  for (const sf of [0, 1, 2]) {
+    const mine = nat.map(r => r.gainA[(((r.p - r.seatFromDealer + 3) % 3) + sf) % 3]);
+    pointsBySeat['seat ' + sf + ' from dealer'] = r2(mean(mine));
+  }
   const roles = {};
   for (const round of [1, 2]) {
     const rr = nat.filter(r => r.round === round);
@@ -120,5 +125,5 @@ function summarize(rows) {
       showdownPct: r2(100 * rr.filter(r => r.outA === 'SHOWDOWN').length / rr.length)
     };
   }
-  console.log(JSON.stringify({ deals: res.length, calls: nat.length, playedBy: play, seconds: Math.round((Date.now() - t0) / 1000), valueOfNaming: byRound, bySeat, seatByHandValue, naturalCallsByRole: roles }, null, 1));
+  console.log(JSON.stringify({ deals: res.length, calls: nat.length, playedBy: play, seconds: Math.round((Date.now() - t0) / 1000), valueOfNaming: byRound, bySeat, seatByHandValue, pointsBySeatPerHand: pointsBySeat, naturalCallsByRole: roles }, null, 1));
 })().catch(e => { console.error(e); process.exit(1); });
