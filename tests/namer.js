@@ -5,9 +5,11 @@
    value of the call at the margin. Also prints the points each role (namer, receiver, third) scores when the bots call
    as they do, and how much the gift adds to the receiver's hand value. Each hand starts at 3-3-3, so the 0 floor and
    the first-to-10 end never cut a score.
-   Usage: node namer.js [deals=300] [workers=4] [play=fast|shark] [scenario=natural|forced] [seedBase=0]
+   Usage: node namer.js [deals=300] [workers=4] [play=fast|shark] [scenario=natural|forced] [seedBase=0] [variant=none|gift0|sweep3] [option]
    scenario: natural = stop at the first natural call; forced = every bidder passes in turn, through both rounds, so
    every deal gives six bids (round 1 and round 2 on the same deal). The others' hands are not selected by their passes.
+   variant: none | gift0 (the receiver hands the gift straight back, so the hand is unchanged) | sweep3 (a namer sweep scores +3).
+   Seventh argument 'option' adds the barred-pass branch (the value of the player's own round 2 chance).
    RAW=file writes one compact row per bid for further analysis.
    play: how the bots play the hand after the bid (fast = the rule-based play, shark = full play-outs; slow).
    Prints JSON. Results: docs/strategic-depth.md. */
@@ -23,7 +25,8 @@ const PAGE = `
     const actors = Engine.actors(s); let a;
     if (actors.length) {
       const p = actors[0];
-      if (bar !== undefined && s.phase === P.BID2 && p === bar) a = { type: 'NAME', player: p, suit: null };
+      if (arg.variant === 'gift0' && s.phase === P.EXCHANGE) a = { type: 'EXCHANGE', player: p, cards: s.received.slice() };
+      else if (bar !== undefined && s.phase === P.BID2 && p === bar) a = { type: 'NAME', player: p, suit: null };
       else if (full || s.phase === P.DISCARD) { const v = buildView(s, p); a = AI.decide(v, cfg); if (Engine.validate(s, a)) a = AI.fallbackAction(v, cfg); }
       else a = AI.fastAction(s, p, cfg);
     } else a = Engine.systemAction(s);
@@ -32,7 +35,11 @@ const PAGE = `
   const finish = (s, full, bar) => { let n = 0; while (!DONE.has(s.phase) && n++ < 400) if (!step(s, full, bar)) return false; return DONE.has(s.phase); };
   const SUITS = ['S', 'H', 'D', 'C'];
   const turned = s => KCT.Rules.turnedSuit(s.flippedId, s.jokerSuit);
-  const gain = (s, before) => s.scores.map((x, i) => x - before[i]);
+  const gain = (s, before) => {
+    const g = s.scores.map((x, i) => x - before[i]);
+    if (arg.variant === 'sweep3' && s.handSummary && s.handSummary.outcome === 'NAMER_SWEEP') g[s.caller] += 1;
+    return g;
+  };
   const out = [];
   for (const seed of arg.seeds) {
     const s = Engine.createGame(seed, ['A', 'B', 'C'], undefined, { mediatorLead: true });
@@ -69,7 +76,7 @@ const PAGE = `
         Engine.dispatch(C, { type: 'BID', player: p, accept: false });
         if (finish(C, arg.full, p)) gainC = gain(C, before);
       }
-      if (rec && rec.fa && fb) rows.push({ p, round, seatFromDealer, hv, natural, ...rec, gainB, gainC, outB });
+      if (rec && rec.fa && fb) rows.push({ seed, p, round, seatFromDealer, hv, natural, ...rec, gainB, gainC, outB });
       if (natural && !arg.forced) break;
       Engine.dispatch(s, arg.forced ? (round === 1 ? { type: 'BID', player: p, accept: false } : { type: 'NAME', player: p, suit: null }) : nat);
     }
@@ -85,17 +92,17 @@ function summarize(rows) {
   return { n: rows.length, callMinusPass: r2(mean(d)), se: r2(sd(d) / Math.sqrt(Math.max(1, d.length))), callPts: r2(mean(rows.map(r => r.gainA[r.p]))), passPts: r2(mean(rows.map(r => r.gainB[r.p]))) };
 }
 (async () => {
-  const [d = '300', w = '4', play = 'fast', scenario = 'natural', base = '0'] = process.argv.slice(2), deals = +d, workers = +w, forced = scenario === 'forced';
+  const [d = '300', w = '4', play = 'fast', scenario = 'natural', base = '0', variant = 'none', opt = ''] = process.argv.slice(2), deals = +d, workers = +w, forced = scenario === 'forced';
   const seeds = Array.from({ length: deals }, (_, i) => (17 * 7919 + (i + +base) * 104729) >>> 0);
   const srv = await serve(), browser = await launch(), t0 = Date.now();
   const res = (await Promise.all(Array.from({ length: workers }, async (_, k) => {
     const mine = seeds.filter((_, i) => i % workers === k), { page } = await openPage(browser, srv.url), r = [];
-    for (let i = 0; i < mine.length; i += 10) r.push(...await run(page, PAGE, { seeds: mine.slice(i, i + 10), full: play === 'shark', forced, option: forced }));
+    for (let i = 0; i < mine.length; i += 10) r.push(...await run(page, PAGE, { seeds: mine.slice(i, i + 10), full: play === 'shark', forced, variant, option: forced && opt === 'option' }));
     await page.context().close(); return r;
   }))).flat();
   await browser.close(); srv.close();
   const rows = res.flat();
-  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, gc: r.gainC ? r.gainC[r.p] : null, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
+  if (process.env.RAW) require('fs').writeFileSync(process.env.RAW, JSON.stringify(rows.map(r => ({ seed: r.seed, p: r.p, round: r.round, sf: r.seatFromDealer, hv: r.hv, gc: r.gainC ? r.gainC[r.p] : null, ga: r.gainA[r.p], gb: r.gainB[r.p] }))));
   const byRound = {};
   for (const round of [1, 2]) {
     const rr = rows.filter(r => r.round === round);
@@ -136,5 +143,5 @@ function summarize(rows) {
       showdownPct: r2(100 * rr.filter(r => r.outA === 'SHOWDOWN').length / rr.length)
     };
   }
-  console.log(JSON.stringify({ deals: res.length, calls: nat.length, playedBy: play, scenario, seconds: Math.round((Date.now() - t0) / 1000), valueOfNaming: byRound, bySeat, seatByHandValue, pointsBySeatPerHand: pointsBySeat, naturalCallsByRole: roles }, null, 1));
+  console.log(JSON.stringify({ deals: res.length, calls: nat.length, playedBy: play, scenario, variant, seconds: Math.round((Date.now() - t0) / 1000), valueOfNaming: byRound, bySeat, seatByHandValue, pointsBySeatPerHand: pointsBySeat, naturalCallsByRole: roles }, null, 1));
 })().catch(e => { console.error(e); process.exit(1); });
