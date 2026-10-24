@@ -756,6 +756,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .about-credit b{font-weight:500;color:var(--ink);letter-spacing:.06em}
 .about-credit small{font-size:0.625rem}
 .about-build{font-size:0.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.dev-mark{color:var(--gold)}
 @media (max-width:720px){
   .about{min-height:calc(100vh - 4.75rem);min-height:calc(100dvh - 4.75rem);padding:1rem 0.75rem}
   .about-card{padding:1.5rem 1rem 1rem}
@@ -945,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '1944bcb', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '622f392', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1099,7 +1100,52 @@ const RNG = (() => {
   }
   return Object.freeze({ next, int, shuffle, freshSeed });
 })();
-const LOGGER_MAX = 1500;
+const DEV_KEYS = Object.freeze({
+  saves: { def: 20, min: 1, max: 1000, note: 'replays kept per mode' },
+  log: { def: 1500, min: 10, max: 100000, note: 'Latest Scroll lines a save keeps' },
+  scroll: { def: 5000, min: 10, max: 100000, note: 'Latest Scroll lines shown' },
+  logger: { def: 1500, min: 10, max: 100000, note: 'Logger lines kept' }
+});
+const Dev = (() => {
+  const KEY = 'kct-dev';
+  function read() {
+    let x = null;
+    try { x = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) {  }
+    const out = {};
+    if (x && typeof x === 'object') for (const k of  (Object.keys(DEV_KEYS))) if (valid(k, x[k])) out[k] = x[k];
+    return out;
+  }
+  const valid = ( k,  v) => Number.isInteger(v) &&  (v) >= DEV_KEYS[k].min &&  (v) <= DEV_KEYS[k].max;
+  let vals = read();
+  const D = {
+    paused: false,
+    num(k) { return !D.paused && vals[k] !== undefined ?  (vals[k]) : DEV_KEYS[k].def; },
+    list() { return  (Object.entries(vals)); },
+    set(ops) {
+      for (const k of  (Object.keys(ops))) { const v = ops[k]; if (v === null || v === DEV_KEYS[k].def) delete vals[k]; else if (valid(k, v)) vals[k] = v; }
+      try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) {  }
+    },
+    reset() { vals = {}; D.set({}); },
+    parse(text) {
+      const words = String(text || '').trim().split(/\s+/);
+      if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'Unknown dev command. Try !dev.' };
+      const rest = words.slice(1);
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, ops: {} };
+      const ops = {};
+      for (const w of rest) {
+        const m = /^([a-z]+)=(\d{1,7})$/i.exec(w), k = m ? m[1].toLowerCase() : '';
+        if (!m) return { ok: false, why: 'Write each setting as key=number: ' + w };
+        if (!Object.prototype.hasOwnProperty.call(DEV_KEYS, k)) return { ok: false, why: 'Unknown dev key: ' + k + '. Keys: ' + Object.keys(DEV_KEYS).join(', ') + '.' };
+        const dk =  (k), v = Number(m[2]);
+        if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
+        ops[dk] = v;
+      }
+      return { ok: true, reset: false, ops };
+    }
+  };
+  return D;
+})();
+const LOGGER_MAX = () => Dev.num('logger');
 const Logger = (() => {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const L = {
@@ -1125,7 +1171,8 @@ const Logger = (() => {
       }
       const line = '[+' + ms + 'ms] ' + type + (parts.length ? ' ' + parts.join(' ') : '');
       this.lines.push(line);
-      if (this.lines.length > LOGGER_MAX) this.lines.splice(0, this.lines.length - LOGGER_MAX);
+      const max = LOGGER_MAX();
+      if (this.lines.length > max) this.lines.splice(0, this.lines.length - max);
       if (typeof console !== 'undefined') console.debug(line);
       for (const fn of this.listeners) fn(line);
     },
@@ -2201,7 +2248,7 @@ function jsonStore(store) {
   };
 }
 const Waves = createWaveProgress(localStore('kct.waves'));
-const LOG_SAVE_MAX = 1500;
+const LOG_SAVE_MAX = () => Dev.num('log');
 function cleanSlot(mode, s) {
   if (!s || typeof s !== 'object' || s.format !== SAVE_FORMAT) return null;
   const saved = s.state;
@@ -2245,7 +2292,7 @@ function cleanLog(log) {
     const doc = new DOMParser().parseFromString('<ol>' + log + '</ol>', 'text/html');
     out = Array.from(doc.querySelectorAll('li')).map(li => [li.textContent || '', classes(li.className)]);
   }
-  return out.slice(-LOG_SAVE_MAX);
+  return out.slice(-LOG_SAVE_MAX());
 }
 function createSlots(store) {
   const js = jsonStore(store);
@@ -2271,7 +2318,7 @@ function createSlots(store) {
     dropped: () => lost.splice(0)
   });
 }
-const REPLAYS_MAX = 20;
+const REPLAYS_MAX = () => Dev.num('saves');
 const replayGroup = e => (e.assisted ? 'assisted' : e.mode || 'other');
 function cleanReplayEntry(e) {
   if (!e || typeof e !== 'object' || typeof e.code !== 'string' || !/^KCT\d+-[A-Za-z0-9_-]*$/.test(e.code)) return null;
@@ -2288,7 +2335,7 @@ function createReplays(store) {
   const saved = js.load();
   const trim = ( all) => {
     const n = {};
-    return all.filter(e => { const g = replayGroup(e); n[g] = (n[g] || 0) + 1; return n[g] <= REPLAYS_MAX; });
+    return all.filter(e => { const g = replayGroup(e); n[g] = (n[g] || 0) + 1; return n[g] <= REPLAYS_MAX(); });
   };
   let list = Array.isArray(saved) ? trim(saved.map(cleanReplayEntry).filter(Boolean)) : [];
   return Object.freeze({
@@ -4691,7 +4738,7 @@ const App = (() => {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
       state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
-      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX),
+      assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX()),
       dynamic: app.dyn ? app.dyn.snap : null
     });
   }
@@ -4739,7 +4786,7 @@ const App = (() => {
   function habits() {
     const you = Habits.blank(),  bots = {};
     let games = 0, yours = 0, skipped = 0;
-    for (const e of replays.list().slice(0, REPLAYS_MAX)) {
+    for (const e of replays.list().slice(0, REPLAYS_MAX())) {
       const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
       if (!seats) { skipped++; continue; }
       games++;
@@ -5462,7 +5509,7 @@ const App = (() => {
     const nameRe = new RegExp('\\b(' + names.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b(?![^<]*>)', 'g');
     return html.replace(nameRe, m => '<span class="p' + names.indexOf(m) + '">' + m + '</span>').replace(/(10|[2-9JQKA])?([♠♣♥♦])/g, (m, rank, c) => '<span class="card-tag">' + (rank ? '<span class="rank">' + rank + '</span>' : '') + '<span class="' + (c === '♥' || c === '♦' ? 'pip-red' : 'pip-black') + '">' + c + '</span></span>');
   }
-  const LOG_MAX = 5000;
+  const LOG_MAX = () => Dev.num('scroll');
   let logLines = [];
   function clearLog() { logLines = []; $('gameLog').innerHTML = ''; showLatest(true); }
   function addLog(text, cls, isShowdown) {
@@ -5486,8 +5533,9 @@ const App = (() => {
     logLines.push([text, cls]);
     const ol = $('gameLog');
     ol.appendChild(logItem(text, cls));
-    while (ol.children.length > LOG_MAX) ol.removeChild(ol.firstChild);
-    if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
+    const max = LOG_MAX();
+    while (ol.children.length > max) ol.removeChild(ol.firstChild);
+    if (logLines.length > max) logLines.splice(0, logLines.length - max);
   }
   function redrawLog() {
     const ol = $('gameLog'), keep = ol.scrollTop;
@@ -5775,7 +5823,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   function menuNewHTML() {
     const playing = gameOn();
@@ -6406,7 +6454,7 @@ const App = (() => {
     const close = '</div></div>';
     const sum = g => Object.values(g).reduce((t, r) => ({ played: t.played + r.played, won: t.won + r.won }), { played: 0, won: 0 });
     const tot = m === 'all' ? sum(st.modes) : st.modes[m] || { played: 0, won: 0 };
-    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m)).slice(0, REPLAYS_MAX);
+    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m)).slice(0, REPLAYS_MAX());
     let streak = '—';
     if (games.length) {
       const w = games[0].winner === 0;
@@ -6432,7 +6480,7 @@ const App = (() => {
     }
     html += habitsHTML() + cardPlayHTML() + lists;
     if (m !== 'all') html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up, and by table with the version that added them here: older games count under All only.</p>';
-    return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX + ' games; All shows the latest ' + REPLAYS_MAX + ' of them.</p>' + close;
+    return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX() + ' games; All shows the latest ' + REPLAYS_MAX() + ' of them.</p>' + close;
   }
   const pfListHTML = ( cls,  name,  count,  body) =>
     '<details class="pf-list ' + cls + '"><summary><b>' + name + '</b> <span>' + count + '</span></summary>' + body + '</details>';
@@ -6877,6 +6925,7 @@ const App = (() => {
   function readCode(text) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
+    if (t.startsWith('!')) { const d = Dev.parse(t); return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } }; }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
     if (/^https?:\/\/|^\?|[?&](replay|seed)=/i.test(t)) {
@@ -6897,21 +6946,36 @@ const App = (() => {
     if (/^\d+$/.test(c)) return c.length <= 10 && Number(c) <= SEED_MAX ? { kind: 'seed', seed: Number(c), wave } : { kind: 'bad', why: 'A seed is a whole number from 0 to ' + SEED_MAX + '.' };
     return { kind: 'bad', why: 'This is not a replay code or a seed.' };
   }
+  function devText( d) {
+    const keys =  (Object.keys(DEV_KEYS));
+    if (d.reset) return Dev.list().length ? 'Dev: back to the defaults. Apply clears ' + Dev.list().map(([k, v]) => k + '=' + v).join(', ') + '.' : 'Dev: no overrides are set.';
+    const ops =  (Object.keys(d.ops));
+    if (!ops.length) return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
+    return 'Dev, for this tab: ' + ops.map(k => k + ' ' + Dev.num(k) + ' → ' + d.ops[k] + ((d.ops[k] || 0) < Dev.num(k) ? ' (trims at the next write)' : '')).join('; ') + '.';
+  }
   function readCodeField() {
     const input =  (document.getElementById('codeIn'));
     if (!input) return null;
     const r = readCode(input.value), btn =  ($('menuCode').querySelector('[data-action="code-load"]'));
     $('codeRead').textContent = r.kind === 'replay' ? 'A replay code. Watch opens it in the replay viewer.' : r.kind === 'seed' ? 'Seed ' + r.seed + '. Choose where to play its deals.' :
-      r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.why || '';
+      r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.dev ? devText(r.dev) : r.why || '';
     $('codeWhere').hidden = r.kind !== 'seed';
     const sel =  ($('codeMode'));
     if (r.kind === 'seed' && r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
-    btn.disabled = r.kind !== 'replay' && r.kind !== 'seed';
-    btn.textContent = r.kind === 'replay' ? 'Watch' : r.kind === 'seed' ? 'Play' : 'Load';
+    const listOnly = !!r.dev && !r.dev.reset && !Object.keys(r.dev.ops).length;
+    btn.disabled = (r.kind !== 'replay' && r.kind !== 'seed' && r.kind !== 'dev') || listOnly;
+    btn.textContent = r.kind === 'replay' ? 'Watch' : r.kind === 'seed' ? 'Play' : r.kind === 'dev' ? 'Apply' : 'Load';
     return r;
   }
   function loadCode() {
     const r = readCodeField();
+    if (r && r.dev) {
+      if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
+      Logger.log('DEV', { set: Object.fromEntries(Dev.list()) });
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
     if (!r || (r.kind !== 'replay' && r.kind !== 'seed')) return;
     const where =  ($('codeMode')).value;
     if (r.kind === 'replay') {
@@ -7098,7 +7162,7 @@ const App = (() => {
       const pre = $('setLog');
       if (pre.parentElement.hidden) return;
       pre.append(line + '\n');
-      while (pre.childNodes.length > LOGGER_MAX) pre.removeChild(pre.firstChild);
+      while (pre.childNodes.length > LOGGER_MAX()) pre.removeChild(pre.firstChild);
       pre.scrollTop = pre.scrollHeight;
     });
     const oldTab = loadSetTab();
@@ -7166,13 +7230,14 @@ const SelfTest = (() => {
     const safeRunAsync = (name, fn) => { if (want(name)) asyncQueue.push([name, fn]); };
     const runOneAsync = async ([name, fn]) => {
       section = name;
-      try { await fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); }
+      Dev.paused = true;
+      try { await fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } finally { Dev.paused = false; }
     };
     const runOne = ([name, fn]) => {
       section = name;
       const wasLogging = Logger.enabled;
-      Logger.enabled = false;
-      try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } finally { Logger.enabled = wasLogging; }
+      Logger.enabled = false; Dev.paused = true;
+      try { fn(); } catch (e) { check(name + ' (exception)', false, String(e && e.stack || e)); } finally { Logger.enabled = wasLogging; Dev.paused = false; }
     };
     safeRun('cards', () => {
       eq('deck has 33 unique cards', new Set(R.ALL_IDS).size, 33);
@@ -7668,6 +7733,11 @@ const SelfTest = (() => {
       eq('Load a code: a backup code or file is named, not loaded', kinds(['KCTS1-H4sIAAAA', '{"format":"kct-backup","version":1}']), ['backup', 'backup']);
       eq('Load a code: empty, too large a seed, a cut code and junk', kinds(['  ', '4294967296', code.slice(0, code.length - 30), 'hello', 'https://example.com/?x=1']), ['empty', 'bad', 'bad', 'bad', 'bad']);
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
+      eq('Load a code: Dev commands are read, not applied', [rc('!dev saves=40 LOG=300'), rc(' !DEV ').dev, rc('!dev reset').dev],
+        [{ kind: 'dev', dev: { reset: false, ops: { saves: 40, log: 300 } } }, { reset: false, ops: {} }, { reset: true, ops: {} }]);
+      eq('Load a code: an unknown key, a value out of range and junk after ! are refused', kinds(['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!foo', '!']), ['bad', 'bad', 'bad', 'bad', 'bad', 'bad', 'bad', 'bad']);
+      check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rc(x).kind === 'dev'));
+      eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
       check('Load a code: a code of newer rules says to update', !newer || /newer rules/.test(rc(newer).why || ''), newer && rc(newer));
       const u = Engine.createGame(77);
       for (let g = 0; g < 60 || !Engine.actors(u).length; g++) { const ac = Engine.actors(u); D(u, ac.length ? AI.fastAction(u, ac[0]) : Engine.systemAction(u)); }
@@ -7740,12 +7810,13 @@ const SelfTest = (() => {
       const old = JSON.parse(JSON.stringify(s)); delete old.decisions;
       eq('a state from before decisions were kept has no record', Replay.fromState(old), null);
       const rl = createReplays((() => { let x = null; return { get: () => x, set: v => { x = v; } }; })());
-      for (let k = 0; k < REPLAYS_MAX + 3; k++) rl.add({ code: 'c' + k, mode: 'waves' });
-      eq('replay list keeps the newest ' + REPLAYS_MAX + ' of a mode', [rl.list().length, rl.list()[0].code], [REPLAYS_MAX, 'c' + (REPLAYS_MAX + 2)]);
+      const RM = REPLAYS_MAX();
+      for (let k = 0; k < RM + 3; k++) rl.add({ code: 'c' + k, mode: 'waves' });
+      eq('replay list keeps the newest ' + RM + ' of a mode', [rl.list().length, rl.list()[0].code], [RM, 'c' + (RM + 2)]);
       for (let k = 0; k < 3; k++) rl.add({ code: 'f' + k, mode: 'free' });
       rl.add({ code: 'a0', mode: 'waves', assisted: true });
-      eq('each mode keeps its own ' + REPLAYS_MAX + ', and a game the AI played does not push one out',
-        [rl.list().length, rl.list().filter(e => e.mode === 'free').length, rl.list().filter(e => e.mode === 'waves' && !e.assisted).length], [REPLAYS_MAX + 4, 3, REPLAYS_MAX]);
+      eq('each mode keeps its own ' + RM + ', and a game the AI played does not push one out',
+        [rl.list().length, rl.list().filter(e => e.mode === 'free').length, rl.list().filter(e => e.mode === 'waves' && !e.assisted).length], [RM + 4, 3, RM]);
       const junk = JSON.stringify([null, 5, { code: 7 }, { code: '<b>x</b>' }, { code: 'KCT2-AA', west: '<i>', wave: 99, winner: 1, scores: [1, 2], extra: 1 }]);
       eq('saved replay entries are cleaned', createReplays({ get: () => junk, set: () => {} }).list(),
         [{ code: 'KCT2-AA', mode: null, wave: null, west: null, east: null, winner: 1, scores: null, assisted: false, tuned: false, at: null }]);
