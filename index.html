@@ -31,6 +31,7 @@
 *{box-sizing:border-box}
 html{font-size:clamp(16px, min(1.25vw, 2.5vh), 32px)}
 html,body{margin:0;padding:0}
+@media (display-mode: standalone){html,body{overscroll-behavior-y:none}}
 body{background:var(--page);color:var(--ink);font:0.9375rem/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh;min-height:100dvh}
 button{font:inherit;color:inherit}
 .topbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem 0.75rem;padding:0.5rem 1rem;background:var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 0.125rem 0.625rem rgba(0,0,0,.35)}
@@ -944,7 +945,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '216309d', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '0f57ffc', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -8013,6 +8014,9 @@ const SelfTest = (() => {
       if (panel) {
         const unnamed = [...panel.querySelectorAll('input, select')].filter(c => { const row = c.closest('.set-row'); return !row || !row.querySelector('.set-name'); });
         eq('every setting sits in a row with a name', unnamed.map(c => c.id), []);
+        const noPull = [...document.styleSheets].flatMap(sh => { try { return [...sh.cssRules]; } catch (e) { return []; } })
+          .some(r => r instanceof CSSMediaRule && /display-mode:\s*standalone/.test(r.conditionText) && [...r.cssRules].some(x => x instanceof CSSStyleRule && x.style.overscrollBehaviorY === 'none'));
+        check('the installed app turns off pull-to-refresh', noPull);
         eq('each seat (yours, West, East) has who sits, 3 skill, 6 style, 5 habit and 6 knowledge controls',
           [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [21, 21, 21]);
         check('each seat is a collapsed group of collapsed groups', [0, 1, 2].every(p => { const d = document.getElementById('setSeat' + p); return !!d && d.tagName === 'DETAILS' && d.querySelectorAll('details.seat-sub').length === 4; }));
