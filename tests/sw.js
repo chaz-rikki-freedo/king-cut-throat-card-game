@@ -11,6 +11,8 @@ const { launch, ROOT } = require('./lib/browser');
 
 const TYPES = { '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp' };
 let serve = 'game';
+/* The query of the last index.html request: Check again asks past the CDN with ?fresh=. */
+let lastQuery = '';
 const ADBLOCK = '<script src="https://local.adguard.org/?type=content-script"></script><link type="text/css" rel="stylesheet" href="https://local.adguard.org/?type=css">';
 let failed = 0;
 function expect(name, ok, detail) {
@@ -21,6 +23,7 @@ function expect(name, ok, detail) {
 const srv = http.createServer((req, res) => {
   const u = decodeURIComponent(req.url.split('?')[0]);
   if (u === '/' || u === '/index.html') {
+    lastQuery = req.url.split('?')[1] || '';
     let body = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     if (serve === 'portal') body = '<!doctype html><title>Sign in</title><p>Sign in to the Wi-Fi to continue.</p>';
     if (serve === 'new') body = body.replace('<body>', '<body><!-- a new version -->');
@@ -114,6 +117,27 @@ srv.listen(0, '127.0.0.1', async () => {
     await reload();
     r = await state();
     expect('a change in the theme packs alone is offered', r.game && r.pending && r.note, r);
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    /* Settings → Install → Check again also looks for a new version, past the CDN, and Update now loads it. */
+    const checkAgain = () => page.evaluate(async () => {
+      if (document.querySelector('#settingsPanel').hidden) document.querySelector('[data-action="toggle-settings"]').click();
+      document.querySelector('#setTabTools').click();
+      document.querySelector('[data-action="install-check"]').click();
+      const t0 = Date.now();
+      while (/Checking/.test(document.querySelector('#setInstallSum').textContent) && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 50));
+      return { list: document.querySelector('#setInstall').textContent, btn: !document.querySelector('#setUpdateBtn').hidden };
+    });
+    let ck = await checkAgain();
+    expect('Check again with nothing new: the newest version, no Update now', /This is the newest version/.test(ck.list) && !ck.btn, ck);
+    expect('Check again asks past the CDN', /^fresh=\d+$/.test(lastQuery), lastQuery);
+    serve = 'game';
+    ck = await checkAgain();
+    expect('Check again with a new version: Update now shows', /A new version is ready/.test(ck.list) && ck.btn, ck);
+    await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
+    await page.waitForTimeout(1500);
+    r = await state();
+    expect('Update now loads it: nothing waits', r.game && !r.pending && !r.note, r);
     /* The ad blocker answers its own scripts while there is a network. Offline its VPN cannot, and the request hangs. */
     serve = 'adblock';
     const ctx = await browser.newContext();
