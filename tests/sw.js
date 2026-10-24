@@ -132,6 +132,14 @@ srv.listen(0, '127.0.0.1', async () => {
     expect('Check again with nothing new: the newest version, no Update now', /This is the newest version/.test(ck.list) && !ck.btn, ck);
     expect('Check again asks past the CDN', /^fresh=\d+$/.test(lastQuery), lastQuery);
     serve = 'game';
+    /* The app's own check (back on the screen) finds the new version while Settings shows the checklist. */
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForFunction(() => /A new version is ready/.test(document.querySelector('#setInstall').textContent), null, { timeout: 8000 }).catch(() => {});
+    const auto = await page.evaluate(() => ({ list: document.querySelector('#setInstall').textContent, btn: !document.querySelector('#setUpdateBtn').hidden }));
+    expect('a new version found while Settings is open: the checklist says so', /A new version is ready/.test(auto.list) && !/newest version/.test(auto.list) && auto.btn, auto);
     ck = await checkAgain();
     expect('Check again with a new version: Update now shows', /A new version is ready/.test(ck.list) && ck.btn, ck);
     const over = await page.evaluate(() => {
