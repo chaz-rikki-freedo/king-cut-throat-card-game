@@ -84,7 +84,7 @@ Area: `#seat0` (`.me`). The bottom of the table.
 | Term | Also called | Code anchor | Kind | What it is |
 |---|---|---|---|---|
 | Your head | My row | `.me-head` | — | The row with your face, name, tags, score, tricks line and bid bubble. |
-| Your face | Your avatar | `.seat-face`, `data-action="me-profile"` | C | A silhouette on a white circle. Opens Your profile. While the AI plays your seat, the bot's face shows instead. |
+| Your face | Your avatar | `.seat-face`, `data-action="me-profile"` | C | A silhouette on a white circle. Opens Your profile on the mode of the game at the table, or All with no game. While the AI plays your seat, the bot's face shows instead. |
 | Seat toggle | Human tag, AI tag | `.tag.seat-toggle`, `data-action="toggle-autoplay"` | C, L | The Human/AI tag of your seat. A control only when **AI can play your seat** is on. |
 | Playing-as note | — | `.playing-as` | S | "playing as Nora", with a face, while the AI plays your seat. |
 | Action bar | Prompt bar | `.actionbar` | I, C | What you can do now. See [2.6 Action bar](#26-action-bar). |
