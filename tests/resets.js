@@ -51,7 +51,7 @@ const SEED = {
     const game = await step(`const p = q('#setPaneGame'), h = [...p.querySelectorAll('.set-head')];
       return { last: h[h.length - 1].textContent, options: [...q('#setGameReset').options].map(o => o.text) };`);
     expect('the Game tab ends with Gameplay defaults', game.last === 'Gameplay defaults', game);
-    expect('its choices', game.options.join('|') === 'All|Theme|Table memory|House rules|Dynamic|Waves|Free play', game.options);
+    expect('its choices', game.options.join('|') === 'All settings and modes|Theme|Table memory|House rules|Waves progress|Dynamic progress|Free play history', game.options);
 
     await page.click('#setFelt .felt-tile:has(input[value="winter"])');
     await page.click('label.set-row:has(#setColorBlind)');
@@ -88,7 +88,7 @@ const SEED = {
     await page.reload();
     await openTab('Game');
     a = await pick('#setGameReset', 'waves', 'game-reset');
-    expect('Waves asks first', a.title === 'Reset Waves?', a);
+    expect('Waves asks first', a.title === 'Reset Waves progress?', a);
     await confirmReload();
     let d = await stored();
     expect('Waves lock again from wave 1', json(d, 'kct.waves').unlocked === 1 && json(d, 'kct.waves').cleared.length === 0, d['kct.waves']);
@@ -113,12 +113,12 @@ const SEED = {
     const tools = await step(`const p = q('#setPaneTools'), h = [...p.querySelectorAll('.set-head')];
       return { last: h[h.length - 1].textContent, options: [...q('#setClientReset').options].map(o => o.text) };`);
     expect('the Tools tab ends with Client resets', tools.last === 'Client resets', tools);
-    expect('its choices', tools.options.join('|') === 'Wipe all data|Wipe player profile|Full client reset', tools.options);
+    expect('its choices', tools.options.join('|') === 'Your progress|All data|All data and the offline copy', tools.options);
 
     await seed();
     await step(`const s = JSON.parse(localStorage.getItem('kct.settings')); s.felt = 'spring'; localStorage.setItem('kct.settings', JSON.stringify(s)); return 1;`);
     a = await pick('#setClientReset', 'profile', 'client-reset');
-    expect('Wipe player profile asks first', a.title === 'Wipe player profile?' && a.ok === 'Wipe player profile' && a.danger, a);
+    expect('Your progress asks first', a.title === 'Erase your progress?' && a.ok === 'Erase progress' && a.danger, a);
     await confirmReload();
     d = await stored();
     expect('progress, results and replay codes go; settings stay',
@@ -129,13 +129,13 @@ const SEED = {
     await pick('#setClientReset', 'all', 'client-reset');
     await confirmReload();
     d = await stored();
-    expect('Wipe all data removes every key, settings too', !d['kct.stats'] && !d['kct.replays'] && !d['kct.settings'], Object.keys(d));
+    expect('All data removes every key, settings too', !d['kct.stats'] && !d['kct.replays'] && !d['kct.settings'], Object.keys(d));
 
     await seed();
     await step(`await caches.open('kct-shell'); await caches.open('kct-pending'); await caches.open('other-app'); return 1;`);
     await openTab('Tools');
     a = await pick('#setClientReset', 'full', 'client-reset');
-    expect('Full client reset asks first', a.title === 'Full client reset?' && a.ok === 'Reset client', a);
+    expect('All data and the offline copy asks first', a.title === 'Erase all data and the offline copy?' && a.ok === 'Erase and reload', a);
     await confirmReload();
     d = await stored();
     const left = await step(`return (await caches.keys()).sort();`);

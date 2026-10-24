@@ -63,11 +63,11 @@ If the browser refuses to save any of these (storage full or blocked), a note sa
 
 **Backup.** One backup file holds all of this, also a game in progress. In **Settings → Tools → Your data**, **Save file** saves a `.kct` file, and **Restore** (**Choose file…**) reads one back on any device. Before it replaces anything, a confirm shows this device and the backup side by side (when saved, waves unlocked, games played, saved games, replays); **Replace all data** replaces all the data on the device, with no undo. Older `.json` backups still restore. See [docs/backup.md](docs/backup.md).
 
-**Client resets.** In **Settings → Tools → Client resets**, pick one, select **Reset**, and confirm. Each one reloads the page, with no undo:
+**Client resets.** In **Settings → Tools → Client resets**, pick one in **Erase from this device**, select **Erase…**, and confirm. Each one reloads the page, with no undo:
 
-- **Wipe all data** removes every `kct.` key: settings, progress, results, saved games and replay codes.
-- **Wipe player profile** removes wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
-- **Full client reset** wipes all data, then removes the game's offline cache and its service worker, so the page loads again from the server. Do it only while online.
+- **Your progress** erases wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
+- **All data** erases every `kct.` key: settings, progress, results, saved games and replay codes.
+- **All data and the offline copy** erases all data, then removes the game's offline cache and its service worker, so the page loads again from the server. Do it only while online.
 
 **One tab.** Only one tab of the game can play and save. Each new tab (or reload) becomes the active tab. An older tab of the game then stops, writes nothing more, and shows **Another tab is more current**, with two buttons only: **Update** loads the newest data in that tab (the other tab then stops), and **Quit** closes it. If the browser does not let the page close the tab, the tab stays stopped and says that you can close it. The tab checks before each save, when another tab opens, and when the tab shows again. The mark of the active tab (`kct-tab`) is not in a backup.
 
@@ -107,17 +107,17 @@ The theme is kept with the settings (and so in a backup), and is applied before 
 
 The settings are kept after a reload. **Bot defaults** (Bots tab) does not change them.
 
-**Gameplay defaults**, at the bottom of the Game tab, resets one thing at a time. Pick it in the list, select **Reset**, and confirm:
+**Gameplay defaults**, at the bottom of the Game tab, resets one thing at a time. Pick it in **Reset to defaults**, select **Reset…**, and confirm:
 
 | Choice | What it resets |
 |---|---|
-| **All** | Every choice below. |
+| **All settings and modes** | Every choice below. |
 | **Theme** | The Classic felt, with Color-blind safe colors off. |
 | **Table memory** | Every switch off. |
 | **House rules** | Their defaults: Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on. |
-| **Dynamic** | The Dynamic profile, and Dynamic's saved game, results and replay codes. |
-| **Waves** | Wave progress and tries (also the Shark run), and Waves' saved game, results and replay codes. |
-| **Free play** | Free play's saved game, results and replay codes. |
+| **Dynamic progress** | The Dynamic profile, and Dynamic's saved game, results and replay codes. |
+| **Waves progress** | Wave progress and tries (also the Shark run), and Waves' saved game, results and replay codes. |
+| **Free play history** | Free play's saved game, results and replay codes. |
 
 A reset of settings applies at once. A reset of a mode reloads the page. Bot settings stay.
 

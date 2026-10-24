@@ -433,7 +433,7 @@ body.set-open{overflow:hidden}
 /* A reset row: the choice and its button on a line of their own, under the text. */
 .settings .set-row-pick{grid-template-columns:minmax(0,1fr)}
 .settings .set-row-pick .set-btns{flex-wrap:nowrap;justify-content:stretch}
-.settings .set-row-pick select{flex:1;min-width:0}
+.settings .set-row-pick select{flex:1;min-width:0;max-width:none}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
 /* The switch: a checkbox drawn as a track and a knob. */
 .settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
@@ -1041,8 +1041,8 @@ window.kctTheme = (() => {
       </div>
       <h3 class="set-head">Gameplay defaults</h3>
       <div class="set-card" id="setGameDefaults">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setGameReset">Reset</label><span class="set-desc">Settings go back to their defaults. A mode also loses its progress, saved game, results and replay codes.</span></span>
-          <span class="set-btns"><select id="setGameReset"><option value="all">All</option><option value="theme">Theme</option><option value="memory">Table memory</option><option value="house">House rules</option><option value="dynamic">Dynamic</option><option value="waves">Waves</option><option value="free">Free play</option></select><button class="btn" type="button" data-action="game-reset">Reset</button></span></div>
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setGameReset">Reset to defaults</label><span class="set-desc">A setting goes back to its default. A mode also loses its progress, saved game, results and replay codes.</span></span>
+          <span class="set-btns"><select id="setGameReset"><option value="all">All settings and modes</option><optgroup label="Settings"><option value="theme">Theme</option><option value="memory">Table memory</option><option value="house">House rules</option></optgroup><optgroup label="Modes"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup></select><button class="btn" type="button" data-action="game-reset">Reset…</button></span></div>
       </div>
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
@@ -1078,8 +1078,8 @@ window.kctTheme = (() => {
       </div>
       <h3 class="set-head">Client resets</h3>
       <div class="set-card" id="setClientResets">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Reset</label><span class="set-desc">Removes data from this device, then reloads. To keep a copy, use Back up first.</span></span>
-          <span class="set-btns"><select id="setClientReset"><option value="all">Wipe all data</option><option value="profile">Wipe player profile</option><option value="full">Full client reset</option></select><button class="btn" type="button" data-action="client-reset">Reset</button></span></div>
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase from this device</label><span class="set-desc">The page reloads afterward. To keep a copy, use Back up first.</span></span>
+          <span class="set-btns"><select id="setClientReset"><option value="profile">Your progress</option><option value="all">All data</option><option value="full">All data and the offline copy</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
       </div>
     </section>
   </div>
@@ -6073,20 +6073,20 @@ const App = (() => {
   const AFTER = '<p>The page reloads. There is no undo.</p>';
   /** [title, text (HTML), OK button] for each choice. */
   const GAME_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
-    all: ['Reset all gameplay?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
+    all: ['Reset all settings and modes?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
     theme: ['Reset the theme?', '<p>The felt goes back to Classic, and Color-blind safe colors turns off.</p>'],
     memory: ['Reset Table memory?', '<p>Every Table memory switch turns off.</p>'],
     house: ['Reset House rules?', '<p>Mediator picks the Showdown lead turns on, Turned-up Joker goes back to Redeal, and Polite Play turns on. A game in progress keeps the rules it started with.</p>'],
-    dynamic: ['Reset Dynamic?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
-    waves: ['Reset Waves?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
-    free: ['Reset Free play?', '<p>Free play\'s saved game, results and replay codes are removed.</p>' + AFTER]
+    dynamic: ['Reset Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
+    waves: ['Reset Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
+    free: ['Reset Free play history?', '<p>Free play\'s saved game, results and replay codes are removed.</p>' + AFTER]
   }));
   const CLIENT_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
-    all: ['Wipe all data?', '<p>Every setting, all progress, results, saved games and replay codes on this device are removed, as on a first visit.</p>' + AFTER, 'Wipe all data'],
-    profile: ['Wipe player profile?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are removed. Settings stay.</p>' + AFTER, 'Wipe player profile'],
-    full: ['Full client reset?', '<p>All data is wiped, and the offline copy of the game is removed, so the page loads again from the server. Do this only while you are online.</p>' + AFTER, 'Reset client']
+    profile: ['Erase your progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase progress'],
+    all: ['Erase all data?', '<p>Every setting, all progress, results, saved games and replay codes on this device are erased, as on a first visit.</p>' + AFTER, 'Erase all data'],
+    full: ['Erase all data and the offline copy?', '<p>All data is erased, and so is the offline copy of the game, so the page loads again from the server. Do this only while you are online.</p>' + AFTER, 'Erase and reload']
   }));
-  /* Wipe player profile: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
+  /* Your progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
   const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
   /* The service worker's caches (SHELL and PENDING in sw.js). Other project pages on the same origin keep theirs. */
   const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
