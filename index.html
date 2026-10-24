@@ -945,7 +945,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '95d1575', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '1944bcb', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6211,7 +6211,7 @@ const App = (() => {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
     navigator.serviceWorker.addEventListener('message', ev => {
       const t = ev.data && ev.data.type;
-      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); }
+      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); if (!$('settingsPanel').hidden) checkInstall(); }
       if (t === 'update-applied') location.reload();
     });
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
