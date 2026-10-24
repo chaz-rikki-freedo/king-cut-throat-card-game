@@ -430,6 +430,10 @@ body.set-open{overflow:hidden}
 .settings .set-range{display:inline-flex;gap:var(--s3);align-items:center}
 .settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums;text-align:right}
 .settings .set-btns{display:inline-flex;gap:var(--s2);flex-wrap:wrap;justify-content:flex-end}
+/* A reset row: the choice and its button on the right, like every row; on a phone, on a line of their own under the
+   text, the list filling it. */
+.settings .set-row-pick .set-btns{flex-wrap:nowrap;align-items:center}
+.settings .set-row-pick select{max-width:none}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
 /* The switch: a checkbox drawn as a track and a knob. */
 .settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
@@ -478,6 +482,8 @@ body.set-open{overflow:hidden}
   .settings .set-card{padding:0 var(--s3)}
   .settings select{max-width:9.5rem}
   .settings input[type=range]{width:6.5rem}
+  .settings .set-row-pick{grid-template-columns:minmax(0,1fr)}
+  .settings .set-row-pick select{flex:1;min-width:0;max-width:none}
 }
 
 
@@ -1035,14 +1041,20 @@ window.kctTheme = (() => {
         <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
         <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
       </div>
+      <h3 class="set-head">Gameplay defaults</h3>
+      <div class="set-card" id="setGameDefaults">
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setGameReset">Reset to defaults</label><span class="set-desc">A setting goes back to its default. A mode also loses its progress, saved game, results and replay codes.</span></span>
+          <span class="set-btns"><select id="setGameReset"><option value="all">All settings and modes</option><optgroup label="Settings"><option value="theme">Theme</option><option value="memory">Table memory</option><option value="house">House rules</option></optgroup><optgroup label="Modes"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup></select><button class="btn" type="button" data-action="game-reset">Reset…</button></span></div>
+      </div>
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
       <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
       <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
       <div class="seat-sets" id="setSeats"></div>
+      <h3 class="set-head">Bot defaults</h3>
       <div class="set-card">
-        <div class="set-row"><span class="set-text"><span class="set-name">Defaults</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
+        <div class="set-row"><span class="set-text"><span class="set-name">All seats</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
@@ -1065,6 +1077,11 @@ window.kctTheme = (() => {
         <div class="set-row"><span class="set-text"><span class="set-name">Back up</span><span class="set-desc">Save your progress, results, saved games and settings in a file.</span></span><button class="btn" type="button" data-action="backup-save">Save file</button></div>
         <div class="set-row"><span class="set-text"><span class="set-name">Restore</span><span class="set-desc">Replace all data on this device with a backup file.</span></span><button class="btn" type="button" data-action="backup-restore">Choose file…</button><input type="file" id="backupFile" aria-label="Backup file" hidden></div>
         <p class="k-hint set-note" id="setDataNote" role="status" hidden></p>
+      </div>
+      <h3 class="set-head">Client resets</h3>
+      <div class="set-card" id="setClientResets">
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase from this device</label><span class="set-desc">The page reloads afterward. To keep a copy, use Back up first.</span></span>
+          <span class="set-btns"><select id="setClientReset"><option value="profile">Your progress</option><option value="all">All data</option><option value="full">All data and the offline copy</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
       </div>
     </section>
   </div>
@@ -2779,7 +2796,9 @@ function createReplays(store) {
   return Object.freeze({
     add(entry) { list = trim([entry, ...list]); js.save(list); return entry; },
     list: () => JSON.parse(JSON.stringify(list)),
-    clear() { list = []; js.save(list); }
+    clear() { list = []; js.save(list); },
+    /** Removes the games of mode m. @param {string} m */
+    dropMode(m) { list = list.filter(e => e.mode !== m); js.save(list); }
   });
 }
 
@@ -2820,7 +2839,24 @@ function createStats(store) {
       return this.get();
     },
     get: () => JSON.parse(JSON.stringify(s)),
-    reset() { s = blank(); js.save(s); }
+    reset() { s = blank(); js.save(s); },
+    /* Removes mode m's games. Tables and opponents lose what m added to them (modeTables, modeOpponents); games from
+       before those were kept stay in the totals. @param {string} m */
+    dropMode(m) {
+      const less = (/** @type {Record<string, { played: number, won: number }>} */ group, /** @type {any} */ part) => {
+        for (const [k, r] of Object.entries(part || {})) {
+          const g = group[k];
+          if (!g) continue;
+          g.played = Math.max(0, g.played - r.played);
+          g.won = Math.min(g.played, Math.max(0, g.won - r.won));
+          if (!g.played) delete group[k];
+        }
+      };
+      less(s.tables, s.modeTables[m]);
+      less(s.opponents, s.modeOpponents[m]);
+      delete s.modes[m]; delete s.modeTables[m]; delete s.modeOpponents[m];
+      js.save(s);
+    }
   });
 }
 
@@ -2902,6 +2938,13 @@ const Backup = (() => {
     }
     return Object.keys(e.data);
   }
+  /** Removes the app's keys: the ones named, or every 'kct.' key. Returns the keys removed.
+      @param {WebStore} storage @param {string[]} [only] @returns {string[]} */
+  function wipe(storage, only) {
+    const keys = keysOf(storage).filter(k => !only || only.includes(k));
+    for (const k of keys) storage.removeItem(k);
+    return keys;
+  }
   /** A short summary, for the console and the restore confirm.
       @param {unknown} env @returns {BackupSummary} */
   function describe(env) {
@@ -2979,7 +3022,7 @@ const Backup = (() => {
   }
   /** @param {unknown} env @returns {string} */
   const fileName = env => 'king-cut-throat-backup-' + new Date(check(env).createdAt || Date.now()).toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.kct';
-  return Object.freeze({ FORMAT, VERSION, PREFIX, keysOf, snapshot, create, check, apply, describe, toJSON, toCode, parse, fileName, canGzip });
+  return Object.freeze({ FORMAT, VERSION, PREFIX, keysOf, snapshot, create, check, apply, wipe, describe, toJSON, toCode, parse, fileName, canGzip });
 })();
 
 /* ---------------------------------------------------------------------
@@ -5577,7 +5620,8 @@ const App = (() => {
      them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
      Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code.
      jokerFlip: '' (redeal) or the suit a turned-up Joker takes (Engine.JOKER_FLIPS). */
-  const HOUSE = { mediatorLead: true, politePlay: true, jokerFlip: '' };
+  const HOUSE_DEFAULTS = Object.freeze({ mediatorLead: true, politePlay: true, jokerFlip: '' });
+  const HOUSE = /** @type {{ mediatorLead: boolean, politePlay: boolean, jokerFlip: string }} */ (Object.assign({}, HOUSE_DEFAULTS));
   const app = {
     state: null,
     /* mode: 'waves', 'free', 'dynamic', or null when no game is running (the empty table). */
@@ -6024,6 +6068,96 @@ const App = (() => {
     });
     if (!yes) return;
     try { await backup.restore(text); } catch (e) { dataNote('Nothing changed: ' + (e instanceof Error ? e.message : String(e)) + '.'); }
+  }
+  /* ---- Gameplay defaults (Settings → Game) and Client resets (Settings → Tools). Each asks first. A reset of
+     settings applies at once. A reset of stored data saves the running game first, changes the data and reloads, so
+     no screen or timer keeps the old data, and StorageGate stops any write over it before the reload. ---- */
+  const AFTER = '<p>The page reloads. There is no undo.</p>';
+  /** [title, text (HTML), OK button] for each choice. */
+  const GAME_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
+    all: ['Reset all settings and modes?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
+    theme: ['Reset the theme?', '<p>The felt goes back to Classic, and Color-blind safe colors turns off.</p>'],
+    memory: ['Reset Table memory?', '<p>Every Table memory switch turns off.</p>'],
+    house: ['Reset House rules?', '<p>Mediator picks the Showdown lead turns on, Turned-up Joker goes back to Redeal, and Polite Play turns on. A game in progress keeps the rules it started with.</p>'],
+    dynamic: ['Reset Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
+    waves: ['Reset Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
+    free: ['Reset Free play history?', '<p>Free play\'s saved game, results and replay codes are removed.</p>' + AFTER]
+  }));
+  const CLIENT_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
+    profile: ['Erase your progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase progress'],
+    all: ['Erase all data?', '<p>Every setting, all progress, results, saved games and replay codes on this device are erased, as on a first visit.</p>' + AFTER, 'Erase all data'],
+    full: ['Erase all data and the offline copy?', '<p>All data is erased, and so is the offline copy of the game, so the page loads again from the server. Do this only while you are online.</p>' + AFTER, 'Erase and reload']
+  }));
+  /* Your progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
+  const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
+  /* The service worker's caches (SHELL and PENDING in sw.js). Other project pages on the same origin keep theirs. */
+  const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
+  /** @param {string} what */
+  async function askGameReset(what) {
+    const r = GAME_RESETS[what];
+    if (!r || !await ask({ title: r[0], text: r[1], ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    gameReset(what);
+  }
+  /** Console: KCT.App.gameReset(what), with no question. @param {string} what */
+  function gameReset(what) {
+    if (!GAME_RESETS[what]) return false;
+    Logger.log('GAME_RESET', { what });
+    if (what === 'all' || what === 'theme') setTheme('classic', '');
+    if (what === 'all' || what === 'memory') for (const k of Object.keys(MEMORY_SWITCHES)) setMemory(/** @type {'trumps' | 'kings' | 'turned' | 'voids'} */ (k), false);
+    if (what === 'all' || what === 'house') {
+      Object.assign(app.houseRules, HOUSE_DEFAULTS);
+      $('setMediatorLead').checked = app.houseRules.mediatorLead;
+      $('setJokerFlip').value = app.houseRules.jokerFlip;
+      $('setPolitePlay').checked = app.houseRules.politePlay;
+      closePanel();
+      saveSettings();
+      draw([]);
+    }
+    const modes = what === 'all' ? MODES : MODES.includes(what) ? [what] : [];
+    if (modes.length) reloadAfter(() => { for (const m of modes) clearMode(m); });
+    return true;
+  }
+  /** A mode's progress (wave progress, Dynamic's profile), saved game, results and replay codes. @param {string} m */
+  function clearMode(m) {
+    if (m === 'waves') Waves.reset();
+    if (m === 'dynamic') profile.reset();
+    slots.clear(m);
+    stats.dropMode(m);
+    replays.dropMode(m);
+  }
+  /** @param {string} what */
+  async function askClientReset(what) {
+    const r = CLIENT_RESETS[what];
+    if (!r || !await ask({ title: r[0], text: r[1], ok: r[2], cancel: 'Cancel', danger: true })) return;
+    clientReset(what);
+  }
+  /** Console: KCT.App.clientReset(what), with no question. @param {string} what */
+  function clientReset(what) {
+    if (!CLIENT_RESETS[what]) return false;
+    Logger.log('CLIENT_RESET', { what });
+    reloadAfter(() => { Backup.wipe(localStorage, what === 'profile' ? PROFILE_KEYS.slice() : undefined); }, what === 'full' ? dropOffline : undefined);
+    return true;
+  }
+  /* Full client reset: the offline copy goes, so the reload fetches the page and registers the worker again. */
+  async function dropOffline() {
+    try {
+      if (typeof caches !== 'undefined') await Promise.all(SW_CACHES.map(n => caches.delete(n)));
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) await reg.unregister();
+    } catch (e) { /* the data is wiped; the reload still runs */ }
+  }
+  /** Saves the running game, runs change on the stored data, then reloads. before (optional) runs after the change.
+      @param {() => void} change @param {() => Promise<void>} [before] */
+  async function reloadAfter(change, before) {
+    /* Only the active tab writes (see TabLock). */
+    if (!TabLock.check()) return;
+    clearTimer();
+    runReview();
+    saveGame();
+    change();
+    StorageGate.locked = true;
+    if (before) await before();
+    location.reload();
   }
   /* ---- One tab (see TabLock). Another tab is more current: this tab stops and asks. ---- */
   /* The pop-up has two buttons only: Update reloads this tab with the newest data (then the other
@@ -8029,6 +8163,8 @@ const App = (() => {
       case 'install-check': checkInstall(); break;
       case 'backup-save': saveBackup(); break;
       case 'backup-restore': $('backupFile').click(); break;
+      case 'game-reset': askGameReset($('setGameReset').value); break;
+      case 'client-reset': askClientReset($('setClientReset').value); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
@@ -8593,7 +8729,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, gameReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
 })();
 
 /* ---------------------------------------------------------------------
@@ -9149,6 +9285,16 @@ const SelfTest = (() => {
       const oddStats = mem();
       oddStats.set('{"modes":{"free":{"played":"<b>9</b>","won":1}},"tables":{},"opponents":{"__proto__":{"played":1,"won":0}},"modeOpponents":{"free":{"vex":{"played":2,"won":3},"doc":{"played":2,"won":1}}}}');
       eq('results keep only counts that make sense', createStats(oddStats).get(), { modes: {}, tables: {}, opponents: {}, modeOpponents: { free: { doc: { played: 2, won: 1 } } }, modeTables: {} });
+      const dropped = createStats(mem());
+      dropped.record({ mode: 'free', west: 'vex', east: 'doc', won: true });
+      dropped.record({ mode: 'waves', west: 'vex', east: 'doc', won: false });
+      dropped.dropMode('waves');
+      eq('a mode reset removes its results from every total', dropped.get(), { modes: { free: { played: 1, won: 1 } }, tables: { 'vex/doc': { played: 1, won: 1 } },
+        opponents: { vex: { played: 1, won: 1 }, doc: { played: 1, won: 1 } }, modeOpponents: { free: { vex: { played: 1, won: 1 }, doc: { played: 1, won: 1 } } }, modeTables: { free: { 'vex/doc': { played: 1, won: 1 } } } });
+      const rp = createReplays(mem());
+      rp.add({ code: 'KCT3-A', mode: 'free' }); rp.add({ code: 'KCT3-B', mode: 'waves' }); rp.add({ code: 'KCT3-C', mode: 'waves', assisted: true });
+      rp.dropMode('waves');
+      eq('a mode reset removes its replay codes', rp.list().map(e => e.code), ['KCT3-A']);
       eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
@@ -9335,6 +9481,9 @@ const SelfTest = (() => {
       for (const b of bad) { try { Backup.apply(keep, b); } catch (e) { refused++; } }
       const odd = Backup.check(Object.assign({}, env, { createdAt: 1e20, meta: [1] }));
       eq('an invalid time or meta is dropped, and the file name still works', [odd.createdAt, odd.meta, /^king-cut-throat-backup-\d{4}-/.test(Backup.fileName(odd))], [null, {}, true]);
+      const wp = fakeStore({ 'kct.waves': '{}', 'kct.settings': '{}', 'kct.setTab': '"Game"', 'kct.stats': '{}', 'other.app': 'keep' });
+      eq('wipe removes the keys named, and only app keys', [Backup.wipe(wp, ['kct.waves', 'kct.stats', 'other.app']), Object.keys(wp.dump())], [['kct.stats', 'kct.waves'], ['kct.setTab', 'kct.settings', 'other.app']]);
+      eq('wipe with no keys removes every kct. key', [Backup.wipe(wp), Object.keys(wp.dump())], [['kct.setTab', 'kct.settings'], ['other.app']]);
       eq('bad backups are refused and change nothing', [refused, keep.dump()], [bad.length, { 'kct.waves': '{"unlocked":5}' }]);
       /* A locked gate stops app writes (an import locks it until the reload). */
       const gk = 'kct.selftest.gate', gs = localStore(gk);

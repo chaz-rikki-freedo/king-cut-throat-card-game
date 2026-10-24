@@ -104,6 +104,8 @@ await KCT.App.backup.toCode({ plain: true })  // a code with no compression
 await KCT.App.backup.download()       // saves the .kct file; returns the file name
 await KCT.App.backup.inspect(x)       // summary of a file text, a File/Blob or a code; changes nothing
 await KCT.App.backup.restore(x)       // REPLACES all data with the backup, then reloads the page
+KCT.App.clientReset('all')            // Settings → Tools → Client resets, with no confirm: 'all', 'profile' or 'full'
+KCT.App.gameReset('waves')            // Settings → Game → Gameplay defaults, with no confirm: 'all', 'theme', 'memory', 'house', 'dynamic', 'waves' or 'free'
 ```
 
 `inspect` and `restore` return a summary:
@@ -114,4 +116,4 @@ await KCT.App.backup.restore(x)       // REPLACES all data with the backup, then
 
 **Types.** The module has JSDoc types (`WebStore`, `BackupEnvelope`, `BackupSummary`). It passes `tsc --allowJs --checkJs --strict` with no errors on its lines.
 
-The module `KCT.Backup` works on any Web Storage object (`length`, `key`, `getItem`, `setItem`, `removeItem`): `create(storage, meta)`, `check(env)`, `apply(storage, env)`, `describe(env)`, `toJSON(env)`, `toCode(env)`, `parse(text)`. The self-tests use it with a stand-in storage.
+The module `KCT.Backup` works on any Web Storage object (`length`, `key`, `getItem`, `setItem`, `removeItem`): `create(storage, meta)`, `check(env)`, `apply(storage, env)`, `wipe(storage, keys)` (removes the `kct.` keys named, or all of them), `describe(env)`, `toJSON(env)`, `toCode(env)`, `parse(text)`. The self-tests use it with a stand-in storage.
