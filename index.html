@@ -945,7 +945,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '4cb0479', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '95d1575', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6685,7 +6685,7 @@ const App = (() => {
     const d = $('settingsPanel');
     d.hidden = !open;
     document.body.classList.toggle('set-open', open);
-    for (const el of document.body.children) if (el !== d && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
+    for (const el of document.body.children) if (el !== d && el.id !== 'updateNote' && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b =  (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
     showSettingsTab(loadSetTab() || 'Game', true);
     checkInstall();
