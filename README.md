@@ -65,9 +65,9 @@ If the browser refuses to save any of these (storage full or blocked), a note sa
 
 **Client resets.** In **Settings → Tools → Client resets**, pick one in **Erase from this device**, select **Erase…**, and confirm. Each one reloads the page, with no undo:
 
-- **Your progress** erases wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
-- **All data** erases every `kct.` key: settings, progress, results, saved games and replay codes.
-- **All data and the offline copy** erases all data, then removes the game's offline cache and its service worker, so the page loads again from the server. Do it only while online.
+- **Progress** erases wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
+- **Progress + settings** erases every `kct.` key: settings, progress, results, saved games and replay codes. The game still opens offline.
+- **Everything + game files** erases all of that, then removes the game's offline cache and its service worker, so the page loads again from the server. Do it only while online.
 
 **One tab.** Only one tab of the game can play and save. Each new tab (or reload) becomes the active tab. An older tab of the game then stops, writes nothing more, and shows **Another tab is more current**, with two buttons only: **Update** loads the newest data in that tab (the other tab then stops), and **Quit** closes it. If the browser does not let the page close the tab, the tab stays stopped and says that you can close it. The tab checks before each save, when another tab opens, and when the tab shows again. The mark of the active tab (`kct-tab`) is not in a backup.
 
