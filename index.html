@@ -7729,7 +7729,8 @@ const App = (() => {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
     navigator.serviceWorker.addEventListener('message', ev => {
       const t = ev.data && ev.data.type;
-      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); }
+      /* Open Settings shows the Install checklist: it is drawn again, so it does not still say this is the newest version. */
+      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); if (!$('settingsPanel').hidden) checkInstall(); }
       if (t === 'update-applied') location.reload();
     });
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
