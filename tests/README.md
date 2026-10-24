@@ -52,6 +52,29 @@ GitHub Actions has two workflows:
 - **Checks** (`.github/workflows/checks.yml`) runs the fast checks, `typecheck.js`, `selftest.js`, `sw.js`, `forfeit.js` and `stress.js all 4`, on each pull request and each push to `main`. It takes about a minute.
 - **Tests** (`.github/workflows/test.yml`) runs `npm test` when a major release tag is pushed (`1.0.0`, `2.0.0`, `v3.0.0` and so on), or when you start it with **Run workflow** on the Actions tab.
 
+## Dev commands
+
+For manual testing, type a dev command in **Menu → Load a code** and select **Apply**. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress.
+
+```
+!dev saves=40 log=300     set one or more caps
+!dev                      list the caps in use and their defaults
+!dev reset                go back to the defaults
+```
+
+| Key | Default | Range | What it sets |
+|---|---|---|---|
+| `saves` | 20 | 1–1000 | Replays kept per mode (`REPLAYS_MAX`) |
+| `log` | 1500 | 10–100000 | Latest Scroll lines that a save keeps (`LOG_SAVE_MAX`) |
+| `scroll` | 5000 | 10–100000 | Latest Scroll lines shown (`LOG_MAX`) |
+| `logger` | 1500 | 10–100000 | Event log lines kept (`LOGGER_MAX`) |
+
+- Overrides last until the tab closes (`sessionStorage`, key `kct-dev`). They're never in a backup.
+- A lower cap trims at the next write: older replays or lines are removed for good.
+- While an override is set, the About card shows **DEV** and the values after the build.
+- Self-tests always run with the defaults.
+- Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
+
 ## Stress sections
 
 The page code is `page/stress.js`. Each page is one shard, with its own seeds, so a failure names a seed that you can replay.
