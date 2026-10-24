@@ -7943,7 +7943,8 @@ const App = (() => {
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
-      case 'me-profile': profileUI.fromMenu = false; showProfile(); break;
+      /* Your figure opens the tab of the mode at the table, or All with no game. */
+      case 'me-profile': profileUI.fromMenu = false; profileUI.mode = app.mode || 'all'; showProfile(); break;
       case 'menu-profile': profileUI.fromMenu = true; profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile(); break;
       case 'profile-mode': profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile('[data-action="profile-mode"][data-mode="' + profileUI.mode + '"]'); break;
       case 'profile-sort': {

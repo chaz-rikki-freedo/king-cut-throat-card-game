@@ -81,7 +81,7 @@ async function checks() {
       click('[data-action="close-overlay"]'); await sleep(20); click('#modeChip'); await sleep(20);
       out.popup = q('#overlay h2').textContent; click('[data-action="close-overlay"]');
       click('[data-action="me-profile"]'); await sleep(20);
-      out.profileTab = !!q('[data-action="profile-mode"][data-mode="dynamic"]'); out.habits = (q('#overlay .profile') || { textContent: '' }).textContent.includes('Your bidding');
+      out.profileTab = !!q('[data-action="profile-mode"][data-mode="dynamic"][aria-pressed="true"]'); out.habits = (q('#overlay .profile') || { textContent: '' }).textContent.includes('Your bidding');
       click('[data-action="close-overlay"]');
       return out;`);
     expect('after a reload, Resume continues the Dynamic game at the saved move', r.primary && r.mode === 'dynamic' && r.version === mid.version, [r.version, mid.version]);
@@ -93,7 +93,7 @@ async function checks() {
     expect('the review added the game to the profile, from the stored profile (the change made during play is kept apart)', r.profile.games === 1 && r.profile.hands > 0 && r.profile.at > 0, r.profile);
     expect('a backup holds kct.profile', r.backup);
     expect('the header button shows Dynamic wins', r.popup === 'Dynamic wins', r.popup);
-    expect('Your profile has a Dynamic filter and, with calls on record, Your bidding', r.profileTab && (r.habits || r.profile.habits.calls === 0), r);
+    expect('your figure opens Your profile on Dynamic and, with calls on record, Your bidding', r.profileTab && (r.habits || r.profile.habits.calls === 0), r);
     const first = r;
 
     console.log('Replay Seed');
