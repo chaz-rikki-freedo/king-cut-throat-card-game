@@ -99,7 +99,7 @@ The theme is kept with the settings (and so in a backup), and is applied before 
 |---|---|
 | **Table memory** | Four switches, each off by default. Each adds to the popups one fact that every player at the table has seen this hand, never a card someone holds unseen. **Trumps played**: the Trump popup lists the trumps played and not seen yet (your own discards and the turned card count as seen). **Kings not played**: the Hand popup lists the Kings still to come. **Turned card**: who took the turned-up card and whether they have played it. **Voids**: a bot's hand of backs shows the suits it has shown void in. With a switch off, its popup names the switch. |
 
-The settings are kept after a reload. **Defaults** (Bots tab) does not change them.
+The settings are kept after a reload. **Defaults** (Bots tab) does not change them. Where every setting starts, and how long a change lasts, is listed in [docs/defaults.md](docs/defaults.md).
 
 ### Game: House rules
 
