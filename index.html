@@ -914,9 +914,9 @@ window.kctTheme = (() => {
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline.</span></span>
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for a new version.</span></span>
           <details class="install-box" id="setInstallBox"><summary id="setInstallSum">Checking…</summary><ul class="install-check" id="setInstall"><li>Checking…</li></ul></details>
-          <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button></span></div>
+          <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button><button class="btn btn-sm primary" type="button" data-action="update-reload" id="setUpdateBtn" hidden>Update now</button></span></div>
         <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
       </div>
       <h3 class="set-head">Diagnostics</h3>
@@ -945,7 +945,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '0f57ffc', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '4cb0479', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6076,8 +6076,23 @@ const App = (() => {
   }
   function gameRunning() { return !!app.mode && !!app.state && !app.state.gameOver; }
   function maybeOfferUpdate() {
+    syncUpdateBtn();
     if (!app.updateReady || gameRunning()) return;
     $('updateNote').hidden = false;
+  }
+  function syncUpdateBtn() { const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady; }
+  async function checkUpdate(ms) {
+    if (!('serviceWorker' in navigator)) return null;
+    const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+    const sw = navigator.serviceWorker.controller || (reg && reg.active);
+    if (!sw) return null;
+    return new Promise(resolve => {
+      const done = ( r) => { clearTimeout(t); navigator.serviceWorker.removeEventListener('message', on); resolve(r); };
+      const on = ( ev) => { if (ev.data && ev.data.type === 'update-checked') done(String(ev.data.result)); };
+      const t = setTimeout(() => done(null), ms);
+      navigator.serviceWorker.addEventListener('message', on);
+      sw.postMessage({ type: 'check-update', reply: true });
+    });
   }
   function hideUpdateNote() { const n = $('updateNote'); if (n) n.hidden = true; }
   function applyUpdate() {
@@ -6120,14 +6135,18 @@ const App = (() => {
     ev.userChoice.then(c => { if (c && c.outcome === 'dismissed') note('Install cancelled.'); checkInstall(); }).catch(() => checkInstall());
     if (app.menuOpen) showMenu(app.menuLaunch);
   }
-  async function checkInstall() {
+  let installRun = 0;
+  async function checkInstall(opts) {
+    const run = ++installRun;
     const rows = [];
     const tally = { ok: 0, bad: 0, wait: 0 };
+    if (opts && opts.update) { const sum = $('setInstallSum'); if (sum) { sum.className = ''; sum.textContent = '… Checking, also for a new version'; } }
     const row = (state, text) => { tally[state]++; rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>'); };
     const local = !/^https?:$/.test(location.protocol);
     const note = $('setLocalNote');
     if (note) note.hidden = !local;
     const show = () => {
+      if (run !== installRun) return rows;
       const box = $('setInstall');
       if (box) box.innerHTML = rows.join('');
       const sum = $('setInstallSum');
@@ -6137,6 +6156,7 @@ const App = (() => {
       }
       const btn = $('setInstallBtn');
       if (btn) btn.hidden = local || !install.prompt;
+      syncUpdateBtn();
       return rows;
     };
     if (local) {
@@ -6166,6 +6186,16 @@ const App = (() => {
       const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
       row(reg && reg.active ? 'ok' : 'bad', reg && reg.active ? 'Service worker is active.' : 'Service worker is not active yet.');
       row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
+      if (opts && opts.update) {
+        const r = await checkUpdate(10000);
+        if (r === 'new') app.updateReady = true;
+        if (r === 'same') { app.updateReady = false; hideUpdateNote(); }
+        if (r === 'new' || app.updateReady) row('ok', 'A new version is ready: press Update now.');
+        else if (r === 'same' || r === 'first') row('ok', 'This is the newest version (' + $('setBuild').textContent + ').');
+        else if (r === 'offline') row('wait', 'Could not reach the server to look for a new version.');
+        else if (r === 'not-game') row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.');
+        else row('wait', 'The update check got no answer in 10 s.');
+      } else if (app.updateReady) row('ok', 'A new version is ready: press Update now.');
     }
     const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
     if (kept === true) row('ok', 'Storage is persistent: the browser keeps your progress and saves.');
@@ -6605,7 +6635,7 @@ const App = (() => {
       case 'swap-new': swapNew(); break;
       case 'update-reload': applyUpdate(); break;
       case 'install-app': installApp(); break;
-      case 'install-check': checkInstall(); break;
+      case 'install-check': checkInstall({ update: true }); break;
       case 'backup-save': saveBackup(); break;
       case 'backup-restore': $('backupFile').click(); break;
       case 'game-reset': askGameReset($('setGameReset').value); break;
