@@ -929,7 +929,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'e6a9b0d', date: '2026-10-23' });
+const BUILD = Object.freeze({ commit: 'b1ec48c', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6413,7 +6413,7 @@ const App = (() => {
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
-      case 'me-profile': profileUI.fromMenu = false; showProfile(); break;
+      case 'me-profile': profileUI.fromMenu = false; profileUI.mode = app.mode || 'all'; showProfile(); break;
       case 'menu-profile': profileUI.fromMenu = true; profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile(); break;
       case 'profile-mode': profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile('[data-action="profile-mode"][data-mode="' + profileUI.mode + '"]'); break;
       case 'profile-sort': {
