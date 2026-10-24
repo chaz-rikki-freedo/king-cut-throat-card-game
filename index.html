@@ -8254,8 +8254,9 @@ const App = (() => {
     const d = $('settingsPanel');
     d.hidden = !open;
     document.body.classList.toggle('set-open', open);
-    /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). */
-    for (const el of document.body.children) if (el !== d && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
+    /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). The update note
+       stays live: it shows over Settings (Check again finds a new version there), so its Reload must work. */
+    for (const el of document.body.children) if (el !== d && el.id !== 'updateNote' && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
     showSettingsTab(loadSetTab() || 'Game', true);
     checkInstall();
