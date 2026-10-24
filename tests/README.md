@@ -54,7 +54,9 @@ GitHub Actions has two workflows:
 
 ## Dev commands
 
-For manual testing, type a dev command in **Menu → Load a code** and select **Apply**. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress.
+For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress.
+
+The field gives no hint of dev commands. While you type, input that starts with `!` reads like any text that isn't a code, and **Load** stays off. Only Enter on a `!dev` command runs it: a valid command applies at once and returns to the home card, `!dev` alone shows the keys, and a bad key or value shows the reason.
 
 ```
 !dev saves=40 log=300     set one or more caps
@@ -70,7 +72,7 @@ For manual testing, type a dev command in **Menu → Load a code** and select **
 | `logger` | 1500 | 10–100000 | Event log lines kept (`LOGGER_MAX`) |
 
 - Overrides last until the tab closes (`sessionStorage`, key `kct-dev`). They're never in a backup.
-- A lower cap trims at the next write: older replays or lines are removed for good.
+- A lower cap trims at the next write: older replays or lines are removed for good. There's no preview, so check the value before you press Enter.
 - While an override is set, the About card shows **DEV** and the values after the build.
 - Self-tests always run with the defaults.
 - Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
