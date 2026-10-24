@@ -430,10 +430,10 @@ body.set-open{overflow:hidden}
 .settings .set-range{display:inline-flex;gap:var(--s3);align-items:center}
 .settings .set-range output{min-width:3.5ch;font-variant-numeric:tabular-nums;text-align:right}
 .settings .set-btns{display:inline-flex;gap:var(--s2);flex-wrap:wrap;justify-content:flex-end}
-/* A reset row: the choice and its button on a line of their own, under the text. */
-.settings .set-row-pick{grid-template-columns:minmax(0,1fr)}
-.settings .set-row-pick .set-btns{flex-wrap:nowrap;justify-content:stretch}
-.settings .set-row-pick select{flex:1;min-width:0;max-width:none}
+/* A reset row: the choice and its button on the right, like every row; on a phone, on a line of their own under the
+   text, the list filling it. */
+.settings .set-row-pick .set-btns{flex-wrap:nowrap;align-items:center}
+.settings .set-row-pick select{max-width:none}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
 /* The switch: a checkbox drawn as a track and a knob. */
 .settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
@@ -482,6 +482,8 @@ body.set-open{overflow:hidden}
   .settings .set-card{padding:0 var(--s3)}
   .settings select{max-width:9.5rem}
   .settings input[type=range]{width:6.5rem}
+  .settings .set-row-pick{grid-template-columns:minmax(0,1fr)}
+  .settings .set-row-pick select{flex:1;min-width:0;max-width:none}
 }
 
 
