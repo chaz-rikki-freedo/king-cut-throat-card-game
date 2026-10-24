@@ -7337,8 +7337,7 @@ const App = (() => {
       '<h4 class="mhead">Full rules</h4><p class="mnote">The full rules are coming soon.</p>');
   }
   function menuLoreHTML() { return menuViewHTML('lore', 'Lore', '<p class="mlore">' + LORE + '</p>'); }
-  /* Load a code: the field reads what it holds as you type (readCodeField), apart from a Dev command, which is read only
-     on Enter. Only open waves are listed for a seed. */
+  /* Load a code: the field is read only when you submit it (loadCode). Only open waves are listed for a seed. */
   function menuCodeHTML() {
     const p = Waves.progress();
     const waves = WAVES.filter(w => w.n <= p.unlocked && (!w.shark || p.sharkOpen)).map(w => '<option value="w' + w.n + '">' + waveName(w.n) + ' · ' + escHTML(PERSONA_BY_ID[w.west].name) + ' / ' + escHTML(PERSONA_BY_ID[w.east].name) + '</option>').join('');
@@ -7347,7 +7346,7 @@ const App = (() => {
       '<p class="mnote" id="codeRead" aria-live="polite"></p>' +
       '<div class="mrow" id="codeWhere" hidden><label for="codeMode"><b>Play it in</b></label><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
       (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
-      '<button class="btn primary mload" type="button" data-action="code-load" disabled>Load</button>' +
+      '<button class="btn primary mload" type="button" data-action="code-load">Load</button>' +
       '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>', ' id="menuCode"');
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
@@ -8542,8 +8541,8 @@ const App = (() => {
   /* Load a code (the menu): what a pasted text holds. A replay code (KCT1- to KCT3-) or a seed, bare or in a ?replay= or
      ?seed= link (a link's wave comes too). A backup is named, so the dialog can say where it goes. Spaces and line
      breaks are dropped: a chat app may wrap a long code. kind: 'empty', 'replay', 'seed', 'backup', 'dev' or 'bad'
-     (with why). Input that starts with '!' is never a code. While you type it reads as any other text that is not a
-     code; only a submitted '!dev' command (submit: Enter) is read as one, so the field never hints at it. */
+     (with why). Input that starts with '!' is never a code: only a '!dev' command with submit is read as one, and any
+     other '!' text reads as text that is not a code, so nothing hints at it. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
   /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, ops: Partial<Record<DevKey, number>> } }} */
@@ -8580,42 +8579,43 @@ const App = (() => {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
   }
-  /* Shows what the field holds and sets the Load button: Watch for a replay, Play for a seed. submit: Enter or Load
-     (a Dev command is read only then). */
-  function readCodeField(submit = false) {
-    const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
-    if (!input) return null;
-    const r = readCode(input.value, submit), btn = /** @type {HTMLButtonElement} */ ($('menuCode').querySelector('[data-action="code-load"]'));
-    $('codeRead').textContent = r.kind === 'replay' ? 'A replay code. Watch opens it in the replay viewer.' : r.kind === 'seed' ? 'Seed ' + r.seed + '. Choose where to play its deals.' :
-      r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.dev ? devText() : r.why || '';
-    $('codeWhere').hidden = r.kind !== 'seed';
-    const sel = /** @type {HTMLSelectElement} */ ($('codeMode'));
-    if (r.kind === 'seed' && r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
-    btn.disabled = r.kind !== 'replay' && r.kind !== 'seed';
-    btn.textContent = r.kind === 'replay' ? 'Watch' : r.kind === 'seed' ? 'Play' : 'Load';
-    return r;
+  /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
+  function clearCodeField() {
+    if (!document.getElementById('codeIn')) return;
+    $('codeRead').textContent = '';
+    $('codeWhere').hidden = true;
+    $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Load';
   }
-  /* Load: a replay opens the viewer (Exit returns to the menu); a seed starts a game where the list says, as New game
-     does (a begun unfinished game of that mode is lost only if you agree). Only open waves are listed. */
+  /* Load (or Enter) reads the field, then loads it or says why not: a replay opens the viewer (Exit returns to the
+     menu). A seed first shows where to play it (a link's wave is chosen); Play then starts it there, as New game does
+     (a begun unfinished game of that mode is lost only if you agree). Only open waves are listed. A Dev command
+     applies and returns home, where the build line shows it; '!dev' alone lists the keys. */
   function loadCode() {
-    const r = readCodeField(true);
-    /* A Dev command (Enter only: Load stays off for it). '!dev' alone lists the keys, which readCodeField showed. */
-    if (r && r.dev) {
-      if (!r.dev.reset && !Object.keys(r.dev.ops).length) return;
+    const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
+    if (!input) return;
+    const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
+    if (r.dev) {
+      if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
       Logger.log('DEV', { set: Object.fromEntries(Dev.list()) });
-      /* Home, where the build line shows the overrides in use. */
       menuView = 'home';
       showMenu(app.menuLaunch);
       return;
     }
-    if (!r || (r.kind !== 'replay' && r.kind !== 'seed')) return;
-    const where = /** @type {HTMLSelectElement} */ ($('codeMode')).value;
     if (r.kind === 'replay') {
       if (!watchGame(r.code || '', 'code')) { linkNote = 'This replay code does not hold a game that this app can show.'; showMenu(app.menuLaunch); }
       return;
     }
-    const n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
+    if (r.kind !== 'seed') { say(r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.why || ''); return; }
+    const sel = /** @type {HTMLSelectElement} */ ($('codeMode'));
+    if ($('codeWhere').hidden) {
+      if (r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
+      $('codeWhere').hidden = false;
+      $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Play';
+      say('Seed ' + r.seed + '. Choose where to play its deals.');
+      return;
+    }
+    const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
   }
@@ -8751,8 +8751,8 @@ const App = (() => {
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
     /* Picking another table in the Waves card makes Play the card's main button, so Resume (the game you had) is
        not the obvious tap for the table you just picked. */
-    /* Menu → Play → Load a code: the field says what it holds as you type, and Enter loads it. */
-    $('overlay').addEventListener('input', ev => { if (ev.target instanceof HTMLElement && ev.target.id === 'codeIn') readCodeField(); });
+    /* Menu → Play → Load a code: an edit clears what the last Load said, and Enter loads. */
+    $('overlay').addEventListener('input', ev => { if (ev.target instanceof HTMLElement && ev.target.id === 'codeIn') clearCodeField(); });
     $('overlay').addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target instanceof HTMLElement && ev.target.id === 'codeIn') { ev.preventDefault(); loadCode(); } });
     $('overlay').addEventListener('change', ev => {
       const sel = /** @type {HTMLElement} */ (ev.target);

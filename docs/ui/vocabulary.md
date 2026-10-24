@@ -191,10 +191,10 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Enter loads. |
-| Code reading | `#codeRead`, `readCode()` | S | What the field holds, as you type: a replay code, a seed, a backup (restore it in Settings), or why it cannot load. |
-| Play it in | `#codeWhere`, `#codeMode` | C | For a seed only: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
-| Load button | `code-load` | C | **Watch** for a replay code, **Play** for a seed, else disabled **Load**. |
+| Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Nothing is read while you type; an edit clears the last reading. Enter loads. |
+| Code reading | `#codeRead`, `readCode()` | S | Empty until **Load** or Enter. Then, for a seed, which one it is; for a backup, to restore it in Settings; else why it cannot load. A replay code opens the viewer. |
+| Play it in | `#codeWhere`, `#codeMode` | C | Shown when a seed is loaded: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
+| Load button | `code-load` | C | **Load**, always on. It becomes **Play** once a seed is loaded; **Play** starts the seed in the chosen mode. |
 | Backup hint | `.mnote` | D | "A backup is not a game code: restore it in Settings → Tools → Your data." |
 
 ### 3.3 Seat-swap dialog

@@ -133,6 +133,7 @@ function expect(name, ok, detail) {
     console.log('Load a code (the menu)');
     r = await step(`
       const type = v => { const i = q('#codeIn'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
+      const enter = async () => { q('#codeIn').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(50); };
       const load = () => q('#menuCode [data-action="code-load"]');
       const read = () => ({ text: q('#codeRead').textContent, load: load().textContent, off: load().disabled, where: !q('#codeWhere').hidden });
       const out = { open: !!q('#overlay .menu #codeIn') && !askOpen(), empty: read() };
@@ -140,27 +141,34 @@ function expect(name, ok, detail) {
       const ver = () => { const v = q('#codeVersion'), b = v.getBoundingClientRect(); return { shown: !v.hidden, text: v.textContent, outside: !v.closest('.menu-card'), centered: Math.abs(b.left + b.width / 2 - innerWidth / 2) < 2, foot: innerHeight - b.bottom < 40 }; };
       out.verHome = ver().shown;
       click('#overlay .mfoot [data-view="code"]'); await sleep(50); out.ver = ver();
-      type('KCTS1-H4sIAAAA'); out.backup = read();
-      type('hello'); out.junk = read();
-      type('4242'); out.seed = read();
+      /* Nothing is read while you type: only Load or Enter reads the field. */
+      type('4242'); out.typed = read();
+      click('#menuCode [data-action="code-load"]'); await sleep(50); out.seed = read();
+      type('42'); out.edited = read();
+      type('KCTS1-H4sIAAAA'); await enter(); out.backup = read();
+      type('hello'); await enter(); out.junk = read();
+      type('!dev'); out.devTyped = read(); await enter(); out.devList = read();
       type(${JSON.stringify('https://example.com/?replay=' + code)}); out.replay = read();
       click('#menuCode [data-action="code-load"]'); await sleep(50);
       out.watching = !!q('.watch-ctl') && !overlayOpen();
       click('#modeChip'); await sleep(50);
       out.menuAfter = overlayOpen() && !!q('#overlay .mcard');
-      type(' 4242 '); q('#codeMode').value = 'free';
-      q('#codeIn').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(100);
+      type(' 4242 '); await enter(); q('#codeMode').value = 'free';
+      await enter(); await sleep(50);
       out.played = { mode: app.mode, seed: app.state && app.state.seed, ask: askOpen() };
       return out;
     `);
     expect('Load a code sits in the menu\'s Play tab, not a dialog', r.open, r);
-    expect('an empty field cannot load', r.empty.off && !r.empty.where, r.empty);
+    expect('an empty field says nothing', !r.empty.text && r.empty.load === 'Load' && !r.empty.where, r.empty);
+    expect('typing says nothing: no note, no list, and Load stays Load', !r.typed.text && r.typed.load === 'Load' && !r.typed.where, r.typed);
+    expect('an edit clears what the last Load said', !r.edited.text && !r.edited.where && r.edited.load === 'Load', r.edited);
+    expect('!dev typed says nothing; on Enter it lists the keys', !r.devTyped.text && /^Dev keys/.test(r.devList.text), r);
     expect('the replay and Engine versions float at the foot of Load a code, outside the card', r.ver.shown && /^Replay KCT\d+ · Engine \d+$/.test(r.ver.text) && r.ver.outside && r.ver.centered && r.ver.foot, r.ver);
     expect('the versions hide on the other menu views', !r.verHome, r);
-    expect('a backup code is not loaded, and the dialog says where backups go', r.backup.off && /Settings → Tools → Your data/.test(r.backup.text), r.backup);
-    expect('junk says why it cannot load', r.junk.off && /not a replay code or a seed/.test(r.junk.text), r.junk);
-    expect('a seed asks where to play, and Load says Play', !r.seed.off && r.seed.where && r.seed.load === 'Play', r.seed);
-    expect('a replay link is read, and Load says Watch', !r.replay.off && !r.replay.where && r.replay.load === 'Watch', r.replay);
+    expect('a backup code is not loaded, and Load says where backups go', !r.backup.where && /Settings → Tools → Your data/.test(r.backup.text), r.backup);
+    expect('junk on Load says why it cannot load', /not a replay code or a seed/.test(r.junk.text), r.junk);
+    expect('a seed on Load asks where to play, and Load says Play', r.seed.where && r.seed.load === 'Play' && /Seed 4242/.test(r.seed.text), r.seed);
+    expect('a replay link typed says nothing until Load', !r.replay.text && !r.replay.where, r.replay);
     expect('Watch opens the viewer, and Exit returns to the menu', r.watching && r.menuAfter, r);
     expect('Enter on a seed starts that game in the chosen mode', r.played.mode === 'free' && r.played.seed === 4242 && !r.played.ask, r.played);
 
