@@ -946,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '622f392', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: '9954ab5', date: '2026-10-24' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1128,7 +1128,7 @@ const Dev = (() => {
     reset() { vals = {}; D.set({}); },
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
-      if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'Unknown dev command. Try !dev.' };
+      if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
       if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, ops: {} };
       const ops = {};
@@ -5872,7 +5872,7 @@ const App = (() => {
       '<p class="mnote" id="codeRead" aria-live="polite"></p>' +
       '<div class="mrow" id="codeWhere" hidden><label for="codeMode"><b>Play it in</b></label><select id="codeMode"><option value="free">Free play</option><option value="dynamic">Dynamic</option>' +
       (waves ? '<optgroup label="Waves">' + waves + '</optgroup>' : '') + '</select></div>' +
-      '<button class="btn primary mload" type="button" data-action="code-load" disabled>Load</button>' +
+      '<button class="btn primary mload" type="button" data-action="code-load">Load</button>' +
       '<p class="mnote">A backup is not a game code: restore it in <b>Settings → Tools → Your data</b>.</p>', ' id="menuCode"');
   }
   function closeMenu() { app.menuOpen = false; $('overlay').hidden = true; schedule(); }
@@ -6922,10 +6922,15 @@ const App = (() => {
     copyText(text, ok => { if (note) note.textContent = ok ? 'Copied.' : 'Copy failed.'; });
   }
   const SEED_MAX = 0xFFFFFFFF;
-  function readCode(text) {
+  const NOT_A_CODE = 'This is not a replay code or a seed.';
+  function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
-    if (t.startsWith('!')) { const d = Dev.parse(t); return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } }; }
+    if (t.startsWith('!')) {
+      if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
+      const d = Dev.parse(t);
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } };
+    }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
     if (/^https?:\/\/|^\?|[?&](replay|seed)=/i.test(t)) {
@@ -6944,45 +6949,44 @@ const App = (() => {
       return run && run.ok ? { kind: 'replay', code: c } : { kind: 'bad', why: 'This replay code is damaged or cut short. Copy it again.' };
     }
     if (/^\d+$/.test(c)) return c.length <= 10 && Number(c) <= SEED_MAX ? { kind: 'seed', seed: Number(c), wave } : { kind: 'bad', why: 'A seed is a whole number from 0 to ' + SEED_MAX + '.' };
-    return { kind: 'bad', why: 'This is not a replay code or a seed.' };
+    return { kind: 'bad', why: NOT_A_CODE };
   }
-  function devText( d) {
+  function devText() {
     const keys =  (Object.keys(DEV_KEYS));
-    if (d.reset) return Dev.list().length ? 'Dev: back to the defaults. Apply clears ' + Dev.list().map(([k, v]) => k + '=' + v).join(', ') + '.' : 'Dev: no overrides are set.';
-    const ops =  (Object.keys(d.ops));
-    if (!ops.length) return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
-    return 'Dev, for this tab: ' + ops.map(k => k + ' ' + Dev.num(k) + ' → ' + d.ops[k] + ((d.ops[k] || 0) < Dev.num(k) ? ' (trims at the next write)' : '')).join('; ') + '.';
+    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
   }
-  function readCodeField() {
-    const input =  (document.getElementById('codeIn'));
-    if (!input) return null;
-    const r = readCode(input.value), btn =  ($('menuCode').querySelector('[data-action="code-load"]'));
-    $('codeRead').textContent = r.kind === 'replay' ? 'A replay code. Watch opens it in the replay viewer.' : r.kind === 'seed' ? 'Seed ' + r.seed + '. Choose where to play its deals.' :
-      r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.dev ? devText(r.dev) : r.why || '';
-    $('codeWhere').hidden = r.kind !== 'seed';
-    const sel =  ($('codeMode'));
-    if (r.kind === 'seed' && r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
-    const listOnly = !!r.dev && !r.dev.reset && !Object.keys(r.dev.ops).length;
-    btn.disabled = (r.kind !== 'replay' && r.kind !== 'seed' && r.kind !== 'dev') || listOnly;
-    btn.textContent = r.kind === 'replay' ? 'Watch' : r.kind === 'seed' ? 'Play' : r.kind === 'dev' ? 'Apply' : 'Load';
-    return r;
+  function clearCodeField() {
+    if (!document.getElementById('codeIn')) return;
+    $('codeRead').textContent = '';
+    $('codeWhere').hidden = true;
+    $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Load';
   }
   function loadCode() {
-    const r = readCodeField();
-    if (r && r.dev) {
+    const input =  (document.getElementById('codeIn'));
+    if (!input) return;
+    const r = readCode(input.value, true), say = ( t) => { $('codeRead').textContent = t; };
+    if (r.dev) {
+      if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
       Logger.log('DEV', { set: Object.fromEntries(Dev.list()) });
       menuView = 'home';
       showMenu(app.menuLaunch);
       return;
     }
-    if (!r || (r.kind !== 'replay' && r.kind !== 'seed')) return;
-    const where =  ($('codeMode')).value;
     if (r.kind === 'replay') {
       if (!watchGame(r.code || '', 'code')) { linkNote = 'This replay code does not hold a game that this app can show.'; showMenu(app.menuLaunch); }
       return;
     }
-    const n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
+    if (r.kind !== 'seed') { say(r.kind === 'backup' ? 'This is a backup, not a game. Restore it in Settings → Tools → Your data.' : r.why || ''); return; }
+    const sel =  ($('codeMode'));
+    if ($('codeWhere').hidden) {
+      if (r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
+      $('codeWhere').hidden = false;
+      $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Play';
+      say('Seed ' + r.seed + '. Choose where to play its deals.');
+      return;
+    }
+    const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
   }
@@ -7098,7 +7102,7 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
-    $('overlay').addEventListener('input', ev => { if (ev.target instanceof HTMLElement && ev.target.id === 'codeIn') readCodeField(); });
+    $('overlay').addEventListener('input', ev => { if (ev.target instanceof HTMLElement && ev.target.id === 'codeIn') clearCodeField(); });
     $('overlay').addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target instanceof HTMLElement && ev.target.id === 'codeIn') { ev.preventDefault(); loadCode(); } });
     $('overlay').addEventListener('change', ev => {
       const sel =  (ev.target);
@@ -7733,10 +7737,13 @@ const SelfTest = (() => {
       eq('Load a code: a backup code or file is named, not loaded', kinds(['KCTS1-H4sIAAAA', '{"format":"kct-backup","version":1}']), ['backup', 'backup']);
       eq('Load a code: empty, too large a seed, a cut code and junk', kinds(['  ', '4294967296', code.slice(0, code.length - 30), 'hello', 'https://example.com/?x=1']), ['empty', 'bad', 'bad', 'bad', 'bad']);
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
-      eq('Load a code: Dev commands are read, not applied', [rc('!dev saves=40 LOG=300'), rc(' !DEV ').dev, rc('!dev reset').dev],
+      const rs = ( x) => rc(x, true), notCode = rc('hello');
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(6).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev],
         [{ kind: 'dev', dev: { reset: false, ops: { saves: 40, log: 300 } } }, { reset: false, ops: {} }, { reset: true, ops: {} }]);
-      eq('Load a code: an unknown key, a value out of range and junk after ! are refused', kinds(['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!foo', '!']), ['bad', 'bad', 'bad', 'bad', 'bad', 'bad', 'bad', 'bad']);
-      check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rc(x).kind === 'dev'));
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(9).fill('bad'));
+      eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
+      check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
       check('Load a code: a code of newer rules says to update', !newer || /newer rules/.test(rc(newer).why || ''), newer && rc(newer));
       const u = Engine.createGame(77);
