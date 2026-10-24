@@ -1081,7 +1081,7 @@ window.kctTheme = (() => {
       <h3 class="set-head">Client resets</h3>
       <div class="set-card" id="setClientResets">
         <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase from this device</label><span class="set-desc">The page reloads afterward. To keep a copy, use Back up first.</span></span>
-          <span class="set-btns"><select id="setClientReset"><option value="profile">Your progress</option><option value="all">All data</option><option value="full">All data and the offline copy</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
+          <span class="set-btns"><select id="setClientReset"><option value="profile">Progress</option><option value="all">Progress + settings</option><option value="full">Everything + game files</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
       </div>
     </section>
   </div>
@@ -6085,10 +6085,10 @@ const App = (() => {
   }));
   const CLIENT_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
     profile: ['Erase your progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase progress'],
-    all: ['Erase all data?', '<p>Every setting, all progress, results, saved games and replay codes on this device are erased, as on a first visit.</p>' + AFTER, 'Erase all data'],
-    full: ['Erase all data and the offline copy?', '<p>All data is erased, and so is the offline copy of the game, so the page loads again from the server. Do this only while you are online.</p>' + AFTER, 'Erase and reload']
+    all: ['Erase progress and settings?', '<p>All progress, results, saved games, replay codes and every setting on this device are erased, as on a first visit. The game files stay, so the game still opens offline.</p>' + AFTER, 'Erase progress and settings'],
+    full: ['Erase everything and the game files?', '<p>All progress and settings are erased, and so are the game files kept for offline play. The game downloads again, so do this only while you are online.</p>' + AFTER, 'Erase everything']
   }));
-  /* Your progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
+  /* Progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
   const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
   /* The service worker's caches (SHELL and PENDING in sw.js). Other project pages on the same origin keep theirs. */
   const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);

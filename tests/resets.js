@@ -113,12 +113,12 @@ const SEED = {
     const tools = await step(`const p = q('#setPaneTools'), h = [...p.querySelectorAll('.set-head')];
       return { last: h[h.length - 1].textContent, options: [...q('#setClientReset').options].map(o => o.text) };`);
     expect('the Tools tab ends with Client resets', tools.last === 'Client resets', tools);
-    expect('its choices', tools.options.join('|') === 'Your progress|All data|All data and the offline copy', tools.options);
+    expect('its choices', tools.options.join('|') === 'Progress|Progress + settings|Everything + game files', tools.options);
 
     await seed();
     await step(`const s = JSON.parse(localStorage.getItem('kct.settings')); s.felt = 'spring'; localStorage.setItem('kct.settings', JSON.stringify(s)); return 1;`);
     a = await pick('#setClientReset', 'profile', 'client-reset');
-    expect('Your progress asks first', a.title === 'Erase your progress?' && a.ok === 'Erase progress' && a.danger, a);
+    expect('Progress asks first', a.title === 'Erase your progress?' && a.ok === 'Erase progress' && a.danger, a);
     await confirmReload();
     d = await stored();
     expect('progress, results and replay codes go; settings stay',
@@ -129,13 +129,13 @@ const SEED = {
     await pick('#setClientReset', 'all', 'client-reset');
     await confirmReload();
     d = await stored();
-    expect('All data removes every key, settings too', !d['kct.stats'] && !d['kct.replays'] && !d['kct.settings'], Object.keys(d));
+    expect('Progress + settings removes every key, settings too', !d['kct.stats'] && !d['kct.replays'] && !d['kct.settings'], Object.keys(d));
 
     await seed();
     await step(`await caches.open('kct-shell'); await caches.open('kct-pending'); await caches.open('other-app'); return 1;`);
     await openTab('Tools');
     a = await pick('#setClientReset', 'full', 'client-reset');
-    expect('All data and the offline copy asks first', a.title === 'Erase all data and the offline copy?' && a.ok === 'Erase and reload', a);
+    expect('Everything + game files asks first', a.title === 'Erase everything and the game files?' && a.ok === 'Erase everything', a);
     await confirmReload();
     d = await stored();
     const left = await step(`return (await caches.keys()).sort();`);
