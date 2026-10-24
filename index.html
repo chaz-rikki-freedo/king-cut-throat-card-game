@@ -5007,6 +5007,8 @@ const Render = (() => {
     $('seat' + v.seat).classList.toggle('turn', isTurn(v, v.seat));
     $('seat' + v.seat).classList.toggle('out', false);
     $('seat' + v.seat).classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
+    /* The card size is fitted to the new table first: the motion is measured on the table as it will stay. */
+    if (ctx.fit) ctx.fit();
     Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
     return true;
   }
@@ -5067,12 +5069,29 @@ const Fx = (() => {
     return discarders.slice();
   }
 
+  /* The variables the style sheets set, read once: a kept element takes only these (and its ancestors' inline ones)
+     with it. Walking every computed property of each card instead cost more than the rest of the redraw. */
+  /** @type {string[] | null} */
+  let sheetVars = null;
+  function varNames(el) {
+    if (!sheetVars) {
+      const s = new Set();
+      const walk = (/** @type {CSSRuleList} */ rules) => { for (const r of rules) {
+        const st = /** @type {CSSStyleRule} */ (r).style; if (st) for (const k of st) if (k.startsWith('--')) s.add(k);
+        const sub = /** @type {CSSGroupingRule} */ (r).cssRules; if (sub) walk(sub); } };
+      for (const sh of document.styleSheets) try { walk(sh.cssRules); } catch (e) { /* a sheet from another origin: none here */ }
+      sheetVars = [...s];
+    }
+    const names = new Set(sheetVars);
+    for (let a = el; a && a !== document.body; a = a.parentElement) for (const k of a.style) if (k.startsWith('--')) names.add(k);
+    return names;
+  }
   /* ---- Before a redraw: keep what may leave, measured at rest (a motion still running is finished first). ---- */
   function keep(el) {
     if (!el) return null;
     for (const a of el.getAnimations({ subtree: true })) try { a.finish(); } catch (e) { /* an endless one: none here */ }
     const r = el.getBoundingClientRect(), cs = getComputedStyle(el), vars = {};
-    for (const k of cs) if (k.startsWith('--')) vars[k] = cs.getPropertyValue(k);
+    for (const k of varNames(el)) { const x = cs.getPropertyValue(k); if (x) vars[k] = x; }
     return { el, r, vars };
   }
   function capture() {
@@ -5153,6 +5172,11 @@ const Fx = (() => {
     return fall;
   }
   const done = (el, anims) => Promise.all(anims.map(a => a.finished)).catch(() => {}).then(() => el.remove());
+  /* A motion that began before this redraw, or begins later, keeps its own clock: its start (performance.now() time)
+     is pinned on the page's timeline, so it stays in step with the timers that go with it however long the redraw
+     took. Seeking it instead would hold it until its first frame, a frame or more behind. One that begins now starts
+     with its first frame. */
+  const startAt = (/** @type {Animation} */ a, /** @type {number} */ t0, /** @type {number} */ now) => { if (t0 !== now) a.startTime = t0; };
   const seatOf = p => p === me ? (q('#hand') || q('#seat' + me)) : q('#seat' + p);
   const dealWait = key => handDeal.key === key ? Math.max(0, handDeal.end - performance.now()) : 0;
 
@@ -5355,7 +5379,7 @@ const Fx = (() => {
       const r = kp.getBoundingClientRect(), from = 'translate(' + (sl.x - r.left - scrollX) + 'px,' + (sl.y - r.top - scrollY) + 'px)';
       /* The inline transform holds the start until the animation starts (a new animation shows from the next frame). */
       kp.style.transform = from;
-      kp.animate([{ transform: from }, { transform: from, offset: sl.hold / (sl.hold + t) }, { transform: 'none' }], { duration: sl.hold + t, easing: 'ease-in-out', fill: 'forwards' }).currentTime = now - sl.t0;
+      startAt(kp.animate([{ transform: from }, { transform: from, offset: sl.hold / (sl.hold + t) }, { transform: 'none' }], { duration: sl.hold + t, easing: 'ease-in-out', fill: 'forwards' }), sl.t0, now);
       setTimeout(() => { kp.style.transform = ''; }, sl.hold + t - (now - sl.t0));
     }
     const flight = t + (cards.length - 1) * t * PACKET_CARD, up = !/\bback\b/.test(top.className);
@@ -5365,13 +5389,13 @@ const Fx = (() => {
       if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
       const [dx, dy] = center(q('#seat' + v.dealer));
       cards.forEach((c, i) => { const [cx, cy] = center(c);
-        c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[pos(v.dealer)] + 'deg)' }, { transform: 'none' }],
-          { duration: t, delay: i * t * PACKET_CARD, easing: 'ease-out', fill: 'backwards' }).currentTime = elapsed; });
+        startAt(c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[pos(v.dealer)] + 'deg)' }, { transform: 'none' }],
+          { duration: t, delay: i * t * PACKET_CARD, easing: 'ease-out', fill: 'backwards' }), dealStart, now); });
     }
     const turned = now - turnStart;
     if (up && turned < t * 0.8) {
       if (turned < t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
-      top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, easing: 'ease-in-out' }).currentTime = turned;
+      startAt(top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, easing: 'ease-in-out' }), turnStart, now);
       setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, t * 0.4 - turned));
     }
   }
@@ -5387,11 +5411,11 @@ const Fx = (() => {
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
     const cards = qa('.card', card.parentElement), w = card.offsetWidth;
     const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
-    card.animate([
+    startAt(card.animate([
       { transform: from, zIndex: 5, offset: 0, easing: 'ease-in-out' },
       { transform: out, zIndex: 5, offset: 0.5 },
       { transform: out, zIndex: 0, offset: 0.55, easing: 'ease-in-out' },
-      { transform: 'none', zIndex: 0, offset: 1 }], { duration: dur }).currentTime = e;
+      { transform: 'none', zIndex: 0, offset: 1 }], { duration: dur }), tuckStart.t0, now);
   }
 
   /* A new hand: the cards go out from the dealer in packets (see PACKETS), round the table from the dealer's left:
@@ -5415,40 +5439,43 @@ const Fx = (() => {
     if (!t || !from || e > t + last) return;
     const [fx, fy] = center(from);
     hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
-      c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
-        { duration: t, delay: delay(i, j), easing: 'ease-out', fill: 'backwards' }).currentTime = e; }));
+      startAt(c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
+        { duration: t, delay: delay(i, j), easing: 'ease-out', fill: 'backwards' }), handDeal.t0, now); }));
   }
 
   /* Trick cards slide in from their player's seat; at a trick's end the winner lifts once the last card has landed. */
   function animateTrick(v, now) {
     const key = v.handNumber + '|' + (v.showdown && v.showdown.active ? 'sd' : '') + '|' + v.trickNumber, t = ms();
     if (key !== trickKey) { trickKey = key; for (const o of [slotStart, winStart, slotFrom]) for (const k in o) delete o[k]; }
-    for (const slot of qa('#center .trick .slot')) {
+    const cards = qa('#center .trick .slot').flatMap(slot => {
       const card = q('.card[data-card]', slot), p = slot.dataset.seat;
-      if (!card || p == null) continue;
+      if (!card || p == null) return [];
       const id = p + card.dataset.card;
       if (slotStart[id] == null) { slotStart[id] = now; if (p === '0' && handAt && handAt.has(card.dataset.card)) slotFrom[id] = handAt.get(card.dataset.card); }
-      const e = now - slotStart[id], seat = q('#seat' + p), isWin = slot.classList.contains('win');
-      // The resting poses first, before any motion applies: without the winner's lift, and with it.
-      if (isWin) slot.classList.remove('win');
-      const base = getComputedStyle(card).transform;
-      if (isWin) slot.classList.add('win');
-      const lifted = getComputedStyle(card).transform, rest = base === 'none' ? '' : base;
+      return [{ slot, card, p, id, seat: q('#seat' + p), isWin: slot.classList.contains('win'), base: '', lifted: '', at: [0, 0], seatAt: [0, 0], w: 1 }];
+    });
+    /* Every reading first, then every motion: a reading between two motions would make the browser lay out the table
+       again. The resting poses: without the winner's lift, and with it (where everything is measured). */
+    for (const c of cards) if (c.isWin) c.slot.classList.remove('win');
+    for (const c of cards) c.base = getComputedStyle(c.card).transform;
+    for (const c of cards) if (c.isWin) c.slot.classList.add('win');
+    for (const c of cards) { c.lifted = getComputedStyle(c.card).transform; c.at = center(c.card); c.w = c.card.offsetWidth || 1; if (c.seat) c.seatAt = center(c.seat); }
+    for (const { card, p, id, seat, isWin, base, lifted, at: [cx, cy], seatAt, w: cw } of cards) {
+      const e = now - slotStart[id], rest = base === 'none' ? '' : base;
       /* Your card leaves your hand from where it was, at the hand's size; a bot's card comes from its seat. */
       const from = slotFrom[id];
       if (t && e < t && (seat || from)) {
-        const [cx, cy] = center(card);
-        const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / (card.offsetWidth || 1)).toFixed(3) + ') '
-          : 'translate(' + (center(seat)[0] - cx) + 'px,' + (center(seat)[1] - cy) + 'px) ';
-        card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: rest || 'none', opacity: 1 }],
-          { duration: t, easing: 'ease-out', fill: 'backwards' }).currentTime = e;
+        const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / cw).toFixed(3) + ') '
+          : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
+        startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: rest || 'none', opacity: 1 }],
+          { duration: t, easing: 'ease-out', fill: 'backwards' }), slotStart[id], now);
         /* A bot's seat lies over the table while its card slides out from under it. */
         if (!from) { seat.classList.add('rise'); clearTimeout(riseTimer[p]); riseTimer[p] = setTimeout(() => { const s = q('#seat' + p); if (s) s.classList.remove('rise'); }, t - e); }
       }
       if (isWin) {
         if (winStart[p] == null) winStart[p] = now;
         const delay = Math.max(0, slotStart[id] + t - winStart[p]), w = now - winStart[p];
-        if (t && w < delay + t) card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }).currentTime = w;
+        if (t && w < delay + t) startAt(card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }), winStart[p], now);
       }
     }
   }
@@ -6512,7 +6539,7 @@ const App = (() => {
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
     for (const id of Array.from(app.ui.selected)) if (!v.hand.includes(id)) app.ui.selected.delete(id);
-    const ctx = { flashSeats: new Set(), newCards: new Set(), waiting: !!app.timerFn, skip: canSkip(), instant: !watch && skipping() };
+    const ctx = { flashSeats: new Set(), newCards: new Set(), waiting: !!app.timerFn, skip: canSkip(), instant: !watch && skipping(), fit: Fit.update };
     for (const e of events) {
       if (e.type === 'SCORE_CHANGED' && e.delta !== 0) ctx.flashSeats.add(e.player);
       if (e.type === 'CARD_PLAYED') ctx.newCards.add(e.card);
@@ -6818,7 +6845,8 @@ const App = (() => {
   function note(text) { showLatest(false, escHTML(text)); }
   /* A King point: a large green +1 hangs over everything, every time. Yours then drops toward your
      seat and dissolves; a bot's flies into that bot's seat and shrinks into its score, so it is clear who scored. Its
-     length follows the game speed (Instant uses Fast's: it holds nothing up). */
+     length follows the game speed (Instant uses Fast's: it holds nothing up). With the system's reduced-motion setting
+     it only fades in and out where it is, and the score shows at once. */
   function kingPop(p) {
     const ms = { slow: 2400, normal: 1800 }[app.ui.speed] || 1100;
     const old = document.querySelector('.king-pop'); if (old) old.remove();
@@ -6835,10 +6863,12 @@ const App = (() => {
     document.body.appendChild(el);
     /* A bot's seat: the +1 ends on its score (the seat when the score is not drawn). A seat scrolled out of view: it
        ends at the window's edge on that side. The seat shows the point when the +1 lands (scoreHold). */
-    const seat = p !== (watch ? watch.seat : HUMAN) && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const seat = !still && p !== (watch ? watch.seat : HUMAN) && (document.querySelector('#seat' + p + ' .score') || $('seat' + p));
     /** @type {Keyframe[]} */
     let frames;
-    if (seat) {
+    if (still) frames = [{ opacity: 0, transform: at(-50, 1) }, { opacity: 1, transform: at(-50, 1), offset: .15 }, { opacity: 1, transform: at(-50, 1), offset: .7 }, { opacity: 0, transform: at(-50, 1) }];
+    else if (seat) {
       const r = seat.getBoundingClientRect(), c = el.getBoundingClientRect(), m = 24;
       const x = Math.min(innerWidth - m, Math.max(m, r.left + r.width / 2)), y = Math.min(innerHeight - m, Math.max(m, r.top + r.height / 2));
       const dx = Math.round(x - (c.left + c.width / 2)), dy = Math.round(y - (c.top + c.height / 2));
