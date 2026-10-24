@@ -134,6 +134,11 @@ srv.listen(0, '127.0.0.1', async () => {
     serve = 'game';
     ck = await checkAgain();
     expect('Check again with a new version: Update now shows', /A new version is ready/.test(ck.list) && ck.btn, ck);
+    const over = await page.evaluate(() => {
+      const n = document.querySelector('#updateNote'), b = n.querySelector('[data-action="update-reload"]'), r = b.getBoundingClientRect();
+      return { shown: !n.hidden, inert: n.inert, hit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === b };
+    });
+    expect('the update note over Settings can be pressed', over.shown && !over.inert && over.hit, over);
     await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
     await page.waitForTimeout(1500);
     r = await state();
