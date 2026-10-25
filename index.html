@@ -8067,6 +8067,13 @@ const App = (() => {
     }
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
     const met = PERSONAS.filter(x => opp[x.id] && opp[x.id].played).length;
+    /* Free play and Dynamic: the opponents behind the mode goal (Beaten N of 10), named, then those still to beat. */
+    if (m === 'free' || m === 'dynamic') {
+      const won = PERSONAS.filter(x => opp[x.id] && opp[x.id].won > 0), rest = PERSONAS.filter(x => !won.includes(x));
+      html += pfListHTML('pf-beaten', 'Beaten', won.length + ' of ' + PERSONAS.length, '<p class="pf-sub">An opponent is beaten once you win a game they play in.</p>' +
+        (won.length ? '<ol class="pf-glist">' + won.map(x => '<li><span class="pf-g1">' + pfWho(x.id) + ' <span class="num">' + opp[x.id].won + ' of ' + opp[x.id].played + ' won</span></span></li>').join('') + '</ol>' : '') +
+        (rest.length ? '<p class="pf-sub">Still to beat: ' + rest.map(x => pfWho(x.id)).join(', ') + '.</p>' : ''));
+    }
     html += pfListHTML('pf-opps', 'By opponent', met + ' of ' + PERSONAS.length + ' played',
       '<p class="pf-sub">A game counts for each opponent at the table that played as itself: a bot changed in Settings → Bots does not count. Select a column to sort.</p>' +
       pfTableHTML('opp', 'Opponent', PERSONAS.map(x => Object.assign({ name: x.name, label: pfWho(x.id) }, opp[x.id] || { played: 0, won: 0 }))));
@@ -8188,7 +8195,13 @@ const App = (() => {
       case 'close-overlay': $('overlay').hidden = true; break;
       /* Your figure opens the tab of the mode at the table, or All with no game. */
       case 'me-profile': profileUI.fromMenu = false; profileUI.mode = app.mode || 'all'; showProfile(); break;
-      case 'menu-profile': profileUI.fromMenu = true; profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile(); break;
+      case 'menu-profile': {
+        profileUI.fromMenu = true; profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile();
+        /* A mode's goal opens the list behind it. */
+        const goal = $('overlay').querySelector('.pf-beaten');
+        if (goal instanceof HTMLDetailsElement && el.classList.contains('mtail')) goal.open = true;
+        break;
+      }
       case 'profile-mode': profileUI.mode = el.getAttribute('data-mode') || 'all'; showProfile('[data-action="profile-mode"][data-mode="' + profileUI.mode + '"]'); break;
       case 'profile-sort': {
         const which = el.getAttribute('data-table'), key = el.getAttribute('data-key'), cur = profileUI.sort[which];
