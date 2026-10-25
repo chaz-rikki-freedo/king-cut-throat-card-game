@@ -232,7 +232,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Profile filter | `.pf-filter`, `data-action="profile-mode"` | C | All, Free play, Dynamic or Waves. Scopes every part below it. Every tab has the same order: the tiles, the chart and the insights (open), then **Lists** (collapsed). |
-| Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), and Waves cleared (not under Free play). |
+| Figure tiles | `.pf-tiles`, `.pf-tile` | S | Games, Wins, Win rate, Streak (from the last games), Beaten (Free play and Dynamic: the opponents beaten at least once, as the mode goal counts them), and Waves cleared (All and Waves). |
 | Last games chart | `.pf-chart`, `.pf-col` | S | A column per game, up to the last 20 of the mode (under All, the latest 20 of every mode), oldest first: your final score, W or L, and a line at the best opponent score. Hover or focus a column for its tooltip (`.pf-tip`). |
 | Lists | `.pf-list` | C | Collapsed rows under **Lists**, each its name and a short count: **Games** (`.pf-games`), **By opponent** (`.pf-opps`), **By table** (`.pf-tables`) and, in Waves, **Shark tries** and **Wave tries** (`.pf-tries`). |
 | Games list | `.pf-glist` | S | The same games, newest first. Each game takes two lines on a phone (one when wide): Won or Lost, the game, West / East and the scores; then when, and its actions (`.pf-acts`). |
