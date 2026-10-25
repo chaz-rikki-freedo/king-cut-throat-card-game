@@ -159,11 +159,16 @@ function expect(name, ok, detail) {
       out.beaten = [q('#overlay .mcard[data-mode="free"] .mtail').textContent, 'Beaten ' + KCT.PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).length + ' of ' + KCT.PERSONAS.length];
       Object.assign(out, { mode: app.mode, slot: !!A.slots.get('free'), menu: !!q('#overlay .menu'), icons: document.querySelectorAll('#overlay .mdel').length,
         resume: q('[data-action="resume-free"]') && q('[data-action="resume-free"]').disabled, statsSame: JSON.stringify(A.stats.get()) === out.stats, replaysSame: A.replays.list().length === out.replays });
+      click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
+      const tile = Array.from(document.querySelectorAll('#overlay .profile .pf-tile')).find(t => t.querySelector('span').textContent === 'Beaten');
+      out.beatenTile = tile ? tile.querySelector('b').textContent : null;
+      click('#overlay [data-action="menu-back"]'); await sleep(20);
       return out;`);
     expect('Discard ends the game: no mode, no slot, the menu stays open', r.mode === null && !r.slot && r.menu, r);
     expect('after Discard the card has no icon and Resume is off', r.icons === 0 && r.resume === true, r);
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
+    expect('Your profile shows the same Beaten count as the Free play card', 'Beaten ' + r.beatenTile === r.beaten[1], [r.beatenTile, r.beaten[1]]);
     r = await step(`
       const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#menuTitle') || {}).textContent,
         menuExits: document.querySelectorAll('#overlay .menu [data-action="close-menu"]').length };

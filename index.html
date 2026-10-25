@@ -8033,6 +8033,7 @@ const App = (() => {
       '<div class="pf-head"><div class="p-face" role="img" aria-label="You" style="background-image:url(' + YOU_ART + ')"></div><p>Your results in this browser.</p></div>' +
       '<div class="pf-filter" role="group" aria-label="Games to show">' + PF_MODES.map(([k, label]) => '<button type="button" data-action="profile-mode" data-mode="' + k + '" aria-pressed="' + (k === m) + '">' + label + '</button>').join('') + '</div>' +
       '<div class="pf-tiles">' + tile('Games', tot.played) + tile('Wins', tot.won) + tile('Win rate', pfPct(pfRate(tot))) + tile('Streak', streak) +
+      (m === 'free' || m === 'dynamic' ? tile('Beaten', beatenCount(st, m) + ' <small>of ' + PERSONAS.length + '</small>') : '') +
       (m === 'all' || m === 'waves' ? tile('Waves cleared', pr.waves + ' <small>of ' + pr.total + '</small>') + (pr.sharkOpen ? tile('Sharks cleared', pr.sharks + ' <small>of ' + pr.total + '</small>') : '') : '') + '</div>';
     /* Every tab has the same order: the tiles, then the chart and the insights (open), then the long lists, collapsed
        (pfListHTML): the games, by opponent, by table and, in Waves, the tries in each run. */
