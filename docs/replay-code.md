@@ -261,7 +261,7 @@ Input that starts with `!` is reserved for dev commands in **Load a code** (`!de
 
 ### 11.1 Capacity requirement
 
-The format must hold a game of **at least 20 hands in which each hand is a showdown**, with the longest bidding and a 2-card exchange. Real games are shorter, but this is the safe limit. The self-test `replay` encodes and decodes this worst case and checks that the code is 3,000 characters or less, also with the full AI settings in META.
+The format must hold a game of **at least 25 hands in which each hand is a showdown**, with the longest bidding and a 2-card exchange. Real games are shorter, but this is the safe limit. The self-test `replay` encodes and decodes this worst case and checks that the code is 3,500 characters or less, and 5,000 or less with the full AI settings in META.
 
 The format itself has no hard limit. Section lengths and counts are `uint` varints. `Replay.run` and `Replay.cursor` have no step limit.
 
@@ -286,9 +286,11 @@ The other sections (GAME, SEATS, RESULT, FLAGS, TIME, META) use about 220 bytes.
 | Short game, about 8 hands | about 220 | about 950 |
 | Long game, 15 hands, 3 showdowns (seed 830) | 476 | about 1,770 |
 | 20 hands, typical | about 540–600 | about 1,900–2,200 |
-| 20 hands, all showdowns (worst case, section 11.1) | 860 | about 2,850 |
+| 20 hands, all showdowns | 860 | about 2,850 |
+| 25 hands, all showdowns (worst case, section 11.1) | 1,075 | about 3,250 |
 
 ### 11.4 Other limits
 
-- The app keeps the codes of the last 20 finished games of each mode, plus the last 20 where the AI played your seat, in `localStorage` (`kct.replays`): at most 80 codes. In the worst case, this is about 230 KB.
+- The app keeps the codes of the last 20 finished games of each mode, plus the last 20 where the AI played your seat, in `localStorage` (`kct.replays`): at most 80 codes. In the worst case, this is about 260 KB.
+- **Load a code** and replay links read a code of up to 8,000 characters. The worst case with full AI settings (section 11.1) is about 4,600.
 - A game resumed from a save made before replay codes existed has no decision list, so it has no code.
