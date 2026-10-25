@@ -162,6 +162,8 @@ function expect(name, ok, detail) {
       click('#overlay .mcard[data-mode="free"] .mtail'); await sleep(20);
       const tile = Array.from(document.querySelectorAll('#overlay .profile .pf-tile')).find(t => t.querySelector('span').textContent === 'Beaten');
       out.beatenTile = tile ? tile.querySelector('b').textContent : null;
+      const names = Array.from(document.querySelectorAll('#overlay .pf-beaten[open] .pf-glist li .pf-g1 > span:first-child'), x => x.textContent);
+      out.beatenNames = [names.join(), KCT.PERSONAS.filter(x => won[x.id] && won[x.id].won > 0).map(x => x.name).join()];
       click('#overlay [data-action="menu-back"]'); await sleep(20);
       return out;`);
     expect('Discard ends the game: no mode, no slot, the menu stays open', r.mode === null && !r.slot && r.menu, r);
@@ -169,6 +171,7 @@ function expect(name, ok, detail) {
     expect('a discarded game is not a result', r.statsSame && r.replaysSame, r);
     expect('the Free play card counts the opponents beaten', r.beaten[0] === r.beaten[1], r.beaten);
     expect('Your profile shows the same Beaten count as the Free play card', 'Beaten ' + r.beatenTile === r.beaten[1], [r.beatenTile, r.beaten[1]]);
+    expect("the card's goal opens the Beaten list, which names the opponents beaten", r.beatenNames[0] === r.beatenNames[1], r.beatenNames);
     r = await step(`
       const out = { order: Array.from(document.querySelectorAll('#overlay .mcard'), c => c.getAttribute('data-mode')), heading: (q('#menuTitle') || {}).textContent,
         menuExits: document.querySelectorAll('#overlay .menu [data-action="close-menu"]').length };
@@ -191,7 +194,7 @@ function expect(name, ok, detail) {
     expect('with no game being played, nothing in the menu says Continue to the table (Escape closes it)', r.menuExits === 0, r);
     expect("a card's goal opens Your profile for the mode; its header \u2039 Back returns to the menu", r.profile && r.pressed === 'Free play' && r.back, r);
     expect('Your profile has one way out, \u2039 Back in its header', JSON.stringify(r.exits) === '["header"]', r);
-    expect('Your profile: the chart open, then the lists collapsed (games, by opponent, by table)', r.chart && JSON.stringify(r.lists) === '["pf-games","pf-opps","pf-tables"]', r.lists);
+    expect('Your profile: the chart open, then the lists collapsed (games, by opponent, by table) but Beaten, opened by the goal', r.chart && JSON.stringify(r.lists) === '["pf-games","pf-beaten open","pf-opps","pf-tables"]', r.lists);
     expect('a game in Your profile exports its seed and its replay code', r.export.title === 'Export this game' && r.export.seed && r.export.code, r.export);
 
     console.log('Game 2: Waves, wave 1');
