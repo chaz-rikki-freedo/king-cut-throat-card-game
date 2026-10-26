@@ -732,6 +732,10 @@ body.set-open{overflow:hidden}
 .center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
 /* Under the hand result they sit in the flow, as wide as the result: the same 0.625rem above and below them. */
 .center:has(> .summary) > .pile-act.ends{position:static;flex:none}
+/* The replay viewer's controls stay in one place at the foot of the screen, like a player's, whatever the table shows:
+   a hand's result changes the middle's size, and a moving Pause is hard to press. The page keeps room for them. */
+.center > .pile-act:has(> .watch-ctl){position:fixed!important;left:50%;right:auto;top:auto;bottom:calc(0.5rem + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:30;flex:none;view-transition-name:watchbar}
+.layout:has(.watch-ctl){padding-bottom:4.75rem}
 .center:has(> .summary > .pile-act.ends),.center:has(> .summary ~ .pile-act.ends){padding-bottom:0.625rem!important}
 /* On a phone the Advanced table has room for one row of equal buttons. */
 @media (max-width:480px){
