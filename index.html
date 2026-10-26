@@ -5514,20 +5514,22 @@ const Fx = (() => {
   }
 
   /* Round 2 begins: the turned card slides out to the left of the kitty, then back under it, tucked (the leftmost
-     card, partly shown). Kept by hand, so a redraw part way through resumes it. */
+     card, partly shown), and rests there a moment: the motion holds the game (busyFor), so a bot's call does not take
+     the kitty away the moment the card is under it. Kept by hand, so a redraw part way through resumes it. */
   /** @param {{ handNumber: number, kittyCount: number }} v @param {number} now */
   function tuckTurned(v, now) {
     const card = q('#center .kpile .card.tuck'), t = ms();
     if (!card) return;
     if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
-    const e = now - tuckStart.t0, dur = t * 1.6;
+    const e = now - tuckStart.t0, move = t * 1.6, dur = move + t, f = move / dur;
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
     const cards = qa('.card', card.parentElement), w = card.offsetWidth;
     const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
     startAt(card.animate([
       { transform: from, zIndex: 5, offset: 0, easing: 'ease-in-out' },
-      { transform: out, zIndex: 5, offset: 0.5 },
-      { transform: out, zIndex: 0, offset: 0.55, easing: 'ease-in-out' },
+      { transform: out, zIndex: 5, offset: 0.5 * f },
+      { transform: out, zIndex: 0, offset: 0.55 * f, easing: 'ease-in-out' },
+      { transform: 'none', zIndex: 0, offset: f },
       { transform: 'none', zIndex: 0, offset: 1 }], { duration: dur }), tuckStart.t0, now);
   }
 
