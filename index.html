@@ -5558,7 +5558,8 @@ const Fx = (() => {
         { duration: t, delay: delay(i, j), easing: 'ease-out', fill: 'backwards' }), handDeal.t0, now); }));
   }
 
-  /* Trick cards slide in from their player's seat; at a trick's end the winner lifts once the last card has landed. */
+  /* Trick cards slide in from their player's seat; at a trick's end the winner lifts as the last card slides in, so both
+     come to rest together. A winner still sliding in slides straight to its lifted pose: one motion, no stop. */
   function animateTrick(v, now) {
     const key = v.handNumber + '|' + (v.showdown && v.showdown.active ? 'sd' : '') + '|' + v.trickNumber, t = ms();
     if (key !== trickKey) { trickKey = key; for (const o of [slotStart, winStart, slotFrom]) for (const k in o) delete o[k]; }
@@ -5575,23 +5576,24 @@ const Fx = (() => {
     for (const c of cards) c.base = getComputedStyle(c.card).transform;
     for (const c of cards) if (c.isWin) c.slot.classList.add('win');
     for (const c of cards) { c.lifted = getComputedStyle(c.card).transform; c.at = center(c.card); c.w = c.card.offsetWidth || 1; if (c.seat) c.seatAt = center(c.seat); }
-    /* When the last card lands: the winner's lift waits for it, whichever card won. */
-    const landed = Math.max(...cards.map(c => slotStart[c.id])) + t;
+    /* When the last card starts to slide in: the winner's lift starts with it. */
+    const last = Math.max(...cards.map(c => slotStart[c.id]));
     for (const { card, p, id, seat, isWin, base, lifted, at: [cx, cy], seatAt, w: cw } of cards) {
       const e = now - slotStart[id], rest = base === 'none' ? '' : base;
       /* Your card leaves your hand from where it was, at the hand's size; a bot's card comes from its seat. */
       const from = slotFrom[id];
-      if (t && e < t && (seat || from)) {
+      const slides = !!t && e < t && !!(seat || from);
+      if (slides) {
         const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / cw).toFixed(3) + ') '
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
-        startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: rest || 'none', opacity: 1 }],
+        startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
           { duration: t, easing: 'ease-out', fill: 'backwards' }), slotStart[id], now);
         /* A bot's seat lies over the table while its card slides out from under it. */
         if (!from) { seat.classList.add('rise'); clearTimeout(riseTimer[p]); riseTimer[p] = setTimeout(() => { const s = q('#seat' + p); if (s) s.classList.remove('rise'); }, t - e); }
       }
-      if (isWin) {
+      if (isWin && !slides) {
         if (winStart[p] == null) winStart[p] = now;
-        const delay = Math.max(0, landed - winStart[p]), w = now - winStart[p];
+        const delay = Math.max(0, last - winStart[p]), w = now - winStart[p];
         if (t && w < delay + t) startAt(card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }), winStart[p], now);
       }
     }
@@ -5681,11 +5683,13 @@ const App = (() => {
       @type {{ packs: { felts: Record<string, { name: string, tokens: Record<string, string> }>, colors: Record<string, { name: string, tokens: Record<string, string> }> },
         apply(felt: string, colors: string): { felt: string, colors: string }, tokenOf(felt: string, token: string): string }} */
   const Theme = /** @type {any} */ (window).kctTheme;
+  /* won: a finished trick's wait before its sweep, from its last card: that card's slide (one motion step; the winner
+     lifts with it) and then a bot's move's wait (ai). */
   const DELAYS = {
-    slow: { ai: 1200, trick: 2300, sys: 600 },
-    normal: { ai: 650, trick: 1400, sys: 350 },
-    fast: { ai: 220, trick: 650, sys: 120 },
-    instant: { ai: 0, trick: 0, sys: 0 }
+    slow: { ai: 1200, trick: 2300, won: 1900, sys: 600 },
+    normal: { ai: 650, trick: 1400, won: 1100, sys: 350 },
+    fast: { ai: 220, trick: 650, won: 470, sys: 120 },
+    instant: { ai: 0, trick: 0, won: 0, sys: 0 }
   };
   const HUMAN = 0;
   /* Settings → Game → Turned-up Joker, by value: what the rule notes call each choice. */
@@ -6705,7 +6709,7 @@ const App = (() => {
       if (!sys) return;
       const manual = !!Render.CONTINUE_LABEL[st.phase];
       if (manual && !app.ui.autoplay) return; /* wait for the Continue button */
-      const ms = (Engine.TRICK_DONE_PHASES.includes(st.phase) || manual) ? d.trick : d.sys;
+      const ms = Engine.TRICK_DONE_PHASES.includes(st.phase) ? d.won : manual ? d.trick : d.sys;
       later(ms, () => act(sys));
     }
     draw(ev);
@@ -7614,7 +7618,7 @@ const App = (() => {
   /* The wait before the next step, as in a game: a bot's move, a trick or hand that has ended, or a system step. */
   function watchDelay() {
     const d = DELAYS[app.ui.speed], st = app.state, sys = Engine.systemAction(st);
-    return Math.max(40, sys ? (Engine.TRICK_DONE_PHASES.includes(st.phase) || Render.CONTINUE_LABEL[st.phase] ? d.trick : d.sys) : d.ai);
+    return Math.max(40, sys ? (Engine.TRICK_DONE_PHASES.includes(st.phase) ? d.won : Render.CONTINUE_LABEL[st.phase] ? d.trick : d.sys) : d.ai);
   }
   /* The viewer's controls replace every game button. Your seat shows as it was played: the AI's, in an assisted game. */
   function watchUI() {
