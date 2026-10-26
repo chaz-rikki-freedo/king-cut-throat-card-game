@@ -950,7 +950,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '3bbdab7', date: '2026-10-26' });
+const BUILD = Object.freeze({ commit: '55b0710', date: '2026-10-26' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3885,7 +3885,7 @@ const Render = (() => {
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
     if (!sorted.length) {
-      const keep = (Engine.PLAY_PHASES.includes(ph) || Engine.TRICK_DONE_PHASES.includes(ph)) && !(v.showdown && v.showdown.active && !v.showdown.participants.includes(you));
+      const keep = (ph === P.HAND_START || Engine.PLAY_PHASES.includes(ph) || Engine.TRICK_DONE_PHASES.includes(ph)) && !(v.showdown && v.showdown.active && !v.showdown.participants.includes(you));
       return keep ? '<div class="hand" id="hand"></div>' : '<div class="hand"></div>';
     }
     const cards = sorted.map(id => {
@@ -4164,8 +4164,9 @@ const Fx = (() => {
     const tr = q('#center .trick');
     const kt = tr && q('.slot.win', tr) ? keep(tr) : null;
     if (kt && last) { kt.hand = last.handNumber; kt.sd = !!(last.showdown && last.showdown.active); }
+    const hv = q('#info .cell.hand .val');
     out = { trick: kt, kpile: keep(q('#center .kpile')), outpile: keep(q('#center .outpile')),
-      hand: qa('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })) };
+      hand: qa('#hand .card[data-card]').map(c => ({ id: c.dataset.card, k: keep(c) })), label: hv ? hv.innerHTML : null };
     handAt = new Map(out.hand.flatMap(x => x.k ? [[x.id, x.k.r]] : []));
   }
   function place(k) {
@@ -4244,6 +4245,13 @@ const Fx = (() => {
       let n = +val.dataset.actual; for (const x of pending.values()) if (x.kind === 'out') n -= x.n;
       val.textContent = String(Math.max(0, n));
     }
+    const hv = q('#info .cell.hand .val');
+    if (hv) {
+      if (hv.dataset.actual == null) hv.dataset.actual = hv.innerHTML;
+      const held = [...pending.values()].find(x => x.label != null && !x.fallback);
+      const html = held ? held.label : hv.dataset.actual;
+      if (hv.innerHTML !== html) hv.innerHTML = html;
+    }
     for (const p of [0, 1, 2]) {
       const on = qa('#seat' + p + ' .tpips i.on'); on.forEach(e => e.classList.remove('wait'));
       let hold = 0; for (const x of pending.values()) if (x.kind === 'pip' && x.p === p) hold++;
@@ -4277,7 +4285,7 @@ const Fx = (() => {
         const g = place(o.trick), w = q('.slot.win', g), p = w ? +(w.dataset.seat || -1) : -1;
         const to = p >= 0 && (q('#seat' + p + ' .tpips') || q('#seat' + p));
         if (to) {
-          pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150 });
+          pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150, label: o.label });
           done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
         } else g.remove();
       }
