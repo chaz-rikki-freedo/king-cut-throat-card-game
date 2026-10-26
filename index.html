@@ -6631,14 +6631,14 @@ const App = (() => {
     if (app.timer) clearTimeout(app.timer);
     app.timer = null; app.timerFn = null;
   }
-  /* A timed step waits its delay, then for the table's motion to end (and a held redraw to show): every motion
-     completes before the next step shows. Skip goes at once. */
+  /* A timed step waits its delay, then for the table's motion to end (and a held redraw to show), and for a move's
+     second line in the Latest cell: every motion completes before the next step shows. Skip goes at once. */
   function later(ms, fn) {
     clearTimer();
     const version = app.state.version;
     const done = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
     app.timerFn = done;
-    const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
+    const tick = () => { const w = heldDraw ? 50 : Math.max(Fx.busyFor(), latestBusy()); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
     app.timer = setTimeout(tick, ms);
   }
   /* Skip: in a live game, while the two bots play their Showdown with you as the mediator (its lead is set), one
@@ -6973,7 +6973,7 @@ const App = (() => {
      One move can add several lines at once (an accept and the kitty card it moves; the last card, the trick's winner
      and a King point). They show together, at most 2, so the first is not gone before it can be read: a card played
      is left out when the same move adds more (the card is on the table). */
-  let falling = null, nextUp = 0;
+  let falling = null, nextUp = 0, nextUntil = 0;
   /* burst: the lines that the current move added, as [html, classes]. It closes after the move (a microtask). */
   let burst = [], burstOpen = false;
   function noteBurst(li) {
@@ -7026,18 +7026,24 @@ const App = (() => {
     return short === raw ? li.innerHTML : logHTML(Render.youText(short), li.className);
   }
   function showLatest(still, note) {
-    clearTimeout(nextUp);
+    clearTimeout(nextUp); nextUntil = 0;
     let lines = note ? [note] : [];
     if (!note && burstOpen && burst.length) lines = burstLines().map(latestHTML);
     else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
-    /* One line at a time on a phone: a move's second line drops in after a pause, unless a newer line comes first. */
+    /* One line at a time on a phone: a move's second line drops in after a pause, unless a newer line comes first
+       (your move: a bot's waits for it). */
     if (lines.length > 1 && oneLine()) {
       const next = lines[1];
-      nextUp = setTimeout(() => dropLatest(next, false), { slow: 1600, normal: 1200 }[app.ui.speed] || 800);
+      const pause = { slow: 1600, normal: 1200 }[app.ui.speed] || 800;
+      nextUp = setTimeout(() => dropLatest(next, false), pause);
+      /* The game waits for it (latestBusy): a bot's next move would replace it before it shows. */
+      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0);
       lines = [lines[0]];
     }
     dropLatest(lines.join('</li><li>'), still);
   }
+  /* The time until a move's second line has dropped into the Latest cell (ms); 0 when none waits. */
+  function latestBusy() { return nextUntil && !skipping() ? Math.max(0, nextUntil - performance.now()) : 0; }
   function dropLatest(html, still) {
     const cell = $('latestCell'), line = $('latestLine');
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
