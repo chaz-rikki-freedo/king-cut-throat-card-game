@@ -946,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '69cc445', date: '2026-10-25' });
+const BUILD = Object.freeze({ commit: '8b445d3', date: '2026-10-25' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4407,14 +4407,15 @@ const Fx = (() => {
     const card = q('#center .kpile .card.tuck'), t = ms();
     if (!card) return;
     if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
-    const e = now - tuckStart.t0, dur = t * 1.6;
+    const e = now - tuckStart.t0, move = t * 1.6, dur = move + t, f = move / dur;
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
     const cards = qa('.card', card.parentElement), w = card.offsetWidth;
     const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
     startAt(card.animate([
       { transform: from, zIndex: 5, offset: 0, easing: 'ease-in-out' },
-      { transform: out, zIndex: 5, offset: 0.5 },
-      { transform: out, zIndex: 0, offset: 0.55, easing: 'ease-in-out' },
+      { transform: out, zIndex: 5, offset: 0.5 * f },
+      { transform: out, zIndex: 0, offset: 0.55 * f, easing: 'ease-in-out' },
+      { transform: 'none', zIndex: 0, offset: f },
       { transform: 'none', zIndex: 0, offset: 1 }], { duration: dur }), tuckStart.t0, now);
   }
   function dealHand(v, now) {
@@ -5296,7 +5297,7 @@ const App = (() => {
     const version = app.state.version;
     const done = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
     app.timerFn = done;
-    const tick = () => { const w = heldDraw ? 50 : Fx.busyFor(); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
+    const tick = () => { const w = heldDraw ? 50 : Math.max(Fx.busyFor(), latestBusy()); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
     app.timer = setTimeout(tick, ms);
   }
   const SKIP_PHASES = [P.SHOWDOWN_PLAY, P.SHOWDOWN_TRICK_DONE];
@@ -5550,7 +5551,7 @@ const App = (() => {
     ol.scrollTop = keep;
     showLatest(true);
   }
-  let falling = null, nextUp = 0;
+  let falling = null, nextUp = 0, nextUntil = 0;
   let burst = [], burstOpen = false;
   function noteBurst(li) {
     if (!burstOpen) { burst = []; burstOpen = true; queueMicrotask(() => { burstOpen = false; }); }
@@ -5597,17 +5598,20 @@ const App = (() => {
     return short === raw ? li.innerHTML : logHTML(Render.youText(short), li.className);
   }
   function showLatest(still, note) {
-    clearTimeout(nextUp);
+    clearTimeout(nextUp); nextUntil = 0;
     let lines = note ? [note] : [];
     if (!note && burstOpen && burst.length) lines = burstLines().map(latestHTML);
     else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
     if (lines.length > 1 && oneLine()) {
       const next = lines[1];
-      nextUp = setTimeout(() => dropLatest(next, false), { slow: 1600, normal: 1200 }[app.ui.speed] || 800);
+      const pause = { slow: 1600, normal: 1200 }[app.ui.speed] || 800;
+      nextUp = setTimeout(() => dropLatest(next, false), pause);
+      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0);
       lines = [lines[0]];
     }
     dropLatest(lines.join('</li><li>'), still);
   }
+  function latestBusy() { return nextUntil && !skipping() ? Math.max(0, nextUntil - performance.now()) : 0; }
   function dropLatest(html, still) {
     const cell = $('latestCell'), line = $('latestLine');
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
