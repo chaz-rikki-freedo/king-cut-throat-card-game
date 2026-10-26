@@ -6640,13 +6640,14 @@ const App = (() => {
     app.timer = null; app.timerFn = null;
   }
   /* A timed step waits its delay, then for the table's motion to end (and a held redraw to show), and for a move's
-     second line in the Latest cell: every motion completes before the next step shows. Skip goes at once. */
-  function later(ms, fn) {
+     second line in the Latest cell (not when the step adds no line there: quiet): every motion completes before the
+     next step shows. Skip goes at once. */
+  function later(ms, fn, quiet = false) {
     clearTimer();
     const version = app.state.version;
     const done = () => { app.timer = null; app.timerFn = null; if (app.state.version === version) fn(); };
     app.timerFn = done;
-    const tick = () => { const w = heldDraw ? 50 : Math.max(Fx.busyFor(), latestBusy()); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
+    const tick = () => { const w = heldDraw ? 50 : Math.max(Fx.busyFor(), quiet ? 0 : latestBusy()); if (w > 0) app.timer = setTimeout(tick, w + 16); else done(); };
     app.timer = setTimeout(tick, ms);
   }
   /* Skip: in a live game, while the two bots play their Showdown with you as the mediator (its lead is set), one
@@ -6709,8 +6710,10 @@ const App = (() => {
       if (!sys) return;
       const manual = !!Render.CONTINUE_LABEL[st.phase];
       if (manual && !app.ui.autoplay) return; /* wait for the Continue button */
-      const ms = Engine.TRICK_DONE_PHASES.includes(st.phase) ? d.won : manual ? d.trick : d.sys;
-      later(ms, () => act(sys));
+      const won = Engine.TRICK_DONE_PHASES.includes(st.phase);
+      /* A trick's sweep adds no line to the Latest cell (only the next trick's heading), so it does not wait for the
+         trick's second line (a King point): the next move does. The last trick's does: the hand's result follows. */
+      later(won ? d.won : manual ? d.trick : d.sys, () => act(sys), won && st.trickNumber < st.totalTricks);
     }
     draw(ev);
   }
