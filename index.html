@@ -721,7 +721,8 @@ body.set-open{overflow:hidden}
 .center > .pile-act{position:absolute;bottom:0.625rem;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 /* Your move in a few words: one spot in every phase, just above the action buttons (or where they would be). */
 .center > .yourmove{position:absolute;bottom:3.4375rem;left:50%;transform:translateX(-50%);z-index:9;font-size:0.9375rem;font-weight:700;line-height:1.125rem;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 0.1875rem rgba(0,0,0,.6)}
-.center > .yourmove.wait{visibility:hidden}
+.center > .yourmove.wait,.center > .pile-act.wait,.tag.turn.wait{visibility:hidden}
+.seat.turn.wait,.me.turn.wait{border-color:transparent;box-shadow:none}
 .pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
 /* One button per seat (the mediator's pick): West's on the left, East's on the right, as the seats sit. */
 .center > .pile-act.seats{flex-direction:row}
@@ -4854,7 +4855,12 @@ const Render = (() => {
       if (discardNeed(v, you)) mode = 'select';
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
-    if (!sorted.length) return '<div class="hand"></div>';
+    /* Your last card played: the hand keeps its room (Fit, by #hand) until the hand's result, so your seat does not
+       shrink under the card while it goes. A Showdown's mediator holds no cards: no room. */
+    if (!sorted.length) {
+      const keep = (Engine.PLAY_PHASES.includes(ph) || Engine.TRICK_DONE_PHASES.includes(ph)) && !(v.showdown && v.showdown.active && !v.showdown.participants.includes(you));
+      return keep ? '<div class="hand" id="hand"></div>' : '<div class="hand"></div>';
+    }
     const cards = sorted.map(id => {
       const isNew = v.received.includes(id) && ph === P.EXCHANGE;
       if (mode === 'select') return cardHTML(id, v.trump, { button: true, cls: ['selectable'].concat(ui.selected.has(id) ? ['selected'] : []), isNew });
@@ -4981,6 +4987,9 @@ const Render = (() => {
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
       html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
     }
+    /* No cells yet (before the first deal): an unseen one keeps the row's height, so the table does not move down
+       when the deal fills it. */
+    if (!before && !html) before = '<div class="cell" aria-hidden="true" style="visibility:hidden"><span class="lab">&nbsp;</span><span class="val">&nbsp;</span></div>';
     return [before, html];
   }
 
@@ -5173,7 +5182,7 @@ const Fx = (() => {
   let handAt = null;
   /** @type {Record<string, DOMRect>} */
   const slotFrom = {};
-  let moveTimer = 0; const riseTimer = {};
+  let moveTimer = 0, cueKey = ''; const riseTimer = {};
   let tuckStart = { hand: -1, t0: 0 };
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
@@ -5639,33 +5648,42 @@ const Fx = (() => {
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
     refreshCounts();
-    /* Last, once every motion has started. Your move's label waits until the table is still (a trick sweeping to its
-       winner, a card landing, then the circle it fills), so nothing in flight crosses it. */
+    /* Last, once every motion has started. Whose turn it is waits until the table is still (a deal, a trick sweeping to
+       its winner, a card landing, then the circle it fills): your move's label, the turn's seat and tag, and the
+       buttons in the middle. Nothing in flight crosses them, and no one is asked to move before the cards have come.
+       Once shown, they stay for that turn (cueKey): another player's discard in the same step does not hide them. */
     clearTimeout(moveTimer);
-    const mv = q('#center .yourmove'), still = () => Math.max(busyFor(), ...[...pending.values()].map(x => x.until - performance.now() + 160));
-    if (mv && still() > 0) {
-      mv.classList.add('wait');
-      const show = () => { const w = still(); if (w > 0) moveTimer = setTimeout(show, w + 16); else mv.classList.remove('wait'); };
+    for (const e of qa('.table .seat.wait, .table .me.wait')) e.classList.remove('wait');
+    const cues = [q('#center .yourmove'), q('#center .pile-act'), ...qa('.table .seat.turn, .table .me.turn'), ...qa('.table .tag.turn')].filter(e => !!e);
+    const key = [v.handNumber, v.phase, v.trickNumber, v.currentPlayer, v.bidTurn, v.discardTurn].join('|');
+    const still = () => busyFor(true);
+    if (cues.length && key !== cueKey && still() > 0) {
+      for (const e of cues) e.classList.add('wait');
+      const show = () => { const w = still(); if (w > 0) moveTimer = setTimeout(show, w + 16); else { for (const e of cues) e.classList.remove('wait'); cueKey = key; } };
       show();
-    }
+    } else if (cues.length) cueKey = key;
   }
   /* The time until the table's motion ends (ms): the longest running or waiting animation on the table or in the
-     effects layer. The controller waits for it before the next step shows. An endless animation does not count. */
-  function busyFor() {
+     effects layer. The controller waits for it before the next step shows. An endless animation does not count.
+     cards: only what moves, not a score's flash (the turn cues wait for that much). */
+  function busyFor(cards = false) {
     if (!ms()) return 0;
     let w = 0;
     for (const a of document.getAnimations()) {
       const el = a.effect && /** @type {KeyframeEffect} */ (a.effect).target;
-      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table')) continue;
+      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))) continue;
       const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
       if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
     }
+    /* A count or trick circle still to fill when its cards land, and its fill (not a fallback's long wait). */
+    const t = performance.now();
+    for (const x of pending.values()) if (!x.fallback) w = Math.max(w, x.until - t + 160);
     return Math.min(w, 4000);
   }
   /* A new game, or the empty table: nothing in flight, nothing remembered. */
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
-    clearTimeout(moveTimer); for (const p in riseTimer) { clearTimeout(riseTimer[p]); delete riseTimer[p]; } qa('.table > .seat.rise').forEach(s => s.classList.remove('rise'));
+    clearTimeout(moveTimer); cueKey = ''; for (const p in riseTimer) { clearTimeout(riseTimer[p]); delete riseTimer[p]; } qa('.table > .seat.rise').forEach(s => s.classList.remove('rise'));
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
