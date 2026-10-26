@@ -5654,7 +5654,8 @@ const Fx = (() => {
        Once shown, they stay for that turn (cueKey): another player's discard in the same step does not hide them. */
     clearTimeout(moveTimer);
     for (const e of qa('.table .seat.wait, .table .me.wait')) e.classList.remove('wait');
-    const cues = [q('#center .yourmove'), q('#center .pile-act'), ...qa('.table .seat.turn, .table .me.turn'), ...qa('.table .tag.turn')].filter(e => !!e);
+    /* The replay viewer's controls (in the middle's buttons) stay: they are not a turn, and Forward works mid-motion. */
+    const cues = [q('#center .yourmove'), ui.watch ? null : q('#center .pile-act'), ...qa('.table .seat.turn, .table .me.turn'), ...qa('.table .tag.turn')].filter(e => !!e);
     const key = [v.handNumber, v.phase, v.trickNumber, v.currentPlayer, v.bidTurn, v.discardTurn].join('|');
     const still = () => busyFor(true);
     if (cues.length && key !== cueKey && still() > 0) {
