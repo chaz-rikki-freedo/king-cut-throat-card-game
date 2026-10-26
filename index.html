@@ -946,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '8d381be', date: '2026-10-24' });
+const BUILD = Object.freeze({ commit: 'ee487c6', date: '2026-10-25' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4573,8 +4573,14 @@ const App = (() => {
     [west, east].forEach((id, i) => {
       const x = PERSONA_BY_ID[id];
       app.state.players[i + 1].name = x ? x.name : (i ? 'East' : 'West');
-      if (x) document.documentElement.style.setProperty('--name' + (i + 1), x.color);
-      else document.documentElement.style.removeProperty('--name' + (i + 1));
+    });
+    seatColors();
+  }
+  function seatColors() {
+    [1, 2].forEach(p => {
+      const x = app.state && PERSONA_BY_ID[app.ui.personas[p]];
+      if (x) document.documentElement.style.setProperty('--name' + p, x.color);
+      else document.documentElement.style.removeProperty('--name' + p);
     });
   }
   const seedTable = s => RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 }).slice(0, 2);
@@ -5026,6 +5032,7 @@ const App = (() => {
   }
   function setTheme(felt, colors) {
     const t = Theme.apply(felt, colors);
+    seatColors();
     app.ui.felt = t.felt; app.ui.colors = t.colors;
     syncTheme();
     saveSettings();
