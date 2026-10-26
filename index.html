@@ -946,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'ee487c6', date: '2026-10-25' });
+const BUILD = Object.freeze({ commit: '69cc445', date: '2026-10-25' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -7850,7 +7850,7 @@ const SelfTest = (() => {
       try { Replay.decode('KCT2-' + Base64url.encode([2, 1, 8, 255, 255, 255, 255, 255, 255, 255, 127])); } catch (e) { longErr = e instanceof Error ? e.message : String(e); }
       check('a number past 2^53 in a code is refused', /too long/.test(longErr), longErr);
       const big = [], ids = R.ALL_IDS;
-      for (let h = 0; h < 20; h++) {
+      for (let h = 0; h < 25; h++) {
         for (const p of [0, 1, 2]) big.push({ type: 'DISCARD', player: p, cards: ids.slice(p * 3, p * 3 + 3) });
         for (const p of [0, 1, 2]) big.push({ type: 'BID', player: p, accept: false });
         big.push({ type: 'NAME', player: 0, suit: null }, { type: 'NAME', player: 1, suit: null }, { type: 'NAME', player: 2, suit: 'C' });
@@ -7859,16 +7859,16 @@ const SelfTest = (() => {
         big.push({ type: 'SHOWDOWN_DISCARD', player: 0, card: 'AS' }, { type: 'SHOWDOWN_DISCARD', player: 1, card: 'AH' });
         for (let k = 0; k < 10; k++) big.push({ type: 'PLAY', player: k % 2, card: ids[k] });
       }
-      const worst = Object.assign(JSON.parse(JSON.stringify(rec)), { seed: 0xFFFFFFFF, wave: 18, seats: ['zen', 'vex', 'doc'], decisions: big, result: { finished: true, winner: 2, scores: [9, 9, 10], hands: 20 } });
+      const worst = Object.assign(JSON.parse(JSON.stringify(rec)), { seed: 0xFFFFFFFF, wave: 18, seats: ['zen', 'vex', 'doc'], decisions: big, result: { finished: true, winner: 2, scores: [9, 9, 10], hands: 25 } });
       const wc = Replay.encode(worst);
-      check('20 showdown hands fit in 3000 chars', big.length === 860 && wc.length <= 3000, wc.length + ' chars');
-      eq('20 showdown hands decode the same', Replay.decode(wc), worst);
+      check('25 showdown hands fit in 3500 chars', big.length === 1075 && wc.length <= 3500, wc.length + ' chars');
+      eq('25 showdown hands decode the same', Replay.decode(wc), worst);
       const full = JSON.stringify(AI.tuneOf(AI.config(AI.DEFAULT_CONFIG, { thinking: { worlds: 137, playoutSkill: 0.55 }, style: { courage: 'cautious', leadPick: 'impulsive' } })));
       const am = { 'ai.tune0': full, 'ai.tune1': full, 'ai.tune2': full };
       eq('a full tune sets every field', Object.keys(JSON.parse(full)).sort(), ['courage', 'credulity', 'feint', 'kingHabit', 'knowledge', 'leadHabit', 'leadPick', 'playoutSkill', 'realTable', 'slack', 'voidHabit', 'wariness', 'winHabit', 'worlds']);
       const worstAll = Object.assign({}, worst, { meta: am });
       const wa = Replay.encode(worstAll);
-      check('20 showdown hands with three full tunes in META fit in 4000 chars', wa.length <= 4000, wa.length + ' chars');
+      check('25 showdown hands with three full tunes in META fit in 5000 chars', wa.length <= 5000, wa.length + ' chars');
       eq('full AI META decodes the same', Replay.decode(wa).meta, am);
     });
     safeRun('backup', () => {
