@@ -5575,6 +5575,8 @@ const Fx = (() => {
     for (const c of cards) c.base = getComputedStyle(c.card).transform;
     for (const c of cards) if (c.isWin) c.slot.classList.add('win');
     for (const c of cards) { c.lifted = getComputedStyle(c.card).transform; c.at = center(c.card); c.w = c.card.offsetWidth || 1; if (c.seat) c.seatAt = center(c.seat); }
+    /* When the last card lands: the winner's lift waits for it, whichever card won. */
+    const landed = Math.max(...cards.map(c => slotStart[c.id])) + t;
     for (const { card, p, id, seat, isWin, base, lifted, at: [cx, cy], seatAt, w: cw } of cards) {
       const e = now - slotStart[id], rest = base === 'none' ? '' : base;
       /* Your card leaves your hand from where it was, at the hand's size; a bot's card comes from its seat. */
@@ -5589,7 +5591,7 @@ const Fx = (() => {
       }
       if (isWin) {
         if (winStart[p] == null) winStart[p] = now;
-        const delay = Math.max(0, slotStart[id] + t - winStart[p]), w = now - winStart[p];
+        const delay = Math.max(0, landed - winStart[p]), w = now - winStart[p];
         if (t && w < delay + t) startAt(card.animate([{ transform: rest || 'none' }, { transform: lifted }], { duration: t, delay, easing: 'ease-out' }), winStart[p], now);
       }
     }
