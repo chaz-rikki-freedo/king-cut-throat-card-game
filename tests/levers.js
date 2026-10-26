@@ -5,7 +5,9 @@
    The page is a patched copy of index.html: AI.handValue and the round-1 bid value take an override that is set only
    while the test seat decides, so the "handvalue" set can give the test seat the fitted weights
    (data/handvalue-fit.json) while the opponents keep the current ones. The repository file is not changed.
-   Usage: node levers.js <dials|ladder|handvalue> [games=300] [workers=4] */
+   The "courage" set gives the test seat a raw bid courage bias (the win chance added to a buy when a bot plans its bid;
+   COURAGE in index.html), in every seat or only as the dealer's left, and also prints the test seat's buy rate.
+   Usage: node levers.js <dials|ladder|handvalue|courage> [games=300] [workers=4] */
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { launch, openPage, run, ROOT } = require('./lib/browser');
@@ -35,6 +37,11 @@ const SETS = {
     shark('10 hunches, knowledge off', { worlds: 10 }, OFF),
     { name: 'club (baseline)', test: { tier: 'club' } }, { name: 'casual (baseline)', test: { tier: 'casual' } }, { name: 'novice (baseline)', test: { tier: 'novice' } }
   ] },
+  /* Does a Shark buy too often? The courage bias, against two normal Sharks. bias 0 is a normal Shark. */
+  courage: { opp: { tier: 'shark' }, seed: 31, configs: [
+    ...[0.05, 0, -0.025, -0.05, -0.075, -0.1, -0.15].map(b => ({ name: 'shark, bias ' + b + (b ? '' : ' (control)'), test: { tier: 'shark', bias: b } })),
+    { name: "shark, bias -0.1 as dealer's left only", test: { tier: 'shark', bias: -0.1, seatOnly: 1 } }
+  ] },
   /* The fitted weights and the bid thresholds, for planning bots and for rule bidders. */
   handvalue: { runs: [
     { opp: { tier: 'shark' }, seed: 5, configs: [
@@ -54,6 +61,9 @@ function patchedPage() {
   if (!html.includes(hv) || !html.includes(r1)) throw new Error('index.html changed: the patch points are gone');
   html = html.replace(hv, hv + ' if (window.__HV) return window.__HV(hand, trump);');
   html = html.replace(r1, r1 + ' if (window.__HV) return handValue(hand, s) - 0.85 * window.__TV[R.trumpRank(flipped, s)];');
+  const cb = 'const bias = COURAGE[style.courage].bias;';
+  if (html.split(cb).length !== 3) throw new Error('index.html changed: the courage patch points are gone');
+  html = html.split(cb).join('const bias = window.__BIAS != null ? window.__BIAS : COURAGE[style.courage].bias;');
   return html;
 }
 function servePatched(html) {
@@ -83,7 +93,7 @@ const PAGE = `
     const T = job.test, cfgs = [0, 1, 2].map(p => mk(p === job.seat ? T : job.opp));
     const th = T.fitted ? W.toCurrentScale.thresholds : T.thresholdsUp ? Object.fromEntries(Object.entries(BASE).map(([k, v]) => [k, k === 'BID_TEMP' ? v : v + T.thresholdsUp])) : null;
     const s = Engine.createGame(job.seed, ['A', 'B', 'C']);
-    let steps = 0;
+    let steps = 0, turns = 0, buys = 0;
     while (!s.gameOver && steps++ < 8000) {
       const actors = Engine.actors(s);
       let a;
@@ -91,13 +101,15 @@ const PAGE = `
         const p = actors[0], v = buildView(s, p), mine = p === job.seat;
         if (mine && T.fitted) { window.__HV = fittedHV; window.__TV = fittedTV; }
         if (mine && th) Object.assign(AI.BID_THRESHOLDS, th);
+        if (mine && T.bias != null && (T.seatOnly == null || (p - s.dealer + 3) % 3 === T.seatOnly)) window.__BIAS = T.bias;
         try { a = AI.decide(v, cfgs[p]); if (Engine.validate(s, a)) a = AI.fallbackAction(v, cfgs[p]); }
-        finally { window.__HV = null; Object.assign(AI.BID_THRESHOLDS, BASE); }
+        finally { window.__HV = null; window.__BIAS = null; Object.assign(AI.BID_THRESHOLDS, BASE); }
       } else a = Engine.systemAction(s);
+      if (a && a.player === job.seat && (a.type === 'BID' || a.type === 'NAME')) { turns++; if (a.accept || a.suit) buys++; }
       if (!a || !Engine.dispatch(s, a).ok) break;
     }
     const tot = s.scores.reduce((x, y) => x + y, 0);
-    out.push({ name: job.name, done: s.gameOver, win: s.gameOver && s.winner === job.seat, share: tot ? s.scores[job.seat] / tot : 1 / 3 });
+    out.push({ name: job.name, done: s.gameOver, win: s.gameOver && s.winner === job.seat, share: tot ? s.scores[job.seat] / tot : 1 / 3, turns, buys });
   }
   return out;`;
 
@@ -116,7 +128,8 @@ async function measure(browser, url, set, games, workers, fit) {
   return set.configs.map(c => {
     const g = res.filter(x => x.name === c.name && x.done), n = g.length, p = g.filter(x => x.win).length / n;
     return { name: c.name, games: n, unfinished: res.filter(x => x.name === c.name).length - n, winRate: Math.round(1000 * p) / 10,
-      margin95: Math.round(1960 * Math.sqrt(p * (1 - p) / n)) / 10, scoreShare: Math.round(1000 * g.reduce((s, x) => s + x.share, 0) / n) / 10 };
+      margin95: Math.round(1960 * Math.sqrt(p * (1 - p) / n)) / 10, scoreShare: Math.round(1000 * g.reduce((s, x) => s + x.share, 0) / n) / 10,
+      buyRate: Math.round(1000 * g.reduce((s, x) => s + x.buys, 0) / Math.max(1, g.reduce((s, x) => s + x.turns, 0))) / 10 };
   });
 }
 
