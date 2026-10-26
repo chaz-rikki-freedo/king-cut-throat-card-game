@@ -661,6 +661,9 @@ body.set-open{overflow:hidden}
 /* Every tag has one width: a third of a bot seat's tag row (--tag-w, set by Fit), in your row too. */
 .tagbox .tag{margin:0;flex:0 0 var(--tag-w,4.5rem);height:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.625rem;padding:0 0.125rem;overflow:hidden;white-space:nowrap;direction:ltr}
 .seat{position:relative}
+/* A hand's result comes in as one motion: each seat and the middle move to their new place and size (see holdResult). */
+#seat0{view-transition-name:seat0}#seat1{view-transition-name:seat1}#seat2{view-transition-name:seat2}#center{view-transition-name:center}
+::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation-duration:var(--vt,.4s)}
 .me .tagbox{width:auto;min-height:1.25rem;flex:0 1 auto}
 @media (max-width:720px){
   .tagbox .tag{font-size:0.5625rem;letter-spacing:0}
@@ -4992,8 +4995,9 @@ const Render = (() => {
      trick's end), and your empty space, while you still have to play, lies above them all. */
   function advTrickHTML(v, ctx) {
     const done = trickDone(v) || (finalTrick(v) && !v.trick.plays.length);
-    const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
-    const winner = done && v.lastTrick ? v.lastTrick.winner : null;
+    /* swept: the trick's cards have gone to its winner, and the hand's result waits for them (see holdResult). */
+    const plays = v.swept ? [] : done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
+    const winner = done && v.lastTrick && !v.swept ? v.lastTrick.winner : null;
     const tap = !done && explains(v, ctx.ui);
     let html = '<div class="trick">';
     for (const p of [...around(v), v.seat]) {
@@ -5668,7 +5672,7 @@ const Fx = (() => {
     for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
 
-  return Object.freeze({ discardOrder, capture, after, reset, busyFor });
+  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms });
 })();
 
 
@@ -6747,7 +6751,42 @@ const App = (() => {
 
   /* A move made while the table is still moving (yours, during the kitty's split, say) shows once the motion ends;
      the game state is already ahead. Redraws in the meantime wait with it. */
-  let heldDraw = 0, heldEvents = [], drawnVersion = -1;
+  let heldDraw = 0, heldEvents = [], drawnVersion = -1, drawnPhase = '';
+
+  /* The end of a hand or a Showdown: the last trick sweeps to its winner on the table as it was, and only then does the
+     result show, the table changing to it in one motion (a view transition, where the browser has them). Until then
+     the table draws as the finished trick with its cards gone (swept): resultHold is the state version whose result
+     waits, holdPhase the trick's phase. The scores change with the result: until then the table shows the scores it
+     had (drawnScores), and the score changes wait in holdEvents. */
+  const RESULT_PHASES = /** @type {readonly string[]} */ ([P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.GAME_OVER]);
+  let resultHold = -1, holdPhase = '', holdTimer = 0, drawnScores = /** @type {number[]} */ ([]), holdEvents = /** @type {any[]} */ ([]);
+  /** @param {GameState} st @param {any} ui @returns {boolean} */
+  function holdResult(st, ui) {
+    if (resultHold === st.version) return true;
+    if (!/** @type {readonly string[]} */ (Engine.TRICK_DONE_PHASES).includes(drawnPhase) || !RESULT_PHASES.includes(st.phase) || st.version !== drawnVersion + 1) return false;
+    if (ui.speed === 'instant' || (!watch && skipping()) || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    resultHold = st.version;
+    holdPhase = drawnPhase; holdEvents = [];
+    clearTimeout(holdTimer);
+    const release = () => {
+      if (!app.state || app.state.version !== resultHold) { resultHold = -1; return; }
+      const w = heldDraw ? 50 : Fx.busyFor();
+      if (w > 0) { holdTimer = setTimeout(release, w + 16); return; }
+      resultHold = -1;
+      const show = () => { const e = holdEvents; holdEvents = []; draw(e); }, doc = /** @type {any} */ (document);
+      if (!doc.startViewTransition) { show(); return; }
+      document.documentElement.style.setProperty('--vt', Fx.step() + 'ms');
+      doc.startViewTransition(show);
+    };
+    holdTimer = setTimeout(release, 16);
+    return true;
+  }
+  /* The finished trick, its cards gone to the winner: nothing in the middle, nobody to play. */
+  function heldView(v) {
+    const sd = holdPhase === P.SHOWDOWN_TRICK_DONE;
+    return Object.assign(v, { phase: holdPhase, swept: true, gameOver: false, actors: [], scores: drawnScores.slice(),
+      showdown: sd && v.showdown ? Object.assign({}, v.showdown, { active: true }) : v.showdown });
+  }
   function draw(events) {
     const fresh = !app.state || app.state.version < drawnVersion;   // a new game: no motion
     if (heldDraw && !fresh) { heldEvents.push(...events); return; }
@@ -6756,9 +6795,14 @@ const App = (() => {
       const w = Fx.busyFor();
       if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
     }
-    drawnVersion = app.state ? app.state.version : -1;
     const ui = watch ? watchUI() : app.ui;
-    const v = buildView(app.state, watch ? watch.seat : HUMAN);
+    if (fresh) resultHold = -1;
+    const hold = !fresh && holdResult(app.state, ui);
+    drawnVersion = app.state ? app.state.version : -1;
+    drawnPhase = app.state ? app.state.phase : '';
+    const built = buildView(app.state, watch ? watch.seat : HUMAN), v = hold ? heldView(built) : built;
+    if (hold) { if (!holdEvents.length) holdEvents = events.filter(e => e.type === 'SCORE_CHANGED'); events = events.filter(e => e.type !== 'SCORE_CHANGED'); }
+    else drawnScores = v.scores.slice();
     v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
