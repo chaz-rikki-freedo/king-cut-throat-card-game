@@ -11,6 +11,7 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 - **Seat order matters more than skill gaps suggest.** The gift always goes to the caller's left, so the same two bots make a wave of 35% or 18% depending on which side each one sits (Waves 11 and 15).
 - **Calling is cheap.** A failed call costs no points. The gift is the only price, so the bid is mostly a decision about who gets the gift.
 - **The seat decides whether a buy pays, not the hand value.** At the same hand value, a buy scores no more than a pass. From second seat or as dealer, a buy of a good hand gains about half a point; from the dealer's left, it gains nothing (see **Buying by seat**).
+- **The bots don't buy too often.** A more timid Shark wins less, and a bolder one no more. Only some weak, bold personalities overbuy, in spots that fit their profiles (see **Do the bots buy too often?**).
 - **The discard holds more than the hand value counts.** In replays, strong bots overrule it. They keep trump length over lone Kings, and keep a backup suit that shares a Jack with their best suit.
 
 ## Where the choices are
@@ -173,7 +174,61 @@ Round 2 is rarely a decision. At hand values of 3 and up, 98% to 100% of round 2
 - **So the bid thresholds can't show skill.** They ignore the seat, which is why raising them changed no measured strength.
 - **The free buy is part of the design.** A penalty for a failed buy would blunt the seat trade-off, which is the decision's real content.
 
-Not measured: whether the bots buy too often. The bots chose when to buy, so buyers and passers at a hand value are not random groups; a Shark that passes a 4-value hand may have seen a weakness the hand value misses. The seat gap (about 0.5 points) is much larger than the buy-or-pass gap at any hand value, so the seat finding holds. Round 2 values use the player's best suit that is not blocked, not always the suit named.
+Whether the bots buy too often is measured in the next section. The bots chose when to buy, so buyers and passers at a hand value are not random groups; a Shark that passes a 4-value hand may have seen a weakness the hand value misses. The seat gap (about 0.5 points) is much larger than the buy-or-pass gap at any hand value, so the seat finding holds. Round 2 values use the player's best suit that is not blocked, not always the suit named.
+
+## Do the bots buy too often? (2026-10-26)
+
+*Measurement.* Two tests, both against the same rule set out first: the bots overbuy if passing beats buying in some spot **and** a more timid bot wins more games.
+
+### One hand at a time: the other choice
+
+From `tests/overbuy.js`: 1,500 hands at a table of three Sharks, and 1,500 at tables of three different personalities. Each hand is the first of a new game (scores 0–0–0). For every buy or pass, the hand is rebuilt from that turn, the other choice is played, and the same bots finish it. The bots are deterministic, so the two versions differ only by that choice. *Net gain* is the player's points minus the mean of the opponents', for the choice made over the other. Margins are 95%.
+
+| Buys | Sharks | Personalities |
+|---|---|---|
+| All | +1.11 ±0.09 | +0.72 ±0.09 |
+| Round 1, dealer's left | +0.36 ±0.20 | **−0.09 ±0.15** |
+| Round 1, second seat | +0.86 ±0.18 | +0.55 ±0.17 |
+| Round 1, dealer | +1.50 ±0.15 | +1.41 ±0.18 |
+| Round 2 | +1.60 ±0.18 | +1.47 ±0.19 |
+| Hand value under 2 | +0.18 ±0.57 (11 buys) | **−0.36 ±0.20** (64 buys) |
+| Hand value 2–3 | +0.25 ±0.23 | −0.01 ±0.23 |
+
+| Passes | Sharks | Personalities |
+|---|---|---|
+| All | +0.39 ±0.05 | +0.27 ±0.06 |
+| As dealer | +0.02 ±0.14 | −0.14 ±0.17 |
+
+- **Sharks don't overbuy.** Their buys beat passing in every seat and at every hand value.
+- **Some personalities overbuy, in two spots only:** round 1 from the dealer's left, and very weak hands. The bots with the lowest gain from their buys are Gus (+0.23 ±0.23), Zen, Tex and Kit; Doc, Viv and Mei gain the most (+1.26 to +1.34). Those are weak, bold or Real table bots, and the overbuying fits their profiles.
+- **A pass as dealer is break-even.** It hints that dealers pass a little too often, but within the margin.
+
+### Whole games: a more timid Shark
+
+From `node tests/levers.js courage 300 4`: one Shark with a changed bid courage bias (the win chance added to a buy when it plans its bid) against two normal Sharks, 300 games per setting, the same deals and seats for each.
+
+| Bias | Buy rate | Win rate | Score share |
+|---|---|---|---|
+| +0.05 | 57.5% | 36.7% ±5.5 | 33.7% |
+| 0 (a normal Shark) | 41.7% | 36.0% ±5.4 | 33.4% |
+| −0.025 | 36.3% | 34.0% ±5.4 | 32.7% |
+| −0.05 | 30.0% | 29.0% ±5.1 | 31.2% |
+| −0.075 | 25.0% | 25.7% ±4.9 | 30.2% |
+| −0.10 | 20.1% | 23.7% ±4.8 | 28.5% |
+| −0.15 | 11.6% | 20.3% ±4.6 | 25.9% |
+| −0.10, dealer's left only | 33.4% | 35.0% ±5.4 | 32.3% |
+
+- **A more timid Shark loses, step by step.** Every cut in courage lowers both the win rate and the score share.
+- **A bolder Shark is no worse.** At +0.05 it buys 16 points more often and wins the same, within the margin. Past the normal setting, extra buys cost about nothing.
+- **Timid only as the dealer's left changes nothing measurable.** The weak spot in the single-hand test is too small to show in whole games.
+
+### Verdict
+
+**The bots don't buy too often.** The rule's second half fails: a more timid Shark wins less, not more. The normal Shark sits at or near the best courage, and the curve is flat above it, so buying a little too much is cheap and buying too little is expensive.
+
+The personalities that overbuy in the single-hand test (Gus, Zen, Tex, Kit) are the weak and bold ones, as their profiles say. That is part of what makes them easier, so it stays.
+
+Not measured: hands late in a game, where **Watches score** changes how the bots buy. `tests/overbuy.js` plays only the first hand of each game.
 
 ## Kingmaking
 
