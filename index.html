@@ -5743,8 +5743,16 @@ const App = (() => {
     [west, east].forEach((id, i) => {
       const x = PERSONA_BY_ID[id];
       app.state.players[i + 1].name = x ? x.name : (i ? 'East' : 'West');
-      if (x) document.documentElement.style.setProperty('--name' + (i + 1), x.color);
-      else document.documentElement.style.removeProperty('--name' + (i + 1));
+    });
+    seatColors();
+  }
+  /* Sets --name1 and --name2 to the seated bots' colors, so the result table and the log match the seats.
+     Theme.apply clears them, so a theme change sets them again. */
+  function seatColors() {
+    [1, 2].forEach(p => {
+      const x = app.state && PERSONA_BY_ID[app.ui.personas[p]];
+      if (x) document.documentElement.style.setProperty('--name' + p, x.color);
+      else document.documentElement.style.removeProperty('--name' + p);
     });
   }
 
@@ -6324,6 +6332,7 @@ const App = (() => {
   }
   function setTheme(felt, colors) {
     const t = Theme.apply(felt, colors);
+    seatColors();
     app.ui.felt = t.felt; app.ui.colors = t.colors;
     syncTheme();
     saveSettings();

@@ -71,6 +71,18 @@ function expect(name, ok, detail) {
     `);
     expect('and leaves no theme token on the root element', inline.length === 0, inline);
 
+    console.log('A theme change in a game with seated bots');
+    const seated = await step(`
+      click('[data-action="toggle-settings"]'); A.newGame(4242, 1); speed('fast');
+      await drive(() => app.state.handNumber >= 1 && KCT.Engine.actors(app.state).includes(0), 60000);
+      const want = [1, 2].map(p => KCT.PERSONAS.find(x => x.id === app.ui.personas[p]).color);
+      click('[data-action="toggle-settings"]'); click('#setTabGame'); await sleep(20);
+      q('#setFelt input[value="winter"]').click(); q('#setColorBlind').click();
+      const r = document.documentElement.style;
+      return { want, got: [r.getPropertyValue('--name1'), r.getPropertyValue('--name2')] };
+    `);
+    expect('keeps the seated bots\' colors on --name1 and --name2', JSON.stringify(seated.got) === JSON.stringify(seated.want), seated);
+
     console.log('An unknown saved theme');
     await step(`const s = JSON.parse(localStorage.getItem('kct.settings')); s.felt = 'mars'; s.colors = 'neon'; localStorage.setItem('kct.settings', JSON.stringify(s)); return 1;`);
     await page.reload();
