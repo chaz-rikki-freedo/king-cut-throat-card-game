@@ -655,7 +655,9 @@ body.set-open{overflow:hidden}
 .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
 .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .info .latest{min-width:0}
-@media (min-width:721px){.info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}}
+@media (min-width:721px){.info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  /* Room for its two lines at all times: a move with one line, then one with two, does not move the table. */
+  .info .latest{min-height:3.25rem}}
 .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.25rem;width:100%;min-height:2.75rem}
 .seat-east .tagbox{direction:rtl}
 /* Every tag has one width: a third of a bot seat's tag row (--tag-w, set by Fit), in your row too. */
@@ -6736,7 +6738,7 @@ const App = (() => {
       const won = Engine.TRICK_DONE_PHASES.includes(st.phase);
       /* A trick's sweep adds no line to the Latest cell (only the next trick's heading), so it does not wait for the
          trick's second line (a King point): the next move does. The last trick's does: the hand's result follows. */
-      later(won ? d.won : manual ? d.trick : d.sys, () => act(sys), won && st.trickNumber < st.totalTricks);
+      later(won ? d.won : manual ? d.trick : d.sys, () => manual ? continueFrom(sys) : act(sys), won && st.trickNumber < st.totalTricks);
     }
     draw(ev);
   }
@@ -6777,7 +6779,7 @@ const App = (() => {
      the table draws as the finished trick with its cards gone (swept): resultHold is the state version whose result
      waits, holdPhase the trick's phase. The scores change with the result: until then the table shows the scores it
      had (drawnScores), and the score changes wait in holdEvents. */
-  const RESULT_PHASES = /** @type {readonly string[]} */ ([P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.GAME_OVER]);
+  const RESULT_PHASES = /** @type {readonly string[]} */ ([P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.GAME_OVER, P.ABANDONED, P.JOKER_VOID]);
   let resultHold = -1, holdPhase = '', holdTimer = 0, drawnScores = /** @type {number[]} */ ([]), holdEvents = /** @type {any[]} */ ([]);
   /** @param {GameState} st @param {any} ui @returns {boolean} */
   function holdResult(st, ui) {
@@ -6792,13 +6794,24 @@ const App = (() => {
       const w = heldDraw ? 50 : Fx.busyFor();
       if (w > 0) { holdTimer = setTimeout(release, w + 16); return; }
       resultHold = -1;
-      const show = () => { const e = holdEvents; holdEvents = []; draw(e); }, doc = /** @type {any} */ (document);
-      if (!doc.startViewTransition) { show(); return; }
-      document.documentElement.style.setProperty('--vt', Fx.step() + 'ms');
-      doc.startViewTransition(show);
+      morph(() => { const e = holdEvents; holdEvents = []; draw(e); });
     };
     holdTimer = setTimeout(release, 16);
     return true;
+  }
+  /* Runs a step that changes the table's layout (a result coming or going) as one motion: each seat and the middle
+     move to their new place and size over a motion step, where the browser has view transitions. Else at once. */
+  function morph(fn) {
+    const doc = /** @type {any} */ (document);
+    if (!doc.startViewTransition || !Fx.step()) { fn(); return; }
+    document.documentElement.style.setProperty('--vt', Fx.step() + 'ms');
+    doc.startViewTransition(fn);
+  }
+  /* Continue from a result (Next hand, Deal the Showdown): the table changes back to play as one motion. A second
+     press before it runs does nothing (the state has moved on). */
+  function continueFrom(sys) {
+    const v0 = app.state.version, go = () => { if (app.state.version === v0) act(sys); };
+    if (RESULT_PHASES.includes(app.state.phase)) morph(go); else go();
   }
   /* The finished trick, its cards gone to the winner: nothing in the middle, nobody to play. */
   function heldView(v) {
@@ -6811,7 +6824,7 @@ const App = (() => {
     if (heldDraw && !fresh) { heldEvents.push(...events); return; }
     if (heldDraw) { clearTimeout(heldDraw); heldDraw = 0; heldEvents = []; }
     if (!fresh && app.state.version > drawnVersion && drawnVersion >= 0) {
-      const w = Fx.busyFor();
+      const w = Fx.busyFor(true);   // cards in motion, not a score's flash
       if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
     }
     const ui = watch ? watchUI() : app.ui;
@@ -8274,7 +8287,7 @@ const App = (() => {
       case 'bid-pass': act({ type: 'BID', player: HUMAN, accept: false }); break;
       case 'name-suit': act({ type: 'NAME', player: HUMAN, suit: el.getAttribute('data-suit') }); break;
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
-      case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
+      case 'continue': { const sys = Engine.systemAction(app.state); if (sys) continueFrom(sys); break; }
       case 'skip': skipShowdown(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
