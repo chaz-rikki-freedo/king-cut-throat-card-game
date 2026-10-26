@@ -539,11 +539,14 @@ body.set-open{overflow:hidden}
 .seat .seat-head{flex-wrap:nowrap;align-self:stretch;min-width:0}
 .seat .seat-head .seat-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .info .latest{min-width:0}
-@media (min-width:721px){.info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}}
+@media (min-width:721px){.info .latest .val{white-space:normal;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  .info .latest{min-height:3.25rem}}
 .tagbox{display:flex;flex-wrap:wrap;align-content:flex-start;gap:0.25rem;width:100%;min-height:2.75rem}
 .seat-east .tagbox{direction:rtl}
 .tagbox .tag{margin:0;flex:0 0 var(--tag-w,4.5rem);height:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.625rem;padding:0 0.125rem;overflow:hidden;white-space:nowrap;direction:ltr}
 .seat{position:relative}
+#seat0{view-transition-name:seat0}#seat1{view-transition-name:seat1}#seat2{view-transition-name:seat2}#center{view-transition-name:center}
+::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation-duration:var(--vt,.4s)}
 .me .tagbox{width:auto;min-height:1.25rem;flex:0 1 auto}
 @media (max-width:720px){
   .tagbox .tag{font-size:0.5625rem;letter-spacing:0}
@@ -597,7 +600,8 @@ body.set-open{overflow:hidden}
 .kpile .card .kback{position:absolute;inset:-1px;border-radius:inherit;background:repeating-linear-gradient(45deg,#7a1f2b 0 0.375rem,#93303d 0.375rem 0.75rem);border:0.125rem solid #f5f2e9;z-index:3}
 .center > .pile-act{position:absolute;bottom:0.625rem;left:50%;transform:translateX(-50%);z-index:9;flex-direction:row-reverse}
 .center > .yourmove{position:absolute;bottom:3.4375rem;left:50%;transform:translateX(-50%);z-index:9;font-size:0.9375rem;font-weight:700;line-height:1.125rem;color:var(--ink);white-space:nowrap;pointer-events:none;text-shadow:0 1px 0.1875rem rgba(0,0,0,.6)}
-.center > .yourmove.wait{visibility:hidden}
+.center > .yourmove.wait,.center > .pile-act.wait,.tag.turn.wait{visibility:hidden}
+.seat.turn.wait,.me.turn.wait{border-color:transparent;box-shadow:none}
 .pile-act{display:flex;flex-wrap:nowrap;gap:0.5rem}
 .center > .pile-act.seats{flex-direction:row}
 .center > .pile-act.ends{left:0.5rem;right:0.5rem;transform:none;justify-content:center}
@@ -946,7 +950,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '221b35b', date: '2026-10-26' });
+const BUILD = Object.freeze({ commit: '3bbdab7', date: '2026-10-26' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3880,7 +3884,10 @@ const Render = (() => {
       if (discardNeed(v, you)) mode = 'select';
       else if (Engine.PLAY_PHASES.includes(ph) && v.currentPlayer === you) mode = 'play';
     }
-    if (!sorted.length) return '<div class="hand"></div>';
+    if (!sorted.length) {
+      const keep = (Engine.PLAY_PHASES.includes(ph) || Engine.TRICK_DONE_PHASES.includes(ph)) && !(v.showdown && v.showdown.active && !v.showdown.participants.includes(you));
+      return keep ? '<div class="hand" id="hand"></div>' : '<div class="hand"></div>';
+    }
     const cards = sorted.map(id => {
       const isNew = v.received.includes(id) && ph === P.EXCHANGE;
       if (mode === 'select') return cardHTML(id, v.trump, { button: true, cls: ['selectable'].concat(ui.selected.has(id) ? ['selected'] : []), isNew });
@@ -3981,6 +3988,7 @@ const Render = (() => {
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
       html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
     }
+    if (!before && !html) before = '<div class="cell" aria-hidden="true" style="visibility:hidden"><span class="lab">&nbsp;</span><span class="val">&nbsp;</span></div>';
     return [before, html];
   }
   const explains = (v, ui) => !!ui && !ui.watch && !v.gameOver && !ui.autoplay && isTurn(v, v.seat) && !ui.selected.size;
@@ -3988,8 +3996,8 @@ const Render = (() => {
     (seat === undefined ? '' : ' data-seat="' + seat + '"') + ' aria-label="' + label + '"';
   function advTrickHTML(v, ctx) {
     const done = trickDone(v) || (finalTrick(v) && !v.trick.plays.length);
-    const plays = done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
-    const winner = done && v.lastTrick ? v.lastTrick.winner : null;
+    const plays = v.swept ? [] : done && v.lastTrick ? v.lastTrick.plays : v.trick.plays;
+    const winner = done && v.lastTrick && !v.swept ? v.lastTrick.winner : null;
     const tap = !done && explains(v, ctx.ui);
     let html = '<div class="trick">';
     for (const p of [...around(v), v.seat]) {
@@ -4121,7 +4129,7 @@ const Fx = (() => {
   const layerStart = [], slotStart = {}, winStart = {}, heldBacks = {};
   let handAt = null;
   const slotFrom = {};
-  let moveTimer = 0; const riseTimer = {};
+  let moveTimer = 0, cueKey = ''; const riseTimer = {};
   let tuckStart = { hand: -1, t0: 0 };
   function discardOrder(v) {
     me = v.seat;
@@ -4503,33 +4511,38 @@ const Fx = (() => {
     last = v;
     refreshCounts();
     clearTimeout(moveTimer);
-    const mv = q('#center .yourmove'), still = () => Math.max(busyFor(), ...[...pending.values()].map(x => x.until - performance.now() + 160));
-    if (mv && still() > 0) {
-      mv.classList.add('wait');
-      const show = () => { const w = still(); if (w > 0) moveTimer = setTimeout(show, w + 16); else mv.classList.remove('wait'); };
+    for (const e of qa('.table .seat.wait, .table .me.wait')) e.classList.remove('wait');
+    const cues = [q('#center .yourmove'), ui.watch ? null : q('#center .pile-act'), ...qa('.table .seat.turn, .table .me.turn'), ...qa('.table .tag.turn')].filter(e => !!e);
+    const key = [v.handNumber, v.phase, v.trickNumber, v.currentPlayer, v.bidTurn, v.discardTurn].join('|');
+    const still = () => busyFor(true);
+    if (cues.length && key !== cueKey && still() > 0) {
+      for (const e of cues) e.classList.add('wait');
+      const show = () => { const w = still(); if (w > 0) moveTimer = setTimeout(show, w + 16); else { for (const e of cues) e.classList.remove('wait'); cueKey = key; } };
       show();
-    }
+    } else if (cues.length) cueKey = key;
   }
-  function busyFor() {
+  function busyFor(cards = false) {
     if (!ms()) return 0;
     let w = 0;
     for (const a of document.getAnimations()) {
       const el = a.effect &&  (a.effect).target;
-      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table')) continue;
+      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))) continue;
       const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
       if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
     }
+    const t = performance.now();
+    for (const x of pending.values()) if (!x.fallback) w = Math.max(w, x.until - t + 160);
     return Math.min(w, 4000);
   }
   function reset() {
     const layer = q('#fx'); if (layer) layer.remove();
-    clearTimeout(moveTimer); for (const p in riseTimer) { clearTimeout(riseTimer[p]); delete riseTimer[p]; } qa('.table > .seat.rise').forEach(s => s.classList.remove('rise'));
+    clearTimeout(moveTimer); cueKey = ''; for (const p in riseTimer) { clearTimeout(riseTimer[p]); delete riseTimer[p]; } qa('.table > .seat.rise').forEach(s => s.classList.remove('rise'));
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
     for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
-  return Object.freeze({ discardOrder, capture, after, reset, busyFor });
+  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms });
 })();
 const App = (() => {
   const R = Rules, P = Engine.P;
@@ -5348,7 +5361,7 @@ const App = (() => {
       const manual = !!Render.CONTINUE_LABEL[st.phase];
       if (manual && !app.ui.autoplay) return;
       const won = Engine.TRICK_DONE_PHASES.includes(st.phase);
-      later(won ? d.won : manual ? d.trick : d.sys, () => act(sys), won && st.trickNumber < st.totalTricks);
+      later(won ? d.won : manual ? d.trick : d.sys, () => manual ? continueFrom(sys) : act(sys), won && st.trickNumber < st.totalTricks);
     }
     draw(ev);
   }
@@ -5372,18 +5385,58 @@ const App = (() => {
     }
   }
   function selectionKey(v) { return v.phase + ':' + v.handNumber + ':' + (v.showdown ? 'sd' : '') + ':' + v.receiver; }
-  let heldDraw = 0, heldEvents = [], drawnVersion = -1;
+  let heldDraw = 0, heldEvents = [], drawnVersion = -1, drawnPhase = '';
+  const RESULT_PHASES =  ([P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.GAME_OVER, P.ABANDONED, P.JOKER_VOID]);
+  let resultHold = -1, holdPhase = '', holdTimer = 0, drawnScores =  ([]), holdEvents =  ([]);
+  function holdResult(st, ui) {
+    if (resultHold === st.version) return true;
+    if (! (Engine.TRICK_DONE_PHASES).includes(drawnPhase) || !RESULT_PHASES.includes(st.phase) || st.version !== drawnVersion + 1) return false;
+    if (ui.speed === 'instant' || (!watch && skipping()) || matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    resultHold = st.version;
+    holdPhase = drawnPhase; holdEvents = [];
+    clearTimeout(holdTimer);
+    const release = () => {
+      if (!app.state || app.state.version !== resultHold) { resultHold = -1; return; }
+      const w = heldDraw ? 50 : Fx.busyFor();
+      if (w > 0) { holdTimer = setTimeout(release, w + 16); return; }
+      resultHold = -1;
+      morph(() => { const e = holdEvents; holdEvents = []; draw(e); });
+    };
+    holdTimer = setTimeout(release, 16);
+    return true;
+  }
+  function morph(fn) {
+    const doc =  (document);
+    if (!doc.startViewTransition || !Fx.step() || document.hidden) { fn(); return; }
+    document.documentElement.style.setProperty('--vt', Fx.step() + 'ms');
+    const t = doc.startViewTransition(fn), quiet = () => {};
+    for (const p of [t.ready, t.finished, t.updateCallbackDone]) if (p) p.catch(quiet);
+  }
+  function continueFrom(sys) {
+    const v0 = app.state.version, go = () => { if (app.state.version === v0) act(sys); };
+    if (RESULT_PHASES.includes(app.state.phase)) morph(go); else go();
+  }
+  function heldView(v) {
+    const sd = holdPhase === P.SHOWDOWN_TRICK_DONE;
+    return Object.assign(v, { phase: holdPhase, swept: true, gameOver: false, actors: [], scores: drawnScores.slice(),
+      showdown: sd && v.showdown ? Object.assign({}, v.showdown, { active: true }) : v.showdown });
+  }
   function draw(events) {
     const fresh = !app.state || app.state.version < drawnVersion;
     if (heldDraw && !fresh) { heldEvents.push(...events); return; }
     if (heldDraw) { clearTimeout(heldDraw); heldDraw = 0; heldEvents = []; }
     if (!fresh && app.state.version > drawnVersion && drawnVersion >= 0) {
-      const w = Fx.busyFor();
+      const w = Fx.busyFor(true);
       if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
     }
-    drawnVersion = app.state ? app.state.version : -1;
     const ui = watch ? watchUI() : app.ui;
-    const v = buildView(app.state, watch ? watch.seat : HUMAN);
+    if (fresh) resultHold = -1;
+    const hold = !fresh && holdResult(app.state, ui);
+    drawnVersion = app.state ? app.state.version : -1;
+    drawnPhase = app.state ? app.state.phase : '';
+    const built = buildView(app.state, watch ? watch.seat : HUMAN), v = hold ? heldView(built) : built;
+    if (hold) { if (!holdEvents.length) holdEvents = events.filter(e => e.type === 'SCORE_CHANGED'); events = events.filter(e => e.type !== 'SCORE_CHANGED'); }
+    else drawnScores = v.scores.slice();
     v.seating = !!app.mode && v.phase === P.SETUP;
     const key = selectionKey(v);
     if (key !== app.ui.selKey) { app.ui.selected.clear(); app.ui.selKey = key; }
@@ -6616,7 +6669,7 @@ const App = (() => {
       case 'bid-pass': act({ type: 'BID', player: HUMAN, accept: false }); break;
       case 'name-suit': act({ type: 'NAME', player: HUMAN, suit: el.getAttribute('data-suit') }); break;
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
-      case 'continue': { const sys = Engine.systemAction(app.state); if (sys) act(sys); break; }
+      case 'continue': { const sys = Engine.systemAction(app.state); if (sys) continueFrom(sys); break; }
       case 'skip': skipShowdown(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
