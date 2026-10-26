@@ -950,7 +950,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '55b0710', date: '2026-10-26' });
+const BUILD = Object.freeze({ commit: '019d806', date: '2026-10-26' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4533,8 +4533,9 @@ const Fx = (() => {
     if (!ms()) return 0;
     let w = 0;
     for (const a of document.getAnimations()) {
-      const el = a.effect &&  (a.effect).target;
-      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))) continue;
+      const fx =  (a.effect), el = fx && fx.target;
+      const glide = !!fx && !!fx.pseudoElement && fx.pseudoElement.startsWith('::view-transition');
+      if (a.playState !== 'running' || !el || (!glide && (!el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))))) continue;
       const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
       if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
     }
