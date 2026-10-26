@@ -6803,9 +6803,11 @@ const App = (() => {
      move to their new place and size over a motion step, where the browser has view transitions. Else at once. */
   function morph(fn) {
     const doc = /** @type {any} */ (document);
-    if (!doc.startViewTransition || !Fx.step()) { fn(); return; }
+    if (!doc.startViewTransition || !Fx.step() || document.hidden) { fn(); return; }
     document.documentElement.style.setProperty('--vt', Fx.step() + 'ms');
-    doc.startViewTransition(fn);
+    /* A transition cut short (the next one starts, say, on a quick Next hand) still runs fn; only its promises reject. */
+    const t = doc.startViewTransition(fn), quiet = () => {};
+    for (const p of [t.ready, t.finished, t.updateCallbackDone]) if (p) p.catch(quiet);
   }
   /* Continue from a result (Next hand, Deal the Showdown): the table changes back to play as one motion. A second
      press before it runs does nothing (the state has moved on). */
