@@ -5683,8 +5683,10 @@ const Fx = (() => {
     if (!ms()) return 0;
     let w = 0;
     for (const a of document.getAnimations()) {
-      const el = a.effect && /** @type {KeyframeEffect} */ (a.effect).target;
-      if (a.playState !== 'running' || !el || !el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))) continue;
+      const fx = /** @type {KeyframeEffect} */ (a.effect), el = fx && fx.target;
+      /* The table changing to or from a result (a view transition, see morph) is motion too: the deal waits for it. */
+      const glide = !!fx && !!fx.pseudoElement && fx.pseudoElement.startsWith('::view-transition');
+      if (a.playState !== 'running' || !el || (!glide && (!el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))))) continue;
       const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
       if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
     }
