@@ -2,7 +2,7 @@
 
 A design note, not a spec. It reviews where the game asks a player to make real choices, and whether those choices stay interesting at a strong level of play. Each part says whether it is an observation, a hypothesis or a measurement, as in [human-play.md](human-play.md).
 
-Started 2026-10-16. It grew out of a question from play: is losing a trick on purpose, to force a Showdown, a real tactic? Updated 2026-10-18 with discard lessons from replays.
+Started 2026-10-16. It grew out of a question from play: is losing a trick on purpose, to force a Showdown, a real tactic? Updated 2026-10-18 with discard lessons from replays, and 2026-10-26 with buying by seat.
 
 ## Summary
 
@@ -10,6 +10,7 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 - **A player with a weak hand still has choices.** Losing a trick on purpose can turn a 3–2–2 hand into a 3–3–1 Showdown. That takes the leader's point away and lets the weak player pick who leads the Showdown. In a three-player game, this is also kingmaking: a player who can't win the hand decides who gains.
 - **Seat order matters more than skill gaps suggest.** The gift always goes to the caller's left, so the same two bots make a wave of 35% or 18% depending on which side each one sits (Waves 11 and 15).
 - **Calling is cheap.** A failed call costs no points. The gift is the only price, so the bid is mostly a decision about who gets the gift.
+- **The seat decides whether a buy pays, not the hand value.** At the same hand value, a buy scores no more than a pass. From second seat or as dealer, a buy of a good hand gains about half a point; from the dealer's left, it gains nothing (see **Buying by seat**).
 - **The discard holds more than the hand value counts.** In replays, strong bots overrule it. They keep trump length over lone Kings, and keep a backup suit that shares a Jack with their best suit.
 
 ## Where the choices are
@@ -29,7 +30,7 @@ Started 2026-10-16. It grew out of a question from play: is losing a trick on pu
 - **Who receives the gift decides the bid as much as the hand does.** A call that feeds a weak opponent is cheap. A call that feeds the strongest opponent is expensive.
 - **Round 1 and round 2 cost differently.** A round 1 gift is the turned card, which everyone saw. A round 2 gift is 2 hidden cards, so the caller can't know what the receiver now holds.
 - **Passing blocks a suit.** If everyone passes in round 1, the turned suit can't be named in round 2. A player who passes to trap an opponent into calling risks losing their own best suit.
-- *Hypothesis:* with no cost for a failed call, the best bid for a strong player depends on the seat order more than on hand value. [human-play.md](human-play.md) shows that callers at the game's own thresholds win the hand only 22% of the time, and that raising the thresholds by up to 1.0 changes no measured strength. Both fit this hypothesis.
+- *Measured (2026-10-26):* with no cost for a failed call, the best bid for a strong player depends on the seat order more than on hand value. [human-play.md](human-play.md) shows that callers at the game's own thresholds win the hand only 22% of the time, and that raising the thresholds by up to 1.0 changes no measured strength. **Buying by seat** shows why.
 
 ### Card play
 
@@ -136,6 +137,43 @@ What the numbers show:
 - **The seat order is fair at a table of equals.** Three Sharks win about a third each. The Wave 15 numbers come from the opponents, not the seats.
 
 Not measured: how often a 3–2–2 hand could have been turned into a 3–3–1 by the player who chose to, and what that does to a player's win rate. That needs a test seat that plays for the Showdown on purpose.
+
+## Buying by seat (2026-10-26)
+
+*Measurement.* Buying trump is the bid's call: in round 1, accept the turned suit; in round 2, name another suit. Each player gets one chance per round, from the dealer's left, the dealer last. The question: at the same hand value, does a buy score more points than a pass, and does the seat change the answer?
+
+From `tests/buying.js`: 600 games of three Sharks, 5,621 hands. Each buy or pass is logged with the player's hand value (`AI.handValue`) in the suit on offer, their seat, and the points they scored that hand, King points and the Showdown included. Margins are 95%.
+
+### Round 1, by hand value
+
+| Hand value | Points after a buy | Points after a pass | Buy rate | Left-hand opponent's points after a buy |
+|---|---|---|---|---|
+| Under 2 | 0.08 ±0.07 | 0.23 ±0.02 | 3% | 1.77 |
+| 2–3 | 0.38 ±0.07 | 0.48 ±0.03 | 11% | 1.34 |
+| 3–4 | 0.84 ±0.05 | 0.85 ±0.04 | 41% | 0.93 |
+| 4–5 | 1.39 ±0.04 | 1.44 ±0.09 | 76% | 0.54 |
+| 5 and up | 2.08 ±0.06 | 2.26 ±0.29 | 91% | 0.23 |
+
+### Round 1, by seat (hand value 3–5)
+
+| Seat | Points after a buy | Points after a pass | Gain from buying |
+|---|---|---|---|
+| Dealer's left (speaks first) | 1.15 ±0.06 | 1.26 ±0.06 | −0.11 |
+| Second | 1.12 ±0.05 | 0.60 ±0.06 | +0.52 |
+| Dealer (speaks last) | 1.18 ±0.05 | 0.64 ±0.11 | +0.54 |
+
+### Round 2
+
+Round 2 is rarely a decision. At hand values of 3 and up, 98% to 100% of round 2 turns were buys, so the first player to speak, the dealer's left, almost always names trump. Of 818 round 2 buys at hand value 3 to 5, 806 came from that seat. The dealer almost never gets a turn in round 2.
+
+### What the numbers show
+
+- **At the same hand value, a buy scores no more than a pass.** With a weak hand it scores less: the gift feeds the left-hand opponent more than trump helps the buyer.
+- **The seat decides.** A pass from the dealer's left keeps two chances: the gift when the dealer buys, and first choice of trump in round 2. A pass from second seat or as dealer hands that choice to the dealer's left, and costs about half a point.
+- **So the bid thresholds can't show skill.** They ignore the seat, which is why raising them changed no measured strength.
+- **The free buy is part of the design.** A penalty for a failed buy would blunt the seat trade-off, which is the decision's real content.
+
+Not measured: whether the bots buy too often. The bots chose when to buy, so buyers and passers at a hand value are not random groups; a Shark that passes a 4-value hand may have seen a weakness the hand value misses. The seat gap (about 0.5 points) is much larger than the buy-or-pass gap at any hand value, so the seat finding holds. Round 2 values use the player's best suit that is not blocked, not always the suit named.
 
 ## Kingmaking
 
