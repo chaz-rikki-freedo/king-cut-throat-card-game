@@ -5143,7 +5143,7 @@ const Render = (() => {
    --------------------------------------------------------------------- */
 const Fx = (() => {
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
-  const STEP = { slow: 700, normal: 396, fast: 250, instant: 0 };
+  const STEP = { slow: 616, normal: 396, fast: 250, instant: 0 };
   let speed = 'normal';
   const ms = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : STEP[speed] ?? STEP.normal;
   const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
@@ -5686,7 +5686,7 @@ const App = (() => {
   /* won: a finished trick's wait before its sweep, from its last card: that card's slide (one motion step; the winner
      lifts with it) and then a bot's move's wait (ai). */
   const DELAYS = {
-    slow: { ai: 1200, trick: 2300, won: 1900, sys: 600 },
+    slow: { ai: 1056, trick: 2024, won: 1672, sys: 528 },
     normal: { ai: 572, trick: 1232, won: 968, sys: 308 },
     fast: { ai: 220, trick: 650, won: 470, sys: 120 },
     instant: { ai: 0, trick: 0, won: 0, sys: 0 }
@@ -7045,10 +7045,10 @@ const App = (() => {
        (your move: a bot's waits for it). */
     if (lines.length > 1 && oneLine()) {
       const next = lines[1];
-      const pause = { slow: 1600, normal: 1056 }[app.ui.speed] || 800;
+      const pause = { slow: 1408, normal: 1056 }[app.ui.speed] || 800;
       nextUp = setTimeout(() => dropLatest(next, false), pause);
       /* The game waits for it (latestBusy): a bot's next move would replace it before it shows. */
-      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 450, normal: 264, fast: 180 }[app.ui.speed] || 0);
+      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 396, normal: 264, fast: 180 }[app.ui.speed] || 0);
       lines = [lines[0]];
     }
     dropLatest(lines.join('</li><li>'), still);
@@ -7061,7 +7061,7 @@ const App = (() => {
     /* The same line already on its way (the first of a move's lines) keeps falling. */
     if (falling && falling.html === html && !still) return;
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
-    const ms = { slow: 450, normal: 264, fast: 180 }[app.ui.speed] || 0;
+    const ms = { slow: 396, normal: 264, fast: 180 }[app.ui.speed] || 0;
     if (still || !html || !ms || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }
     const box = document.createElement('div');
     box.className = 'latest-drop';
@@ -7079,7 +7079,7 @@ const App = (() => {
      length follows the game speed (Instant uses Fast's: it holds nothing up). With the system's reduced-motion setting
      it only fades in and out where it is, and the score shows at once. */
   function kingPop(p) {
-    const ms = { slow: 2400, normal: 1584 }[app.ui.speed] || 1100;
+    const ms = { slow: 2112, normal: 1584 }[app.ui.speed] || 1100;
     const old = document.querySelector('.king-pop'); if (old) old.remove();
     const el = document.createElement('div');
     el.className = 'king-pop';
