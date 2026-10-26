@@ -946,7 +946,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'b8fbe4f', date: '2026-10-26' });
+const BUILD = Object.freeze({ commit: 'bf598ed', date: '2026-10-26' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4104,9 +4104,9 @@ const Render = (() => {
 })();
 const Fx = (() => {
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
-  const STEP = { slow: 700, normal: 450, fast: 250, instant: 0 };
+  const STEP = { slow: 700, normal: 396, fast: 250, instant: 0 };
   let speed = 'normal';
-  const ms = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : STEP[speed] ?? 450;
+  const ms = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : STEP[speed] ?? STEP.normal;
   const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   const cw = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 60;
   const TILT = { 0: 0, 1: -30, 2: 30 };
@@ -4536,7 +4536,7 @@ const App = (() => {
   const Theme =  (window).kctTheme;
   const DELAYS = {
     slow: { ai: 1200, trick: 2300, won: 1900, sys: 600 },
-    normal: { ai: 650, trick: 1400, won: 1100, sys: 350 },
+    normal: { ai: 572, trick: 1232, won: 968, sys: 308 },
     fast: { ai: 220, trick: 650, won: 470, sys: 120 },
     instant: { ai: 0, trick: 0, won: 0, sys: 0 }
   };
@@ -5606,9 +5606,9 @@ const App = (() => {
     else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
     if (lines.length > 1 && oneLine()) {
       const next = lines[1];
-      const pause = { slow: 1600, normal: 1200 }[app.ui.speed] || 800;
+      const pause = { slow: 1600, normal: 1056 }[app.ui.speed] || 800;
       nextUp = setTimeout(() => dropLatest(next, false), pause);
-      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0);
+      if (app.ui.speed !== 'instant' && !$('info').hidden) nextUntil = performance.now() + pause + ({ slow: 450, normal: 264, fast: 180 }[app.ui.speed] || 0);
       lines = [lines[0]];
     }
     dropLatest(lines.join('</li><li>'), still);
@@ -5619,7 +5619,7 @@ const App = (() => {
     const put = h => { line.innerHTML = h ? '<li>' + h + '</li>' : ''; }, set = () => put(html);
     if (falling && falling.html === html && !still) return;
     if (falling) { const f = falling; falling = null; f.anim.cancel(); put(f.html); }
-    const ms = { slow: 450, normal: 300, fast: 180 }[app.ui.speed] || 0;
+    const ms = { slow: 450, normal: 264, fast: 180 }[app.ui.speed] || 0;
     if (still || !html || !ms || $('info').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { set(); return; }
     const box = document.createElement('div');
     box.className = 'latest-drop';
@@ -5632,7 +5632,7 @@ const App = (() => {
   }
   function note(text) { showLatest(false, escHTML(text)); }
   function kingPop(p) {
-    const ms = { slow: 2400, normal: 1800 }[app.ui.speed] || 1100;
+    const ms = { slow: 2400, normal: 1584 }[app.ui.speed] || 1100;
     const old = document.querySelector('.king-pop'); if (old) old.remove();
     const el = document.createElement('div');
     el.className = 'king-pop';
