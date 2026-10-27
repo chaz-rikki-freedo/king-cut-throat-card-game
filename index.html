@@ -715,6 +715,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0}
+.panel dd .minis{gap:0.25rem;flex-wrap:wrap}
 .panel .pip-red{color:var(--pip-red)}
 .panel .pvoid{display:flex;align-items:center;gap:0.5rem;margin:0.125rem 0 0}
 .panel .vpip{font-size:1.375rem;line-height:1;color:var(--ink)}
@@ -957,7 +958,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '7118e5b', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: '1b44a5d', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5111,8 +5112,7 @@ const App = (() => {
     let title, body;
     if (kind === 'outside') {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
-      body = '<p>Face-down cards out of play: each player\'s 3 opening discards, then the kitty cards the receiver did not get and the receiver\'s discards (12 in all). Only a Showdown uses them.</p>' +
-        '<b class="psub">Your discards</b>' + (v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>');
+      body = '<p>Face down, out of play until a Showdown.</p>' + (v.myOut.length ? '<dl><dt>Yours</dt><dd><span class="minis">' + v.myOut.map(mini).join('') + '</span></dd></dl>' : '');
     } else if (kind !== 'tricks') {
       [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
@@ -5130,7 +5130,7 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel' + (body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
     const picking = anchor.closest('#seat' + HUMAN) && Engine.actors(app.state).includes(HUMAN) && (v.phase === P.DISCARD || v.phase === P.EXCHANGE || v.phase === P.SHOWDOWN_DISCARD);
@@ -5234,12 +5234,17 @@ const App = (() => {
         return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'which Kings are yours, played or discarded') : '')];
       }
       case 'turned': {
-        const blocked = v.phase === P.BID2 && v.flippedBlocked;
-        let body = blocked ? p1(suit(v.flippedSuit) + ' was turned down in round 1, so it cannot be named in round 2.')
-          : p1('The dealer turned up the top kitty card. In round 1, a player who accepts makes its suit trump, and this card goes to the player left of them.');
-        if (v.flippedOut) body += p1('Round 2 named another suit, so this card went to the outside pile.');
-        if (mem.turned) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
-        return [blocked ? 'Blocked suit' : 'Turned-up card', body + off(mem.turned, 'Turned card', 'whether it has been played')];
+        const c = v.flipped, s = v.flippedSuit, to = turnedTo(), you = to === v.seat;
+        const standing = v.phase === P.BID1 ? 'offered as trump' : v.phase === P.BID2 && v.flippedBlocked ? 'blocked' : T && s === T ? 'trump' : 'passed';
+        const rows = [['Card', Render.microHTML(c, 'Jkr', inHand(c))], ['Suit', s ? suit(s) + ', ' + standing : 'none: the hand is void']];
+        if (v.flippedOut) rows.push(['Went to', 'Outside pile']);
+        else if (to !== null) rows.push(['Went to', n(to)]);
+        if (to !== null && mem.turned) rows.push(['Now', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
+        let body = '<dl>' + rows.map(([k, x]) => '<dt>' + k + '</dt><dd>' + x + '</dd>').join('') + '</dl>';
+        if (v.phase === P.BID1 && s) body += p1('If accepted, it goes to the player left of whoever accepts.');
+        else if (v.phase === P.BID2 && v.flippedBlocked) body += p1('All passed it in round 1, so it can\'t be named.');
+        if (to !== null && !mem.turned) body += '<p class="pnote">Table memory → Turned card shows if it was played.</p>';
+        return ['Turned-up card', body];
       }
       case 'score': {
         const st = v.handStats && v.handStats.pts[seat], win = Engine.C.WIN_SCORE, need = Math.max(0, win - v.scores[seat]);
@@ -8358,6 +8363,26 @@ const SelfTest = (() => {
           const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
           check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
         } finally { ui.memory = wasMemory; }
+      }
+      {
+        const tv = buildView(Engine.createGame(2500), 0), rows = ( v) => {
+          const d = document.createElement('div'); d.innerHTML = App.infoPanel(v, 'turned', null, anchor()).map(Render.youText)[1];
+          return [...d.querySelectorAll('dt')].map(x => x.textContent + ': ' + ( (x.nextElementSibling)).textContent).slice(1).concat([...d.querySelectorAll('p')].map(x => x.textContent));
+        };
+        const base = Object.assign({}, tv, { flipped: '9D', flippedSuit: 'D', flippedOut: false, receiver: null, trump: null, hand: [], played: [], myOut: [] });
+        const was = ui.memory;
+        try {
+          ui.memory = memOf(false, false, true, false);
+          eq('Turned popup: round 1 bidding', rows(Object.assign({}, base, { phase: P.BID1 })), ['Suit: ♦ Diamonds, offered as trump', 'If accepted, it goes to the player left of whoever accepts.']);
+          eq('Turned popup: round 2, blocked', rows(Object.assign({}, base, { phase: P.BID2, flippedBlocked: true })), ['Suit: ♦ Diamonds, blocked', 'All passed it in round 1, so it can\'t be named.']);
+          const acc = Object.assign({}, base, { phase: P.TRICK_PLAY, trump: 'D', receiver: 1 });
+          eq('Turned popup: accepted, held by another player', rows(acc), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Now: Not played yet']);
+          eq('Turned popup: accepted, in your hand', rows(Object.assign({}, acc, { receiver: 0, hand: ['9D'] })), ['Suit: ♦ Diamonds, trump', 'Went to: You', 'Now: In your hand']);
+          eq('Turned popup: accepted and played', rows(Object.assign({}, acc, { played: ['9D'] })), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Now: Played']);
+          eq('Turned popup: round 2 named another suit', rows(Object.assign({}, base, { phase: P.TRICK_PLAY, trump: 'S', flippedOut: true })), ['Suit: ♦ Diamonds, passed', 'Went to: Outside pile']);
+          ui.memory = memOf(false, false, false, false);
+          eq('Turned popup: Turned card off names the switch', rows(acc), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Table memory → Turned card shows if it was played.']);
+        } finally { ui.memory = was; }
       }
       {
         const sv = Object.assign(buildView(Engine.createGame(2400), 0), { trump: 'S', trick: { plays: [{ player: 0, card: '9S' }, { player: 1, card: '7S' }], leadSuit: 'S' } });
