@@ -950,7 +950,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '019d806', date: '2026-10-26' });
+const BUILD = Object.freeze({ commit: '273e605', date: '2026-10-26' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4078,6 +4078,18 @@ const Render = (() => {
     if (move) html += '<div class="yourmove" aria-hidden="true">' + move + '</div>';
     return html + advButtonsHTML(v, ui, ctx);
   }
+  function keepWatchCtl(old) {
+    const now = $('center').querySelector('.watch-ctl');
+    if (!old || !now) return;
+    for (const nb of now.querySelectorAll('button')) {
+      const ob = old.querySelector('[data-action="' + nb.getAttribute('data-action') + '"]');
+      if (!ob) return;
+      for (const a of ['aria-label', 'title']) if (ob.getAttribute(a) !== nb.getAttribute(a)) ob.setAttribute(a, nb.getAttribute(a) || '');
+       (ob).disabled =  (nb).disabled;
+      if (ob.innerHTML !== nb.innerHTML) ob.innerHTML = nb.innerHTML;
+    }
+    now.replaceWith(old);
+  }
   function render(v, ui, ctx) {
     placeSeats(v.seat);
     jokerSuit = v.jokerSuit || null;
@@ -4093,7 +4105,9 @@ const Render = (() => {
     if (key === drawnKey) return false;
     drawnKey = key;
     Fx.capture();
+    const oldCtl = $('center').querySelector('.watch-ctl');
     for (const [el, h] of parts) el.innerHTML = h;
+    keepWatchCtl(oldCtl);
     const slot = $('skipSlot'); slot.innerHTML = skip; slot.hidden = !skip;
     for (const p of around(v)) {
       const el = $('seat' + p);
@@ -4719,6 +4733,7 @@ const App = (() => {
   }
   let endCode =  (null);
   let watch =  (null), hush = false;
+  let watchPressed = false;
   let pendingReview =  (null);
   function runReview() {
     const job = pendingReview;
@@ -7147,10 +7162,19 @@ const App = (() => {
       if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"], .namehint, #hand [aria-disabled="true"]')) closePanel();
       const cardEl =  (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card'), cardEl); return; }
+      if (watchPressed && ev.detail > 0 && ev.target.closest('.watch-ctl')) { watchPressed = false; return; }
       const a =  (ev.target.closest('[data-action]'));
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
       if (ev.target.id === 'askLayer') { answerAsk(false); return; }
       if (ev.target.closest('#center') && app.timerFn) skip();
+    });
+    document.addEventListener('pointerdown', ev => {
+      watchPressed = false;
+      if (ev.pointerType === 'touch' || ev.button !== 0 || !(ev.target instanceof Element) || TabLock.stale) return;
+      const a =  (ev.target.closest('.watch-ctl [data-action]'));
+      if (!a || a.disabled) return;
+      watchPressed = true;
+      onAction(a.getAttribute('data-action'), a);
     });
     document.addEventListener('keydown', ev => {
       if (TabLock.stale) return;
