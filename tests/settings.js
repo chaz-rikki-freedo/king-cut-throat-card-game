@@ -52,6 +52,33 @@ function expect(name, ok, detail) {
       expect('Table memory ' + key + ': on and off are kept, one switch at a time',
         on.memory[key] === true && Object.keys(mem).every(k => k === id || on.memory[mem[k]] === false) && off.memory[key] === false, [on.memory, off.memory]);
     }
+    /* The show switches start on (Standard): each one off is kept, and Help level then reads Custom. */
+    const shows = { setMemShowTurned: 'showTurned', setMemShowDiscards: 'showDiscards', setMemShowPlays: 'showPlays' };
+    for (const [id, key] of Object.entries(shows)) {
+      await set(id, false);
+      const off = await saved(), preset = await step(`return q('#setMemPreset').value;`);
+      await set(id, true);
+      const on = await saved();
+      expect('Table memory ' + key + ': starts on, off and on are kept, and off is a Custom help level',
+        off.memory[key] === false && on.memory[key] === true && preset === 'custom', [off.memory, on.memory, preset]);
+    }
+    const memState = () => step(`return { sw: ` + JSON.stringify(Object.keys(mem).concat(Object.keys(shows))) + `.map(id => q('#' + id).checked).join(), all: q('#setMemAll').checked, mixed: q('#setMemAll').indeterminate, preset: q('#setMemPreset').value, sum: q('#setMemSum').textContent };`);
+    let ms = await memState();
+    expect('Table memory starts at Standard: All aids is mixed, 3 of 7 on', ms.preset === 'standard' && ms.sw === 'false,false,false,false,true,true,true' && ms.mixed && ms.sum === '3 of 7 on', ms);
+    await set('setMemPreset', 'real');
+    ms = await memState();
+    expect('Help level Real table turns every aid off', ms.sw === 'false,false,false,false,false,false,false' && !ms.all && !ms.mixed && Object.values((await saved()).memory).every(x => x === false), ms);
+    const logClass = await step(`return q('#gameLog').className;`);
+    expect('Real table hides the plays and the turned card in the Latest Scroll', /hide-plays/.test(logClass) && /hide-turned/.test(logClass), logClass);
+    await set('setMemAll', true);
+    ms = await memState();
+    expect('All aids on turns every aid on: Full help', ms.sw === 'true,true,true,true,true,true,true' && ms.all && ms.preset === 'full' && ms.sum === '7 of 7 on', ms);
+    await set('setMemAll', false);
+    ms = await memState();
+    expect('All aids off turns every aid off: Real table', ms.preset === 'real' && ms.sw === 'false,false,false,false,false,false,false', ms);
+    await set('setMemPreset', 'standard');
+    ms = await memState();
+    expect('Help level Standard brings back the defaults', ms.preset === 'standard' && ms.sw === 'false,false,false,false,true,true,true', ms);
 
     await set('setMediatorLead', false);
     let s = await saved(), g = await newFree();
