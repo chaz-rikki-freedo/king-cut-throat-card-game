@@ -104,8 +104,8 @@
   {
    "name": "--mine",
    "family": "action",
-   "value": "#43a047",
-   "job": "Your own cards in a popup card list (Trump, Kings): the ring around the chip."
+   "value": "#8ff59a",
+   "job": "Your own cards in a popup card list (Trump, Kings): the tint of the chip."
   },
   {
    "name": "--danger",
