@@ -573,7 +573,7 @@ body.set-open{overflow:hidden}
 .swap-seat small{font-size:0.75rem;color:var(--muted)}
 .swap-side{font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .swap-btn{font-size:1.375rem;padding:0.5rem 0.875rem;flex:none;align-self:center}
-.swap-last{margin:0;font-size:0.8125rem;color:var(--muted)}
+.swap-last,.swap-note{margin:0;font-size:0.8125rem;color:var(--muted)}
 /* On a phone a seat's label can take two lines: both keep room for two, so the two figures line up. */
 @media (max-width:599px){ .swap-side{min-height:2.6em;display:flex;align-items:center} }
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0.25rem;font-size:0.8125rem}
@@ -5824,10 +5824,12 @@ const App = (() => {
      the first pair [West, East] that fits: no Shark while the starting easing e0 is above 0.5, at most one above 0.2,
      any pair below. Among those, a pair that shares no bot with the last Dynamic game (last: [West, East]) comes first,
      then one that is not the same pair. With no limit and no last game, it is seedTable. */
+  /** The most Sharks a Dynamic table seats at starting easing e0. @param {number} e0 */
+  const sharkLimit = e0 => (e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2);
   /** @param {number} s @param {number} e0 @param {string[]} last @returns {string[]} */
   function dynamicTable(s, e0, last) {
     const order = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
-    const max = e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2;
+    const max = sharkLimit(e0);
     const pairs = [];
     for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) pairs.push([order[i], order[j]]);
     const fits = (/** @type {string[]} */ p) => p.filter(id => PERSONA_BY_ID[id].tier === 'shark').length <= max;
@@ -7982,11 +7984,21 @@ const App = (() => {
     ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><div class="mtop"><button class="mback swap-back" type="button" data-action="swap-back">‹ Back</button><h2>Choose seats</h2></div>' +
       '<p>You may swap your two opponents now, before the deal. This is your only chance: once the cards are dealt, the seats stay for the whole game.</p>' +
       '<div class="swap-seats">' + seatCardHTML(west, 'Your left · West') + '<button class="btn swap-btn" type="button" data-action="swap-preview" aria-label="Swap the two seats">⇄</button>' + seatCardHTML(east, 'Your right · East') + '</div>' +
-      lastGameHTML() +
+      dynamicNoteHTML() + lastGameHTML() +
       '<div class="row">' +
       '<button class="btn" type="button" data-action="swap-new">New opponents</button>' +
       '<button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;
+  }
+  /* Dynamic only: how the opponents are picked, so New opponents is not read as a rotation through every bot. */
+  function dynamicNoteHTML() {
+    if (app.mode !== 'dynamic' || !app.dyn) return '';
+    const max = sharkLimit(app.dyn.e0);
+    const names = PERSONAS.filter(x => x.tier === 'shark').map(x => escHTML(x.name));
+    const list = (/** @type {string} */ and) => names.slice(0, -1).join(', ') + ' ' + and + ' ' + names[names.length - 1];
+    return '<p class="swap-note">Dynamic picks two opponents at random from the bots that suit your level, and avoids the bots from your last game. It does not go through every bot in turn. ' +
+      (max === 0 ? 'For now, the Sharks (' + list('and') + ') sit out. They join as your play improves.' :
+        max === 1 ? 'For now, at most one Shark (' + list('or') + ') sits at your table.' : 'Any two bots can sit at your table.') + '</p>';
   }
   /* One line: how your latest finished game of this mode (Free play or Dynamic) ended. */
   function lastGameHTML() {

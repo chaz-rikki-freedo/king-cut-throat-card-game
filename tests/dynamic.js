@@ -47,6 +47,7 @@ async function checks() {
       out.profileBefore = A.profile.get();
       speed('instant'); click('[data-action="new-dynamic"]'); await sleep(50);
       out.swap = !!q('#overlay .swap'); out.mode = app.mode; out.chip = q('#modeChip').textContent;
+      out.note = (q('#overlay .swap-note') || {}).textContent || '';
       out.e0 = app.dyn.e; out.snap = app.dyn.snap;
       out.personasLocked = !q('#setWaveNote').hidden;
       out.stop = await drive(() => app.state.handNumber >= 3 && KCT.Engine.actors(app.state).includes(0));
@@ -60,6 +61,7 @@ async function checks() {
       return out;`);
     expect('the menu has a Dynamic card with New game, and Resume off with no saved game', r.card && r.resumeOff, r);
     expect('Dynamic opens the seat dialog, and the header says Dynamic', r.swap && r.mode === 'dynamic' && r.chip === 'Dynamic', r);
+    expect('in Dynamic, the seat dialog says the opponents are random for your level, with the Sharks out at full easing', /not go through every bot/.test(r.note) && /Sharks \(Vex, Doc and Mei\) sit out/.test(r.note), r.note);
     expect('a marked profile starts the game at full easing, from a snapshot of the profile', r.e0 === 1 && r.snap.mark === true && r.snap.h === 40, [r.e0, r.snap]);
     expect('in Dynamic, the Bots tab says the bots play as themselves', r.personasLocked);
     expect('play reaches hand 3 and saves the game with its snapshot', r.stop === 'stop' && r.slot && JSON.stringify(r.slotSnap) === JSON.stringify(r.snap), r);
