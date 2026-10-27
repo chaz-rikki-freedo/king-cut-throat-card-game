@@ -248,6 +248,7 @@ button.card{cursor:pointer}
 .hand .card.legal.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.125rem var(--accent),0 0.125rem 0.375rem rgba(0,0,0,.45)}
 .gamelog{list-style:none;margin:0;padding:0.5rem 0.625rem;overflow:auto;overscroll-behavior:contain;font-size:0.8125rem;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:0.625rem;box-shadow:inset 0 0.125rem 0.375rem rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
 .gamelog li{padding:0.1875rem 0}
+.gamelog.hide-plays li.play,.gamelog.hide-turned li.flip{display:none}
 .gamelog li.k{color:var(--gold);font-weight:700}
 .gamelog li.h,.gamelog li.s{font-weight:600}
 .gamelog .lead-h{color:var(--accent);font-weight:800}
@@ -360,6 +361,8 @@ body.set-open{overflow:hidden}
 .settings input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
 .settings input.sw:checked{background:var(--gold);border-color:var(--gold)}
 .settings input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
+.settings input.sw:indeterminate{border-color:var(--gold)}
+.settings input.sw:indeterminate::before{transform:translateX(0.625rem)}
 .settings input.sw:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.1875rem}
 @media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before{transition:none}}
 .settings .k-hint{margin:0;color:var(--set-hint);font-size:0.8125rem;line-height:1.45}
@@ -378,6 +381,7 @@ body.set-open{overflow:hidden}
 .settings .seat-body > .set-card{background:none}
 .settings .seat-sub{border:1px solid var(--set-line);border-radius:0.75rem}
 .settings .seat-sub > summary{font-weight:700;padding:var(--s2) var(--s4);min-height:2.5rem}
+.settings #setMemEach{margin:var(--s3) 0}
 .settings .seat-sub > .set-card{border:0;border-top:1px solid var(--set-line);border-radius:0 0 0.75rem 0.75rem;background:none}
 .settings .seat-set .set-row.changed .set-name::after{content:' •';color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.settings .seat-set > summary::before,.settings .seat-sub > summary::before{transition:none}}
@@ -892,11 +896,25 @@ window.kctTheme = (() => {
       </div>
       <h3 class="set-head">Table memory</h3>
       <div class="set-card" id="setInterface">
-        <p class="k-hint set-note">What every player has seen this hand, added to the popups. Never a card someone holds unseen.</p>
-        <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup marks each trump: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup marks each King: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
+        <p class="k-hint set-note">What the table keeps for you this hand. Off, you remember it yourself, as at a real table. Never a card someone holds unseen.</p>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setMemPreset">Help level</label><span class="set-desc">Full help: every aid on. Standard: what the table shows by default. Real table: you remember it all.</span></span>
+          <select id="setMemPreset"><option value="full">Full help</option><option value="standard">Standard</option><option value="real">Real table</option><option value="custom" disabled hidden>Custom</option></select></div>
+        <details class="seat-set" id="setMemEach"><summary><span class="set-name">Each aid</span><span class="seat-sum" id="setMemSum"></span></summary><div class="seat-body">
+          <div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">All aids</span><span class="set-desc">Turns every aid below on or off at once.</span></span><input class="sw" type="checkbox" id="setMemAll"></label>
+          </div>
+          <details class="seat-sub" id="setMemAdds"><summary>Added to popups</summary><div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup marks each trump: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup marks each King: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
+          </div></details>
+          <details class="seat-sub" id="setMemShows"><summary>Shown on the table</summary><div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">Turned-up card</span><span class="set-desc">After the bidding, the Turned up cell, the popups and the Latest Scroll still show it. Off: you remember it.</span></span><input class="sw" type="checkbox" id="setMemShowTurned"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Your discards</span><span class="set-desc">The Outside and Kitty popups show the cards you discarded. Off: counts only.</span></span><input class="sw" type="checkbox" id="setMemShowDiscards"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Plays in the Latest Scroll</span><span class="set-desc">Each card played stays in the Latest Scroll. Off: bids, trick winners and scores only.</span></span><input class="sw" type="checkbox" id="setMemShowPlays"></label>
+          </div></details>
+        </div></details>
       </div>
       <h3 class="set-head">House rules</h3>
       <div class="set-card" id="setHouseRules">
@@ -961,7 +979,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'c49ab82', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: '9747f38', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3978,7 +3996,9 @@ const Render = (() => {
   });
   const stageLabel = v => (STAGES[v.phase] || [''])[0];
   const stageHelp = v => { const h = (STAGES[v.phase] || ['', ''])[1]; return typeof h === 'function' ? h(v) : h; };
-  function advInfoHTML(v) {
+  const memShows = (ui,  key) => !ui || !ui.memory || ui.memory[key] !== false;
+  const turnedShown = (v, ui) => v.phase === P.BID1 || v.phase === P.BID2 || v.phase === P.JOKER_VOID || memShows(ui, 'showTurned');
+  function advInfoHTML(v, ui) {
     const cell = (cls, lab, val, kind) => '<div class="cell ' + cls + (kind ? ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '" title="About ' + lab : '') + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
     const sd = sdShown(v), tricks = trickInPlay(v);
     const done = trickDone(v);
@@ -3988,13 +4008,14 @@ const Render = (() => {
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? 'var(--pip-red)' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>', 'trump');
     if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', handLabel(v), trick || stageLabel(v), 'hand');
     before = html; html = '';
-    if (v.flipped && !sd && v.phase !== P.BID1) {
+    if (v.flipped && !sd && v.phase !== P.BID1 && turnedShown(v, ui)) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
       html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped, v.jokerSuit ? 'Joker ' + R.SYMBOL[v.jokerSuit] : undefined), 'turned');
     }
     if (sd) {
       const n = v.showdown.active ? v.showdown.discardCount : 0;
-      let minis = ''; for (let i = 0; i < n; i++) minis += i < v.myOut.length ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
+      const mine = memShows(ui, 'showDiscards') ? v.myOut.length : 0;
+      let minis = ''; for (let i = 0; i < n; i++) minis += i < mine ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
       if (n) html += '<div class="cell muted out tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val"><span class="minis">' + minis + '</span></span></div>';
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
       html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
@@ -4109,7 +4130,7 @@ const Render = (() => {
     const said = statusText(v), live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
     const order = Fx.discardOrder(v);
-    const parts =  ([...around(v).map(p =>  ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
+    const parts =  ([...around(v).map(p =>  ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v, ui).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
     const skip = ctx.skip ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
@@ -4133,7 +4154,7 @@ const Render = (() => {
     Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
     return true;
   }
-  return Object.freeze({ render, ledTrick, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
+  return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
 })();
 const Fx = (() => {
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
@@ -4589,6 +4610,7 @@ const App = (() => {
   };
   const HUMAN = 0;
   const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs', random: 'Random' });
+  const MEMORY_STANDARD = Object.freeze({ trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true });
   const HOUSE_DEFAULTS = Object.freeze({ mediatorLead: true, politePlay: true, jokerFlip: '' });
   const HOUSE =  (Object.assign({}, HOUSE_DEFAULTS));
   const app = {
@@ -4597,7 +4619,7 @@ const App = (() => {
     dyn:  (null),
     said:  ({}),
     sdSkip: false,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: { trumps: false, kings: false, turned: false, voids: false }, houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       scoreHold:  ({}) },
     wave: { n: null, wasOpenAtStart: false, result: null },
     humanSeatWasAutoplayed: false,
@@ -4932,7 +4954,7 @@ const App = (() => {
   const GAME_RESETS =  (Object.freeze({
     all: ['Reset all settings and modes?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
     theme: ['Reset the theme?', '<p>The felt goes back to Classic, and Color-blind safe colors turns off.</p>'],
-    memory: ['Reset Table memory?', '<p>Every Table memory switch turns off.</p>'],
+    memory: ['Reset Table memory?', '<p>Table memory goes back to Standard: the table shows the turned-up card, your discards and the plays, and adds nothing to the popups.</p>'],
     house: ['Reset House rules?', '<p>Mediator picks the Showdown lead turns on, Turned-up Joker goes back to Redeal, and Polite Play turns on. A game in progress keeps the rules it started with.</p>'],
     dynamic: ['Reset Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
     waves: ['Reset Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
@@ -4954,7 +4976,7 @@ const App = (() => {
     if (!GAME_RESETS[what]) return false;
     Logger.log('GAME_RESET', { what });
     if (what === 'all' || what === 'theme') setTheme('classic', '');
-    if (what === 'all' || what === 'memory') for (const k of Object.keys(MEMORY_SWITCHES)) setMemory( (k), false);
+    if (what === 'all' || what === 'memory') setMemoryAll(MEMORY_STANDARD);
     if (what === 'all' || what === 'house') {
       Object.assign(app.houseRules, HOUSE_DEFAULTS);
       $('setMediatorLead').checked = app.houseRules.mediatorLead;
@@ -5089,12 +5111,28 @@ const App = (() => {
     syncTheme();
     saveSettings();
   }
-  const MEMORY_SWITCHES = { trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids' };
-  function setMemory(key, on) {
-    app.ui.memory[key] = on;
-    $(MEMORY_SWITCHES[key]).checked = on;
+  const MEMORY_SWITCHES =  ({ trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids',
+    showTurned: 'setMemShowTurned', showDiscards: 'setMemShowDiscards', showPlays: 'setMemShowPlays' });
+  const MEMORY_KEYS =  (Object.keys(MEMORY_SWITCHES));
+  const memoryAll = ( on) =>  (Object.fromEntries(MEMORY_KEYS.map(k => [k, on])));
+  const MEMORY_PRESETS =  ({ full: memoryAll(true), standard: MEMORY_STANDARD, real: memoryAll(false) });
+  function setMemory(key, on) { setMemoryAll(Object.assign({}, app.ui.memory, { [key]: on })); }
+  function setMemoryAll(values) {
+    for (const k of MEMORY_KEYS) app.ui.memory[k] = values[k];
+    syncMemory();
     closePanel();
     saveSettings();
+    if (app.state) draw([]);
+  }
+  function syncMemory() {
+    const mem = app.ui.memory, on = MEMORY_KEYS.filter(k => mem[k]).length;
+    for (const k of MEMORY_KEYS) $(MEMORY_SWITCHES[k]).checked = mem[k];
+    const all = $('setMemAll'); all.checked = on === MEMORY_KEYS.length; all.indeterminate = on > 0 && on < MEMORY_KEYS.length;
+    const preset = Object.keys(MEMORY_PRESETS).find(p => MEMORY_KEYS.every(k => MEMORY_PRESETS[p][k] === mem[k]));
+    $('setMemPreset').value = preset || 'custom';
+    $('setMemSum').textContent = on + ' of ' + MEMORY_KEYS.length + ' on';
+    $('gameLog').classList.toggle('hide-plays', !mem.showPlays);
+    $('gameLog').classList.toggle('hide-turned', !mem.showTurned);
   }
   function openLog(open) {
     $('logDrop').hidden = !open;
@@ -5117,8 +5155,10 @@ const App = (() => {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
       const opening = v.myOut.slice(0, 3), rest = v.myOut.slice(3), kitty = v.receiver === v.seat ? rest.slice(0, v.exchangeCount) : [];
       const groups =  ([['Opening', opening], ['Exchange', kitty], ['Showdown', rest.slice(kitty.length)]]).filter(([, ids]) => ids.length);
-      body = '<p>Face down, out of play until a Showdown.</p>' + (groups.length ? '<b class="psub">Your discards</b><dl class="pout">' +
-        groups.map(([k, ids]) => '<dt>' + k + '</dt><dd><span class="minis">' + ids.map(mini).join('') + '</span></dd>').join('') + '</dl>' : '');
+      body = '<p>Face down, out of play until a Showdown.</p>';
+      if (!app.ui.memory.showDiscards) body += v.myOut.length ? '<p>You discarded ' + v.myOut.length + '.</p><p class="pnote">Table memory → Your discards shows them.</p>' : '';
+      else if (groups.length) body += '<b class="psub">Your discards</b><dl class="pout">' +
+        groups.map(([k, ids]) => '<dt>' + k + '</dt><dd><span class="minis">' + ids.map(mini).join('') + '</span></dd>').join('') + '</dl>';
     } else if (kind !== 'tricks') {
       [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
@@ -5157,14 +5197,16 @@ const App = (() => {
     const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
     const callRound = () => { const b = Engine.trumpCall(v.bidLog); return b ? b.round : null; };
     const inHand = id => v.hand.includes(id);
+    const showT = Render.turnedShown(v, app.ui), showD = mem.showDiscards;
+    const flipMini = () => showT ? mini(v.flipped) : 'the turned-up card';
     const turnedTo = () => v.trump && v.flipped && !v.flippedOut && v.receiver !== null ? v.receiver : null;
     const turnedNote = () => {
       const r = turnedTo(); if (r === null) return '';
-      if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
-      return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
+      if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + flipMini() + ' and has played it.');
+      return p1(n(r) + ' took ' + flipMini() + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
     const cardList = ( ids,  known) => '<div class="plist">' + ids.map(id => {
-      const played = v.played.includes(id), turned = id === v.flipped, mine = known && inHand(id);
+      const played = v.played.includes(id), turned = showT && id === v.flipped, mine = known && inHand(id);
       const gone = known && !mine && (played || v.myOut.includes(id) || (turned && v.flippedOut));
       const note = !known ? '' : turned ? (played ? 'Turned, Played' : 'Turned') : mine ? '' : played ? 'Played' : v.myOut.includes(id) ? 'Discarded' : '';
       const byYou = known && (v.myOut.includes(id) || v.playLog.some(x => x.player === v.seat && x.card === id));
@@ -5280,7 +5322,7 @@ const App = (() => {
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
           dealer: () => [who + ' · Dealer', (v.phase === P.JOKER_VOID ? who + ' dealt this hand and turned up the Joker, so ' + who + ' deals it again.'
             : !v.flipped ? who + ' dealt this hand, so ' + who + ' turns up the top kitty card after the discards and bids last in both rounds.'
-            : who + ' dealt this hand, turned up ' + mini(v.flipped) + ' and ' + (bid ? vb('bid', 'bids') : 'bid') + ' last.') +
+            : who + ' dealt this hand, turned up ' + flipMini() + ' and ' + (bid ? vb('bid', 'bids') : 'bid') + ' last.') +
             (v.phase === P.JOKER_VOID ? '' : ' ' + n(next) + ' deals the next hand.')],
           caller: () => [who + ' · Namer', who + (r === 1 ? ' accepted ' : ' named ') + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + vb('your', who + '\'s') + ' left, ' + (v.phase === P.EXCHANGE ? (v.receiver === v.seat ? 'get' : 'gets') : 'got') + ' the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
           receiver: () => [who + ' · Kitty', ''],
@@ -5293,9 +5335,9 @@ const App = (() => {
         const [title, text] = TEXT[tag] ? TEXT[tag]() : [who, ''];
         if (tag === 'receiver') {
           const now = v.phase === P.EXCHANGE, c = v.flipped, one = v.exchangeCount === 1, mine = v.myOut.slice(3, 3 + v.exchangeCount);
-          const rows =  ([[now ? 'Gets' : 'Got', one ? (c ? Render.microHTML(c, 'Jkr', inHand(c)) : 'The turned-up card') : '2 face-down kitty cards'],
+          const rows =  ([[now ? 'Gets' : 'Got', one ? (c && showT ? Render.microHTML(c, 'Jkr', inHand(c)) : 'The turned-up card') : '2 face-down kitty cards'],
             ['Left of', n(v.caller) + ', the namer'],
-            [now ? 'Discards' : 'Discarded', !now && you && mine.length ? '<span class="minis">' + mine.map(mini).join('') + '</span>' : v.exchangeCount + ' face down']]);
+            [now ? 'Discards' : 'Discarded', !now && you && mine.length && showD ? '<span class="minis">' + mine.map(mini).join('') + '</span>' : v.exchangeCount + ' face down']]);
           if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
           return [title, dl(rows)];
         }
@@ -5795,14 +5837,14 @@ const App = (() => {
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED':
         if (e.jokerSuit) addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h');
-        else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind');
+        else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind flip');
         break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
-      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', 'ind'); break;
+      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', e.publicCard ? 'ind flip' : 'ind'); break;
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED':
@@ -7176,10 +7218,10 @@ const App = (() => {
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
-    const mem = app.ui.memory, keys =  (Object.keys(mem));
-    if (x.memory === undefined && x.thisHand === true) for (const k of keys) mem[k] = true;
-    if (typeof x.memory === 'boolean') for (const k of keys) mem[k] = x.memory;
-    if (x.memory && typeof x.memory === 'object') for (const k of keys) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
+    const mem = app.ui.memory, adds =  (['trumps', 'kings', 'turned', 'voids']);
+    if (x.memory === undefined && x.thisHand === true) for (const k of adds) mem[k] = true;
+    if (typeof x.memory === 'boolean') for (const k of adds) mem[k] = x.memory;
+    if (x.memory && typeof x.memory === 'object') for (const k of MEMORY_KEYS) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
@@ -7261,11 +7303,10 @@ const App = (() => {
       box.querySelectorAll('.mbtns .btn').forEach(b => b.classList.toggle('primary', b.getAttribute('data-action') === 'play-wave'));
     });
     loadSettings();
-    for (const [k, id] of Object.entries(MEMORY_SWITCHES)) {
-      const key =  (k);
-      $(id).checked = app.ui.memory[key];
-      $(id).addEventListener('change', () => setMemory(key, $(id).checked));
-    }
+    for (const k of MEMORY_KEYS) $(MEMORY_SWITCHES[k]).addEventListener('change', () => setMemory(k, $(MEMORY_SWITCHES[k]).checked));
+    $('setMemAll').addEventListener('change', () => setMemoryAll(MEMORY_PRESETS[$('setMemAll').checked ? 'full' : 'real']));
+    $('setMemPreset').addEventListener('change', () => { const p = MEMORY_PRESETS[$('setMemPreset').value]; if (p) setMemoryAll(p); });
+    syncMemory();
     syncTheme();
     $('setFelt').addEventListener('change', ev => { const r =  (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt,  ($('setColorBlind')).checked ? 'colorblind' : ''));
@@ -8295,7 +8336,7 @@ const SelfTest = (() => {
         } finally { Object.assign(Logger, kept); }
       }
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
-      const memOf = (t, k, tu, vo) => ({ trumps: t, kings: k, turned: tu, voids: vo });
+      const memOf = (t, k, tu, vo, st = true, sd = true, sp = true) => ({ trumps: t, kings: k, turned: tu, voids: vo, showTurned: st, showDiscards: sd, showPlays: sp });
       let built = 0;
       const anchor = (tag, card) => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); if (card) a.setAttribute('data-card', card); return a; };
       const tryPanel = (v, kind, seat, tag, card) => {
@@ -8309,7 +8350,7 @@ const SelfTest = (() => {
       };
       try {
         for (let g = 0; g < 3; g++) {
-          ui.memory = g === 0 ? memOf(false, false, false, false) : g === 1 ? memOf(true, true, true, true) : memOf(true, false, true, false);
+          ui.memory = g === 0 ? memOf(false, false, false, false, false, false, false) : g === 1 ? memOf(true, true, true, true) : memOf(true, false, true, false, false, true, false);
           const s = Engine.createGame(2000 + g);
           D(s, { type: 'START_GAME' });
           for (let steps = 0; !s.gameOver && steps < 20000; steps++) {
@@ -8372,6 +8413,22 @@ const SelfTest = (() => {
           eq('Table memory: Kings not played lists the 4 Kings in the Hand popup, the trump King first', [...kd.querySelectorAll('.plist .micro')].map(c => c.innerHTML), R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T).map(face));
           const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
           check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
+          const play = Engine.PLAY_PHASES[0], cells = ( v) => Render.advInfoHTML(v, ui).join('');
+          const tt = Object.assign({}, tv, { phase: play, flippedOut: false, receiver: 1, caller: 0, dealer: 2, exchangeCount: 1, myOut: [trumps[0]] });
+          ui.memory = memOf(true, false, true, false);
+          check('Table memory: Turned-up card on keeps the Turned up cell and the card in the popups',
+            cells(tt).includes('data-kind="turned"') && App.infoPanel(tt, 'trump', null, anchor())[1].includes('Turned') && App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1].includes('class="micro'));
+          ui.memory = memOf(true, false, true, false, false);
+          const tb = App.infoPanel(tt, 'trump', null, anchor())[1];
+          check('Table memory: Turned-up card off drops the Turned up cell after the bidding', !cells(tt).includes('data-kind="turned"'));
+          check('Table memory: Turned-up card off keeps it while the bidding decides', cells(Object.assign({}, tt, { phase: P.BID2 })).includes('data-kind="turned"'));
+          check('Table memory: Turned-up card off names it without the card in the popups', !/Turned/.test(tb) && /the turned-up card/.test(App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1]) &&
+            !App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1].includes('class="micro') && /The turned-up card/.test(App.infoPanel(tt, 'tag', 1, anchor('receiver'))[1]));
+          const mine = Object.assign({}, tt, { receiver: 0, caller: 2, myOut: [trumps[0], trumps[2], trumps[3], trumps[4]] });
+          ui.memory = memOf(false, false, false, false);
+          check('Table memory: Your discards on shows them in the Kitty popup', App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1].includes('class="minis"'));
+          ui.memory = memOf(false, false, false, false, true, false);
+          check('Table memory: Your discards off gives the Kitty popup a count only', /1 face down/.test(App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1]) && !App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1].includes('class="minis"'));
         } finally { ui.memory = wasMemory; }
       }
       {
