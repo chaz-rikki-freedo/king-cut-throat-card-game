@@ -9035,9 +9035,13 @@ const App = (() => {
       if (ev.error instanceof Error && (!file || file === location.href.split('#')[0])) reportPageError(ev.error);
     });
     window.addEventListener('unhandledrejection', ev => { if (ev.reason instanceof Error) reportPageError(ev.reason); });
-    /* The header can wrap to two rows: the cards fit the room under it. */
+    /* The header can wrap to two rows: the cards fit the room under it. The page coming back measures again too: an
+       app resumed from the background may have laid out at another size, with no resize after, leaving every tag's
+       width (--tag-w) too wide. */
     if (window.ResizeObserver) new ResizeObserver(() => Fit.update()).observe($('topbar'));
     window.addEventListener('resize', () => Fit.update());
+    window.addEventListener('pageshow', () => Fit.update());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') Fit.update(); });
     const speed = $('speedSel');
     speed.value = app.ui.speed;
     syncSpeedTitle();
