@@ -55,6 +55,7 @@ const SEED = {
 
     await page.click('#setFelt .felt-tile:has(input[value="winter"])');
     await page.click('label.set-row:has(#setColorBlind)');
+    await step(`q('#setMemEach').open = true; q('#setMemAdds').open = true; q('#setMemShows').open = true; return 1;`);
     await page.click('label.set-row:has(#setMemTrumps)');
     await page.click('label.set-row:has(#setMemVoids)');
     await page.click('label.set-row:has(#setMediatorLead)');
@@ -75,8 +76,9 @@ const SEED = {
 
     await pick('#setGameReset', 'memory', 'game-reset');
     await page.click('[data-action="ask-ok"]');
-    s = await step(`return { sw: ['#setMemTrumps', '#setMemKings', '#setMemTurned', '#setMemVoids'].map(x => q(x).checked), saved: JSON.parse(localStorage.getItem('kct.settings')) };`);
-    expect('Table memory switches all turn off', s.sw.every(x => !x) && Object.values(s.saved.memory).every(x => !x), s);
+    s = await step(`return { sw: ['#setMemTrumps', '#setMemKings', '#setMemTurned', '#setMemVoids', '#setMemShowTurned', '#setMemShowDiscards', '#setMemShowPlays'].map(x => q(x).checked).join(), preset: q('#setMemPreset').value, saved: JSON.parse(localStorage.getItem('kct.settings')) };`);
+    expect('Table memory goes back to Standard: the add switches off, the show switches on', s.sw === 'false,false,false,false,true,true,true' && s.preset === 'standard' &&
+      JSON.stringify(s.saved.memory) === JSON.stringify({ trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true }), s);
 
     await pick('#setGameReset', 'house', 'game-reset');
     await page.click('[data-action="ask-ok"]');
