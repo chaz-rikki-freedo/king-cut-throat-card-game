@@ -7996,7 +7996,7 @@ const App = (() => {
     const max = sharkLimit(app.dyn.e0);
     const names = PERSONAS.filter(x => x.tier === 'shark').map(x => escHTML(x.name));
     const list = (/** @type {string} */ and) => names.slice(0, -1).join(', ') + ' ' + and + ' ' + names[names.length - 1];
-    return '<p class="swap-note">Dynamic picks two opponents at random from the bots that suit your level, and avoids the bots from your last game. It does not go through every bot in turn. ' +
+    return '<p class="swap-note">Dynamic picks two opponents at random from those appropriate for you right now, and avoids the bots from your last game. It does not go through every bot in turn. ' +
       (max === 0 ? 'For now, the Sharks (' + list('and') + ') sit out. They join as your play improves.' :
         max === 1 ? 'For now, at most one Shark (' + list('or') + ') sits at your table.' : 'Any two bots can sit at your table.') + '</p>';
   }
