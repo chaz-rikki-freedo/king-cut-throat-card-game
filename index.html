@@ -6476,7 +6476,7 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || kind === 'hand' || kind === 'kitty' || anchor.getAttribute('data-tag') === 'receiver' || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || kind === 'hand' || kind === 'kitty' || ['receiver', 'turn'].includes(anchor.getAttribute('data-tag') || '') || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     /* Under the anchor; when it does not fit there, above it; always inside the window (a popup never opens off
        screen, e.g. from your trick circles at the bottom of a phone). While you pick cards to discard, a popup from
@@ -6668,6 +6668,26 @@ const App = (() => {
             ['Left of', n(v.caller) + ', the namer'],
             [now ? 'Discards' : 'Discarded', !now && you && mine.length ? '<span class="minis">' + mine.map(mini).join('') + '</span>' : v.exchangeCount + ' face down']]);
           if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
+          return [title, dl(rows)];
+        }
+        if (tag === 'turn') {
+          /* Rows: what this player is doing now; in a trick, the suit led and the card winning so far. */
+          const plays = v.trick.plays, lead = v.trick.leadSuit, best = plays.length ? R.getTrickWinner(plays, T) : null, k = v.trickNumber;
+          const now = {
+            [P.DISCARD]: 'Discarding ' + Engine.C.INITIAL_DISCARD + ', face down',
+            [P.BID1]: v.flippedSuit ? 'Deciding: accept ' + suit(v.flippedSuit) + ' or pass' : '',
+            [P.BID2]: 'Naming a suit or passing',
+            [P.EXCHANGE]: 'Discarding ' + v.exchangeCount + ' after the kitty',
+            [P.TRICK_PLAY]: (plays.length ? 'Playing to' : 'Leading') + ' trick ' + k,
+            [P.SHOWDOWN_PLAY]: (plays.length ? 'Playing to' : 'Leading') + ' Showdown trick ' + k,
+            [P.SHOWDOWN_DISCARD]: 'Discarding 1 for the Showdown',
+            [P.SHOWDOWN_LEAD]: 'Picking who leads the Showdown'
+          }[v.phase];
+          if (!now) return [title, p1(text)];
+          const rows = /** @type {[string, string][]} */ ([['Now', now]]);
+          if (v.phase === P.BID2 && v.flippedBlocked && v.flippedSuit) rows.push(['Blocked', suit(v.flippedSuit)]);
+          if (lead) rows.push(['Led', suit(lead)]);
+          if (best) rows.push(['Winning', n(best.player) + ' ' + Render.microHTML(best.card, 'Jkr', best.player === v.seat)]);
           return [title, dl(rows)];
         }
         return [title, p1(text)];
@@ -10282,6 +10302,10 @@ const SelfTest = (() => {
         check('Dealer tag: a turned-up Joker, the same dealer deals again', tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('deals it again') && !tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('next hand'));
         const sdv = Object.assign({}, tv, { dealer: 1, showdown: { mediator: 2, participants: [0, 1], active: true } });
         check('Dealer tag: stays on the dealer of the hand in a Showdown', Render.advTags(sdv, 1, ui).includes('data-tag="dealer"') && !Render.advTags(sdv, 2, ui).includes('data-tag="dealer"'));
+        const trows = (/** @type {any} */ v, /** @type {number} */ p) => { const d = document.createElement('div'); d.innerHTML = tag(v, p, 'turn'); return [...d.querySelectorAll('dt')].map(x => x.textContent + ': ' + (/** @type {Element} */ (x.nextElementSibling)).textContent); };
+        eq('Turn tag: rows during a trick', trows(Object.assign({}, tv, { phase: P.TRICK_PLAY, currentPlayer: 2, trump: 'S', trickNumber: 2, trick: { plays: [{ player: 1, card: '9H' }], leadSuit: 'H' } }), 2),
+          ['Now: Playing to trick 2', 'Led: ♥ Hearts', 'Winning: ' + Render.nameOf(tv, 1) + ' 9']);
+        eq('Turn tag: rows while bidding', trows(Object.assign({}, tv, { phase: P.BID1, bidTurn: 1, flippedSuit: 'S' }), 1), ['Now: Deciding: accept ♠ Spades or pass']);
         const bd = Object.assign({}, tv, { phase: P.BID1, bidTurn: 1, flipped: '9S', flippedSuit: 'S', kittyCount: 3 });
         check('Kitty: during bidding, names the player left of the one bidding now', App.infoPanel(bd, 'kitty', null, anchor())[1].includes('(' + Render.nameOf(tv, 2) + ' if ' + Render.nameOf(tv, 1) + ' accepts)'));
       }
