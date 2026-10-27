@@ -17,7 +17,7 @@
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
   --page:#0a2a19; --panel:rgba(0,0,0,.26); --panel-strong:rgba(0,0,0,.42);
   --ink:#f5f2e9; --muted:#bccbbf; --gold:#f2c14e; --gold-ink:#3a2a00;
-  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#43a047;
+  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#8ff59a;
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
@@ -705,8 +705,10 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
 .panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
+.panel.narrow{max-width:15rem}
 .panel .plist{display:grid;grid-template-columns:var(--card-micro) minmax(0,1fr);gap:0.375rem 0.75rem;align-items:center;margin:0.375rem 0 0.25rem 0.1875rem}
-.panel .plist .micro.mine{box-shadow:0 0 0 0.1875rem var(--mine)}
+.panel .plist .micro.mine{background:var(--mine)!important;color:var(--black)!important}
+.panel .plist .micro.mine .rank{color:var(--black)}
 .panel .plist .micro.gone{opacity:.35}
 .panel .plist .pn{white-space:nowrap}
 .panel .plist .pn.gone{color:var(--muted)}
@@ -955,7 +957,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'fa59401', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: 'f2f2809', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5128,7 +5130,7 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
     const picking = anchor.closest('#seat' + HUMAN) && Engine.actors(app.state).includes(HUMAN) && (v.phase === P.DISCARD || v.phase === P.EXCHANGE || v.phase === P.SHOWDOWN_DISCARD);
