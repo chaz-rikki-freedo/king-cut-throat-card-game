@@ -102,6 +102,12 @@
    "job": "Selection: the selected and playable cards, the lead mark, trump in the log."
   },
   {
+   "name": "--mine",
+   "family": "action",
+   "value": "#43a047",
+   "job": "Your own cards in a popup card list (Trump, Kings): the ring around the chip."
+  },
+  {
    "name": "--danger",
    "family": "status",
    "value": "#ff8a80",

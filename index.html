@@ -19,7 +19,7 @@
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
   --page:#0a2a19; --panel:rgba(0,0,0,.26); --panel-strong:rgba(0,0,0,.42);
   --ink:#f5f2e9; --muted:#bccbbf; --gold:#f2c14e; --gold-ink:#3a2a00;
-  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b;
+  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#43a047;
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
@@ -839,6 +839,12 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
 .panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
+/* A card list in a popup (Trump, Kings): one card a row, highest first, with what is known about it to its right. */
+.panel .plist{display:grid;grid-template-columns:var(--card-micro) minmax(0,1fr);gap:0.375rem 0.75rem;align-items:center;margin:0.375rem 0 0.25rem 0.1875rem}
+.panel .plist .micro.mine{box-shadow:0 0 0 0.1875rem var(--mine)}
+.panel .plist .micro.gone{opacity:.35}
+.panel .plist .pn{white-space:nowrap}
+.panel .plist .pn.gone{color:var(--muted)}
 .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0}
@@ -1031,8 +1037,8 @@ window.kctTheme = (() => {
       <h3 class="set-head">Table memory</h3>
       <div class="set-card" id="setInterface">
         <p class="k-hint set-note">What every player has seen this hand, added to the popups. Never a card someone holds unseen.</p>
-        <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup lists the trumps played and not seen yet.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup lists the Kings still to come.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup marks each trump: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup marks each King: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
         <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
         <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
       </div>
@@ -4914,7 +4920,7 @@ const Render = (() => {
     const tag = (kind, label, inner) => '<span class="tag ' + kind + ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="tag" data-tag="' + kind + '" data-seat="' + p + '" title="About ' + label + '">' + (inner || label) + '</span>';
     if (human && ui.allowSeatAI) t.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
     else t.push(human && !auto ? tag('you', 'Human') : tag('ai', 'AI'));
-    if ((v.showdown ? v.showdown.mediator : v.dealer) === p) t.push(tag('dealer', 'Dealer'));
+    if (v.dealer === p) t.push(tag('dealer', 'Dealer'));
     if (v.caller === p && v.trump) t.push(tag('caller', 'Namer'));
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push(tag('receiver', 'Kitty'));
     if (turnSeat(v) === p) t.push(tag('turn', 'Turn'));
@@ -5159,7 +5165,7 @@ const Render = (() => {
     return true;
   }
 
-  return Object.freeze({ render, ledTrick, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
+  return Object.freeze({ render, ledTrick, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
 })();
 
 /* ---------------------------------------------------------------------
@@ -6460,9 +6466,11 @@ const App = (() => {
     table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     /* Under the anchor; when it does not fit there, above it; always inside the window (a popup never opens off
-       screen, e.g. from your trick circles at the bottom of a phone). */
+       screen, e.g. from your trick circles at the bottom of a phone). While you pick cards to discard, a popup from
+       your seat opens above it when it fits, so it never covers your hand. */
     const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
-    const y = below + h <= innerHeight - 8 || above < 8 ? Math.max(8, Math.min(below, innerHeight - 8 - h)) : above;
+    const picking = anchor.closest('#seat' + HUMAN) && Engine.actors(app.state).includes(HUMAN) && (v.phase === P.DISCARD || v.phase === P.EXCHANGE || v.phase === P.SHOWDOWN_DISCARD);
+    const y = picking && above >= 8 ? above : below + h <= innerHeight - 8 || above < 8 ? Math.max(8, Math.min(below, innerHeight - 8 - h)) : above;
     if (anchor.closest('#topbar')) {
       pn.style.position = 'fixed';
       pn.style.left = Math.min(Math.max(8, r.left), innerWidth - pn.offsetWidth - 8) + 'px';
@@ -6477,7 +6485,7 @@ const App = (() => {
      With Settings → Table memory switches on, they add what every player at the table has seen, counted for you: the AI keeps
      the same facts (see its Knowledge settings). Never a card that someone holds unseen. Returns [title, body]. */
   function infoPanel(v, kind, seat, anchor) {
-    const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr'), minis = ids => '<div class="prow">' + ids.map(mini).join('') + '</div>';
+    const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr');
     const mem = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
     const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
     const callRound = () => { const b = Engine.trumpCall(v.bidLog); return b ? b.round : null; };
@@ -6489,6 +6497,16 @@ const App = (() => {
       if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
       return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
+    /* A card list (Trump, Kings): one card a row, with what you know about it to its right. Yours have a green ring
+       and no note; played, discarded and outside cards are dimmed. The turned card says so, in any state. With known
+       off, the cards alone. */
+    const cardList = (/** @type {string[]} */ ids, /** @type {boolean} */ known) => '<div class="plist">' + ids.map(id => {
+      const played = v.played.includes(id), turned = id === v.flipped, mine = known && inHand(id);
+      const gone = known && !mine && (played || v.myOut.includes(id) || (turned && v.flippedOut));
+      const note = !known ? '' : turned ? (played ? 'Turned, Played' : 'Turned') : mine ? '' : played ? 'Played' : v.myOut.includes(id) ? 'Discarded' : '';
+      const cls = mine ? ' mine' : gone ? ' gone' : '';
+      return mini(id).replace('class="micro"', 'class="micro' + cls + '"') + '<span class="pn' + (gone ? ' gone' : '') + '">' + note + '</span>';
+    }).join('') + '</div>';
     /* With a switch off, a note names the switch that adds its facts. */
     const off = (/** @type {boolean} */ on, /** @type {string} */ name, /** @type {string} */ adds) => on ? '' : '<p class="pnote">Settings → Table memory → ' + name + ' adds ' + adds + '.</p>';
     const blockedText = (/** @type {Suit} */ x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
@@ -6517,13 +6535,14 @@ const App = (() => {
         return [title, body];
       }
       case 'kitty': {
-        const left = n((v.seat + 1) % 3), s = v.flippedSuit;
+        /* The kitty goes to the player left of whoever accepts or names; for the player bidding now, that seat is named. */
+        const b = v.bidTurn, s = v.flippedSuit, which = b === null ? '' : ' (' + n(Engine.seatAfter(b)) + ', if ' + n(b) + (v.phase === P.BID1 ? ' accepts)' : ' names a suit)');
         let body;
         if (v.phase === P.BID1 && s) {
-          body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; ' + left + ' takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go outside.') +
+          body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; the player left of whoever accepts takes ' + mini(v.flipped) + ' and discards 1' + which + '. The 2 face-down cards go outside.') +
             p1('All pass: round 2, ' + R.SYMBOL[s] + ' blocked.');
         } else if (v.phase === P.BID2 && s) {
-          body = p1(R.SYMBOL[s] + ' is blocked. Name a suit: ' + left + ' takes the 2 face-down cards and discards 2.') +
+          body = p1(R.SYMBOL[s] + ' is blocked. Name a suit: the player left of whoever names takes the 2 face-down cards and discards 2' + which + '.') +
             p1('All pass: the hand is thrown in.');
         } else {
           body = p1('After the discards, the top card is turned up; its suit is offered as trump. The player left of the namer gets the kitty.');
@@ -6546,19 +6565,11 @@ const App = (() => {
       }
       case 'trump': {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
-        let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
-        if (mem.trumps) {
-          /* Seen but not played: your own discards, and the turned card (everyone saw it turned up). */
-          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), left = order.filter(id => !played.includes(id) && !inHand(id));
-          const discarded = left.filter(id => v.myOut.includes(id)), turnedOut = v.flippedOut && left.includes(v.flipped) ? v.flipped : null;
-          const unseen = left.filter(id => !discarded.includes(id) && id !== v.flipped);
-          body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
-            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) +
-            p1('You hold ' + mine.length + '.' + (discarded.length ? ' You discarded ' + discarded.map(mini).join(' ') + '.' : '') +
-              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.');
-        }
-        if (mem.turned) body += turnedNote();
-        return ['Trump', body + off(mem.trumps, 'Trumps played', 'the trumps played and not seen yet')];
+        const r = callRound();
+        let body = p1(suit(T) + (v.caller !== null ? (r === 1 ? ', accepted by ' : ', named by ') + n(v.caller) + (r ? ' in round ' + r : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + cardList(order, mem.trumps);
+        /* With Trumps played on, the list says where the turned card is; else the Turned card switch says it here. */
+        if (mem.turned && !mem.trumps) body += turnedNote();
+        return ['Trump', body + off(mem.trumps, 'Trumps played', 'which trumps are yours, played or discarded')];
       }
       case 'hand': {
         const sd = v.showdown && v.showdown.active;
@@ -6566,10 +6577,10 @@ const App = (() => {
         if (Render.stageHelp(v)) body += p1(Render.stageHelp(v));
         if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
         if (mem.kings && T) {
-          const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
-          body += sub('Kings not played yet (' + out.length + ')') + (out.length ? minis(out) : p1('None.')) + p1('A King that wins a trick scores +1 at once.' + (out.some(inHand) ? ' You hold ' + out.filter(inHand).map(mini).join(' ') + '.' : ''));
+          /* The trump King first, then the suits in the order your hand shows them. */
+          body += sub('Kings') + cardList(R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T), true) + p1('A King that wins a trick scores +1 at once.');
         }
-        return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'the Kings still to come') : '')];
+        return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'which Kings are yours, played or discarded') : '')];
       }
       case 'turned': {
         const blocked = v.phase === P.BID2 && v.flippedBlocked;
@@ -6599,20 +6610,32 @@ const App = (() => {
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
         const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] ? PERSONA_BY_ID[id] : null, tuned = !watch && !!app.ui.tunes[seat];
-        const r = callRound();
+        const r = callRound(), you = seat === v.seat;
+        /* A verb for this seat: youText fixes "You" + verb only up to the first card chip, so sentences with a chip
+           pick the form here. */
+        const vb = (/** @type {string} */ forYou, /** @type {string} */ forOther) => you ? forYou : forOther;
+        const next = Engine.seatAfter(v.dealer), bid = v.phase === P.BID1 || v.phase === P.BID2;
         /* Each tag's [title, text], built only for the tag clicked: some read state that is not always there (the
            turned card is gone in a Showdown and before the reveal). */
         const TEXT = {
           ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : '.') + (tuned ? ' This game, ' + who + ' plays with your Settings → Bots changes.' : '')],
           you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
-          dealer: () => [who + ' · Dealer', v.showdown
-            ? who + ' mediates the Showdown, so ' + who + ' deals it' + (Engine.discardsInTurn(v.rules) ? ': the discards go in turn from ' + who + '\'s left. ' : '. ') + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
-            : who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
-          caller: () => [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
-          receiver: () => [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
+          /* Who dealt and who deals next. The Showdown's deal is the Mediator tag's. */
+          dealer: () => [who + ' · Dealer', (v.phase === P.JOKER_VOID ? who + ' dealt this hand and turned up the Joker, so ' + who + ' deals it again.'
+            : !v.flipped ? who + ' dealt this hand, so ' + who + ' turns up the top kitty card after the discards and bids last in both rounds.'
+            : who + ' dealt this hand, turned up ' + mini(v.flipped) + ' and ' + (bid ? vb('bid', 'bids') : 'bid') + ' last.') +
+            (v.phase === P.JOKER_VOID ? '' : ' ' + n(next) + ' deals the next hand.')],
+          caller: () => [who + ' · Namer', who + (r === 1 ? ' accepted ' : ' named ') + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + vb('your', who + '\'s') + ' left, ' + (v.phase === P.EXCHANGE ? (v.receiver === v.seat ? 'get' : 'gets') : 'got') + ' the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
+          /* While the exchange waits on this player, the discard is still to come. */
+          receiver: () => {
+            const now = v.phase === P.EXCHANGE;
+            return [who + ' · Kitty', who + ' ' + (now ? vb('get', 'gets') : 'got') + ' ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) +
+              ' as the player left of the namer, and ' + (now ? vb('discard', 'discards') : 'discarded') + ' ' + v.exchangeCount + ' face down.'];
+          },
           turn: () => [who + ' · Turn', Render.statusText(v)],
           led: () => { const t = Render.ledTrick(v); return [who + ' · Led', t ? who + ' led this trick with ' + mini(t.plays[0].card) + '. Everyone must follow ' + (t.leadSuit ? suit(t.leadSuit) : 'suit') + ' if they can.' : who + ' led this trick.']; },
-          mediator: () => [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.'],
+          mediator: () => [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.' +
+            (Engine.discardsInTurn(v.rules) ? ' The Showdown discards go in turn from ' + vb('your', who + '\'s') + ' left.' : '')],
           duelist: () => [who + ' · Showdown', who + ' plays the Showdown: 5 tricks with the same trump. Winner +1, loser −1 (not below 0). Kings that win still score +1.']
         };
         const [title, text] = TEXT[tag] ? TEXT[tag]() : [who, ''];
@@ -8055,10 +8078,10 @@ const App = (() => {
     ['Trump order', '<b>Joker, Right Bower, Left Bower, A, K, Q, 10, 9, 8, 7.</b> The Right Bower is the Jack of trump. The Left Bower is the other Jack of the same color, and counts as trump. ' +
       '<i>Bower</i> comes from the German <i>Bauer</i>, “farmer”: the Jacks are the farmers.'],
     ['Discard', 'Before bidding, each player discards 3 cards face down to the outside pile, leaving 7. The discards go in turn from the dealer\'s left, the dealer last.'],
-    ['Naming trump: round 1', 'The dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1. ' +
+    ['Naming trump: round 1', 'The dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the namer</b>, who discards 1. ' +
       'A turned-up Joker voids the hand; with the house rule <b>Turned-up Joker</b>, it offers the suit set in Settings instead, shown under its corner star for this hand.'],
-    ['Naming trump: round 2', 'Name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned. ' +
-      'The gift to the player left of the caller is the only price of trump: the caller loses no points for a failed call.'],
+    ['Naming trump: round 2', 'Name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the namer, who discards 2. If all pass, the hand is abandoned. ' +
+      'The gift to the player left of the namer is the only price of trump: the namer loses no points for a failed call.'],
     ['Play', '7 tricks. The player left of the dealer leads. Follow suit if you can.'],
     ['Scoring', '<b>+1</b> at once when a King wins a trick (a losing King scores nothing). End of hand: most tricks <b>+1</b>, the namer takes all 7 <b>+2</b>, a non-namer takes all 7 <b>+3</b>.'],
     ['Showdown', 'On a 3–3–1 split, the 1-trick player mediates: shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. ' +
@@ -10134,14 +10157,29 @@ const SelfTest = (() => {
       } finally { ui.memory = wasMemory; }
       eq('every information popup builds, all through 3 games, Table memory off, on and in part', fails, []);
       check('the popup check ran', built > 1000, built + ' popups');
-      /* Table memory: a trump you discarded, or the turned card, is never listed as not seen yet. */
+      /* Table memory: the Trump list marks each trump once. Yours are ringed, played and discarded ones are dimmed with a
+         note, the turned card says Turned in any state, and a trump with no mark and no note is not seen yet. */
       {
-        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker), m = id => Render.microHTML(id, 'Jkr');
-        Object.assign(tv, { trump: T, hand: [], played: [], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker);
+        Object.assign(tv, { trump: T, hand: [trumps[3]], played: [trumps[4]], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        /* A chip's inside, which names its card. */
+        const face = (/** @type {string} */ id) => { const x = document.createElement('div'); x.innerHTML = Render.microHTML(id, 'Jkr'); return /** @type {Element} */ (x.firstElementChild).innerHTML; };
+        /* One row of the list: the chip's classes and the note beside it. */
+        const row = (/** @type {string} */ body, /** @type {string} */ id) => {
+          const d = document.createElement('div'); d.innerHTML = body;
+          const chips = [...d.querySelectorAll('.plist .micro')], c = chips.find(x => x.innerHTML === face(id));
+          return c ? { cls: c.className, note: c.nextElementSibling ? c.nextElementSibling.textContent : '', rows: chips.length } : null;
+        };
         ui.memory = memOf(true, false, false, false);
         try {
-          const body = App.infoPanel(tv, 'trump', null, anchor())[1], unseen = body.split('Not seen yet')[1].split('<p>')[0];
-          check('Table memory: own discards and the turned card are not listed as not seen yet', !unseen.includes(m(trumps[0])) && !unseen.includes(m(trumps[1])) && unseen.includes(m(trumps[2])) && body.includes('You discarded'));
+          const body = App.infoPanel(tv, 'trump', null, anchor())[1];
+          eq('Table memory: the Trump list marks each trump once, highest first', [row(body, trumps[0]), row(body, trumps[1]), row(body, trumps[2]), row(body, trumps[3]), row(body, trumps[4])],
+            [{ cls: 'micro gone', note: 'Discarded', rows: 10 }, { cls: 'micro gone', note: 'Turned', rows: 10 }, { cls: 'micro', note: '', rows: 10 }, { cls: 'micro mine', note: '', rows: 10 }, { cls: 'micro gone', note: 'Played', rows: 10 }]);
+          check('Table memory: the Trump list leaves out the old sections', !/Not seen yet|Played \(|You hold|You discarded/.test(body));
+          const tp = Object.assign({}, tv, { flippedOut: false, played: [trumps[1]] });
+          eq('Table memory: a played turned card says Turned, Played', row(App.infoPanel(tp, 'trump', null, anchor())[1], trumps[1]), { cls: 'micro gone', note: 'Turned, Played', rows: 10 });
+          const th = Object.assign({}, tv, { flippedOut: false, hand: [trumps[1]] });
+          eq('Table memory: the turned card in your hand is ringed and says Turned', row(App.infoPanel(th, 'trump', null, anchor())[1], trumps[1]), { cls: 'micro mine', note: 'Turned', rows: 10 });
           /* Each switch adds only its own facts: Trumps played alone leaves the hand of backs and the Kings to their notes. */
           const tv2 = Object.assign({}, tv, { voids: [[], ['H'], []] }), hs = Engine.createGame(2200);
           D(hs, { type: 'START_GAME' });
@@ -10150,9 +10188,30 @@ const SelfTest = (() => {
           check('Table memory: Trumps played alone keeps the Kings hidden', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Table memory → Kings not played'));
           ui.memory = memOf(false, true, false, true);
           check('Table memory: Voids shows the suits a bot can\'t follow', App.infoPanel(tv2, 'backs', 1, anchor())[1].includes('Void of'));
-          check('Table memory: Kings not played lists them in the Hand popup', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Kings not played yet'));
-          check('Table memory: Trumps played off leaves its note in the Trump popup', !App.infoPanel(tv, 'trump', null, anchor())[1].includes('Not seen yet'));
+          const kb = App.infoPanel(hv, 'hand', null, anchor())[1], kd = document.createElement('div'); kd.innerHTML = kb;
+          eq('Table memory: Kings not played lists the 4 Kings in the Hand popup, the trump King first', [...kd.querySelectorAll('.plist .micro')].map(c => c.innerHTML), R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T).map(face));
+          const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
+          check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
         } finally { ui.memory = wasMemory; }
+      }
+      /* Seat tags and the kitty say what is still to come in the present tense, and what is done in the past. */
+      {
+        const tv = buildView(Engine.createGame(2300), 0), tag = (/** @type {any} */ v, /** @type {number} */ p, /** @type {string} */ t) => App.infoPanel(v, 'tag', p, anchor(t)).map(Render.youText)[1];
+        const ex = Object.assign({}, tv, { trump: 'S', caller: 2, receiver: 1, exchangeCount: 2, phase: P.EXCHANGE, bidLog: [{ player: 2, round: 2, action: 'name', suit: 'S' }] });
+        check('Kitty tag: present tense while the exchange waits', tag(ex, 1, 'receiver').includes('gets the 2 face-down kitty cards') && tag(ex, 1, 'receiver').includes('and discards 2 face down'));
+        check('Kitty tag: your own exchange, still to come', /You get the 2 face-down kitty cards .*and discard 2 face down/.test(tag(Object.assign({}, ex, { receiver: 0 }), 0, 'receiver')));
+        check('Kitty tag: past tense after the exchange', tag(Object.assign({}, ex, { phase: P.TRICK_PLAY }), 1, 'receiver').includes('got the 2 face-down kitty cards') && tag(Object.assign({}, ex, { phase: P.TRICK_PLAY }), 1, 'receiver').includes('and discarded 2'));
+        const r1 = Object.assign({}, ex, { exchangeCount: 1, flipped: '9S', bidLog: [{ player: 2, round: 1, action: 'accept' }], phase: P.TRICK_PLAY });
+        check('Namer tag: accepted in round 1, named in round 2', tag(r1, 2, 'caller').includes('accepted ♠ Spades in round 1') && tag(ex, 2, 'caller').includes('named ♠ Spades in round 2'));
+        const dl = Object.assign({}, tv, { dealer: 1, flipped: null, phase: P.DISCARD });
+        check('Dealer tag: before the turn-up, and who deals next', tag(dl, 1, 'dealer').includes('turns up the top kitty card') && tag(dl, 1, 'dealer').includes(Render.nameOf(tv, 2) + ' deals the next hand'));
+        check('Dealer tag: after bidding, past tense', tag(Object.assign({}, dl, { flipped: '9S', phase: P.TRICK_PLAY }), 1, 'dealer').includes('and bid last.'));
+        check('Dealer tag: you deal next', tag(Object.assign({}, dl, { dealer: 2 }), 2, 'dealer').includes('You deal the next hand'));
+        check('Dealer tag: a turned-up Joker, the same dealer deals again', tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('deals it again') && !tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('next hand'));
+        const sdv = Object.assign({}, tv, { dealer: 1, showdown: { mediator: 2, participants: [0, 1], active: true } });
+        check('Dealer tag: stays on the dealer of the hand in a Showdown', Render.advTags(sdv, 1, ui).includes('data-tag="dealer"') && !Render.advTags(sdv, 2, ui).includes('data-tag="dealer"'));
+        const bd = Object.assign({}, tv, { phase: P.BID1, bidTurn: 1, flipped: '9S', flippedSuit: 'S', kittyCount: 3 });
+        check('Kitty: during bidding, names the player left of the one bidding now', App.infoPanel(bd, 'kitty', null, anchor())[1].includes('(' + Render.nameOf(tv, 2) + ', if ' + Render.nameOf(tv, 1) + ' accepts)'));
       }
       /* Polite Play (house rule): on, trick circles open the tricks won; off, they only count. */
       const pv = buildView(Engine.createGame(2100), 0), circles = polite => Render.advCircles(pv, 1, { houseRules: { politePlay: polite } });
