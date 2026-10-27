@@ -5108,6 +5108,21 @@ const Render = (() => {
     return html + advButtonsHTML(v, ui, ctx);
   }
 
+  /* The replay buttons stay the same elements across redraws, updated in place: at Instant a step redraws every few
+     frames, and a button replaced between the press and the release gets no click. */
+  /** @param {Element | null} old */
+  function keepWatchCtl(old) {
+    const now = $('center').querySelector('.watch-ctl');
+    if (!old || !now) return;
+    for (const nb of now.querySelectorAll('button')) {
+      const ob = old.querySelector('[data-action="' + nb.getAttribute('data-action') + '"]');
+      if (!ob) return;
+      for (const a of ['aria-label', 'title']) if (ob.getAttribute(a) !== nb.getAttribute(a)) ob.setAttribute(a, nb.getAttribute(a) || '');
+      /** @type {HTMLButtonElement} */ (ob).disabled = /** @type {HTMLButtonElement} */ (nb).disabled;
+      if (ob.innerHTML !== nb.innerHTML) ob.innerHTML = nb.innerHTML;
+    }
+    now.replaceWith(old);
+  }
   /* Draws the table. A redraw that changes nothing is skipped (the game redraws the same table several times in a
      row, and each redraw would restart the motion); the enter and flash marks count only once. */
   function render(v, ui, ctx) {
@@ -5125,7 +5140,9 @@ const Render = (() => {
     if (key === drawnKey) return false;
     drawnKey = key;
     Fx.capture();
+    const oldCtl = $('center').querySelector('.watch-ctl');
     for (const [el, h] of parts) el.innerHTML = h;
+    keepWatchCtl(oldCtl);
     const slot = $('skipSlot'); slot.innerHTML = skip; slot.hidden = !skip;
     for (const p of around(v)) {
       const el = $('seat' + p);
@@ -5953,6 +5970,8 @@ const App = (() => {
   let endCode = /** @type {string | null} */ (null);
   /* The replay viewer while it is open (watchGame), and whether its narration is quiet (a jump). */
   let watch = /** @type {any} */ (null), hush = false;
+  /* A mouse press acted on a replay button, so the click that may follow is skipped (see init). */
+  let watchPressed = false;
   let pendingReview = /** @type {{ rec: any, mode: string } | null} */ (null);
   function runReview() {
     const job = pendingReview;
@@ -8833,10 +8852,22 @@ const App = (() => {
       if (!ev.target.closest('#table > .panel, [data-action="adv-tricks"], [data-action="adv-outside"], [data-action="adv-info"], .namehint, #hand [aria-disabled="true"]')) closePanel();
       const cardEl = /** @type {HTMLButtonElement | null} */ (ev.target.closest('button[data-card]'));
       if (cardEl && !cardEl.disabled) { onCard(cardEl.getAttribute('data-card'), cardEl); return; }
+      /* A mouse press on the replay controls has already acted (below); its click is spent. Keys still click. */
+      if (watchPressed && ev.detail > 0 && ev.target.closest('.watch-ctl')) { watchPressed = false; return; }
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
       if (ev.target.id === 'askLayer') { answerAsk(false); return; }
       if (ev.target.closest('#center') && app.timerFn) skip();
+    });
+    /* The replay controls act on a mouse press: at Instant the steps move them as the table changes, and a release
+       away from the button pressed gets no click. A touch still taps, so a swipe that starts on a button can scroll. */
+    document.addEventListener('pointerdown', ev => {
+      watchPressed = false;
+      if (ev.pointerType === 'touch' || ev.button !== 0 || !(ev.target instanceof Element) || TabLock.stale) return;
+      const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('.watch-ctl [data-action]'));
+      if (!a || a.disabled) return;
+      watchPressed = true;
+      onAction(a.getAttribute('data-action'), a);
     });
     document.addEventListener('keydown', ev => {
       if (TabLock.stale) return; /* the pop-up buttons take Enter and Space; nothing else works */

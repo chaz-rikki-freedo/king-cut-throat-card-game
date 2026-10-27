@@ -77,6 +77,15 @@ function expect(name, ok, detail) {
     expect('Play steps on its own and shows Pause', r.played && r.pauseLabel === 'Pause', r);
     expect('watching saves nothing', r.saved === null, r.saved);
 
+    /* A real mouse press at instant speed: steps redraw the table between the press and the release. */
+    await step(`click('[data-action="watch-play"]'); await sleep(100); window.__steps = app.state.version;`);
+    const box = await page.locator('[data-action="watch-play"]').boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down(); await page.waitForTimeout(500); await page.mouse.up();
+    r = await step(`const a = app.state.version; await sleep(300);
+      return { stepped: a > window.__steps, still: app.state.version === a, label: q('[data-action="watch-play"]').getAttribute('aria-label') };`);
+    expect('a mouse click on Pause stops play at instant speed', r.stepped && r.still && r.label === 'Play', r);
+
     r = await step(`
       click('#modeChip'); await sleep(50);
       return { dialog: !!q('#overlay .gameover') && overlayOpen(), version: app.state.version, scores: app.state.scores.slice(), mode: app.mode,
