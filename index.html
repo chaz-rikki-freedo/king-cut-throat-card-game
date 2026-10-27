@@ -852,7 +852,9 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0}
-.panel dd .minis{gap:0.25rem;flex-wrap:wrap}
+.panel dd .minis{gap:0.25rem}
+.panel dd .minis .micro{margin:0}
+.panel dl.pout{align-items:center}
 .panel .pip-red{color:var(--pip-red)}
 .panel .pvoid{display:flex;align-items:center;gap:0.5rem;margin:0.125rem 0 0}
 .panel .vpip{font-size:1.375rem;line-height:1;color:var(--ink)}
@@ -6448,7 +6450,12 @@ const App = (() => {
     let title, body;
     if (kind === 'outside') {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
-      body = '<p>Face down, out of play until a Showdown.</p>' + (v.myOut.length ? '<dl><dt>Yours</dt><dd><span class="minis">' + v.myOut.map(mini).join('') + '</span></dd></dl>' : '');
+      /* Your discards by when you made them: the 3 opening ones, then the exchange (if the kitty came to you), then the
+         Showdown. Each row fits on one line. */
+      const opening = v.myOut.slice(0, 3), rest = v.myOut.slice(3), kitty = v.receiver === v.seat ? rest.slice(0, v.exchangeCount) : [];
+      const groups = /** @type {[string, string[]][]} */ ([['Opening', opening], ['Exchange', kitty], ['Showdown', rest.slice(kitty.length)]]).filter(([, ids]) => ids.length);
+      body = '<p>Face down, out of play until a Showdown.</p>' + (groups.length ? '<b class="psub">Your discards</b><dl class="pout">' +
+        groups.map(([k, ids]) => '<dt>' + k + '</dt><dd><span class="minis">' + ids.map(mini).join('') + '</span></dd>').join('') + '</dl>' : '');
     } else if (kind !== 'tricks') {
       [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
