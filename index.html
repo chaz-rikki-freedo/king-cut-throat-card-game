@@ -843,9 +843,9 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
    The popup that holds one is narrower: the list needs little width. */
 .panel.narrow{max-width:15rem}
 .panel .plist{display:grid;grid-template-columns:var(--card-micro) minmax(0,1fr);gap:0.375rem 0.75rem;align-items:center;margin:0.375rem 0 0.25rem 0.1875rem}
-/* Yours: tinted green (also the Joker, which is otherwise black), with dark rank text for contrast. */
-.panel .plist .micro.mine{background:var(--mine)!important;color:var(--black)!important}
-.panel .plist .micro.mine .rank{color:var(--black)}
+/* Your cards in a popup (card lists, tricks): tinted green (also the Joker, which is otherwise black), with dark rank text for contrast. */
+.panel .micro.mine{background:var(--mine)!important;color:var(--black)!important}
+.panel .micro.mine .rank{color:var(--black)}
 .panel .plist .micro.gone{opacity:.35}
 .panel .plist .pn{white-space:nowrap}
 .panel .plist .pn.gone{color:var(--muted)}
@@ -4901,10 +4901,11 @@ const Render = (() => {
   let drawnKey = '';
 
   /* A text-sized card: rank and suit on white, as in the log. */
-  function microHTML(id, joker) {
-    const c = R.card(id);
-    if (c.isJoker) return '<span class="micro" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
-    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
+  /* mine: one of your cards, tinted green in the popups. */
+  function microHTML(id, joker, mine) {
+    const c = R.card(id), cls = mine ? 'micro mine' : 'micro';
+    if (c.isJoker) return '<span class="' + cls + '" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
+    return '<span class="' + cls + '"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
@@ -6452,11 +6453,11 @@ const App = (() => {
       [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
       /* One column per player, headed by their name: the trick winner first, then the others in table order. The card
-         that led the trick is ringed. A Showdown player's circles count Showdown tricks, so their list does too. */
+         that led the trick is ringed, and your cards are tinted. A Showdown player's circles count Showdown tricks, so their list does too. */
       const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(seat);
       const winners = sd ? v.showdown.trickWinners : v.trickWinners, done = Engine.tricksOf(v)[sd ? 'showdown' : 'main'];
       const cols = [seat].concat([1, 2, 0].filter(p => p !== seat && (!sd || v.showdown.participants.includes(p))));
-      const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + mini(x.card) + '</span>' : '<span></span>'; };
+      const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + Render.microHTML(x.card, 'Jkr', p === v.seat) + '</span>' : '<span></span>'; };
       const rows = winners.map((w, i) => {
         if (w !== seat) return '';
         const plays = done[i] || [];
@@ -6508,8 +6509,7 @@ const App = (() => {
       const played = v.played.includes(id), turned = id === v.flipped, mine = known && inHand(id);
       const gone = known && !mine && (played || v.myOut.includes(id) || (turned && v.flippedOut));
       const note = !known ? '' : turned ? (played ? 'Turned, Played' : 'Turned') : mine ? '' : played ? 'Played' : v.myOut.includes(id) ? 'Discarded' : '';
-      const cls = mine ? ' mine' : gone ? ' gone' : '';
-      return mini(id).replace('class="micro"', 'class="micro' + cls + '"') + '<span class="pn' + (gone ? ' gone' : '') + '">' + note + '</span>';
+      return (gone ? mini(id).replace('class="micro"', 'class="micro gone"') : Render.microHTML(id, 'Jkr', mine)) + '<span class="pn' + (gone ? ' gone' : '') + '">' + note + '</span>';
     }).join('') + '</div>';
     /* With a switch off, a note names the switch that adds its facts. */
     const off = (/** @type {boolean} */ on, /** @type {string} */ name, /** @type {string} */ adds) => on ? '' : '<p class="pnote">Settings → Table memory → ' + name + ' adds ' + adds + '.</p>';
@@ -6523,9 +6523,9 @@ const App = (() => {
         let body;
         if (play && best) {
           const led = play === plays[0], follows = R.getEffectiveSuit(play.card, T) === lead;
-          body = p1(n(seat) + (led ? ' led ' : ' played ') + mini(play.card) + '.' + (led ? ' Follow ' + sym + ' if you can.'
+          body = p1(n(seat) + (led ? ' led ' : ' played ') + Render.microHTML(play.card, 'Jkr', seat === v.seat) + '.' + (led ? ' Follow ' + sym + ' if you can.'
             : follows ? '' : R.isTrump(play.card, T) ? ' No ' + sym + ': trumped.' : ' No ' + sym + ': can\'t win.')) +
-            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + n(best.player) + '\'s ' + mini(best.card) + '.');
+            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + (best.player === v.seat ? 'your ' : n(best.player) + '\'s ') + Render.microHTML(best.card, 'Jkr', best.player === v.seat) + '.');
         } else if (seat === v.seat && best) {
           const haveTrump = v.hand.some(id => R.isTrump(id, T));
           body = p1(v.legal.length < v.hand.length ? 'Must follow ' + sym + '.' : 'No ' + sym + ': any card. ' + (lead !== T && haveTrump ? 'A trump can win.' : 'It can\'t win.')) +
@@ -10197,6 +10197,12 @@ const SelfTest = (() => {
           const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
           check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
         } finally { ui.memory = wasMemory; }
+      }
+      /* A trick slot tints your card, as the card lists do. */
+      {
+        const sv = Object.assign(buildView(Engine.createGame(2400), 0), { trump: 'S', trick: { plays: [{ player: 0, card: '9S' }, { player: 1, card: '7S' }], leadSuit: 'S' } });
+        const mine = App.infoPanel(sv, 'slot', 0, anchor())[1], theirs = App.infoPanel(sv, 'slot', 1, anchor())[1];
+        check('Trick slot: your card is tinted, in your slot and as the card winning in another', mine.includes(Render.microHTML('9S', 'Jkr', true)) && theirs.includes('Winning: your ' + Render.microHTML('9S', 'Jkr', true)) && !theirs.includes(Render.microHTML('7S', 'Jkr', true)));
       }
       /* Seat tags and the kitty say what is still to come in the present tense, and what is done in the past. */
       {
