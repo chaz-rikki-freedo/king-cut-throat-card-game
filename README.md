@@ -44,6 +44,7 @@ The header stays at the top of the window, and the page scrolls under it. From l
 In Free play and Dynamic, a new game opens on a dialog that shows your two opponents: West (your left) and East (your right). No one is the dealer yet and no card is dealt; the table says **Choosing seats**. **⇄** swaps them and **Play** draws the dealer and starts the deal. This is the only chance to swap. **Try again** and **New deal** offer it again. There is no dialog when the AI plays your seat at the start.
 
 - **New opponents** seats two other random opponents (a new seed), neither of the two shown.
+- In Dynamic, a note says how the opponents are picked: at random from those appropriate for you right now, not each bot in turn. While the game eases off a lot, the Sharks (Vex, Doc and Mei) sit out; then at most one sits, and then any two bots can.
 - **‹ Back** (top left) or **Esc** does not start the game: the table empties and the menu opens. Your saved game of that mode, if any, stays as it was, because a game is saved only once **Play** is pressed.
 - When you have finished a game of that mode, a line shows how the latest one ended: the winner and the three scores.
 

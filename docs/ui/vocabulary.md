@@ -199,7 +199,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 ### 3.3 Seat-swap dialog
 
-`.modal.swap`, heading "Choose seats". Free play only, once, before the dealer is drawn.
+`.modal.swap`, heading "Choose seats". Free play and Dynamic, once, before the dealer is drawn.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
@@ -209,6 +209,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Play button | `swap-done` | C | Keeps the seats, draws the dealer and starts the deal. |
 | New opponents button | `swap-new` | C | Two other random opponents (a new seed). |
 | Back button | `.swap-back`, `swap-back` | C | **‹ Back** in the top left, beside the centered title. Does not start the game: the table empties and the menu opens. **Esc** does the same. |
+| Dynamic note | `.swap-note` | I | Dynamic only. Opponents are picked at random from those appropriate for you right now, not in turn, and the Shark limit for now: the Sharks sit out, at most one sits, or any two bots can sit. |
 | Last game line | `.swap-last` | I | "Last game: Doc won · You 7 · Ace 4 · Doc 10", the latest finished Free play game. |
 
 ### 3.4 Profile dialog
