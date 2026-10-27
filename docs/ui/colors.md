@@ -127,7 +127,7 @@ Generated from `palette.json`.
 | `--gold` | action | `#f2c14e` | Act here, or important now: primary buttons, the selected tab, trump, the caller, the turn, the trick winner. |
 | `--gold-ink` | action | `#3a2a00` | Text on gold. |
 | `--accent` | action | `#7cc4ff` | Selection: the selected and playable cards, the lead mark, trump in the log. |
-| `--mine` | action | `#43a047` | Your own cards in a popup card list (Trump, Kings): the ring around the chip. |
+| `--mine` | action | `#8ff59a` | Your own cards in a popup card list (Trump, Kings): the tint of the chip. |
 | `--danger` | status | `#ff8a80` | Something went wrong, or a loss. |
 | `--good` | status | `#9be59b` | Something worked, or a gain. |
 | `--card` | card | `#fffdf6` | The face of a card. |

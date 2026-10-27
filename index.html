@@ -19,7 +19,7 @@
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
   --page:#0a2a19; --panel:rgba(0,0,0,.26); --panel-strong:rgba(0,0,0,.42);
   --ink:#f5f2e9; --muted:#bccbbf; --gold:#f2c14e; --gold-ink:#3a2a00;
-  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#43a047;
+  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#8ff59a;
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
@@ -839,9 +839,13 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
 .panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
-/* A card list in a popup (Trump, Kings): one card a row, highest first, with what is known about it to its right. */
+/* A card list in a popup (Trump, Kings): one card a row, highest first, with what is known about it to its right.
+   The popup that holds one is narrower: the list needs little width. */
+.panel.narrow{max-width:15rem}
 .panel .plist{display:grid;grid-template-columns:var(--card-micro) minmax(0,1fr);gap:0.375rem 0.75rem;align-items:center;margin:0.375rem 0 0.25rem 0.1875rem}
-.panel .plist .micro.mine{box-shadow:0 0 0 0.1875rem var(--mine)}
+/* Yours: tinted green (also the Joker, which is otherwise black), with dark rank text for contrast. */
+.panel .plist .micro.mine{background:var(--mine)!important;color:var(--black)!important}
+.panel .plist .micro.mine .rank{color:var(--black)}
 .panel .plist .micro.gone{opacity:.35}
 .panel .plist .pn{white-space:nowrap}
 .panel .plist .pn.gone{color:var(--muted)}
@@ -6463,7 +6467,7 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     /* Under the anchor; when it does not fit there, above it; always inside the window (a popup never opens off
        screen, e.g. from your trick circles at the bottom of a phone). While you pick cards to discard, a popup from
@@ -6497,8 +6501,8 @@ const App = (() => {
       if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
       return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
-    /* A card list (Trump, Kings): one card a row, with what you know about it to its right. Yours have a green ring
-       and no note; played, discarded and outside cards are dimmed. The turned card says so, in any state. With known
+    /* A card list (Trump, Kings): one card a row, with what you know about it to its right. Yours are tinted green
+       and have no note; played, discarded and outside cards are dimmed. The turned card says so, in any state. With known
        off, the cards alone. */
     const cardList = (/** @type {string[]} */ ids, /** @type {boolean} */ known) => '<div class="plist">' + ids.map(id => {
       const played = v.played.includes(id), turned = id === v.flipped, mine = known && inHand(id);
