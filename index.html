@@ -712,6 +712,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel .plist .micro.gone{opacity:.35}
 .panel .plist .pn{white-space:nowrap}
 .panel .plist .pn.gone{color:var(--muted)}
+.panel .plist .pn.you{color:var(--mine)}
 .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0}
@@ -960,7 +961,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '4780e3f', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: '7056247', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5135,7 +5136,7 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || kind === 'hand' || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
     const picking = anchor.closest('#seat' + HUMAN) && Engine.actors(app.state).includes(HUMAN) && (v.phase === P.DISCARD || v.phase === P.EXCHANGE || v.phase === P.SHOWDOWN_DISCARD);
@@ -5166,7 +5167,8 @@ const App = (() => {
       const played = v.played.includes(id), turned = id === v.flipped, mine = known && inHand(id);
       const gone = known && !mine && (played || v.myOut.includes(id) || (turned && v.flippedOut));
       const note = !known ? '' : turned ? (played ? 'Turned, Played' : 'Turned') : mine ? '' : played ? 'Played' : v.myOut.includes(id) ? 'Discarded' : '';
-      return (gone ? mini(id).replace('class="micro"', 'class="micro gone"') : Render.microHTML(id, 'Jkr', mine)) + '<span class="pn' + (gone ? ' gone' : '') + '">' + note + '</span>';
+      const byYou = known && (v.myOut.includes(id) || v.playLog.some(x => x.player === v.seat && x.card === id));
+      return (gone ? mini(id).replace('class="micro"', 'class="micro gone"') : Render.microHTML(id, 'Jkr', mine)) + '<span class="pn' + (byYou ? ' you' : gone ? ' gone' : '') + '">' + note + '</span>';
     }).join('') + '</div>';
     const off = ( on,  name,  adds) => on ? '' : '<p class="pnote">Settings → Table memory → ' + name + ' adds ' + adds + '.</p>';
     const blockedText = ( x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
@@ -5230,13 +5232,14 @@ const App = (() => {
       }
       case 'hand': {
         const sd = v.showdown && v.showdown.active;
-        let body = p1('Dealer: ' + n(v.dealer) + '. The player left of the dealer leads the first trick.');
+        const rows = [['Dealer', n(v.dealer)], ['First lead', n(Engine.seatAfter(v.dealer))]];
+        if (v.trickNumber > 0 || v.trickWinners.length) rows.push(['Tricks', [v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (SD ' + v.showdown.tricksWon[p] + ')' : '')).join(' · ')]);
+        let body = '<dl>' + rows.map(([k, x]) => '<dt>' + k + '</dt><dd>' + x + '</dd>').join('') + '</dl>';
         if (Render.stageHelp(v)) body += p1(Render.stageHelp(v));
-        if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
         if (mem.kings && T) {
-          body += sub('Kings') + cardList(R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T), true) + p1('A King that wins a trick scores +1 at once.');
-        }
-        return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'which Kings are yours, played or discarded') : '')];
+          body += sub('Kings') + cardList(R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T), true) + p1('A winning King scores +1.');
+        } else if (T) body += '<p class="pnote">Table memory → Kings not played lists the Kings.</p>';
+        return [handLabel(v), body];
       }
       case 'turned': {
         const c = v.flipped, s = v.flippedSuit, to = turnedTo(), you = to === v.seat;
@@ -8368,6 +8371,18 @@ const SelfTest = (() => {
           const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
           check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
         } finally { ui.memory = wasMemory; }
+      }
+      {
+        const lv = Object.assign(buildView(Engine.createGame(2600), 0), { trump: 'H', hand: [], played: ['AH', 'KH'], myOut: ['9H'], flipped: null, playLog: [{ player: 0, card: 'AH' }, { player: 1, card: 'KH' }] });
+        const was = ui.memory;
+        try {
+          ui.memory = memOf(true, false, false, false);
+          const d = document.createElement('div'); d.innerHTML = App.infoPanel(lv, 'trump', null, anchor())[1];
+          const notes = Object.fromEntries([...d.querySelectorAll('.plist .pn')].filter(x => x.textContent).map(x => [x.textContent + ' ' + ( (x.previousElementSibling)).innerHTML.replace(/<[^>]+>/g, ''), x.className]));
+          eq('Trump list: notes for what you did are green, others muted', [notes['Played A'], notes['Played K'], notes['Discarded 9']], ['pn you', 'pn gone', 'pn you']);
+          const hd = document.createElement('div'); hd.innerHTML = App.infoPanel(Object.assign({}, lv, { dealer: 1 }), 'hand', null, anchor())[1];
+          eq('Hand popup: Dealer and First lead rows', [...hd.querySelectorAll('dt')].slice(0, 2).map(x => x.textContent + ': ' + ( (x.nextElementSibling)).textContent), ['Dealer: ' + Render.nameOf(lv, 1), 'First lead: ' + Render.nameOf(lv, 2)]);
+        } finally { ui.memory = was; }
       }
       {
         const tv = buildView(Engine.createGame(2500), 0), rows = ( v) => {
