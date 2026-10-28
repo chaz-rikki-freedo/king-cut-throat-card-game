@@ -368,6 +368,10 @@ body.set-open{overflow:hidden}
 .settings .k-hint{margin:0;color:var(--set-hint);font-size:0.8125rem;line-height:1.45}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
+.settings .set-pane > .rule-note,.settings .seat-body > .rule-note{padding:var(--s1) 0 var(--s1) var(--s3)}
+.settings .set-intro{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s2)}
+.settings .set-lead{margin:0;font-size:0.9375rem;line-height:1.5}
+.settings .set-pane > .rule-note{margin-bottom:var(--s2)}
 .settings .set-off{opacity:.45;pointer-events:none}
 .settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
 .settings .seat-set{border:1px solid var(--set-line);border-radius:0.75rem;background:var(--set-card)}
@@ -933,8 +937,9 @@ window.kctTheme = (() => {
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
-      <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
-      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
+      <div class="set-intro"><p class="set-lead">Choose who sits in each seat and how each bot plays.</p>
+        <p class="k-hint">Changes start next game. A bot you change doesn't count in your results.</p></div>
+      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>In Waves and Dynamic, only <b>Your seat</b> applies.</p>
       <div class="seat-sets" id="setSeats"></div>
       <h3 class="set-head">Bot defaults</h3>
       <div class="set-card" id="setBotDefaults">
@@ -971,7 +976,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '58db488', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: '58f53fc', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
