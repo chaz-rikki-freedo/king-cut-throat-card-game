@@ -104,8 +104,8 @@ await KCT.App.backup.toCode({ plain: true })  // a code with no compression
 await KCT.App.backup.download()       // saves the .kct file; returns the file name
 await KCT.App.backup.inspect(x)       // summary of a file text, a File/Blob or a code; changes nothing
 await KCT.App.backup.restore(x)       // REPLACES all data with the backup, then reloads the page
-KCT.App.clientReset('all')            // Settings → Tools → Client resets, with no confirm: 'all', 'profile' or 'full'
-KCT.App.gameReset('waves')            // Settings → Game → Gameplay defaults, with no confirm: 'all', 'theme', 'memory', 'house', 'dynamic', 'waves' or 'free'
+KCT.App.clientReset('waves')          // Settings → Tools → Your data → Erase, with no confirm: 'waves', 'dynamic', 'free', 'profile', 'all' or 'full'
+KCT.App.tableReset()                  // Settings → Table → Reset this tab, with no confirm
 ```
 
 `inspect` and `restore` return a summary:
