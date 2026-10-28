@@ -453,6 +453,8 @@ body.set-open{overflow:hidden}
 /* The running game plays a house rule other than the setting (see leadRuleNote). */
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
+/* Outside a card, .set-note's padding would put the text against the gold bar: keep a gap, and the bar to the text. */
+.settings .set-pane > .rule-note,.settings .seat-body > .rule-note{padding:var(--s1) 0 var(--s1) var(--s3)}
 .settings .set-off{opacity:.45;pointer-events:none}
 /* Settings → Bots: one collapsed group per seat, with collapsed groups inside it. */
 .settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
