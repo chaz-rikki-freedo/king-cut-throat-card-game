@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* Every setting through the real controls: each control changes what it names, is kept (or, for the ones kept for one
-   page load, is not), shows the same after a reload, and a new game takes it. Game tab: Theme, Table memory, House
-   rules, Your seat. Bots tab: every control of every seat, Who sits in West and East, Reset this seat and Bot defaults.
+   page load, is not), shows the same after a reload, and a new game takes it. Table tab: Table memory, House rules,
+   Theme. Bots tab: AI can play your seat, every control of every seat, Who sits in West and East, Reset this seat and
+   Reset this tab.
    Tools tab: Event log, Clear log, Self-tests. resets.js, theme.js, backup-ui.js and sw.js go deeper on their own
    parts. Exit code 1 on a failed check. */
 'use strict';
@@ -30,10 +31,10 @@ function expect(name, ok, detail) {
   const reload = async () => { await page.reload(); await page.waitForFunction(() => window.KCT && window.KCT.App); };
   /* A Free play game started from the menu's code path, with no seat dialog wait. */
   const newFree = () => step(`KCT.App.newGame(4242); await sleep(50); const s = app.state;
-    return { mediatorLead: s.mediatorLead, jokerFlip: s.jokerFlip || '', personas: app.ui.personas.slice(), tunes: app.ui.tunes.slice() };`);
+    return { mediatorLead: s.mediatorLead, jokerFlip: s.jokerFlip || '', politeOff: !!s.politeOff, personas: app.ui.personas.slice(), tunes: app.ui.tunes.slice() };`);
   try {
-    console.log('Game tab');
-    await tab('Game');
+    console.log('Table tab');
+    await tab('Table');
     for (const f of ['spring', 'summer', 'fall', 'winter', 'classic']) {
       await page.click('#setFelt .felt-tile:has(input[value="' + f + '"])');
       expect('Felt ' + f + ' is kept', (await saved()).felt === f);
@@ -84,34 +85,38 @@ function expect(name, ok, detail) {
     let s = await saved(), g = await newFree();
     /* The Engine keeps the rule only when it is on. */
     expect('Mediator picks the Showdown lead off: kept, and a new game takes it', s.mediatorLead === false && !g.mediatorLead, [s.mediatorLead, g]);
-    await tab('Game');
+    await tab('Table');
     await set('setMediatorLead', true);
     g = await newFree();
     expect('Mediator picks the Showdown lead on: a new game takes it', g.mediatorLead === true, g);
     for (const v of ['S', 'H', 'D', 'C', 'random', '']) {
-      await tab('Game');
+      await tab('Table');
       await set('setJokerFlip', v);
       s = await saved(); g = await newFree();
       expect('Turned-up Joker "' + (v || 'Redeal') + '": kept, and a new game takes it', s.jokerFlip === v && g.jokerFlip === v, [s.jokerFlip, g.jokerFlip]);
     }
     /* A running game keeps its rules: the note under the switch says so. */
-    await tab('Game');
+    await tab('Table');
     await set('setMediatorLead', false);
     const note = await step(`return { shown: !q('#setMediatorNow').hidden, text: q('#setMediatorNow').textContent };`);
     expect('a house rule changed mid-game: the note says the game keeps its rule', note.shown && note.text.length > 0, note);
     await set('setMediatorLead', true);
     await set('setPolitePlay', false);
     s = await saved();
-    const pp = await step(`return app.houseRules.politePlay;`);
-    expect('Polite Play off: kept and applied at once', s.politePlay === false && pp === false, [s.politePlay, pp]);
+    const pp = await step(`return { game: !!app.state.politeOff, note: q('#setPoliteNow').hidden ? '' : q('#setPoliteNow').textContent };`);
+    expect('Polite Play off: kept, and the running game keeps Polite Play on, as the note says', s.politePlay === false && !pp.game && /started with Polite Play on/.test(pp.note), [s.politePlay, pp]);
+    g = await newFree();
+    expect('Polite Play off: a new game takes it', g.politeOff === true, g);
+    await tab('Table');
     await set('setPolitePlay', true);
-
-    await set('setSeatAI', true);
-    const ai = await step(`return app.ui.allowSeatAI;`);
-    expect('AI can play your seat: on at once', ai === true);
+    g = await newFree();
+    expect('Polite Play on: a new game takes it', g.politeOff === false, g);
 
     console.log('Bots tab');
     await tab('Bots');
+    await set('setSeatAI', true);
+    const ai = await step(`return { on: app.ui.allowSeatAI, inYourSeat: !!q('#setSeat0 #setSeatAI') };`);
+    expect('AI can play your seat: in Bots → Your seat, on at once', ai.on === true && ai.inYourSeat, ai);
     /* Every value of every list of every seat; worlds is a number. */
     const fields = await step(`return [...document.querySelectorAll('#setSeats [data-field]')].map(c => ({ id: c.id, seat: Number(c.id[4]), tag: c.tagName, values: c.tagName === 'SELECT' ? [...c.options].map(o => o.value).filter(Boolean) : ['3', '12'] }));`);
     expect('each seat has 21 controls', [0, 1, 2].every(p => fields.filter(f => f.seat === p).length === 21), fields.length);
@@ -158,12 +163,12 @@ function expect(name, ok, detail) {
     await step(`click('[data-action="seat-reset"][data-seat="1"]'); await sleep(10); return 1;`);
     const one = await step(`return [app.seats[0].who, app.seats[1], app.seats[2].who];`);
     expect('Reset this seat resets that seat only', one[0] === 'zen' && one[1].who === '' && one[1].tune === null && one[2] === 'vex', one);
-    await step(`click('[data-action="settings-reset"]'); await sleep(10); return 1;`);
+    await step(`click('[data-action="settings-reset"]'); await waitFor('#askLayer .modal'); click('[data-action="ask-ok"]'); await sleep(20); return 1;`);
     const all = await step(`return { seats: app.seats, saved: JSON.parse(localStorage.getItem('kct.settings')).seats };`);
-    expect('Bot defaults → All seats resets every seat, and is kept', all.seats.every(x => x.who === '' && x.tune === null) && all.saved.every(x => x.who === '' && x.tune === null), all);
+    expect('Bots → Reset this tab resets every seat, and is kept', all.seats.every(x => x.who === '' && x.tune === null) && all.saved.every(x => x.who === '' && x.tune === null), all);
 
     console.log('Kept after a reload');
-    await tab('Game');
+    await tab('Table');
     await page.click('#setFelt .felt-tile:has(input[value="fall"])');
     await set('setMemKings', true);
     await set('setMediatorLead', false);
@@ -172,10 +177,10 @@ function expect(name, ok, detail) {
     await tab('Tools');
     await set('setEnable', true);
     await reload();
-    await tab('Game');
+    await tab('Table');
     const kept = await step(`return { felt: q('#setFelt input:checked').value, kings: q('#setMemKings').checked, ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value,
       pp: q('#setPolitePlay').checked, seatAI: q('#setSeatAI').checked, log: q('#setEnable').checked };`);
-    expect('Game settings and Event log show as set after a reload', kept.felt === 'fall' && kept.kings && !kept.ml && kept.jf === 'H' && !kept.pp && kept.log, kept);
+    expect('Table settings and Event log show as set after a reload', kept.felt === 'fall' && kept.kings && !kept.ml && kept.jf === 'H' && !kept.pp && kept.log, kept);
     expect('AI can play your seat is off after a reload (by design)', kept.seatAI === false, kept);
 
     console.log('Tools tab');

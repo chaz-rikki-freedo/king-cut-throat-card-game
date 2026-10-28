@@ -54,7 +54,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, and the Game tab's settings. Speed and the Your seat switch are not kept: each load starts at Normal, with the switch off.
+- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, and the Table tab's settings. Speed and **AI can play your seat** are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent and per table in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games of each mode, plus the last 20 where the AI played your seat. A new game pushes out only the oldest of its own group, and each code is saved when the game ends, so there is nothing to copy (see **Replay a game**).
@@ -64,9 +64,12 @@ If the browser refuses to save any of these (storage full or blocked), a note sa
 
 **Backup.** One backup file holds all of this, also a game in progress. In **Settings → Tools → Your data**, **Save file** saves a `.kct` file, and **Restore** (**Choose file…**) reads one back on any device. Before it replaces anything, a confirm shows this device and the backup side by side (when saved, waves unlocked, games played, saved games, replays); **Replace all data** replaces all the data on the device, with no undo. Older `.json` backups still restore. See [docs/backup.md](docs/backup.md).
 
-**Client resets.** In **Settings → Tools → Client resets**, pick one in **Erase from this device**, select **Erase…**, and confirm. Each one reloads the page, with no undo:
+**Erase.** In **Settings → Tools → Your data**, under **Back up** and **Restore**, pick what to delete in **Erase**, select **Erase…**, and confirm. This is the only control that deletes progress. Each choice reloads the page, with no undo:
 
-- **Progress** erases wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
+- **Waves progress** erases wave progress and tries (also the Shark run), and Waves' saved game, results and replay codes.
+- **Dynamic progress** erases the Dynamic profile, and Dynamic's saved game, results and replay codes.
+- **Free play history** erases Free play's saved game, results and replay codes.
+- **All progress** erases wave progress, the Dynamic profile, saved games, results and replay codes. Settings stay.
 - **Progress + settings** erases every `kct.` key: settings, progress, results, saved games and replay codes. The game still opens offline.
 - **Everything + game files** erases all of that, then removes the game's offline cache and its service worker, so the page loads again from the server. Do it only while online.
 
@@ -87,20 +90,9 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Game**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **‹ Back** (top left) or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Table**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **‹ Back** (top left) or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. **Table** and **Bots** each end with **Reset this tab**, which sets that tab's settings back to their defaults and keeps all progress; deleting progress is **Erase**, in **Tools → Your data**. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
-### Game: Theme
-
-The first setting in the Game tab.
-
-| Setting | What it does |
-|---|---|
-| **Felt** | The color of the table, the page and the panels: **Classic** (the green felt, the default), **Spring** (lilac), **Summer** (sea teal), **Fall** (russet, with a navy Showdown felt) or **Winter** (slate). Each tile shows its felt. The change is at once, and the browser bar takes the felt's color. |
-| **Color-blind safe colors** | Off by default. On, the names, the mode chips and the selection take colors that stay apart with red-green color blindness (deuteranopia and protanopia), with any felt. The bots and the modes change color; their names and labels do not change. |
-
-The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the Classic felt never flashes first.
-
-### Game: Table memory
+### Table: Table memory
 
 | Setting | What it does |
 |---|---|
@@ -109,43 +101,42 @@ The theme is kept with the settings (and so in a backup), and is applied before 
 | **Added to popups** | Four switches, each off in Standard. Each adds to the popups one fact that every player at the table has seen this hand, never a card someone holds unseen. **Trumps played**: the Trump popup marks each trump, highest first: yours are tinted green, and the ones played, discarded by you or on the outside pile are dimmed, with **Played** or **Discarded** beside them. The turned-up card says **Turned** (or **Turned, Played**) wherever it is. A trump with no mark and no note is not seen yet. **Kings not played**: the Hand popup lists the four Kings the same way, the trump King first. **Turned card**: who took the turned-up card and whether they have played it. **Voids**: a bot's hand of backs shows the suits it has shown void in. With a switch off, its popup names the switch. |
 | **Shown on the table** | Three switches, each on in Standard. Off, you remember it yourself. **Turned-up card**: off, once the bidding ends the **Turned up** cell goes, the popups say "the turned-up card" instead of showing it, the Trump list drops its **Turned** note, and the Latest Scroll hides the lines that name it. While the bidding decides, the card shows as always. **Your discards**: off, the Outside popup and the Kitty tag's popup give how many you discarded, not which, and the Showdown's Outside cell shows backs. **Plays in the Latest Scroll**: off, the Latest Scroll hides each card played; bids, trick winners and scores stay. The lines are only hidden: they stay in the save, and come back when the switch is on. |
 
-The settings are kept after a reload. **Bot defaults** (Bots tab) does not change them.
+The settings are kept after a reload.
 
-**Gameplay defaults**, at the bottom of the Game tab, resets one thing at a time. Pick it in **Reset to defaults**, select **Reset…**, and confirm:
-
-| Choice | What it resets |
-|---|---|
-| **All settings and modes** | Every choice below. |
-| **Theme** | The Classic felt, with Color-blind safe colors off. |
-| **Table memory** | Help level **Standard**: the popup aids off, the table aids on. |
-| **House rules** | Their defaults: Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on. |
-| **Dynamic progress** | The Dynamic profile, and Dynamic's saved game, results and replay codes. |
-| **Waves progress** | Wave progress and tries (also the Shark run), and Waves' saved game, results and replay codes. |
-| **Free play history** | Free play's saved game, results and replay codes. |
-
-A reset of settings applies at once. A reset of a mode reloads the page. Bot settings stay.
-
-### Game: House rules
+### Table: House rules
 
 | Setting | What it does |
 |---|---|
 | **Mediator picks the Showdown lead** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
 | **Turned-up Joker** | **Redeal** by default: when the dealer turns up the Joker, the hand is void and the same dealer deals again. Set a suit (**Spades**, **Hearts**, **Diamonds** or **Clubs**) or **Random**, to save a deal: the Joker then offers that suit for trump, as if a card of that suit was turned up. **Random** draws the suit when the Joker is turned up. Bidding goes on as usual: accept that suit in round 1 (the Joker goes to the player left of the namer), or pass, and the suit is blocked in round 2. Only in that hand, the Joker shows its suit under its corner star; it is still the Best Bower in every suit. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
-| **Polite Play** | On by default. A click on a player's trick circles shows the tricks they won this hand. Off: the circles only count, and you keep track of the tricks yourself. This is table manners, not a game rule, so a change applies at once. |
+| **Polite Play** | On by default. A click on a player's trick circles shows the tricks they won this hand, as at a real table where each player keeps the tricks they won face up. Off: the circles only count, and you keep track of the tricks yourself. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
 
-All three settings are kept after a reload. A change to **Mediator picks the Showdown lead** or **Turned-up Joker** applies from your next game: a game keeps the rules it started with, so its replay code gives the same game. **Polite Play** is not part of a game or its replay code.
+All three settings are kept after a reload, and each applies from your next game: a game keeps the house rules it started with, and so does its replay code.
 
-### Game: Your seat
+A house rule is something the players at a real table agree on, such as keeping won tricks face up. Table memory helps with what the rules make you remember yourself, such as your own discards, which you may not look at again because the pile holds other players' discards too.
 
-**AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code.
+### Table: Theme
 
-Who the AI plays as in your seat, and how it plays, is set in **Settings → Bots → Your seat**.
+The last settings in the Table tab.
 
-Under the Your seat group, the Game tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
+| Setting | What it does |
+|---|---|
+| **Felt** | The color of the table, the page and the panels: **Classic** (the green felt, the default), **Spring** (lilac), **Summer** (sea teal), **Fall** (russet, with a navy Showdown felt) or **Winter** (slate). Each tile shows its felt. The change is at once, and the browser bar takes the felt's color. |
+| **Color-blind safe colors** | Off by default. On, the names, the mode chips and the selection take colors that stay apart with red-green color blindness (deuteranopia and protanopia), with any felt. The bots and the modes change color; their names and labels do not change. |
+
+The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the Classic felt never flashes first.
+
+### Table: Reset this tab
+
+**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Standard**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on; they apply from your next game) and the theme to Classic, with Color-blind safe colors off. Your progress stays.
+
+Under it, the Table tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
 
 ### Bots
 
 The Bots tab has one group for each seat: **West**, **East** and **Your seat** (used when the AI plays your seat). Each group is collapsed; its header shows who sits there and how many changes it has. Inside, **Who sits** comes first, then four collapsed groups: **Skill**, **Style**, **Habits** and **Knowledge**.
+
+**Your seat** starts with **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code. A game the AI plays in clears no wave.
 
 - **Who sits** (default **From the seed**): the seed's pick, or always this bot. West and East can't both choose the same bot: the other seat goes back to the seed's pick. For your seat, a bot already at the table means the seed picks one that isn't.
 - Every other setting starts at **Its own**: the bot plays that part as its personality does. When the seat has a chosen bot, **Its own** names that bot's value, for example **Its own (Bold)**. Any other choice changes that one thing, and a gold dot marks the row.
@@ -153,7 +144,7 @@ The Bots tab has one group for each seat: **West**, **East** and **Your seat** (
 - A setting stays with its bot: swapping West and East before a game swaps the bots with their changes.
 - West and East apply in Free play only. Waves and Dynamic seat their own bots, playing as themselves; the tab says so in those games. Your seat applies in every mode.
 - **Results:** a bot with any change is not itself, so a game against it counts for the mode, but not for that bot or for the table. Your profile marks such a game **(tuned)**.
-- **Reset this seat** sets one seat back to the seed's pick, playing as itself. **Bot defaults → All seats: Reset**, at the bottom of the tab, does so for every seat.
+- **Reset this seat** sets one seat back to the seed's pick, playing as itself. **Bot defaults → Reset this tab**, at the bottom of the tab, asks first, then does so for every seat. Your progress stays.
 - The seat settings are kept after a reload. Settings from before this version carry over: your seat's AI personality becomes its **Who sits**, and with **Personalities** off, the one set of bot settings becomes the changes for West and East.
 
 | Group | Settings |
@@ -212,6 +203,7 @@ These fine-tune **Skill** for one seat (Settings → Bots → a seat → **Skill
 | **Install** | What this browser needs to install the app: secure page, manifest, icons, service worker, whether the storage is persistent, and whether the browser offers an install. **Install app** shows when it does (also in the menu). **Check again** runs the check again. |
 | **Self-tests: Run** | Runs the built-in tests one area at a time, so the page stays usable, and shows a summary by area, with any failures listed. On the hosted game, the last two areas check offline play: **Service worker** (it is active, controls the page and answers) and **Airplane mode** (from the cache alone, without the network: the game page, manifest and icons are saved, and the page loads nothing from another site). |
 | **Clear log** | Clears the log and the test results. |
+| **Your data** | Last in the tab: **Back up**, **Restore** and **Erase** (see **Saved games, settings and results**). |
 
 ## King points
 
@@ -224,7 +216,7 @@ The game is drawn as a minimal table with no instructions, for players who know 
 - **Seats.** The name, the score as a number, and tags in one fixed order as they come up: **Human** or **AI**, **Dealer**, **Namer**, **Kitty**, **Turn**, **Led**, then **MED** (Mediator) or **SD** (Showdown). All tags have the same size, in the bot seats and in yours. **Led** stays on through the pause after a trick, while its cards are still in the center. A bot's hand shows as small backs. Circles fill as tricks are won: 7 in a hand; a Showdown player counts Showdown tricks (5). Click the circles to see the cards of each trick that player won this hand: one column per player, headed by their name and starting with that player, with the card that led the trick ringed. With the house rule **Polite Play** off, the circles only count. During a Showdown, a Showdown player's list shows their Showdown tricks. During a Showdown, the **Dealer** tag stays on the player who dealt the hand; the **MED** tag marks the mediator, who deals the Showdown.
 - **Information strip** (the bottom row of the header, so it stays in view when you scroll): **Trump**, **Hand** and the trick number (outside trick play, the stage of the hand: Discard, Bidding, Exchange, Result or Showdown), the **Latest** line (see below), **Turned up** (**Blocked** in round 2) and **Outside** (the outside pile's count; in a Showdown, a small card per discard, yours face up). Click **Outside** to see what the pile is and the cards you put in it.
 - **Play area.** Before the first trick, the kitty lies spread so you can count it, with the turned card face up on top. When everyone passes in round 1, the turned card slides out to the left and back under the kitty: tucked at the bottom, partly shown, as at a real table, its place marks its suit as blocked. In round 2, the blocked suit's button is dimmed: click it to see why it can't be selected. On your call, click a card in your hand to see which button names its suit. During the discard, the kitty lies beside the outside pile. The trick is in 3D: each bot card faces your space, the cards stack in play order, and the winning card lifts with a white edge. Every **King** has a **KING** tag. All action buttons sit at the bottom of the play area; round 2 names a suit with its symbol. When it is your move, a few words just above the buttons say what to do (**Name trump.**, **Lead a card.** or **Play a card.**), always in the same spot. Every discard says the same thing: **Reduce to 7.** (in a Showdown, **Reduce to 5.**, one card per trick), and its button says how many cards that takes (**Discard 3**, **Discard 2** or **Discard 1**). It shows once the table is still, after the cards in flight have landed. Your empty trick space has no outline. **Skip** moves to the header.
-- **Information popups.** Click any strip cell (**Trump**, **Hand**, **Turned up**, **Outside**), any seat tag, a score or a hand of backs to see what it means: the trump order, who dealt and who leads, what the turned card did, a player's points this game and this hand, and so on. **Table memory** (Settings → Game) sets how much the table remembers for you, from **Full help** to **Real table**. Its popup aids add the counts a careful player keeps, one switch each: which trumps and Kings are yours, played or discarded, where the turned card went, and on a bot's hand of backs, **Void of** with the suits it has shown void in (could not follow suit). With **Voids** off, a bot's hand of backs shows only a note that names the switch. A bot's profile (tap its figure) stays about who it is. On your move, before you pick a card, the play area explains itself too: click a trick slot to see who led, what is winning so far and what you must follow; the kitty to see what happens to it when trump is made; the outside pile in the middle to see what it is and your discards; and a dimmed card to see why you can't play it. At other times these only show, and once you pick a card a click does what it always did. A popup opens under what you clicked, or above it when it would not fit, and always inside the window. While you pick cards to discard, a popup from your seat opens above it, so it never covers your hand.
+- **Information popups.** Click any strip cell (**Trump**, **Hand**, **Turned up**, **Outside**), any seat tag, a score or a hand of backs to see what it means: the trump order, who dealt and who leads, what the turned card did, a player's points this game and this hand, and so on. **Table memory** (Settings → Table) sets how much the table remembers for you, from **Full help** to **Real table**. Its popup aids add the counts a careful player keeps, one switch each: which trumps and Kings are yours, played or discarded, where the turned card went, and on a bot's hand of backs, **Void of** with the suits it has shown void in (could not follow suit). With **Voids** off, a bot's hand of backs shows only a note that names the switch. A bot's profile (tap its figure) stays about who it is. On your move, before you pick a card, the play area explains itself too: click a trick slot to see who led, what is winning so far and what you must follow; the kitty to see what happens to it when trump is made; the outside pile in the middle to see what it is and your discards; and a dimmed card to see why you can't play it. At other times these only show, and once you pick a card a click does what it always did. A popup opens under what you clicked, or above it when it would not fit, and always inside the window. While you pick cards to discard, a popup from your seat opens above it, so it never covers your hand.
 - **Latest line and Latest Scroll.** The table has no toasts and no side panel. Each new line of the Latest Scroll drops in from above the window, exactly the size of the Latest cell, and becomes the Latest line (at most two lines; trick headings are left out). When one move adds several lines (an accept and the kitty card it moves, a trick's winner and a King point), they show together, at most two, so the first stays readable; a card played is left out then, since it is on the table. On a phone (720 px wide or less) the Latest line keeps to one line: a line too long for it shows a short form ("Hand 4: Lou deals."), and a move's second line drops in after a short pause instead. The Latest Scroll keeps the full text. When lines come faster than they can fall, the newest wins: a line still falling lands at once. Click the Latest cell (**▾**) to open the Latest Scroll under the strip, about six lines high; it pushes the table down. Oldest first, and it opens at the newest line. Click the cell again (**▴**) or press **Esc** to close it. A note from the app, such as a refused save, drops in the same way but is not added to the scroll.
 - **Motion** shows each move: the deal goes round the table from the dealer's left in packets, as at a real table (3 to each player, 3 to the kitty, 4 to each, then 3 to each), the discards slide onto the outside pile (no one discards before the deal ends) and the pile then drops through a slot in the table, the dealer turns up the top kitty card, the kitty splits when trump is set (the receiver's cards go to the receiver, the rest drop through the table), Exchange and Showdown discards go to the middle of the table and drop through it, each trick card comes from its player's seat (yours rises from where it was in your hand, and your hand closes up), and the trick sweeps to the winner's circles. A thrown-in hand (all pass, or the Joker turned up) goes back to the dealer before the new deal. A Joker redeal keeps its hand number, as **Hand 1 (redeal)**; a hand that everyone passed counts as played, and the next deal is the next hand. The Outside count changes when cards drop through the table, and the circles change when the trick lands. Each step waits for the motion before it to end: a bot's move, the next trick or the next stage shows only once the cards in flight have landed, and a move you make while cards are still moving shows when they land. The empty outside pile's outline shows once the deal has landed. A card never flies off screen: when its target is out of view, it goes to the window's edge on that side. Motion follows the game speed; **Instant**, or the system setting to reduce motion, turns it off.
 - **Fit to the window.** The cards get smaller, down to 40 px wide, until the table fits under the header, so a phone needs no scrolling. The hand always keeps room for 10 cards, and while the window keeps its size the cards only get smaller, so they keep one size through a game. On a window too short even then (a small phone, or a phone on its side), the page scrolls.
@@ -300,7 +292,7 @@ A player who plays against type can fool a bot that reads: the more it believes,
 | Feints | 80% | 20% | 40% | 0% | 30% | 0% | 50% | 60% | 0% | 20% |
 | Wariness | 60% | 90% | 30% | 80% | 20% | 10% | 60% | 20% | 30% | 40% |
 
-**Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → Game):
+**Showdown pick** is how a bot picks the Showdown leader when it mediates (house rule, Settings → Table):
 
 - **Shrewd**: the Showdown player with the lower score leads, which works against the player closer to 10. On equal scores, as Fair.
 - **Fair**: the Showdown player who won the latest main trick leads, as without the house rule.
@@ -413,7 +405,7 @@ A mode for new players: the bots ease off while you learn, and tighten back to n
 
 ## AI plays your seat
 
-Turn on **Settings → Game → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the bot from **Settings → Bots → Your seat → Who sits**, or one that the seed picks, with that seat's changes. It keeps them for the rest of the game, however often you switch.
+Turn on **Settings → Bots → Your seat → AI can play your seat**, then click the **HUMAN** tag on your seat. It changes to **AI**, and the AI plays for you, with only your seat's information. Click the tag again to take your seat back. The first time, your seat gets the bot from **Settings → Bots → Your seat → Who sits**, or one that the seed picks, with that seat's changes. It keeps them for the rest of the game, however often you switch.
 
 The AI in your seat is repeatable: with the same seed, the same personality and the same hand-overs at the same moves, **Try again** gives the same game. A different personality, a hand-over at a different move, a move you make yourself, or a different seat swap in Free play gives a different game. The deals stay the same, so after a loss you can hand your seat to the AI in **Try again** and see whether it wins with your cards.
 

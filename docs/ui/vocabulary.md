@@ -287,10 +287,19 @@ Instances:
 | Replace-game confirm | "Start a new Waves game?" or "Start a new Free play game?" | Start new game / Keep it |
 | Discard-game confirm | "Discard your Waves game?" or "Discard your Free play game?" | Discard / Keep it |
 | Seat hand-over confirm | "Let the AI play your seat?" | Let the AI play / Keep my seat |
+| Tab reset confirm | "Reset the Table tab?" or "Reset the Bots tab?" | Reset / Cancel |
+| Erase confirm | "Erase Waves progress?", "Erase all progress?" and so on | Erase … / Cancel |
 
 ## 5. Settings panel
 
 Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` dims a group that does not apply (in Waves, or with personalities on).
+
+Three tabs, `.set-tab` with `data-tab`: **Table** (`#setTabTable`, `#setPaneTable`), **Bots** (`#setTabBots`) and **Tools** (`#setTabTools`). The Table tab was called Game; a saved `kct.setTab` of `"Game"` opens Table.
+
+Two rules keep the controls apart:
+
+- **Reset or Erase.** **Reset this tab** ends the Table and Bots tabs: it sets that tab's settings back to their defaults, at once, and keeps all progress. **Erase**, in Tools → Your data, is the only control that deletes progress, and it reloads the page. No other control resets or deletes more than one setting.
+- **House rule or Table memory.** A house rule is what the players at a real table agree on, such as Polite Play: won tricks kept face up, so anyone may count them. Table memory helps with what the rules make you remember yourself, such as your own discards: you may not look in the pile, because it holds other players' discards too. A house rule applies from your next game; a Table memory aid applies at once.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
@@ -300,9 +309,19 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Setting hint | `.k-hint` | D | The small text under a setting: defaults and effects. |
 | Setting tooltip | `title` attribute | D | The text that shows when you hover over a setting. |
 
-### 5.0 Theme section
+### 5.0 Table tab
 
-`#setTheme`, the first card of the Game tab.
+`#setPaneTable`. In order: **Table memory** (`#setInterface`: Help level `#setMemPreset`, then the aids), **House rules** (`#setHouseRules`), **Theme** (`#setTheme`, below) and **Table defaults**.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| House rule switches | `#setMediatorLead`, `#setJokerFlip`, `#setPolitePlay` | C | Each applies from your next game: the game, its save and its replay code keep the rules it started with. |
+| House rule notes | `#setMediatorNow`, `#setJokerNow`, `#setPoliteNow` | D | "This game started with …": shown while the running game's rule differs from the setting. |
+| Table reset | `#setTableDefaults`, `table-reset` | C | **Reset this tab**: Table memory, House rules and Theme back to their defaults, after a confirm. Progress stays. |
+
+### 5.0.1 Theme section
+
+`#setTheme`, the last settings card of the Table tab, before Table defaults.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
@@ -323,7 +342,9 @@ Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` di
 | Who sits list | `#seat<p>-who` | C | "From the seed", or one personality. |
 | Seat subgroups | `details.seat-sub` | — | **Skill** (`#seat<p>-tier`, `-worlds`, `-playoutSkill`), **Style** (`-courage`, `-realTable`, `-leadPick`), **Knowledge** (`-k-voids` and the other five). Each control has `data-seat` and `data-field`; its first choice is **Its own**. |
 | Changed row | `.set-row.changed` | D | A gold dot after the setting's name. |
+| Seat AI switch | `#setSeatAI`, in `#setSeat0` | C | "AI can play your seat": first in the Your seat group; makes the seat toggle work. |
 | Reset this seat | `seat-reset` | C | One seat back to the seed's pick, playing as itself. |
+| Bots reset | `#setBotDefaults`, `settings-reset` | C | **Reset this tab**, under **Bot defaults**: every seat back to the seed's pick, after a confirm. Progress stays. |
 
 ### 5.2 Advanced section
 
@@ -331,16 +352,11 @@ Removed: its settings are in each seat's **Skill** and **Knowledge** groups.
 
 ### 5.3 Your seat section
 
-`details#setSeat`. Closed by default.
-
-| Term | Code anchor | Kind | What it is |
-|---|---|---|---|
-| Seat AI switch | `#setSeatAI` | C | "AI can play your seat": makes the seat toggle work. |
-
+Removed: **AI can play your seat** is in Bots → Your seat (see 5.1).
 
 ### 5.4 Defaults row
 
-`.set-actions`. The **Defaults** button (`settings-reset`) and its hint.
+Removed: each settings tab ends with **Reset this tab** (see 5.0 and 5.1).
 
 ### 5.5 Tools section
 
@@ -356,7 +372,7 @@ Removed: its settings are in each seat's **Skill** and **Knowledge** groups.
 
 #### Your data
 
-`#setData`, last in Tools, under Diagnostics.
+`#setData`, last in Tools, under Diagnostics: Back up, Restore, then Erase.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
@@ -364,6 +380,8 @@ Removed: its settings are in each seat's **Skill** and **Knowledge** groups.
 | Choose file button | `backup-restore`, `#backupFile` | C | Picks a backup file, then opens the restore confirm. |
 | Data note | `#setDataNote` | D | Says what happened: the file saved, or a file that is not a backup (nothing changed). |
 | Restore confirm | `ask` with `danger`, `table.data-cmp` | D | **Replace all data?**: this device and the backup side by side, no undo. **Cancel** has the focus; **Replace all data** is red (`.btn.danger`). |
+| Erase list | `#setClientReset` | C | What to delete, from one mode to everything: Waves progress, Dynamic progress, Free play history, All progress, Progress + settings, Everything + game files. |
+| Erase button | `client-reset` | C | **Erase…**: asks first, then deletes and reloads the page. |
 
 ### 5.6 Debug area
 
