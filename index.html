@@ -881,19 +881,13 @@ window.kctTheme = (() => {
     <button class="mback" type="button" data-action="toggle-settings" aria-label="Back: close settings">‹ Back</button>
     <h2 class="set-title" id="setTitle">Settings</h2>
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
-      <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
+      <button class="set-tab" type="button" role="tab" id="setTabTable" aria-controls="setPaneTable" data-action="set-tab" data-tab="Table">Table</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
   </header>
   <div class="set-body">
-    <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
-      <h3 class="set-head">Theme</h3>
-      <div class="set-card" id="setTheme">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
-          <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
-        <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
-      </div>
+    <section class="set-pane" id="setPaneTable" role="tabpanel" aria-labelledby="setTabTable">
       <h3 class="set-head">Table memory</h3>
       <div class="set-card" id="setInterface">
         <p class="k-hint set-note">What the table keeps for you this hand. Off, you remember it yourself, as at a real table. Never a card someone holds unseen.</p>
@@ -923,17 +917,18 @@ window.kctTheme = (() => {
         <div class="set-row"><span class="set-text"><label class="set-name" for="setJokerFlip">Turned-up Joker</label><span class="set-desc">Redeal: the hand is void. A suit: the Joker offers that suit for trump, to save a deal. Applies from your next game.</span></span>
           <select id="setJokerFlip"><option value="">Redeal</option><option value="S">Spades</option><option value="H">Hearts</option><option value="D">Diamonds</option><option value="C">Clubs</option><option value="random">Random</option></select></div>
         <p class="k-hint rule-note set-note" id="setJokerNow" hidden></p>
-        <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Advanced UI: a click on trick circles shows the tricks won. Off: you remember them. Applies at once.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Won tricks stay face up, as at a real table: a click on trick circles shows them. Off: you remember them. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
+        <p class="k-hint rule-note set-note" id="setPoliteNow" hidden></p>
       </div>
-      <h3 class="set-head">Your seat</h3>
-      <div class="set-card" id="setSeat">
-        <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
+      <h3 class="set-head">Theme</h3>
+      <div class="set-card" id="setTheme">
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
+          <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
       </div>
-      <h3 class="set-head">Gameplay defaults</h3>
-      <div class="set-card" id="setGameDefaults">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setGameReset">Reset to defaults</label><span class="set-desc">A setting goes back to its default. A mode also loses its progress, saved game, results and replay codes.</span></span>
-          <span class="set-btns"><select id="setGameReset"><option value="all">All settings and modes</option><optgroup label="Settings"><option value="theme">Theme</option><option value="memory">Table memory</option><option value="house">House rules</option></optgroup><optgroup label="Modes"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup></select><button class="btn" type="button" data-action="game-reset">Reset…</button></span></div>
+      <h3 class="set-head">Table defaults</h3>
+      <div class="set-card" id="setTableDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc">Table memory, House rules and Theme go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
       </div>
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
@@ -942,8 +937,8 @@ window.kctTheme = (() => {
       <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
       <div class="seat-sets" id="setSeats"></div>
       <h3 class="set-head">Bot defaults</h3>
-      <div class="set-card">
-        <div class="set-row"><span class="set-text"><span class="set-name">All seats</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
+      <div class="set-card" id="setBotDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself. Your progress stays.</span></span><button class="btn" type="button" data-action="settings-reset">Reset…</button></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
@@ -965,12 +960,9 @@ window.kctTheme = (() => {
       <div class="set-card" id="setData">
         <div class="set-row"><span class="set-text"><span class="set-name">Back up</span><span class="set-desc">Save your progress, results, saved games and settings in a file.</span></span><button class="btn" type="button" data-action="backup-save">Save file</button></div>
         <div class="set-row"><span class="set-text"><span class="set-name">Restore</span><span class="set-desc">Replace all data on this device with a backup file.</span></span><button class="btn" type="button" data-action="backup-restore">Choose file…</button><input type="file" id="backupFile" aria-label="Backup file" hidden></div>
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase</label><span class="set-desc">Delete from this device, with no undo. The page reloads afterward. To keep a copy, use Back up first.</span></span>
+          <span class="set-btns"><select id="setClientReset"><optgroup label="One mode"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup><optgroup label="All"><option value="profile">All progress</option><option value="all">Progress + settings</option><option value="full">Everything + game files</option></optgroup></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
         <p class="k-hint set-note" id="setDataNote" role="status" hidden></p>
-      </div>
-      <h3 class="set-head">Client resets</h3>
-      <div class="set-card" id="setClientResets">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase from this device</label><span class="set-desc">The page reloads afterward. To keep a copy, use Back up first.</span></span>
-          <span class="set-btns"><select id="setClientReset"><option value="profile">Progress</option><option value="all">Progress + settings</option><option value="full">Everything + game files</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
       </div>
     </section>
   </div>
@@ -979,7 +971,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '9747f38', date: '2026-10-27' });
+const BUILD = Object.freeze({ commit: 'a41c68f', date: '2026-10-27' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1258,6 +1250,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
+    if (options && options.politePlay === false) state.politeOff = true;
     if (rules === 5) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
@@ -1786,7 +1779,7 @@ const Replay = (() => {
   const KNOWN_TAGS = new Set(Object.values(TAG));
   const REPLAY_MODES = Object.freeze(['free', 'waves', 'dynamic']);
   const FLAG = Object.freeze({ assisted: 1 });
-  const OPTION = Object.freeze({ mediatorLead: 1 });
+  const OPTION = Object.freeze({ mediatorLead: 1, politeOff: 16 });
   const JOKER_FLIP_SHIFT = 1, JOKER_FLIP_MASK = 7;
   const JOKER_FLIP_CODES = Object.freeze(['S', 'D', 'C', 'H', 'random']);
   const META_TYPE = Object.freeze({ INT: 0, TEXT: 1, BYTES: 2, BOOL: 3 });
@@ -1833,7 +1826,7 @@ const Replay = (() => {
   }
   function blank() {
     return {
-      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, jokerFlip: null, seed: 0, mode: null, wave: null,
+      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, jokerFlip: null, politeOff: false, seed: 0, mode: null, wave: null,
       seats: [null, null, null], decisions: [],
       result: null, flags: { assisted: false }, endedAt: null, meta: {}, unknown: []
     };
@@ -1845,6 +1838,7 @@ const Replay = (() => {
     rec.rules = state.rules || 1;
     rec.mediatorLead = !!state.mediatorLead;
     rec.jokerFlip = state.jokerFlip || null;
+    rec.politeOff = !!state.politeOff;
     rec.seed = state.seed >>> 0;
     rec.mode = m.mode || null;
     rec.wave = m.wave || null;
@@ -1937,7 +1931,7 @@ const Replay = (() => {
     if ((rec.rules || 1) >= 3) {
       const joker = (rec.rules || 1) >= 4 && rec.jokerFlip ? JOKER_FLIP_CODES.indexOf(rec.jokerFlip) + 1 : 0;
       if (joker === 0 && (rec.rules || 1) >= 4 && rec.jokerFlip) throw new Error('unknown Joker rule ' + rec.jokerFlip);
-      game.uint((rec.mediatorLead ? OPTION.mediatorLead : 0) | (joker << JOKER_FLIP_SHIFT));
+      game.uint((rec.mediatorLead ? OPTION.mediatorLead : 0) | (joker << JOKER_FLIP_SHIFT) | (rec.politeOff ? OPTION.politeOff : 0));
     }
     put(TAG.GAME, game);
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
@@ -1999,6 +1993,7 @@ const Replay = (() => {
           rec.wave = s.uint() || null; sawGame = true;
           const options = s.more() ? s.uint() : 0;
           rec.mediatorLead = !!(options & OPTION.mediatorLead);
+          rec.politeOff = !!(options & OPTION.politeOff);
           const joker = (options >> JOKER_FLIP_SHIFT) & JOKER_FLIP_MASK;
           if (joker > JOKER_FLIP_CODES.length) throw new Error('unknown Joker rule ' + joker + ' in replay code');
           rec.jokerFlip = joker ? JOKER_FLIP_CODES[joker - 1] : null;
@@ -2036,7 +2031,7 @@ const Replay = (() => {
     const rules = rec.rules || 1;
     if (!Number.isInteger(rules) || rules < 1 || rules > Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
-    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || undefined }); next = 0; steps = 0; }
+    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || undefined, politePlay: !rec.politeOff }); next = 0; steps = 0; }
     const isMark = d => !!d && d.type === 'MARK';
     function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
@@ -2107,7 +2102,7 @@ function buildView(state, seat) {
     round: state.round, bidTurn: state.bidTurn, bidLog: state.bidLog.map(b => Object.assign({}, b)),
     trump: state.trump, caller: state.caller, receiver: state.receiver, exchangeCount: state.exchangeCount,
     received: seat === state.receiver ? state.received.slice() : [],
-    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), actors: Engine.actors(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead,
+    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), actors: Engine.actors(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead, politeOff: !!state.politeOff,
     activePlayers: state.activePlayers.slice(),
     currentPlayer: state.currentPlayer, leader: state.leader,
     trickNumber: state.trickNumber, totalTricks: state.totalTricks,
@@ -3964,7 +3959,7 @@ const Render = (() => {
     const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? Engine.C.SHOWDOWN_TRICKS : Engine.C.MAIN_TRICKS;
     let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
     const label = n + ' of ' + of + ' tricks won';
-    if (ui && ui.houseRules && ui.houseRules.politePlay === false) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
+    if (v.politeOff) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
     return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + label + '">' + dots + '</div>';
   }
   const scoreButton = (v, p, ctx) => '<span class="score sscore tappable' + (ctx.flashSeats.has(p) && !held(ctx, p) ? ' flash' : '') + '" role="button" tabindex="0" data-action="adv-info" data-kind="score" data-seat="' + p + '" aria-label="Score ' + v.scores[p] + ', about the points">' + boardScore(v.scores[p] - held(ctx, p)) + '</span>';
@@ -4951,44 +4946,28 @@ const App = (() => {
     try { await backup.restore(text); } catch (e) { dataNote('Nothing changed: ' + (e instanceof Error ? e.message : String(e)) + '.'); }
   }
   const AFTER = '<p>The page reloads. There is no undo.</p>';
-  const GAME_RESETS =  (Object.freeze({
-    all: ['Reset all settings and modes?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
-    theme: ['Reset the theme?', '<p>The felt goes back to Classic, and Color-blind safe colors turns off.</p>'],
-    memory: ['Reset Table memory?', '<p>Table memory goes back to Standard: the table shows the turned-up card, your discards and the plays, and adds nothing to the popups.</p>'],
-    house: ['Reset House rules?', '<p>Mediator picks the Showdown lead turns on, Turned-up Joker goes back to Redeal, and Polite Play turns on. A game in progress keeps the rules it started with.</p>'],
-    dynamic: ['Reset Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
-    waves: ['Reset Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
-    free: ['Reset Free play history?', '<p>Free play\'s saved game, results and replay codes are removed.</p>' + AFTER]
-  }));
-  const CLIENT_RESETS =  (Object.freeze({
-    profile: ['Erase your progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase progress'],
-    all: ['Erase progress and settings?', '<p>All progress, results, saved games, replay codes and every setting on this device are erased, as on a first visit. The game files stay, so the game still opens offline.</p>' + AFTER, 'Erase progress and settings'],
-    full: ['Erase everything and the game files?', '<p>All progress and settings are erased, and so are the game files kept for offline play. The game downloads again, so do this only while you are online.</p>' + AFTER, 'Erase everything']
-  }));
-  const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
-  const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
-  async function askGameReset(what) {
-    const r = GAME_RESETS[what];
-    if (!r || !await ask({ title: r[0], text: r[1], ok: 'Reset', cancel: 'Cancel', danger: true })) return;
-    gameReset(what);
+  async function askTableReset() {
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off. ' +
+      'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
+      'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    tableReset();
   }
-  function gameReset(what) {
-    if (!GAME_RESETS[what]) return false;
-    Logger.log('GAME_RESET', { what });
-    if (what === 'all' || what === 'theme') setTheme('classic', '');
-    if (what === 'all' || what === 'memory') setMemoryAll(MEMORY_STANDARD);
-    if (what === 'all' || what === 'house') {
-      Object.assign(app.houseRules, HOUSE_DEFAULTS);
-      $('setMediatorLead').checked = app.houseRules.mediatorLead;
-      $('setJokerFlip').value = app.houseRules.jokerFlip;
-      $('setPolitePlay').checked = app.houseRules.politePlay;
-      closePanel();
-      saveSettings();
-      draw([]);
-    }
-    const modes = what === 'all' ? MODES : MODES.includes(what) ? [what] : [];
-    if (modes.length) reloadAfter(() => { for (const m of modes) clearMode(m); });
+  function tableReset() {
+    Logger.log('TABLE_RESET', {});
+    setMemoryAll(MEMORY_STANDARD);
+    Object.assign(app.houseRules, HOUSE_DEFAULTS);
+    $('setMediatorLead').checked = app.houseRules.mediatorLead;
+    $('setJokerFlip').value = app.houseRules.jokerFlip;
+    $('setPolitePlay').checked = app.houseRules.politePlay;
+    setTheme('classic', '');
+    closePanel();
+    saveSettings();
+    draw([]);
     return true;
+  }
+  async function askBotsReset() {
+    if (!await ask({ title: 'Reset the Bots tab?', text: '<p>Every seat goes back to the seed\'s pick, and each bot plays as itself. Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    resetSeats();
   }
   function clearMode(m) {
     if (m === 'waves') Waves.reset();
@@ -4997,6 +4976,16 @@ const App = (() => {
     stats.dropMode(m);
     replays.dropMode(m);
   }
+  const CLIENT_RESETS =  (Object.freeze({
+    waves: ['Erase Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Waves progress'],
+    dynamic: ['Erase Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Dynamic progress'],
+    free: ['Erase Free play history?', '<p>Free play\'s saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Free play history'],
+    profile: ['Erase all progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase all progress'],
+    all: ['Erase progress and settings?', '<p>All progress, results, saved games, replay codes and every setting on this device are erased, as on a first visit. The game files stay, so the game still opens offline.</p>' + AFTER, 'Erase progress and settings'],
+    full: ['Erase everything and the game files?', '<p>All progress and settings are erased, and so are the game files kept for offline play. The game downloads again, so do this only while you are online.</p>' + AFTER, 'Erase everything']
+  }));
+  const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
+  const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
   async function askClientReset(what) {
     const r = CLIENT_RESETS[what];
     if (!r || !await ask({ title: r[0], text: r[1], ok: r[2], cancel: 'Cancel', danger: true })) return;
@@ -5005,7 +4994,8 @@ const App = (() => {
   function clientReset(what) {
     if (!CLIENT_RESETS[what]) return false;
     Logger.log('CLIENT_RESET', { what });
-    reloadAfter(() => { Backup.wipe(localStorage, what === 'profile' ? PROFILE_KEYS.slice() : undefined); }, what === 'full' ? dropOffline : undefined);
+    if (MODES.includes(what)) reloadAfter(() => clearMode(what));
+    else reloadAfter(() => { Backup.wipe(localStorage, what === 'profile' ? PROFILE_KEYS.slice() : undefined); }, what === 'full' ? dropOffline : undefined);
     return true;
   }
   async function dropOffline() {
@@ -5319,7 +5309,7 @@ const App = (() => {
         const next = Engine.seatAfter(v.dealer), bid = v.phase === P.BID1 || v.phase === P.BID2;
         const TEXT = {
           ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : '.') + (tuned ? ' This game, ' + who + ' plays with your Settings → Bots changes.' : '')],
-          you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
+          you: () => ['You · Human', 'You play this seat. Settings → Bots → Your seat → AI can play your seat lets the AI take it.'],
           dealer: () => [who + ' · Dealer', (v.phase === P.JOKER_VOID ? who + ' dealt this hand and turned up the Joker, so ' + who + ' deals it again.'
             : !v.flipped ? who + ' dealt this hand, so ' + who + ' turns up the top kitty card after the discards and bids last in both rounds.'
             : who + ' dealt this hand, turned up ' + flipMini() + ' and ' + (bid ? vb('bid', 'bids') : 'bid') + ' last.') +
@@ -5589,7 +5579,8 @@ const App = (() => {
   })();
   const HOUSE_NOTES =  ([
     ['setMediatorNow', st => !!st.mediatorLead, h => h.mediatorLead, x => 'this rule ' + (x ? 'on' : 'off')],
-    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal']
+    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal'],
+    ['setPoliteNow', st => !st.politeOff, h => h.politePlay, x => 'Polite Play ' + (x ? 'on' : 'off')]
   ]);
   const inWaves = (a = app) => !!a.wave.n;
   const inShark = (a = app) => !!(a.wave.n && WAVES[a.wave.n - 1] && WAVES[a.wave.n - 1].shark);
@@ -6098,7 +6089,7 @@ const App = (() => {
     if (snap === null) return null;
     const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
     const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
-    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' },
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '', politePlay: !rec.politeOff },
       more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
   }
   function replaySeedRow(at) {
@@ -6777,7 +6768,7 @@ const App = (() => {
       case 'skip': skipShowdown(); break;
       case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
-      case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
+      case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
@@ -6856,7 +6847,7 @@ const App = (() => {
       }
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
-        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' },
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '', politePlay: !app.state.politeOff },
           inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
@@ -6868,14 +6859,14 @@ const App = (() => {
       case 'install-check': checkInstall({ update: true }); break;
       case 'backup-save': saveBackup(); break;
       case 'backup-restore': $('backupFile').click(); break;
-      case 'game-reset': askGameReset($('setGameReset').value); break;
+      case 'table-reset': askTableReset(); break;
       case 'client-reset': askClientReset($('setClientReset').value); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': resetSeats(); break;
+      case 'settings-reset': askBotsReset(); break;
       case 'seat-reset': resetSeats(Number(el.getAttribute('data-seat'))); break;
       case 'run-tests': {
         if (testsRunning) break;
@@ -6890,9 +6881,9 @@ const App = (() => {
       default: break;
     }
   }
-  const SET_TABS = ['Game', 'Bots', 'Tools'];
+  const SET_TABS = ['Table', 'Bots', 'Tools'];
   function showSettingsTab(name, focus) {
-    const tab = SET_TABS.includes(name) ? name : 'Game';
+    const tab = SET_TABS.includes(name) ? name : 'Table';
     for (const t of SET_TABS) {
       const b = $('setTab' + t), on = t === tab;
       b.setAttribute('aria-selected', String(on));
@@ -6917,7 +6908,7 @@ const App = (() => {
     document.body.classList.toggle('set-open', open);
     for (const el of document.body.children) if (el !== d && el.id !== 'updateNote' && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b =  (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
-    showSettingsTab(loadSetTab() || 'Game', true);
+    showSettingsTab(loadSetTab() || 'Table', true);
     checkInstall();
     const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
   }
@@ -6978,6 +6969,7 @@ const App = (() => {
       opts(PERSONAS.map(x => [x.id, x.name + ' (' + TIER_NAMES[x.tier] + ', ' + COURAGE_NAMES[x.courage].toLowerCase() + ')'])) + '</select>');
     return '<details class="seat-set" id="setSeat' + p + '"><summary><span class="set-name">' + SEAT_NAMES[p] + '</span><span class="seat-sum" id="setSeatSum' + p + '"></span></summary>' +
       '<div class="seat-body"><p class="k-hint set-note">' + SEAT_DESC[p] + '</p><p class="k-hint set-note rule-note" id="setSeatNow' + p + '" hidden></p>' +
+      (p === HUMAN ? '<div class="set-card"><label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. A game it plays clears no wave. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label></div>' : '') +
       '<div class="set-card">' + who + '</div>' +
       sub('Skill', sel('tier', 'Skill', 'Sets hunches, brain farts and knowledge together.', [...Object.entries(TIER_NAMES), ['custom', 'Custom', 'off']]) +
         row('worlds', 'Hunches', 'Guesses about the hidden cards per decision, 1 to 200. Empty: its own.',
@@ -7320,7 +7312,7 @@ const App = (() => {
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setJokerFlip').addEventListener('change', () => { app.houseRules.jokerFlip = $('setJokerFlip').value; saveSettings(); draw([]); });
     $('setPolitePlay').checked = app.houseRules.politePlay;
-    $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; closePanel(); saveSettings(); if (app.state) draw([]); });
+    $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; saveSettings(); draw([]); });
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
     window.addEventListener('error', ev => {
@@ -7388,7 +7380,7 @@ const App = (() => {
   }
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, gameReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
 })();
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -7984,6 +7976,11 @@ const SelfTest = (() => {
         const jcode = Replay.encode(Replay.fromState(g)), jr = Replay.run(jcode);
         eq('jokerFlip ' + flip + ': the code keeps the rule and replays the same game', [Replay.decode(jcode).jokerFlip, jr.ok, JSON.stringify(jr.state) === JSON.stringify(g)], [flip, true, true]);
       }
+      let pg = Engine.createGame(7, null, Engine.RULES_VERSION, { politePlay: false });
+      for (let k = 0; k < 5000 && !pg.gameOver; k++) { const ac = Engine.actors(pg); D(pg, ac.length ? AI.fastAction(pg, ac[0]) : Engine.systemAction(pg)); }
+      const pcode = Replay.encode(Replay.fromState(pg)), pr = Replay.run(pcode), polite = JSON.parse(JSON.stringify(rec)); delete polite.politeOff;
+      eq('Polite Play off: the game and its code keep it, and the code replays the same game', [pg.politeOff, Replay.decode(pcode).politeOff, pr.ok, JSON.stringify(pr.state) === JSON.stringify(pg)], [true, true, true, true]);
+      eq('Polite Play on: the game keeps nothing and the code is unchanged', ['politeOff' in Engine.createGame(7, null, Engine.RULES_VERSION, { politePlay: true }), Replay.encode(polite) === Replay.encode(Object.assign({}, polite, { politeOff: false })), Replay.decode(Replay.encode(polite)).politeOff], [false, true, false]);
       const noJoker = JSON.parse(JSON.stringify(rec)); noJoker.rules = 3; noJoker.jokerFlip = 'S';
       eq('rules version 3 writes no Joker rule', Replay.decode(Replay.encode(noJoker)).jokerFlip, null);
       const badJoker = JSON.parse(JSON.stringify(rec)); badJoker.jokerFlip = 'X';
@@ -8488,20 +8485,21 @@ const SelfTest = (() => {
         const bd = Object.assign({}, tv, { phase: P.BID1, bidTurn: 1, flipped: '9S', flippedSuit: 'S', kittyCount: 3 });
         check('Kitty: during bidding, names the player left of the one bidding now', App.infoPanel(bd, 'kitty', null, anchor())[1].includes('(' + Render.nameOf(tv, 2) + ' if ' + Render.nameOf(tv, 1) + ' accepts)'));
       }
-      const pv = buildView(Engine.createGame(2100), 0), circles = polite => Render.advCircles(pv, 1, { houseRules: { politePlay: polite } });
+      const circles = polite => Render.advCircles(buildView(Engine.createGame(2100, null, Engine.RULES_VERSION, { politePlay: polite }), 0), 1, {});
       check('Polite Play on: trick circles open the tricks won', circles(true).includes('data-action="adv-tricks"'));
       check('Polite Play off: trick circles only count', !circles(false).includes('data-action') && circles(false).includes('tricks won'));
     });
     safeRun('app logic', () => {
-      const A = App, mk = ( x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
+      const A = App, mk = ( x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '', politePlay: true } }, x);
       const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
       eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
-      eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '' }, { setMediatorNow: '', setJokerNow: '' }]);
-      const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S' }, houseRules: { mediatorLead: true, jokerFlip: 'random' } }));
+      eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }, { setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }]);
+      const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S', politeOff: true }, houseRules: { mediatorLead: true, jokerFlip: 'random', politePlay: true } }));
       eq('house notes: each setting that differs from the game names the game\'s value', notes, {
         setMediatorNow: 'This game started with this rule off. Your change applies from your next game.',
-        setJokerNow: 'This game started with Spades. Your change applies from your next game.' });
-      eq('house notes: none once the game is over', A.houseNotes(mk({ mode: 'free', state: { gameOver: true }, houseRules: { mediatorLead: true, jokerFlip: 'H' } })), { setMediatorNow: '', setJokerNow: '' });
+        setJokerNow: 'This game started with Spades. Your change applies from your next game.',
+        setPoliteNow: 'This game started with Polite Play off. Your change applies from your next game.' });
+      eq('house notes: none once the game is over', A.houseNotes(mk({ mode: 'free', state: { gameOver: true }, houseRules: { mediatorLead: true, jokerFlip: 'H', politePlay: false } })), { setMediatorNow: '', setJokerNow: '', setPoliteNow: '' });
       const w = ( x) => mk(Object.assign({ mode: 'waves', state: live, wave: { n: 2, wasOpenAtStart: true }, humanSeatWasAutoplayed: false }, x));
       eq('inWaves and waveCounts: a win counts only in an open wave the AI never played your seat in',
         [A.inWaves(mk({ mode: 'free', state: live })), A.inWaves(w({})), A.waveCounts(w({})), A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: false } })), A.waveCounts(w({ humanSeatWasAutoplayed: true })), A.waveCounts(mk({ mode: 'free', state: live }))],
