@@ -453,6 +453,12 @@ body.set-open{overflow:hidden}
 /* The running game plays a house rule other than the setting (see leadRuleNote). */
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
+/* Outside a card, .set-note's padding would put the text against the gold bar: keep a gap, and the bar to the text. */
+.settings .set-pane > .rule-note,.settings .seat-body > .rule-note{padding:var(--s1) 0 var(--s1) var(--s3)}
+/* A pane's opening words: a lead line, its fine print, and room before what follows. */
+.settings .set-intro{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s2)}
+.settings .set-lead{margin:0;font-size:0.9375rem;line-height:1.5}
+.settings .set-pane > .rule-note{margin-bottom:var(--s2)}
 .settings .set-off{opacity:.45;pointer-events:none}
 /* Settings → Bots: one collapsed group per seat, with collapsed groups inside it. */
 .settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
@@ -1087,8 +1093,9 @@ window.kctTheme = (() => {
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
-      <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
-      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
+      <div class="set-intro"><p class="set-lead">Choose who sits in each seat and how each bot plays.</p>
+        <p class="k-hint">Changes start next game. A bot you change doesn't count in your results.</p></div>
+      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>In Waves and Dynamic, only <b>Your seat</b> applies.</p>
       <div class="seat-sets" id="setSeats"></div>
       <h3 class="set-head">Bot defaults</h3>
       <div class="set-card" id="setBotDefaults">
