@@ -493,7 +493,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 
 | File | What it is |
 |---|---|
-| `manifest.webmanifest` | App name, colors and icons. `background_color` is a neutral near-black (`#0c0c0c`): Android paints it behind the gesture bar, and a manifest cannot follow the felt, so it suits every felt. |
+| `manifest.webmanifest` | App name, colors and icons. `background_color` and `theme_color` are both a neutral near-black (`#0c0c0c`). Android paints the manifest's `theme_color` behind the gesture bar of the installed app, and a manifest cannot follow the felt, so a neutral suits every felt. The page's `theme-color` meta tag still follows the felt for the status bar. |
 | `sw.js` | Service worker: offline play and the update prompt. |
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
 
