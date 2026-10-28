@@ -336,7 +336,7 @@ Two rules keep the controls apart:
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Waves note | `#setWaveNote` | D | "Waves and Dynamic always seat their own bots…". |
+| Waves note | `#setWaveNote` | D | "In Waves and Dynamic, only Your seat applies.". |
 | Seat groups | `#setSeats` | — | One collapsed group per seat, `details#setSeat1` (West), `#setSeat2` (East), `#setSeat0` (Your seat). Its summary names the seat and `#setSeatSum<p>`: who sits and how many changes. |
 | Seat game note | `#setSeatNow<p>` | D | What the running game seats there, when it differs from the settings. |
 | Who sits list | `#seat<p>-who` | C | "From the seed", or one personality. |
