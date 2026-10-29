@@ -521,10 +521,14 @@ body.set-open{overflow:hidden}
 .mgo{width:100%;border:0;border-radius:0.75rem;padding:0.75rem 1rem 0.9375rem;background:var(--gold);color:var(--gold-ink);font:inherit;font-size:1.0625rem;font-weight:800;cursor:pointer}
 .mgo small{display:block;font-size:0.75rem;font-weight:600;opacity:.8}
 .mgo:hover{filter:brightness(1.07)}
-/* Weighted strokes: the menu's buttons sit on a darker lip, as pressable keys, and sink into it when pressed. */
-.mgo,.menu-card .btn{box-shadow:inset 0 -0.1875rem 0 rgba(0,0,0,.25)}
-.menu-card .btn{border-width:0.125rem;font-weight:700}
-.mgo:active:not(:disabled),.menu-card .btn:active:not(:disabled){box-shadow:inset 0 -0.0625rem 0 rgba(0,0,0,.25);transform:translateY(0.125rem)}
+/* Weighted strokes: the menu's buttons sit on a lip, as pressable keys, and sink into it when pressed. The lip is
+   drawn outside the button, under its stroke, so it follows the corners: a darker gold under a gold button, a ledge in
+   the stroke's color under the others. */
+.menu-card .btn{border-width:0.125rem;font-weight:700;box-shadow:0 0.1875rem 0 rgba(255,255,255,.12)}
+.mgo,.menu-card .btn.primary{box-shadow:0 0.1875rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.menu-card .btn:active:not(:disabled){box-shadow:0 0.0625rem 0 rgba(255,255,255,.12)}
+.mgo:active,.menu-card .btn.primary:active:not(:disabled){box-shadow:0 0.0625rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.mgo:active,.menu-card .btn:active:not(:disabled){transform:translateY(0.125rem)}
 .mgo:focus-visible,.mlist button:focus-visible,.mfoot button:focus-visible,.mback:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 /* A list of plain lines between thin rules: a name, a note and ›. */
 .mlist{width:100%;margin:0;padding:0;list-style:none;border-top:1px solid rgba(255,255,255,.12)}
@@ -7473,11 +7477,11 @@ const App = (() => {
      One card per mode, then a row of tools. Every button is always in the same place: Resume is there with no saved
      game (disabled), and the cards' scoreboards keep a fixed height, so nothing moves whatever is saved or running.
      Explanations sit in the status lines, never on the buttons. */
-  /* A game's two status lines, for Continue: who, then the hand and the scores. */
+  /* A game's two status lines, for Continue: who, then the hand and the scores, seated as at the table: West, You, East. */
   function gameStatus(st, personas, wave) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
     return [(wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
