@@ -368,14 +368,14 @@ body.set-open{overflow:hidden}
 .settings .set-row-pick .set-btns{flex-wrap:nowrap;align-items:center}
 .settings .set-row-pick select{max-width:none}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
-.settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
-.settings input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
-.settings input.sw:checked{background:var(--gold);border-color:var(--gold)}
-.settings input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
+.settings input.sw,.panel input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.settings input.sw::before,.panel input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
+.settings input.sw:checked,.panel input.sw:checked{background:var(--gold);border-color:var(--gold)}
+.settings input.sw:checked::before,.panel input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
 .settings input.sw:indeterminate{border-color:var(--gold)}
 .settings input.sw:indeterminate::before{transform:translateX(0.625rem)}
-.settings input.sw:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.1875rem}
-@media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before{transition:none}}
+.settings input.sw:focus-visible,.panel input.sw:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.1875rem}
+@media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before,.panel input.sw,.panel input.sw::before{transition:none}}
 .settings .k-hint{margin:0;color:var(--set-hint);font-size:0.8125rem;line-height:1.45}
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
@@ -707,6 +707,9 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel p{margin:0.25rem 0;line-height:1.4}
 .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .panel .pnote{color:var(--muted);font-size:0.75rem}
+.panel .pswitch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0.75rem;margin:0.5rem 0 0.125rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
+.panel .pswitch b{display:block}
+.panel .pswitch span span{display:block;color:var(--muted);font-size:0.75rem;line-height:1.35}
 .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   .sscore{font-size:1.375rem!important}
@@ -1004,7 +1007,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '9e6124f', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: '33e7ab4', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4654,7 +4657,7 @@ const App = (() => {
     dyn:  (null),
     said:  ({}),
     sdSkip: false,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       scoreHold:  ({}) },
     wave: { n: null, wasOpenAtStart: false, result: null },
     humanSeatWasAutoplayed: false,
@@ -5371,6 +5374,8 @@ const App = (() => {
           if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
           return [title, dl(rows)];
         }
+        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pswitch"><span><b>Forced plays</b><span>' + FORCED_DESC + '</span></span>' +
+          '<input class="sw" type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '></label>'];
         return [title, p1(text)];
       }
     }
@@ -5428,6 +5433,21 @@ const App = (() => {
       if (app.state.gameOver) draw([]); else schedule();
     } else draw([]);
   }
+  const FORCED_DESC = 'When only one card is legal, it plays itself. Off: you play every card.';
+  function forcedCard(st) {
+    if (!st || !Engine.PLAY_PHASES.includes(st.phase) || st.currentPlayer !== HUMAN || !st.players[HUMAN].human) return null;
+    const legal = R.legalCards(st.hands[HUMAN], st.trick ? st.trick.leadSuit : null, st.trump);
+    return legal.length === 1 ? legal[0] : null;
+  }
+  function setForced(on) {
+    app.ui.forced = on;
+    $('setForced').checked = on;
+    const pf = $('panelForced'); if (pf) pf.checked = on;
+    saveSettings();
+    if (!app.mode || app.ui.autoplay || !forcedCard(app.state)) return;
+    if (on && !app.timerFn) schedule();
+    else if (!on && app.timerFn) clearTimer();
+  }
   function clearTimer() {
     if (app.timer) clearTimeout(app.timer);
     app.timer = null; app.timerFn = null;
@@ -5480,6 +5500,9 @@ const App = (() => {
         }
         note('The game cannot continue: no legal move for ' + app.state.players[p].name + '.');
       });
+    } else if (app.ui.forced && forcedCard(st)) {
+      const card = forcedCard(st);
+      later(d.ai, () => act({ type: 'PLAY', player: HUMAN, card }));
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
       if (!sys) return;
@@ -7042,7 +7065,8 @@ const App = (() => {
       opts(PERSONAS.map(x => [x.id, x.name + ' (' + TIER_NAMES[x.tier] + ', ' + COURAGE_NAMES[x.courage].toLowerCase() + ')'])) + '</select>');
     return '<details class="seat-set" id="setSeat' + p + '"><summary><span class="set-name">' + SEAT_NAMES[p] + '</span><span class="seat-sum" id="setSeatSum' + p + '"></span></summary>' +
       '<div class="seat-body"><p class="k-hint set-note">' + SEAT_DESC[p] + '</p><p class="k-hint set-note rule-note" id="setSeatNow' + p + '" hidden></p>' +
-      (p === HUMAN ? '<div class="set-card"><label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. A game it plays clears no wave. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label></div>' : '') +
+      (p === HUMAN ? '<div class="set-card"><label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. A game it plays clears no wave. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>' +
+        '<label class="set-row"><span class="set-text"><span class="set-name">Forced plays</span><span class="set-desc">' + FORCED_DESC + ' Also in your Human tag\'s popup.</span></span><input class="sw" type="checkbox" id="setForced"></label></div>' : '') +
       '<div class="set-card">' + who + '</div>' +
       sub('Skill', sel('tier', 'Skill', 'Sets hunches, brain farts and knowledge together.', [...Object.entries(TIER_NAMES), ['custom', 'Custom', 'off']]) +
         row('worlds', 'Hunches', 'Guesses about the hidden cards per decision, 1 to 200. Empty: its own.',
@@ -7269,7 +7293,7 @@ const App = (() => {
     $('setTests').innerHTML = html;
   }
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
   }
   function loadSettings() {
     const x = settingsStore.load();
@@ -7289,6 +7313,7 @@ const App = (() => {
     if (x.memory && typeof x.memory === 'object') for (const k of MEMORY_KEYS) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
+    if (typeof x.forced === 'boolean') app.ui.forced = x.forced;
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
   }
   function init() {
@@ -7417,6 +7442,9 @@ const App = (() => {
     syncSeats();
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
+    $('setForced').checked = app.ui.forced;
+    $('setForced').addEventListener('change', () => setForced($('setForced').checked));
+    $('table').addEventListener('change', ev => { if (ev.target instanceof HTMLInputElement && ev.target.id === 'panelForced') setForced(ev.target.checked); });
     Logger.listeners.push(line => {
       const pre = $('setLog');
       if (pre.parentElement.hidden) return;
@@ -7453,7 +7481,7 @@ const App = (() => {
   }
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount, forcedCard };
 })();
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -8565,6 +8593,9 @@ const SelfTest = (() => {
     safeRun('app logic', () => {
       const A = App, mk = ( x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '', politePlay: true } }, x);
       const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
+      const fst = ( hand,  lead,  x) =>  (Object.assign({ phase: Engine.PLAY_PHASES[0], currentPlayer: 0, players: [{ human: true }, { human: false }, { human: false }], hands: [hand, [], []], trick: { leadSuit: lead }, trump: 'S' }, x));
+      eq('forced plays: only the one card that follows suit, or your last card', [A.forcedCard(fst(['AH', '7S'], 'H')), A.forcedCard(fst(['9D'], null)), A.forcedCard(fst(['AH', '7S'], 'C')), A.forcedCard(fst(['AH', 'KH'], 'H'))], ['AH', '9D', null, null]);
+      eq('forced plays: never on a bot\'s turn, outside trick play or with no game', [A.forcedCard(fst(['AH'], 'H', { currentPlayer: 1 })), A.forcedCard(fst(['AH'], 'H', { phase: Engine.P.DISCARD })), A.forcedCard(null)], [null, null, null]);
       eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
       eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }, { setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }]);
       const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S', politeOff: true }, houseRules: { mediatorLead: true, jokerFlip: 'random', politePlay: true } }));
