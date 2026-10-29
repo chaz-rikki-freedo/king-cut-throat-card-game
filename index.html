@@ -6948,11 +6948,12 @@ const App = (() => {
     return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
   }
   /** What a bot's profile shows: the settings it plays with at this table (a seat's tune, a Shark table's skill, the
-     AI in your seat), and a note when a tune changes it. Dynamic's easing stays out of sight: an eased bot shows its
-     personality. Off the table, the personality. @param {any} x @returns {[AIConfig, string]} */
+     AI in your seat), and a note when a tune changes it. Dynamic's amount of easing stays out of sight: an eased bot
+     shows its personality, with a note that it is eased. Off the table, the personality. @param {any} x @returns {[AIConfig, string]} */
   function personaShown(x) {
     const p = app.mode ? app.ui.personas.indexOf(x.id) : -1;
-    if (p < 0 || (app.mode === 'dynamic' && p !== HUMAN)) return [AI.personaConfig(x), ''];
+    if (p < 0) return [AI.personaConfig(x), ''];
+    if (app.mode === 'dynamic' && p !== HUMAN) return [AI.personaConfig(x), app.dyn && app.dyn.e > 0 ? 'Eased to your level.' : ''];
     const n = p !== HUMAN && inShark() ? 0 : tuneSize(app.ui.tunes[p]);
     return [botConfig(p).cfg, n ? 'This game: ' + n + (n === 1 ? ' change' : ' changes') + ' from Settings.' : ''];
   }
