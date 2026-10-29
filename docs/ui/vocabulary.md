@@ -398,10 +398,14 @@ Region: `aside.logpanel`. The player name for it is **Latest Scroll**. In the Ad
 | Term | Also called | Code anchor | Kind | What it is |
 |---|---|---|---|---|
 | Log heading | — | `.logpanel h2` | L | "Latest Scroll". |
-| Log | Game log, scroll | `#gameLog`, `.gamelog` | R | One line for each event of this game. Cleared at each new game. |
+| Log | Game log, scroll | `#gameLog`, `.gamelog` | R | One `li` for each event of this game, grouped by hand (`logGroups`). Cleared at each new game. Grows with a tall window, up to 26rem. |
+| Hand group | — | `details.lg-hand` | R, C | One hand. Older hands fold when a new hand starts; a header opens or folds its hand, and that choice is kept for the game. |
+| Hand header | — | `summary.lg-hh` | R, C | Sticky. The hand's name, who made trump, Showdown, the trick being played, and the points each player won (`handHeadHTML`). |
+| Bidding run | — | `ol.lg-flow` | R | The bidding as short items on running lines. The deal line stays in it, unseen: the header says it. |
+| Trick row | — | `ol.lg-row` | R | One trick: T1 (SD1 in a Showdown), the cards in play order, the winner's card outlined in gold, ♔ +1 for a King. With Plays off, only the winner (`li.lg-win`). |
 | Winner line | — | `li.end` | S | The last event of a game: it congratulates the winner. At the game's end the Latest cell shows only this line. |
 | Hand line | Blue line | `li.h` | R | Deals, trump calls and hand results. |
-| Showdown line | Pink line | `li.s`, `li.sd` | R | Showdown events, indented. |
+| Showdown line | Pink line | `li.s`, `li.sd` | R | Showdown events, with a pink rule on the left. |
 | King line | Gold line | `li.k` | R | "♔ +1 to West…". |
 | Trick head line | — | `li.trick-head` | R | "Hand 2 · Trick 3/7", with the leader on trick 1. |
 | Play line | — | `li.play` | R | One card played. |
