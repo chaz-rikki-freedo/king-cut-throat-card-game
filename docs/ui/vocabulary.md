@@ -168,18 +168,18 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Small links | `.mfoot` | C | **Your profile** (`menu-profile`, all modes), **Load a code**, **Settings** (`toggle-settings`), and **Install** (`install-app`) when the browser offers it. |
 | Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. |
 
-**New game** (`menuNewHTML()`): a line per mode with its color (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
+**New game** (`menuNewHTML()`): a line per mode with its color bar (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
 
 **A mode's view** (`menuModesHTML()`, `.mview.mcard`, `data-mode`):
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Mode title | `.mtop .mode-chip` | L | The mode's chip: **Dynamic**, **Waves** or **Free play**. |
-| Game lines | `.mstat` | S | The game in two lines (who, then the hand and scores), or **No saved game** and the mode's tagline. |
-| Mode goal | `.mtail` | C | "Beaten 6 of 10" (Dynamic, Free play) or "15 of 18 cleared" (Waves). Opens Your profile for the mode. |
+| Scoreboard | `.mboard`, `.mcap`, `.mscores` | S | The game: a caption (**Playing now**, the wave, the hand), then each player's name in their color (You in `--name0`, a bot in its `--bot-<id>`) over their score. Without a game, **No saved game** and the mode's tagline, in the same height. |
+| Mode goal | `.mtail`, `.mmeter` | C | "Beaten 6 of 10" (Dynamic, Free play) or "15 of 18 cleared" (Waves), with a gold meter and ›. Opens Your profile for the mode. |
 | Wave picker | `#waveSel` | C | The open waves (and the open Shark run tables), with each table's West / East names. ✓ marks a cleared wave. |
-| Discard game icon | `.mdel`, `discard-<mode>` | C | A faint trash icon before Resume, only with an unfinished game. Asks first, then clears that mode's saved game without starting another. Not a result: no loss, and wave progress stays. |
-| Resume button | `resume-<mode>` | C | Continues that mode's game. Disabled when there is none. |
+| Discard game icon | `.mdel`, `discard-<mode>` | C | A faint trash icon on the right of the heading, only with an unfinished game. Asks first, then clears that mode's saved game without starting another. Not a result: no loss, and wave progress stays. |
+| Resume button | `resume-<mode>` | C | Continues that mode's game. The main (gold) button, and the focus, when there is a game; disabled when there is none, and then **New game** (**Play wave**) is the main button. |
 | Play wave button | `play-wave` | C | Starts the picked wave. **Play table** once the Shark run is open. |
 | New game button | `new-free`, `new-dynamic` | C | Starts a game of that mode. |
 
