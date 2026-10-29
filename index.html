@@ -509,7 +509,7 @@ body.set-open{overflow:hidden}
 .overlay:has(> .menu-stage){padding:0}
 .menu-stage{place-self:stretch;position:relative;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
 .menu-stage .about-kings{position:fixed}
-.menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem}
+.menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem;border-width:0.125rem}
 /* The versions under Load a code: a pill floating at the foot of the window, with room kept under the card. */
 .code-ver{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;margin:0;padding:0.375rem 0.875rem;white-space:nowrap;font-size:0.75rem;color:var(--muted);background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:999px;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem);pointer-events:none}
 .code-ver[hidden]{display:none}
@@ -518,9 +518,17 @@ body.set-open{overflow:hidden}
 .mview[hidden]{display:none}
 .mepi{font-style:italic;font-size:0.875rem}
 /* The one big button: Continue (with the game in two short lines) or New game. */
-.mgo{width:100%;border:0;border-radius:0.75rem;padding:0.75rem 1rem;background:var(--gold);color:var(--gold-ink);font:inherit;font-size:1.0625rem;font-weight:800;cursor:pointer}
+.mgo{width:100%;border:0;border-radius:0.75rem;padding:0.75rem 1rem 0.9375rem;background:var(--gold);color:var(--gold-ink);font:inherit;font-size:1.0625rem;font-weight:800;cursor:pointer}
 .mgo small{display:block;font-size:0.75rem;font-weight:600;opacity:.8}
 .mgo:hover{filter:brightness(1.07)}
+/* Weighted strokes: the menu's buttons sit on a lip, as pressable keys, and sink into it when pressed. The lip is
+   drawn outside the button, under its stroke, so it follows the corners: a darker gold under a gold button, a ledge in
+   the stroke's color under the others. */
+.menu-card .btn{border-width:0.125rem;font-weight:700;box-shadow:0 0.1875rem 0 rgba(255,255,255,.12)}
+.mgo,.menu-card .btn.primary{box-shadow:0 0.1875rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.menu-card .btn:active:not(:disabled){box-shadow:0 0.0625rem 0 rgba(255,255,255,.12)}
+.mgo:active,.menu-card .btn.primary:active:not(:disabled){box-shadow:0 0.0625rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.mgo:active,.menu-card .btn:active:not(:disabled){transform:translateY(0.125rem)}
 .mgo:focus-visible,.mlist button:focus-visible,.mfoot button:focus-visible,.mback:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 /* A list of plain lines between thin rules: a name, a note and ›. */
 .mlist{width:100%;margin:0;padding:0;list-style:none;border-top:1px solid rgba(255,255,255,.12)}
@@ -530,29 +538,42 @@ body.set-open{overflow:hidden}
 .mlist .chev{color:var(--muted);font-weight:400}
 .mlist small + .chev{margin-left:0}
 .mlist .mname + .chev{margin-left:auto}
-.mdot{width:0.625rem;height:0.625rem;border-radius:50%;flex:none}
+.mdot{width:0.3125rem;height:1.375rem;border-radius:999px;flex:none}
 .mdot.dynamic{background:var(--mode-dynamic)}.mdot.waves{background:var(--mode-waves)}.mdot.free{background:var(--mode-free)}
 .mfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:0.125rem 0.25rem}
 .mfoot button{border:0;background:none;color:var(--muted);font:inherit;font-size:0.8125rem;padding:0.5rem;border-radius:0.375rem;cursor:pointer}
 .mfoot button:hover{color:var(--ink)}
 .menu-card .about-credit{margin-top:0.25rem!important}
 /* A view's heading: Back, then its title in the middle. */
-.mtop{display:grid;grid-template-columns:4.5rem 1fr 4.5rem;align-items:center;width:100%}
+.mtop{display:grid;grid-template-columns:minmax(4.5rem,1fr) auto minmax(4.5rem,1fr);align-items:center;width:100%}
+.mtop > :last-child:not(:first-child):not(h2,h3,.big){justify-self:end}
 .mtop h3{margin:0;font-size:1.125rem;text-align:center}
-.mtop h3 .mode-chip{font-size:0.875rem;padding:0.25rem 0.875rem}
+.mtop h3 .mode-chip{display:inline-block;font-size:0.875rem;padding:0.25rem 0.875rem;box-shadow:inset 0 -0.125rem 0 rgba(0,0,0,.25)}
 .mback{justify-self:start;border:0;background:none;color:var(--muted);font:inherit;font-weight:700;padding:0.5rem 0.25rem;cursor:pointer}
 .mback:hover{color:var(--ink)}
-/* A mode's view. Its goal opens Your profile for the mode. */
-.mstat{margin:0;display:flex;flex-direction:column;align-items:center;font-size:0.875rem;color:var(--muted);text-align:center}
-.mstat span:first-child{color:var(--ink);font-weight:700}
-.mtail{font-size:0.8125rem;color:var(--muted);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
-.mtail:hover{color:var(--ink)}
-.mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0}
-.mbtns{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%}
-.mbtns .btn{flex:1;margin:0;min-height:2.75rem;max-width:9rem}
-.menu-card select,.menu-card .code-in{width:100%;background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
+/* A mode's view. Its game is a scoreboard in a well: the caption, then each player's name in their color over their
+   score. Without a game the well keeps its height, so nothing under it moves. */
+.mboard{box-sizing:border-box;width:100%;min-height:5.75rem;display:flex;flex-direction:column;justify-content:center;gap:0.375rem;padding:0.625rem 0.75rem;border-radius:0.75rem;background:rgba(0,0,0,.25);border:0.125rem solid rgba(255,255,255,.12);text-align:center}
+.mcap{margin:0;font-size:0.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mscores{display:grid;grid-template-columns:repeat(3,1fr);margin:0;padding:0;list-style:none}
+.mscores li{display:flex;flex-direction:column;align-items:center;min-width:0}
+.mscores li + li{border-left:0.125rem solid rgba(255,255,255,.12)}
+.mscores b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.875rem}
+.mscores span{font-size:1.5rem;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--ink)}
+.mboard.empty .mcap{font-size:0.875rem;letter-spacing:0;text-transform:none;color:var(--ink)}
+.mtag{margin:0;font-size:0.875rem;color:var(--muted)}
+/* The goal: a pill with its meter and ›, which opens Your profile for the mode. */
+.mtail{display:inline-flex;align-items:center;gap:0.5rem;min-height:2.25rem;font-size:0.8125rem;font-weight:700;color:var(--ink);background:none;border:0.125rem solid rgba(255,255,255,.12);border-radius:999px;font-family:inherit;cursor:pointer;padding:0.25rem 0.625rem 0.25rem 0.875rem}
+.mtail::after{content:'›';color:var(--muted);font-weight:400;font-size:1rem;line-height:1}
+.mtail:hover{border-color:rgba(255,255,255,.22)}
+.mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.mmeter{width:3.5rem;height:0.375rem;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.mmeter i{display:block;height:100%;background:var(--gold);border-radius:inherit}
+.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:0.625rem;width:100%}
+.mbtns .btn{margin:0;min-height:3rem;font-size:1rem}
+.menu-card select,.menu-card .code-in{width:100%;background:var(--felt-edge);color:var(--ink);border:0.125rem solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
 .menu-card select:focus-visible,.menu-card .code-in:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-/* Discard game: a faint icon before Resume, only with a game, so it never competes with Resume. */
+/* Discard game: a faint icon on the right of the heading, only with a game, so it never competes with Resume. */
 .mdel{width:2.75rem;height:2.75rem;display:grid;place-items:center;flex:none;padding:0;background:none;border:0;border-radius:0.625rem;color:var(--ink);opacity:.35;cursor:pointer}
 .mdel:hover,.mdel:focus-visible{opacity:.8}
 .mdel svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -571,7 +592,7 @@ body.set-open{overflow:hidden}
 .mnote:empty{display:none}
 .mlabel{align-self:stretch;text-align:left;font-size:0.875rem;color:var(--muted)}
 .code-in{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:0.875rem!important}
-.mload{align-self:flex-end;min-width:7rem;min-height:2.75rem;margin:0}
+.mload{align-self:flex-end;min-width:7rem;min-height:3rem;margin:0}
 .about-king.pip.red > span{color:var(--pip-red)}
 @media (max-width:620px){
   .menu-stage{padding:1rem 0.75rem}
@@ -7454,17 +7475,17 @@ const App = (() => {
 
   /* ---- The menu. At launch it is the "welcome back" dialog; Close then leaves the empty table. ----
      One card per mode, then a row of tools. Every button is always in the same place: Resume is there with no saved
-     game (disabled), and the cards' status lines hold a fixed two lines, so nothing moves whatever is saved or running.
+     game (disabled), and the cards' scoreboards keep a fixed height, so nothing moves whatever is saved or running.
      Explanations sit in the status lines, never on the buttons. */
-  /* A game's two status lines: who, then the hand and the scores. now: the game being played. */
-  function gameStatus(st, personas, wave, now) {
+  /* A game's two status lines, for Continue: who, then the hand and the scores, seated as at the table: West, You, East. */
+  function gameStatus(st, personas, wave) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    return [(now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+    return [(wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
+      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
-    return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n, false) : null;
+    return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n) : null;
   }
   const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' + (o.attrs || '') +
     (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
@@ -7483,7 +7504,7 @@ const App = (() => {
     if (launch && !app.menuOpen) menuView = 'home';
     const ov = $('overlay');
     ov.innerHTML = '<div class="menu menu-stage" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><div class="about-kings" aria-hidden="true">' + driftHTML() + '</div>' +
-      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
+      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML() + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
       /* Under Load a code, floating at the foot of the window: the replay code version and the Engine version (RULES_VERSION)
          that this app writes (docs/versions.md). Outside the card, whose backdrop filter would hold a fixed child. */
       '<p class="code-ver" id="codeVersion" hidden>Replay KCT' + Replay.VERSION + ' · Engine ' + Engine.RULES_VERSION + '</p></div>';
@@ -7501,13 +7522,15 @@ const App = (() => {
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
     const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
-      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('button:not([disabled]), input, select'));
+      /* The focus starts on the view's main button, the likely choice, else on its first control. */
+      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('.btn.primary:not([disabled])') || shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
     }
   }
-  /* A view: its heading with Back (every view but home), then its body. */
-  const menuViewHTML = (/** @type {string} */ view, /** @type {string} */ title, /** @type {string} */ body, attrs = '', cls = '') => '<div class="mview' + cls + '" data-view="' + view + '"' + attrs + ' hidden>' +
-    (title ? '<div class="mtop"><button class="mback" type="button" data-action="menu-view" data-view="' + MENU_PARENT[view] + '">‹ Back</button><h3>' + title + '</h3></div>' : '') + body + '</div>';
+  /* A view: its heading with Back (every view but home), the title in the middle and end (a quiet icon) on the right,
+     then its body. */
+  const menuViewHTML = (/** @type {string} */ view, /** @type {string} */ title, /** @type {string} */ body, attrs = '', cls = '', end = '') => '<div class="mview' + cls + '" data-view="' + view + '"' + attrs + ' hidden>' +
+    (title ? '<div class="mtop"><button class="mback" type="button" data-action="menu-view" data-view="' + MENU_PARENT[view] + '">‹ Back</button><h3>' + title + '</h3>' + end + '</div>' : '') + body + '</div>';
   /* A line of a list: a name (with a mode's dot), a short note, and ›. */
   const menuLine = (/** @type {string} */ view, /** @type {string} */ name, note = '', dot = '') => '<li><button type="button" data-action="menu-view" data-view="' + view + '">' +
     (dot ? '<span class="mdot ' + dot + '" aria-hidden="true"></span>' : '') + '<span class="mname">' + name + '</span>' + (note ? '<small>' + note + '</small>' : '') + '<span class="chev" aria-hidden="true">›</span></button></li>';
@@ -7516,13 +7539,29 @@ const App = (() => {
     const p = Waves.progress();
     return m === 'waves' ? (p.sharkOpen ? 'Sharks: ' + p.sharks + ' of ' + p.total + ' cleared' : p.waves + ' of ' + p.total + ' cleared') : 'Beaten ' + beatenCount(stats.get(), m) + ' of ' + PERSONAS.length;
   }
+  /* The same goal as a share, 0 to 1, for its meter. */
+  function modeGoalShare(/** @type {string} */ m) {
+    const p = Waves.progress();
+    return m === 'waves' ? (p.sharkOpen ? p.sharks : p.waves) / p.total : beatenCount(stats.get(), m) / PERSONAS.length;
+  }
+  /* A mode card's game as a scoreboard: a caption (Playing now, the wave, the hand), then each player's name in their
+     color over their score, seated as at the table: West, You, East. Without a game, the caption and the mode's
+     tagline, in the same height. */
+  function menuBoardHTML(st, personas, wave, now) {
+    const cap = (now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats');
+    const who = [1, 0, 2].map(p => {
+      const x = p ? PERSONA_BY_ID[personas[p]] : null;
+      return '<li><b style="color:' + (p ? escHTML(x ? x.color : 'var(--name' + p + ')') : 'var(--name0)') + '">' + (p ? escHTML(x ? x.name : '?') : 'You') + '</b><span>' + st.scores[p] + '</span></li>';
+    }).join('');
+    return '<div class="mboard"><p class="mcap">' + cap + '</p><ol class="mscores">' + who + '</ol></div>';
+  }
   /* Home: the title and a line of the lore, then the one big button: Continue (the game being played, or the last one
      saved) or, with no game, New game. Then three lines, and the small links and the credit at the foot. */
   function menuHomeHTML(launch) {
     const playing = gameOn(), lost = slots.dropped();
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     const last = playing ? app.mode : launch ? slots.last() || resumable[0] : slots.last() || resumable[0];
-    const st = playing ? gameStatus(app.state, app.ui.personas, app.mode === 'waves' && app.wave.n, false) : last ? slotStatus(last) : null;
+    const st = playing ? gameStatus(app.state, app.ui.personas, app.mode === 'waves' && app.wave.n) : last ? slotStatus(last) : null;
     const go = st
       ? '<button class="mgo primary" type="button" data-action="' + (playing ? 'close-menu' : 'resume-' + last) + '">Continue<small>' + modeName(last || '') + ' · ' + st[0] + '</small><small>' + st[1] + '</small></button>'
       : '<button class="mgo primary" type="button" data-action="menu-view" data-view="new">New game<small>Dynamic, Waves or Free play</small></button>';
@@ -7545,10 +7584,10 @@ const App = (() => {
     return menuViewHTML('new', 'New game', '<ul class="mlist">' + MODES_SHOWN.map(([m, name]) => menuLine('mode-' + m, name, note(m), m)).join('') + '</ul>');
   }
   const MODES_SHOWN = Object.freeze([['dynamic', 'Dynamic'], ['waves', 'Waves'], ['free', 'Free play']]);
-  /* A mode's view: its name and goal (Your profile for the mode), its game in two lines, the Waves list, then Discard,
-     Resume and New game (Play wave). Resume returns to the game: the one being played (the menu closes), or the saved
+  /* A mode's view: its name (Discard on the right), its game as a scoreboard, its goal (Your profile for the mode), the
+     Waves list, then Resume and New game (Play wave). Resume returns to the game: the one being played (the menu closes), or the saved
      one. Every button stays in the same place whatever is saved or running. */
-  function menuModesHTML(launch) {
+  function menuModesHTML() {
     const p = Waves.progress();
     const playing = gameOn();
     const lost = slots.dropped();
@@ -7561,22 +7600,24 @@ const App = (() => {
     const waveOptions = p.sharkOpen
       ? '<optgroup label="Waves">' + openWaves.filter(w => !w.shark).map(waveOption).join('') + '</optgroup><optgroup label="Shark run">' + openWaves.filter(w => w.shark).map(waveOption).join('') + '</optgroup>'
       : openWaves.map(waveOption).join('');
-    const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
-    const main = launch ? slots.last() || resumable[0] : null;
-    const view = (m, title, extra, button) => {
-      const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
-      const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', MODE_TAGLINE[m]];
-      const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: main === m, disabled: !now && !st });
-      /* Discard game: only with a game, and quiet, so it never competes with Resume. */
-      const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
+    /* The main (gold) button is the likely choice: Resume with a game, else New game (Play wave). */
+    const view = (m, title, extra, action, label) => {
+      const now = playing && app.mode === m, sl = now ? null : slots.get(m), has = now || !!sl;
+      const board = now ? menuBoardHTML(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : sl ? menuBoardHTML(sl.state, sl.personas, m === 'waves' && sl.wave.n, false)
+        : '<div class="mboard empty"><p class="mcap">' + (lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game') + '</p><p class="mtag">' + MODE_TAGLINE[m] + '</p></div>';
+      const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: has, disabled: !has });
+      /* Discard game: only with a game, a quiet icon on the right of the heading, away from Resume. */
+      const del = has ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '';
-      const tail = '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + modeGoal(m) + '</button>';
+      /* The goal, with its meter: it opens Your profile for the mode. */
+      const tail = '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + modeGoal(m) +
+        '<span class="mmeter" aria-hidden="true"><i style="width:' + Math.round(modeGoalShare(m) * 100) + '%"></i></span></button>';
       return menuViewHTML('mode-' + m, '<span class="mode-chip ' + m + '">' + title + '</span>',
-        '<p class="mstat"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span></p>' + tail + (extra || '') + '<div class="mbtns">' + del + resume + button + '</div>', ' data-mode="' + m + '"', ' mcard');
+        board + tail + (extra || '') + '<div class="mbtns">' + resume + menuButton(action, label, { primary: !has }) + '</div>', ' data-mode="' + m + '"', ' mcard', del);
     };
-    return view('dynamic', 'Dynamic', '', menuButton('new-dynamic', 'New game')) +
-      view('waves', 'Waves', '<label class="sr" for="waveSel">' + (p.sharkOpen ? 'Table' : 'Wave') + '</label><select id="waveSel">' + waveOptions + '</select>', menuButton('play-wave', p.sharkOpen ? 'Play table' : 'Play wave')) +
-      view('free', 'Free play', '', menuButton('new-free', 'New game'));
+    return view('dynamic', 'Dynamic', '', 'new-dynamic', 'New game') +
+      view('waves', 'Waves', '<label class="sr" for="waveSel">' + (p.sharkOpen ? 'Table' : 'Wave') + '</label><select id="waveSel">' + waveOptions + '</select>', 'play-wave', p.sharkOpen ? 'Play table' : 'Play wave') +
+      view('free', 'Free play', '', 'new-free', 'New game');
   }
   /* How to play: the tutorial (to come), the quick rules, and the full rules (to come). */
   function menuRulesHTML() {
