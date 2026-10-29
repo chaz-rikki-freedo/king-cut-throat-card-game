@@ -6770,14 +6770,15 @@ const App = (() => {
       '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + escHTML(cancel || 'Cancel') + '</button>' +
       '<button class="btn ' + (danger ? 'danger' : 'primary') + '" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
     layer.hidden = false;
-    /* Over open Settings (which makes the rest of the page inert), the question is the one live part until answered. */
-    const panel = $('settingsPanel'), was = { layer: layer.inert, panel: panel.inert };
-    layer.inert = false; panel.inert = !panel.hidden;
+    /* Over open Settings (which makes the rest of the page inert), the question is the one live part until answered.
+       Over the menu, the menu stays in view behind it (its felt, not the table) but takes no focus. */
+    const panel = $('settingsPanel'), ov = $('overlay'), was = { layer: layer.inert, panel: panel.inert, ov: ov.inert };
+    layer.inert = false; panel.inert = !panel.hidden; ov.inert = !ov.hidden;
     /* A destructive question starts on Cancel, so Enter does not replace anything. */
     const first = /** @type {HTMLElement | null} */ (layer.querySelector(danger ? '[data-action="ask-cancel"]' : '[data-action="ask-ok"]'));
     if (first) first.focus();
     return new Promise(resolve => {
-      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; resolve(answer); schedule(); };
+      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; ov.inert = was.ov; resolve(answer); schedule(); };
     });
   }
   function answerAsk(answer) { if (askDone) askDone(answer); }
@@ -7660,7 +7661,6 @@ const App = (() => {
   async function confirmReplace(mode) {
     const st = unfinished(mode);
     if (!st || st.scores.every(x => x === 0) && handNo(st) <= 1) return true;
-    if (app.menuOpen) $('overlay').hidden = true;
     const n = mode === 'waves' ? forfeitWave() : null;
     const yes = await ask({
       title: 'Start a new ' + modeName(mode) + ' game?',
@@ -7676,7 +7676,6 @@ const App = (() => {
   async function discardGame(mode) {
     const st = unfinished(mode);
     if (st) {
-      if (app.menuOpen) $('overlay').hidden = true;
       const n = mode === 'waves' ? forfeitWave() : null;
       const yes = await ask({ title: 'Discard your ' + modeName(mode) + ' game?', text: '<p>' + unfinishedText(mode, st) + ' ends. You cannot undo this.</p>' + forfeitText(n), ok: 'Discard', cancel: 'Keep it' });
       if (yes) {
