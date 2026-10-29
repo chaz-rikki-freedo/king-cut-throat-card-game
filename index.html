@@ -112,7 +112,6 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .seat-face:hover{transform:scale(1.08)}
 .seat-face:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 #seat0 .seat-name{color:var(--name0)}
-.playing-as{font-size:0.8125rem;color:var(--muted)}
 .modal.persona{max-width:22.5rem}
 .persona .sheet-body{display:flex;flex-direction:column;align-items:center;gap:0.875rem;text-align:center}
 .persona .p-face{width:8.25rem;height:8.25rem;background:center bottom/contain no-repeat}
@@ -1005,7 +1004,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '04fc2b1', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: '9e6124f', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3808,6 +3807,7 @@ const Render = (() => {
     const bot = !v.players[v.seat].human && PERSONA_BY_ID[ui.personas[v.seat]];
     if (bot) return faceButtonHTML(bot) + '<span class="seat-name" style="color:' + escHTML(bot.color) + '">' + nameOf(v, v.seat) + '</span>';
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    if (mine) return meFaceHTML(mine) + '<span class="seat-name" style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</span>';
     return meFaceHTML(mine) + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
   }
   const meFaceHTML = mine => mine ? faceButtonHTML(mine) : '<button type="button" class="seat-face" data-action="me-profile" aria-label="Your profile" style="background-image:url(' + YOU_ART + ')"></button>';
@@ -4011,11 +4011,10 @@ const Render = (() => {
       advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p, ctx.ui);
   }
   function advMeHTML(v, ui, ctx) {
-    const mine = v.players[v.seat].human && ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const hand = handHTML(v, ui).replace('<div class="hand" id="hand">', '<div class="hand" id="hand" style="--n:' + Math.max(2, v.hand.length) + '">');
     return '<div class="me-head">' + meNameHTML(v, ui) +
       scoreButton(v, v.seat, ctx) + advTags(v, v.seat, ui) +
-      (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
+      '</div>' +
       hand + advCircles(v, v.seat, ui);
   }
   const STAGES =  ({
