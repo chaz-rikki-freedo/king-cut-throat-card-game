@@ -992,7 +992,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '523b9b9', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: 'ac8a2d0', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5367,12 +5367,12 @@ const App = (() => {
       '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + escHTML(cancel || 'Cancel') + '</button>' +
       '<button class="btn ' + (danger ? 'danger' : 'primary') + '" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
     layer.hidden = false;
-    const panel = $('settingsPanel'), was = { layer: layer.inert, panel: panel.inert };
-    layer.inert = false; panel.inert = !panel.hidden;
+    const panel = $('settingsPanel'), ov = $('overlay'), was = { layer: layer.inert, panel: panel.inert, ov: ov.inert };
+    layer.inert = false; panel.inert = !panel.hidden; ov.inert = !ov.hidden;
     const first =  (layer.querySelector(danger ? '[data-action="ask-cancel"]' : '[data-action="ask-ok"]'));
     if (first) first.focus();
     return new Promise(resolve => {
-      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; resolve(answer); schedule(); };
+      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; ov.inert = was.ov; resolve(answer); schedule(); };
     });
   }
   function answerAsk(answer) { if (askDone) askDone(answer); }
@@ -6076,7 +6076,6 @@ const App = (() => {
   async function confirmReplace(mode) {
     const st = unfinished(mode);
     if (!st || st.scores.every(x => x === 0) && handNo(st) <= 1) return true;
-    if (app.menuOpen) $('overlay').hidden = true;
     const n = mode === 'waves' ? forfeitWave() : null;
     const yes = await ask({
       title: 'Start a new ' + modeName(mode) + ' game?',
@@ -6089,7 +6088,6 @@ const App = (() => {
   async function discardGame(mode) {
     const st = unfinished(mode);
     if (st) {
-      if (app.menuOpen) $('overlay').hidden = true;
       const n = mode === 'waves' ? forfeitWave() : null;
       const yes = await ask({ title: 'Discard your ' + modeName(mode) + ' game?', text: '<p>' + unfinishedText(mode, st) + ' ends. You cannot undo this.</p>' + forfeitText(n), ok: 'Discard', cancel: 'Keep it' });
       if (yes) {
