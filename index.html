@@ -7477,11 +7477,11 @@ const App = (() => {
      One card per mode, then a row of tools. Every button is always in the same place: Resume is there with no saved
      game (disabled), and the cards' scoreboards keep a fixed height, so nothing moves whatever is saved or running.
      Explanations sit in the status lines, never on the buttons. */
-  /* A game's two status lines, for Continue: who, then the hand and the scores, seated as at the table: West, You, East. */
+  /* A game's two status lines, for Continue: where, then the scores, seated as at the table: West, You, East. */
   function gameStatus(st, personas, wave) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    return [(wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+    return [(wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats'),
+      name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
