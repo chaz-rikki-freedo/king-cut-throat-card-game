@@ -342,6 +342,7 @@ Two rules keep the controls apart:
 | Seat subgroups | `details.seat-sub` | — | **Skill** (`#seat<p>-tier`, `-worlds`, `-playoutSkill`), **Style** (`-courage`, `-realTable`, `-leadPick`), **Knowledge** (`-k-voids` and the other five). Each control has `data-seat` and `data-field`; its first choice is **Its own**. |
 | Changed row | `.set-row.changed` | D | A gold dot after the setting's name. |
 | Seat AI switch | `#setSeatAI`, in `#setSeat0` | C | "AI can play your seat": first in the Your seat group; makes the seat toggle work. |
+| Forced plays switch | `#setForced`, in `#setSeat0`; `#panelForced` in the Human tag's popup | C | "Forced plays": under the Seat AI switch, and in the popup of your Human tag (`.pswitch`). On, your only legal card in a trick plays itself. Kept. |
 | Reset this seat | `seat-reset` | C | One seat back to the seed's pick, playing as itself. |
 | Bots reset | `#setBotDefaults`, `settings-reset` | C | **Reset this tab**, under **Bot defaults**: every seat back to the seed's pick, after a confirm. Progress stays. |
 

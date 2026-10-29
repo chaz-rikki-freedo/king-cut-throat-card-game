@@ -54,7 +54,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, and the Table tab's settings. Speed and **AI can play your seat** are not kept: each load starts at Normal, with the switch off.
+- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, **Forced plays**, and the Table tab's settings. Speed and **AI can play your seat** are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent and per table in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 20 finished games of each mode, plus the last 20 where the AI played your seat. A new game pushes out only the oldest of its own group, and each code is saved when the game ends, so there is nothing to copy (see **Replay a game**).
@@ -137,6 +137,8 @@ Under it, the Table tab ends with the copyright notice: **© 2009–2026 C.R.F.B
 The Bots tab has one group for each seat: **West**, **East** and **Your seat** (used when the AI plays your seat). Each group is collapsed; its header shows who sits there and how many changes it has. Inside, **Who sits** comes first, then four collapsed groups: **Skill**, **Style**, **Habits** and **Knowledge**.
 
 **Your seat** starts with **AI can play your seat** (off by default): on, the **HUMAN** tag on your seat works (see **AI plays your seat**). Off, the tag is a label only, so a stray click cannot hand over your seat. Turning it off while the AI has your seat gives you the seat back at once. Like speed, the switch is for this page load only: a reload turns it off, and it is not in the settings, a backup or a replay code. A game the AI plays in clears no wave.
+
+Under it, **Forced plays** (off by default): on, when only one card in your hand is legal in a trick, it plays itself, after the same wait as a bot's move at the current speed. It never bids or discards for you. The same switch is in the popup of your **HUMAN** tag, so you can find it at the table. It is kept in the settings, and it does nothing while the AI has your seat. A game with forced plays still counts as yours: it can clear a wave and adds results.
 
 - **Who sits** (default **From the seed**): the seed's pick, or always this bot. West and East can't both choose the same bot: the other seat goes back to the seed's pick. For your seat, a bot already at the table means the seed picks one that isn't.
 - Every other setting starts at **Its own**: the bot plays that part as its personality does. When the seat has a chosen bot, **Its own** names that bot's value, for example **Its own (Bold)**. Any other choice changes that one thing, and a gold dot marks the row.
