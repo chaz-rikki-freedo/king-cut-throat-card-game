@@ -175,7 +175,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Mode title | `.mtop .mode-chip` | L | The mode's chip: **Dynamic**, **Waves** or **Free play**. |
-| Scoreboard | `.mboard`, `.mcap`, `.mscores` | S | The game: a caption (**Playing now**, the wave, the hand), then each player's name in their color (You in `--name0`, a bot in its `--bot-<id>`) over their score. Without a game, **No saved game** and the mode's tagline, in the same height. |
+| Scoreboard | `.mboard`, `.mcap`, `.mscores` | S | The game: a caption (**Playing now**, the wave, the hand), then each player's name in their color (You in `--name0`, a bot in its `--bot-<id>`) over their score, seated as at the table: West, You, East. Without a game, **No saved game** and the mode's tagline, in the same height. |
 | Mode goal | `.mtail`, `.mmeter` | C | "Beaten 6 of 10" (Dynamic, Free play) or "15 of 18 cleared" (Waves), with a gold meter and ›. Opens Your profile for the mode. |
 | Wave picker | `#waveSel` | C | The open waves (and the open Shark run tables), with each table's West / East names. ✓ marks a cleared wave. |
 | Discard game icon | `.mdel`, `discard-<mode>` | C | A faint trash icon on the right of the heading, only with an unfinished game. Asks first, then clears that mode's saved game without starting another. Not a result: no loss, and wave progress stays. |

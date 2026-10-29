@@ -7541,10 +7541,11 @@ const App = (() => {
     return m === 'waves' ? (p.sharkOpen ? p.sharks : p.waves) / p.total : beatenCount(stats.get(), m) / PERSONAS.length;
   }
   /* A mode card's game as a scoreboard: a caption (Playing now, the wave, the hand), then each player's name in their
-     color over their score. Without a game, the caption and the mode's tagline, in the same height. */
+     color over their score, seated as at the table: West, You, East. Without a game, the caption and the mode's
+     tagline, in the same height. */
   function menuBoardHTML(st, personas, wave, now) {
     const cap = (now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats');
-    const who = [0, 1, 2].map(p => {
+    const who = [1, 0, 2].map(p => {
       const x = p ? PERSONA_BY_ID[personas[p]] : null;
       return '<li><b style="color:' + (p ? escHTML(x ? x.color : 'var(--name' + p + ')') : 'var(--name0)') + '">' + (p ? escHTML(x ? x.name : '?') : 'You') + '</b><span>' + st.scores[p] + '</span></li>';
     }).join('');
