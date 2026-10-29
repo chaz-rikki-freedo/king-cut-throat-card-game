@@ -1005,7 +1005,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '543d9ba', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: '41a5a78', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3822,20 +3822,27 @@ const Render = (() => {
     if (!x) return '<span class="seat-name">' + nameOf(v, p) + '</span>';
     return faceButtonHTML(x) + '<span class="seat-name" style="color:' + escHTML(x.color) + '">' + nameOf(v, p) + '</span>';
   }
-  function personaHTML(x) {
+  function personaHTML(x, cfg = AI.personaConfig(x), note = '') {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
+    const st = cfg.style, ways = habitWords(st);
     return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
       '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
-      '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
-      '<span>Reads you</span>' + pips(Math.round(4 * (x.credulity || 0))) + '<span>Feints</span>' + pips(Math.round(4 * (x.feint || 0))) +
-      (habitWords(x) ? '<span class="p-ways">' + escHTML(habitWords(x)) + '</span>' : '') +
-      (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
+      '<div class="p-dials"><span>Card sense</span>' + pips(cardSense(cfg)) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[st.courage]) +
+      '<span>Reads you</span>' + pips(Math.round(4 * st.credulity)) + '<span>Feints</span>' + pips(Math.round(4 * st.feint)) +
+      (ways ? '<span class="p-ways">' + escHTML(ways) + '</span>' : '') +
+      (st.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' + (note ? '<p class="p-hint">' + escHTML(note) + '</p>' : '') + '</div></div>';
   }
-  function habitWords(x) {
-    const h = x.habits || {};
-    const W = { lead: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, win: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
-      void: { ruff: 'trumps in', low: 'throws low' }, kings: { early: 'Kings early', late: 'Kings late' } };
-    const w =  (['lead', 'win', 'void', 'kings'].map(k =>  (W)[k][ (h)[k]]).filter(Boolean));
+  function cardSense(cfg) {
+    const tier = AI.skillTierOf(cfg);
+    if (tier !== 'custom') return PERSONA_LEVEL[tier];
+    const gap = ( t) => Math.abs(Math.log(cfg.thinking.worlds / AI.SKILL_TIERS[t].thinking.worlds));
+    return PERSONA_LEVEL[Object.keys(AI.SKILL_TIERS).reduce((a, b) => (gap(b) < gap(a) ? b : a))];
+  }
+  function habitWords(st) {
+    if (!st.slack) return '';
+    const W = { leadHabit: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, winHabit: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
+      voidHabit: { ruff: 'trumps in', low: 'throws low' }, kingHabit: { early: 'Kings early', late: 'Kings late' } };
+    const w =  (Object.keys(W).map(k =>  (W)[k][ (st)[k]]).filter(Boolean));
     return w.length ? w.join(' · ').replace(/^./, c => c.toUpperCase()) : '';
   }
   const held = (ctx, p) => (ctx.ui && ctx.ui.scoreHold[p]) || 0;
@@ -5492,6 +5499,12 @@ const App = (() => {
     const tune = a.ui.tunes && a.ui.tunes[p];
     return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
   }
+  function personaShown(x) {
+    const p = app.mode ? app.ui.personas.indexOf(x.id) : -1;
+    if (p < 0 || (app.mode === 'dynamic' && p !== HUMAN)) return [AI.personaConfig(x), ''];
+    const n = p !== HUMAN && inShark() ? 0 : tuneSize(app.ui.tunes[p]);
+    return [botConfig(p).cfg, n ? 'This game: ' + n + (n === 1 ? ' change' : ' changes') + ' from Settings.' : ''];
+  }
   function plainAction(st, p) {
     const h = st.hands[p];
     switch (st.phase) {
@@ -6826,7 +6839,7 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) continueFrom(sys); break; }
       case 'skip': skipShowdown(); break;
-      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
+      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { const [cfg, note] = personaShown(x); $('overlay').innerHTML = Render.personaHTML(x, cfg, note); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
       case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
@@ -8763,6 +8776,11 @@ const SelfTest = (() => {
         ['timid', 4, false, own.style.realTable, own.thinking.playoutSkill, own.knowledge.voids, true]);
       const novice = AI.withSkillTier(AI.DEFAULT_CONFIG, 'novice'), full = AI.tunedConfig(vex, AI.tuneOf(novice));
       eq('a full tune plays exactly those settings', [full.thinking, full.knowledge, full.style], [novice.thinking, novice.knowledge, novice.style]);
+      const dials = ( html) => Array.from(html.matchAll(/aria-label="(\d) of 4"/g), m => Number(m[1]));
+      eq('a profile card shows the personality', dials(Render.personaHTML(vex)), [4, 4, Math.round(4 * vex.credulity), Math.round(4 * vex.feint)]);
+      const timid = Render.personaHTML(vex, AI.tunedConfig(vex, { worlds: 3, playoutSkill: 0.4, knowledge: novice.knowledge, courage: 'timid', credulity: 1, feint: 0, slack: 0 }), 'This game: 6 changes from Settings.');
+      eq('a tuned card shows the tune', [dials(timid), timid.includes('This game: 6 changes'), timid.includes('p-ways')], [[1, 1, 4, 0], true, false]);
+      eq('custom thinking reads as the tier nearest in hunches', dials(Render.personaHTML(vex, AI.tunedConfig(vex, { worlds: 18 })))[0], 3);
       eq('a tune keeps valid habits, slack clamped to 5%', AI.cleanTune({ leadHabit: 'trump', winHabit: 'sneaky', kingHabit: 'late', slack: 0.2 }), { leadHabit: 'trump', kingHabit: 'late', slack: AI.MAX_SLACK });
       eq('each personality\'s habits are valid', PERSONAS.filter(x => { const st = AI.personaConfig(x).style, h = x.habits || {}; return (h.lead || 'none') !== st.leadHabit || (h.win || 'none') !== st.winHabit || (h.void || 'none') !== st.voidHabit || (h.kings || 'none') !== st.kingHabit || (h.slack || 0) !== st.slack; }).map(x => x.id), []);
       const plain = AI.tunedConfig(vex, { leadHabit: 'none', winHabit: 'none', voidHabit: 'none', kingHabit: 'none', slack: 0, feint: 0 });
