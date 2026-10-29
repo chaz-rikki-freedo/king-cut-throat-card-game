@@ -57,6 +57,8 @@ button{font:inherit;color:inherit}
 /* The results dialog: ‹ Back on the left of its title returns to the table. */
 .modal .mtop{margin:0 0 0.625rem}
 .modal .mtop h2,.modal .mtop .big{margin:0;text-align:center}
+/* A dialog that takes the focus itself (game over) shows no ring: the focus is on the box, not on a choice. */
+.modal[tabindex="-1"]:focus{outline:0}
 .export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted);text-align:right}
 /* The end buttons, in the results dialog and the action bar: one row, centered (the dialog's at its right); on a
    phone a 2 x 2 grid of equal buttons, Next wave across the full width under it. */
@@ -538,6 +540,10 @@ body.set-open{overflow:hidden}
 .mlist .chev{color:var(--muted);font-weight:400}
 .mlist small + .chev{margin-left:0}
 .mlist .mname + .chev{margin-left:auto}
+/* A mode's line: its name, and under it what the mode is. */
+.mlist .mwho{display:flex;flex-direction:column;gap:0.125rem;min-width:0}
+.mlist .mdesc{font-size:0.75rem;font-weight:500;color:var(--muted)}
+.mlist .mwho + small{white-space:nowrap}
 .mdot{width:0.3125rem;height:1.375rem;border-radius:999px;flex:none}
 .mdot.dynamic{background:var(--mode-dynamic)}.mdot.waves{background:var(--mode-waves)}.mdot.free{background:var(--mode-free)}
 .mfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:0.125rem 0.25rem}
@@ -849,7 +855,9 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .seat .backrow{order:3;display:flex;align-self:flex-start;margin:0!important;padding:0 0 0 0!important;min-height:calc(var(--card-tiny)*1.45)}
 .seat .backrow .mini-back{margin-right:-0.375rem!important}
 .seat .tpips{order:4}
-.tagbox .tag{font-size:0.5938rem!important;letter-spacing:0!important;padding:0 0.1875rem!important}
+/* Tag text as large as its tag allows: every tag has one width (--tag-w, a third of a bot seat's tag row), and the
+   widest label (Dealer, Human) takes about 4 times the font size. Never clipped, never larger than 0.75rem. */
+.tagbox .tag{font-size:clamp(0.5rem,calc((var(--tag-w,4.5rem) - 0.375rem)/4.3),0.75rem)!important;letter-spacing:0!important;padding:0 0.1875rem!important}
 .info .blockedcell .micro{text-decoration:line-through;text-decoration-thickness:0.125rem}
 .pile-act .btn.sym-btn{min-width:2.875rem;padding:0.5rem 0.75rem;font-size:1.25rem;line-height:1}
 .pile-act .btn.sym-btn.blocked{opacity:.4}
@@ -908,7 +916,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .tag.turn{background:#2e7d32;color:#fff}
 .tag.led{background:#00838f;color:#fff}
 @media (max-width:720px){
-  .tagbox .tag{font-size:0.5rem!important;padding:0 1px!important}
+  .tagbox .tag{font-size:clamp(0.5rem,calc((var(--tag-w,4.5rem) - 2px)/4.3),0.75rem)!important;padding:0 1px!important}
 }
 /* On a phone the table keeps its spacing tight: less room above and below the table, the seats and your hand. */
 @media (max-width:720px){
@@ -7451,11 +7459,15 @@ const App = (() => {
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
-    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
+    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over" tabindex="-1"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       waveEndHTML() +
       '<div class="row">' + app.ui.endButtons + '</div></div>';
     ov.hidden = false;
+    /* The focus goes to the box, not to an end button: a Space pressed to skip the last wait must not start a game
+       before you have read how this one ended. Tab reaches the buttons. */
+    const box = /** @type {HTMLElement | null} */ (ov.querySelector('.gameover'));
+    if (box) box.focus();
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
     if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
@@ -7511,7 +7523,8 @@ const App = (() => {
     ov.hidden = false;
     app.menuOpen = true;
     app.menuLaunch = !!launch;
-    setMenuView(MENU_PARENT[menuView] || menuView === 'home' ? menuView : 'home', false);
+    /* The focus starts on the likely choice, at launch too, so Enter plays at once. */
+    setMenuView(MENU_PARENT[menuView] || menuView === 'home' ? menuView : 'home');
     maybeOfferUpdate();
   }
   /* Shows one view of the menu card. focus: move the focus into it (after Back or a row). */
@@ -7522,8 +7535,9 @@ const App = (() => {
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
     const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
-      /* The focus starts on the view's main button, the likely choice, else on its first control. */
-      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('.btn.primary:not([disabled])') || shown.querySelector('button:not([disabled]), input, select'));
+      /* The focus starts on the view's main button, the likely choice, else on its first line (not Back), else on its
+         first control. */
+      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('.primary:not([disabled])') || shown.querySelector('.mlist button') || shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
     }
   }
@@ -7531,9 +7545,10 @@ const App = (() => {
      then its body. */
   const menuViewHTML = (/** @type {string} */ view, /** @type {string} */ title, /** @type {string} */ body, attrs = '', cls = '', end = '') => '<div class="mview' + cls + '" data-view="' + view + '"' + attrs + ' hidden>' +
     (title ? '<div class="mtop"><button class="mback" type="button" data-action="menu-view" data-view="' + MENU_PARENT[view] + '">‹ Back</button><h3>' + title + '</h3>' + end + '</div>' : '') + body + '</div>';
-  /* A line of a list: a name (with a mode's dot), a short note, and ›. */
-  const menuLine = (/** @type {string} */ view, /** @type {string} */ name, note = '', dot = '') => '<li><button type="button" data-action="menu-view" data-view="' + view + '">' +
-    (dot ? '<span class="mdot ' + dot + '" aria-hidden="true"></span>' : '') + '<span class="mname">' + name + '</span>' + (note ? '<small>' + note + '</small>' : '') + '<span class="chev" aria-hidden="true">›</span></button></li>';
+  /* A line of a list: a name (with a mode's dot, and under it desc: what the mode is), a short note, and ›. */
+  const menuLine = (/** @type {string} */ view, /** @type {string} */ name, note = '', dot = '', desc = '') => '<li><button type="button" data-action="menu-view" data-view="' + view + '">' +
+    (dot ? '<span class="mdot ' + dot + '" aria-hidden="true"></span>' : '') + (desc ? '<span class="mwho"><span class="mname">' + name + '</span><span class="mdesc">' + desc + '</span></span>' : '<span class="mname">' + name + '</span>') +
+    (note ? '<small>' + note + '</small>' : '') + '<span class="chev" aria-hidden="true">›</span></button></li>';
   /* The modes' goals: the bots beaten (Dynamic, Free play), or the tables cleared (Waves). */
   function modeGoal(/** @type {string} */ m) {
     const p = Waves.progress();
@@ -7562,8 +7577,12 @@ const App = (() => {
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     const last = playing ? app.mode : launch ? slots.last() || resumable[0] : slots.last() || resumable[0];
     const st = playing ? gameStatus(app.state, app.ui.personas, app.mode === 'waves' && app.wave.n) : last ? slotStatus(last) : null;
+    /* A first visit (no game saved or finished): Play starts Dynamic, the mode for new players, so the first deal is
+       two taps away. The New game line still offers every mode. */
+    const fresh = !st && !Object.keys(stats.get().modes).length;
     const go = st
       ? '<button class="mgo primary" type="button" data-action="' + (playing ? 'close-menu' : 'resume-' + last) + '">Continue<small>' + modeName(last || '') + ' · ' + st[0] + '</small><small>' + st[1] + '</small></button>'
+      : fresh ? '<button class="mgo primary" type="button" data-action="new-dynamic">Play<small>Dynamic · Opponents ease off as you learn</small></button>'
       : '<button class="mgo primary" type="button" data-action="menu-view" data-view="new">New game<small>Dynamic, Waves or Free play</small></button>';
     let notes = '';
     if (linkNote) { notes += '<p class="wave-note">' + escHTML(linkNote) + '</p>'; linkNote = ''; }
@@ -7572,16 +7591,16 @@ const App = (() => {
     const link = (/** @type {string} */ action, /** @type {string} */ label, attrs = '') => '<button type="button" data-action="' + action + '"' + attrs + '>' + label + '</button>';
     return menuViewHTML('home', '', '<p class="about-suits" aria-hidden="true"><span>♠</span><span class="red">♥</span><span>♣</span><span class="red">♦</span></p>' +
       '<h2 class="about-title" id="menuTitle">King Cut-Throat</h2><p class="about-tag mepi">“It seems the Joker knew the conflict was intentional all along…”</p>' + notes + go +
-      '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
+      '<ul class="mlist">' + (st || fresh ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
       '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
-  /* New game: one line per mode, with its color, and its saved game or its goal. */
+  /* New game: one line per mode, with its color, what the mode is (its tagline), and its saved game or its goal. */
   function menuNewHTML() {
     const playing = gameOn();
     const note = (/** @type {string} */ m) => (playing && app.mode === m) || slots.get(m) ? (playing && app.mode === m ? 'Playing now' : 'Saved game') : modeGoal(m);
-    return menuViewHTML('new', 'New game', '<ul class="mlist">' + MODES_SHOWN.map(([m, name]) => menuLine('mode-' + m, name, note(m), m)).join('') + '</ul>');
+    return menuViewHTML('new', 'New game', '<ul class="mlist">' + MODES_SHOWN.map(([m, name]) => menuLine('mode-' + m, name, note(m), m, MODE_TAGLINE[m])).join('') + '</ul>');
   }
   const MODES_SHOWN = Object.freeze([['dynamic', 'Dynamic'], ['waves', 'Waves'], ['free', 'Free play']]);
   /* A mode's view: its name (Discard on the right), its game as a scoreboard, its goal (Your profile for the mode), the
@@ -8130,7 +8149,8 @@ const App = (() => {
     return '<div class="swap-seat"><span class="swap-side">' + side + '</span>' + Render.faceHTML(x) +
       '<b style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</b><small>' + escHTML(x.hint) + '</small></div>';
   }
-  function showSwap() {
+  /* focus: where the focus starts, Play (the likely choice), or ⇄ again after a swap. */
+  function showSwap(focus = 'swap-done') {
     const [, west, east] = app.ui.personas;
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><div class="mtop"><button class="mback swap-back" type="button" data-action="swap-back">‹ Back</button><h2>Choose seats</h2></div>' +
@@ -8141,6 +8161,8 @@ const App = (() => {
       '<button class="btn" type="button" data-action="swap-new">New opponents</button>' +
       '<button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;
+    const btn = /** @type {HTMLElement | null} */ (ov.querySelector('[data-action="' + focus + '"]'));
+    if (btn) btn.focus();
   }
   /* Dynamic only: how the opponents are picked, so New opponents is not read as a rotation through every bot. */
   function dynamicNoteHTML() {
@@ -8182,7 +8204,7 @@ const App = (() => {
     app.ui.swapped = !app.ui.swapped;
     redrawLog();
     draw([]);
-    showSwap();
+    showSwap('swap-preview');
   }
   function swapDone() {
     app.seatSwapPending = false;
@@ -8634,6 +8656,12 @@ const App = (() => {
   }
   /** @param {string} tab */
   function saveSetTab(tab) { try { localStorage.setItem(SET_TAB_KEY, JSON.stringify(tab)); } catch (e) { /* not kept */ } }
+  /* While a dialog (#overlay: the menu, the seat dialog, game over, Your profile) is open, the header and the table
+     behind it are out of reach, as behind Settings: Tab stays in the dialog. */
+  function holdBehind() {
+    const on = !$('overlay').hidden || !$('settingsPanel').hidden;
+    for (const el of [$('topbar'), document.querySelector('.layout')]) if (el instanceof HTMLElement) el.inert = on;
+  }
   function openSettings(open) {
     const d = $('settingsPanel');
     d.hidden = !open;
@@ -8641,7 +8669,13 @@ const App = (() => {
     /* While Settings is open, the page behind it is out of reach (a click or Tab stays in Settings). The update note
        stays live: it shows over Settings (Check again finds a new version there), so its Reload must work. */
     for (const el of document.body.children) if (el !== d && el.id !== 'updateNote' && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
-    if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
+    if (!open) {
+      holdBehind();
+      /* Back to the Settings button that opened it: the menu's, while the menu is open, else the header's. */
+      const b = /** @type {HTMLElement | null} */ (document.querySelector($('overlay').hidden ? '#topbar [data-action="toggle-settings"]' : '#overlay [data-action="toggle-settings"]'));
+      if (b) b.focus();
+      return;
+    }
     showSettingsTab(loadSetTab() || 'Table', true);
     checkInstall();
     /* Lines logged while the panel was closed are shown when it opens. */
@@ -9076,6 +9110,9 @@ const App = (() => {
       else if (Render.CONTINUE_LABEL[app.state.phase]) onAction('continue');
     });
     for (const t of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('overlay').addEventListener(t, profileTip);
+    /* Every place that shows or hides a dialog sets #overlay's hidden; holdBehind follows it. */
+    new MutationObserver(holdBehind).observe($('overlay'), { attributes: true, attributeFilter: ['hidden'] });
+    holdBehind();
     /* Picking another table in the Waves card makes Play the card's main button, so Resume (the game you had) is
        not the obvious tap for the table you just picked. */
     /* Menu → Play → Load a code: an edit clears what the last Load said, and Enter loads. */

@@ -163,12 +163,12 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 |---|---|---|---|
 | Menu title | `#menuTitle` | L | "King Cut-Throat", under the four suits. |
 | Epigraph | `.mepi` | D | A line of the lore: "It seems the Joker knew the conflict was intentional all along…" |
-| Big button | `.mgo` | C | **Continue**, with the game in two short lines: the game being played (`close-menu`) or the last one saved (`resume-<mode>`). With no game, **New game**, which opens the New game view. |
-| Home lines | `.mlist` | C | **New game** (when the big button is Continue), **How to play** and **Lore**. |
+| Big button | `.mgo` | C | **Continue**, with the game in two short lines: the game being played (`close-menu`) or the last one saved (`resume-<mode>`). With no game, **New game**, which opens the New game view. On a first visit (no game saved or finished), **Play** (`new-dynamic`), which starts a Dynamic game. |
+| Home lines | `.mlist` | C | **New game** (when the big button is Continue or Play), **How to play** and **Lore**. |
 | Small links | `.mfoot` | C | **Your profile** (`menu-profile`, all modes), **Load a code**, **Settings** (`toggle-settings`), and **Install** (`install-app`) when the browser offers it. |
 | Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. |
 
-**New game** (`menuNewHTML()`): a line per mode with its color bar (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
+**New game** (`menuNewHTML()`): a line per mode with its color bar (`.mdot`), its name over its tagline (`.mwho`, `.mdesc`: what the mode is, as on the mode's scoreboard without a game), and a note: "Playing now", "Saved game", or the mode's goal.
 
 **A mode's view** (`menuModesHTML()`, `.mview.mcard`, `data-mode`):
 

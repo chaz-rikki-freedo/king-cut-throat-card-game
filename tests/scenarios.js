@@ -35,10 +35,12 @@ function expect(name, ok, detail) {
       const go = v => click('#overlay .mview:not([hidden]) [data-action="menu-view"][data-view="' + v + '"]');
       const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       const lines = () => [...document.querySelectorAll('#overlay .mview:not([hidden]) .mlist .mname')].map(x => x.textContent);
-      out.home = { view: view(), title: q('#menuTitle').textContent, go: q('#overlay .mview:not([hidden]) .mgo').textContent.startsWith('New game'), lines: lines(),
+      out.home = { view: view(), title: q('#menuTitle').textContent, go: q('#overlay .mview:not([hidden]) .mgo').textContent.startsWith('Play') && q('#overlay .mview:not([hidden]) .mgo').getAttribute('data-action') === 'new-dynamic',
+        focus: document.activeElement === q('#overlay .mview:not([hidden]) .mgo'), behind: q('#topbar').inert && q('.layout').inert, lines: lines(),
         foot: [...document.querySelectorAll('#overlay .mfoot button')].map(b => b.textContent).filter(t => t !== 'Install'), drift: document.querySelectorAll('#overlay .about-kings .about-king.pip').length,
         build: (q('#overlay .menu-card .about-build') || {}).textContent === q('#setBuild').textContent };
-      go('new'); out.newView = { view: view(), lines: lines() };
+      go('new'); out.newView = { view: view(), lines: lines(), descs: document.querySelectorAll('#overlay .mview:not([hidden]) .mlist .mdesc').length,
+        focus: (document.activeElement || {}).getAttribute('data-view') };
       go('mode-waves'); out.waves = { view: view(), sel: !!q('#overlay .mview:not([hidden]) #waveSel'), play: !!q('#overlay .mview:not([hidden]) [data-action="play-wave"]') };
       esc(); await sleep(20); out.escBack = view();
       esc(); await sleep(20); out.escHome = view();
@@ -63,10 +65,12 @@ function expect(name, ok, detail) {
     expect('the About card has Tutorial (coming soon) on the left and Play, the main button, on the right',
       JSON.stringify(r.btns) === JSON.stringify([['Tutorial', 'tutorial', true, false], ['Play', 'menu', false, true]]), r.btns);
     expect('Play opens the menu', r.menu, r);
-    expect('the menu is the About card: the title, New game (no game yet), How to play and Lore, then the small links and the build',
-      r.home.view === 'home' && r.home.title === 'King Cut-Throat' && r.home.go && JSON.stringify(r.home.lines) === '["How to play","Lore"]' &&
+    expect('the menu is the About card: the title, Play (a first visit starts Dynamic), New game, How to play and Lore, then the small links and the build',
+      r.home.view === 'home' && r.home.title === 'King Cut-Throat' && r.home.go && JSON.stringify(r.home.lines) === '["New game","How to play","Lore"]' &&
       JSON.stringify(r.home.foot) === '["Your profile","Load a code","Settings"]' && r.home.build, r.home);
     expect('suit pips drift with the kings and crowns behind the menu', r.home.drift > 0, r.home.drift);
+    expect('the focus starts on the big button, and the header and table behind the menu are out of reach', r.home.focus && r.home.behind, r.home);
+    expect('each mode line says what the mode is, and the focus starts on the first mode, not Back', r.newView.descs === 3 && r.newView.focus === 'mode-dynamic', r.newView);
     expect('New game lists Dynamic, Waves and Free play; Waves has the wave list and Play wave', JSON.stringify(r.newView.lines) === '["Dynamic","Waves","Free play"]' && r.waves.view === 'mode-waves' && r.waves.sel && r.waves.play, r);
     expect('Escape goes back one view, then home', r.escBack === 'new' && r.escHome === 'home', r);
     expect('How to play: the tutorial (coming soon) and the quick rules', r.rules.view === 'rules' && r.rules.rules >= 8 && r.rules.tutorialOff, r.rules);
