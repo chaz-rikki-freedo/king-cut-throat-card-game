@@ -1005,7 +1005,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '41a5a78', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: '04fc2b1', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5501,7 +5501,8 @@ const App = (() => {
   }
   function personaShown(x) {
     const p = app.mode ? app.ui.personas.indexOf(x.id) : -1;
-    if (p < 0 || (app.mode === 'dynamic' && p !== HUMAN)) return [AI.personaConfig(x), ''];
+    if (p < 0) return [AI.personaConfig(x), ''];
+    if (app.mode === 'dynamic' && p !== HUMAN) return [AI.personaConfig(x), app.dyn && app.dyn.e > 0 ? 'Eased to your level.' : ''];
     const n = p !== HUMAN && inShark() ? 0 : tuneSize(app.ui.tunes[p]);
     return [botConfig(p).cfg, n ? 'This game: ' + n + (n === 1 ? ' change' : ' changes') + ' from Settings.' : ''];
   }
