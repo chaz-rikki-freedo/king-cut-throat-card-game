@@ -401,6 +401,7 @@ Region: `aside.logpanel`. The player name for it is **Latest Scroll**. In the Ad
 | Log | Game log, scroll | `#gameLog`, `.gamelog` | R | One line for each event of this game. Cleared at each new game. |
 | Winner line | — | `li.end` | S | The last event of a game: it congratulates the winner. At the game's end the Latest cell shows only this line. |
 | Hand line | Blue line | `li.h` | R | Deals, trump calls and hand results. |
+| Hand heading | — | `li.hand-head` | R | Latest Scroll. A hand's deal line, sticky: it stays at the top of the scroll while that hand's lines pass under it. |
 | Showdown line | Pink line | `li.s`, `li.sd` | R | Showdown events, indented. |
 | King line | Gold line | `li.k` | R | "♔ +1 to West…". |
 | Trick head line | — | `li.trick-head` | R | "Hand 2 · Trick 3/7", with the leader on trick 1. |
