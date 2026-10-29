@@ -818,45 +818,11 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
   background:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04)),linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45)}
 .latest-drop .drop-ind{visibility:hidden}
 .logdrop{order:21;flex:1 1 100%;min-width:0;display:flex}
-/* The Latest Scroll by hand (see logGroups): a sticky header per hand, the bidding as running items, a row per trick.
-   It grows with a tall window, up to 26rem. Fewer colors than the Latest cell: names, cards, trump, Showdown, losses. */
-#gameLog{display:block;height:clamp(10rem,40vh,26rem);max-height:none;padding:0 0.625rem 0.5rem}
-#gameLog ol{list-style:none;margin:0;padding:0}
-#gameLog li{padding:0.125rem 0;margin:0}
-#gameLog :is(.hl-trick,.hl-blocked,.hl-discard,.hl-deal,.hl-pass,.hl-turn){color:inherit;font-weight:inherit}
-#gameLog .lg-loose{padding-top:0.5rem}
-#gameLog .lg-loose li.end{padding-top:0.5rem}
-#gameLog .lg-hand + .lg-hand{margin-top:0.75rem}
-#gameLog .lg-hand:first-child{margin-top:0.5rem}
-#gameLog .lg-hh{position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:0.25rem 0.625rem;padding:0.375rem 0.375rem;list-style:none;cursor:pointer;border-radius:0.375rem;
-  background:color-mix(in srgb,var(--felt-edge) 70%,#000);box-shadow:0 1px 0 rgba(255,255,255,.1)}
-#gameLog .lg-hh::-webkit-details-marker{display:none}
-#gameLog .lg-hh::before{content:'▸';width:0.75rem;color:var(--muted)}
-#gameLog [open] > .lg-hh::before{content:'▾'}
-#gameLog .lg-hh:hover{background:color-mix(in srgb,var(--felt-edge) 85%,#000)}
-#gameLog .lg-hh:focus-visible{outline:0.125rem solid var(--gold);outline-offset:-0.125rem}
-#gameLog .lg-hl{font-weight:800}
-#gameLog .lg-pts{margin-left:auto;display:flex;gap:0.5rem;font-weight:700;color:var(--good)}
-#gameLog .lg-pt.neg{color:var(--danger)}
-#gameLog .lg-body{padding:0.25rem 0 0 1.125rem}
-#gameLog .lg-flow{color:var(--muted);line-height:1.7;padding-bottom:0.25rem}
-#gameLog .lg-flow li{display:inline;padding:0}
-#gameLog .lg-flow li::before{content:' · '}
-#gameLog .lg-flow li:first-child::before,#gameLog .lg-flow li.lg-deal + li::before{content:none}
-#gameLog .lg-flow li.lg-deal{display:none}
-#gameLog .lg-flow li.h{color:var(--ink);font-weight:600}
-#gameLog .lg-row{display:flex;align-items:center;gap:0.3125rem;padding:0.1875rem 0;border-top:1px solid rgba(255,255,255,.07)}
-#gameLog .lg-row li{padding:0}
-#gameLog .lg-row li.trick-head{flex:none;width:1.5rem;font-size:0.75rem;font-weight:700}
-#gameLog .lg-row li.play{display:inline-flex;gap:0.125rem;padding:0.125rem;border-radius:0.375rem}
-#gameLog .lg-row li.lg-won{box-shadow:inset 0 0 0 0.125rem var(--gold)}
-#gameLog .lg-row li.lg-win{display:none}
-#gameLog .lg-row li.k{margin-left:auto;font-weight:800;white-space:nowrap}
-#gameLog.hide-plays .lg-row li.play,#gameLog.hide-turned li.flip{display:none}
-#gameLog.hide-plays .lg-row li.lg-win{display:inline}
-#gameLog .lg-lines{padding-top:0.25rem}
-#gameLog .lg-body .lg-lines{border-top:1px solid rgba(255,255,255,.07);margin-top:0.25rem}
-#gameLog .lg-lines li.sd{border-left:0.125rem solid #ff9ad5;padding-left:0.5rem}
+/* The open Latest Scroll grows with a tall window, up to 26rem. A hand's deal line stays at the top while its lines
+   scroll under it, until the next hand's deal line covers it. */
+#gameLog{display:flex;flex-direction:column;height:clamp(10rem,40vh,26rem);max-height:none}
+#gameLog li.hand-head{position:sticky;top:-0.5rem;z-index:1;margin-left:-0.625rem;margin-right:-0.625rem;padding:0.3125rem 0.625rem;
+  background:color-mix(in srgb,var(--felt-edge) 70%,#000);box-shadow:0 1px 0 rgba(255,255,255,.1),0 0.25rem 0.5rem rgba(0,0,0,.35)}
 body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--cw-small);--card-tiny:0.875rem;--card-micro:2.5rem}
 .trick .slot .card,.trick .slot .empty{--w:var(--card-big)!important}
 .hand .card{--w:var(--card-normal)}
@@ -1079,7 +1045,7 @@ window.kctTheme = (() => {
     </div>
     <div class="info-part" id="infoB"></div>
   </section>
-  <div class="logdrop" id="logDrop" aria-label="Latest Scroll" hidden><div class="gamelog" id="gameLog"></div></div>
+  <div class="logdrop" id="logDrop" aria-label="Latest Scroll" hidden><ol class="gamelog" id="gameLog"></ol></div>
 </header>
 
 <div class="layout">
@@ -6496,7 +6462,6 @@ const App = (() => {
       seatBots(s.personas[1], s.personas[2]);
       app.ui.personas[HUMAN] = s.personas[HUMAN] || null;
       logLines = s.log.map(([text, cls]) => [text, cls]);
-      logFold = new Map();
       redrawLog();
       $('gameLog').scrollTop = $('gameLog').scrollHeight;
       app.menuOpen = false;
@@ -7289,11 +7254,9 @@ const App = (() => {
   const LOG_MAX = () => Dev.num('scroll');
   /* The Latest Scroll as data, one [text, classes] pair per line. A save keeps this, never the HTML. */
   let logLines = [];
-  /* The hands the reader opened or folded, by group number. A hand nobody touched is open only while it is the last. */
-  let logFold = new Map();
-  function clearLog() { logLines = []; logFold = new Map(); $('gameLog').innerHTML = ''; showLatest(true); }
+  function clearLog() { logLines = []; $('gameLog').innerHTML = ''; showLatest(true); }
 
-  /* A Showdown message has the class sd. */
+  /* A Showdown message is indented two steps. */
   function addLog(text, cls, isShowdown) {
     const classes = (cls || '').split(' ').filter(Boolean);
     if (isShowdown) classes.push('sd');
@@ -7301,122 +7264,36 @@ const App = (() => {
     if (hush) { logLines.push([text, classes.join(' ')]); return; }
     /* The log follows new lines only from its newest end, the bottom. A reader scrolled into older lines stays on the
        same lines. */
-    const box = $('gameLog');
-    const away = box.scrollHeight - box.scrollTop - box.clientHeight;
+    const ol = $('gameLog');
+    const away = ol.scrollHeight - ol.scrollTop - ol.clientHeight;
     appendLog(text, classes.join(' '));
-    if (away < 24) box.scrollTop = box.scrollHeight;
-    if (!classes.includes('trick-head')) { noteBurst(logItem(text, classes.join(' '))); showLatest(); }
+    if (away < 24) ol.scrollTop = ol.scrollHeight;
+    if (!classes.includes('trick-head')) { noteBurst(ol.lastElementChild); showLatest(); }
   }
-  /* One line: logHTML escapes the text before it adds its own markup. shown: a shorter text to show (the Latest
-     Scroll's rows); the line keeps its full text in data-raw. @param {string} text @param {string} cls @param {string} [shown] */
-  function logItem(text, cls, shown) {
+  /* One line: logHTML escapes the text before it adds its own markup. */
+  function logItem(text, cls) {
     const li = document.createElement('li');
-    li.innerHTML = logHTML(Render.youText(shown === undefined ? text : shown), cls);
+    /* A trick heading leaves out the hand: the hand's deal line, above it, stays in view (hand-head). */
+    const head = /\btrick-head\b/.test(cls), deal = /\bh\b/.test(cls) && /^Hand \d+[^:]*: \S+ deals /.test(text);
+    li.innerHTML = logHTML(Render.youText(head ? text.replace(/^Hand [^·]* · /, '') : text), cls);
     li.dataset.raw = text;
-    if (cls) li.className = cls;
+    if (cls || deal) li.className = cls + (deal ? ' hand-head' : '');
     return li;
   }
-  /* The Latest Scroll is drawn by hand, like Your profile → Games: each hand is a group under a header that says
-     who made trump, the trick being played and the points each player won. Under it: the bidding as one run of short
-     items, each trick as one row (T1, the cards in play order, the winner's card marked), then the hand's result.
-     A header folds or opens its hand. The lines before the first deal, and from the winner line on, stand alone. */
-  const isDealLine = (/** @type {[string, string]} */ [t, c]) => /\bh\b/.test(c) && /^Hand \d+[^:]*: \S+ deals? /.test(t);
-  /** @param {[string, string][]} lines @returns {{ hand: boolean, lines: [string, string][] }[]} */
-  function logGroups(lines) {
-    /** @type {{ hand: boolean, lines: [string, string][] }[]} */
-    const out = [];
-    for (const ln of lines) {
-      const g = out[out.length - 1], deal = isDealLine(ln);
-      if (!g || deal || (g.hand && /\bend\b/.test(ln[1]))) out.push({ hand: deal, lines: [ln] }); else g.lines.push(ln);
-    }
-    return out;
-  }
-  const SUIT_OF = Object.fromEntries(Object.entries(R.SUIT_NAME).map(([s, name]) => [name, R.SYMBOL[s]]));
-  /* A hand's header. Its parts go through logHTML, so names and cards look as they do in the lines. */
-  function handHeadHTML(/** @type {[string, string][]} */ lines) {
-    const texts = lines.map(l => l[0]), part = (/** @type {string} */ t) => logHTML(Render.youText(t), '');
-    const bits = [], pts = /** @type {Map<string, number>} */ (new Map());
-    let head = -1, done = -1;
-    texts.forEach((t, i) => {
-      let m;
-      if ((m = /^(\S+) (?:accepts|names) (\w+) as trump\.$/.exec(t))) bits.push(m[1] + ' ' + (SUIT_OF[m[2]] || m[2]));
-      else if (/^The Joker was turned\./.test(t)) bits.push('Void, redeal');
-      else if (/^Everyone passed twice\./.test(t)) bits.push('All passed');
-      else if (/^SHOWDOWN!/.test(t)) bits.push('Showdown');
-      else if (/\btrick-head\b/.test(lines[i][1])) head = i;
-      else if (/^(?:Hand|Showdown) tricks: /.test(t)) done = i;
-      if ((m = /^♔ \+1 to (\S+):/.exec(t))) pts.set(m[1], (pts.get(m[1]) || 0) + 1);
-      else if ((m = /^([+−])(\d+) to (\S+) \(/.exec(t))) pts.set(m[3], (pts.get(m[3]) || 0) + (m[1] === '−' ? -1 : 1) * Number(m[2]));
-    });
-    /* The trick being played, until the hand (or its Showdown) is scored. */
-    const at = head < 0 ? null : /(SD )?Trick (\d+\/\d+)/.exec(texts[head]);
-    if (at && head > done) bits.push((at[1] ? 'SD trick ' : 'Trick ') + at[2]);
-    const score = [...pts].filter(([, v]) => v).map(([who, v]) => '<span class="lg-pt' + (v < 0 ? ' neg' : '') + '">' + part(who) + ' ' + (v > 0 ? '+' + v : '−' + -v) + '</span>').join('');
-    return '<span class="lg-hl">' + escHTML(texts[0].slice(0, texts[0].indexOf(':'))) + '</span>' + bits.map(b => '<span>' + part(b) + '</span>').join('') +
-      (score ? '<span class="lg-pts">' + score + '</span>' : '');
-  }
-  /* A hand's lines in runs: flow (the bidding, short items on running lines), row (one trick), lines (one a line).
-     The deal line stays, unseen: the header says it. */
-  function handBody(/** @type {[string, string][]} */ lines) {
-    const body = document.createElement('div');
-    body.className = 'lg-body';
-    /** @type {HTMLOListElement} */
-    let ol = document.createElement('ol'), kind = '', played = false;
-    const run = (/** @type {string} */ k) => { ol = document.createElement('ol'); ol.className = 'lg-' + k; body.appendChild(ol); kind = k; };
-    lines.forEach(([t, c], i) => {
-      const cl = c.split(' '), win = /^(\S+) wins? (?:Showdown )?trick \d+ with /.exec(t);
-      if (!i) { run('flow'); ol.appendChild(logItem(t, c + ' lg-deal')); return; }
-      if (cl.includes('trick-head')) { played = true; run('row'); ol.appendChild(logItem(t, c, (/SD Trick/.test(t) ? 'SD' : 'T') + (/Trick (\d+)/.exec(t) || ['', ''])[1])); return; }
-      if (cl.includes('play')) { if (kind !== 'row') run('row'); ol.appendChild(logItem(t, c, t.replace(/ played (.+)\.$/, ' $1'))); return; }
-      if (kind === 'row' && win) {
-        for (const li of ol.querySelectorAll('li.play')) if ((li.getAttribute('data-raw') || '').startsWith(win[1] + ' played ')) li.classList.add('lg-won');
-        ol.appendChild(logItem(t, c + ' lg-win', '→ ' + win[1]));
-        return;
-      }
-      if (kind === 'row' && /^♔ /.test(t)) { ol.appendChild(logItem(t, c, '♔ +1')); return; }
-      if (!played && !cl.some(x => x === 'sd' || x === 'k' || x === 's')) { if (kind !== 'flow') run('flow'); ol.appendChild(logItem(t, c, shortLine(t).replace(/\.$/, ''))); return; }
-      if (kind !== 'lines') run('lines');
-      ol.appendChild(logItem(t, c));
-    });
-    return body;
-  }
-  /** @param {{ hand: boolean, lines: [string, string][] }} g @param {number} i @param {boolean} last */
-  function logGroupEl(g, i, last) {
-    if (!g.hand) {
-      const ol = document.createElement('ol');
-      ol.className = 'lg-lines lg-loose';
-      ol.append(...g.lines.map(([t, c]) => logItem(t, c)));
-      return ol;
-    }
-    const d = document.createElement('details'), s = document.createElement('summary'), f = logFold.get(i);
-    d.className = 'lg-hand';
-    d.dataset.g = String(i);
-    d.open = f === undefined ? last : f;
-    s.className = 'lg-hh';
-    s.innerHTML = handHeadHTML(g.lines);
-    d.append(s, handBody(g.lines));
-    return d;
-  }
-  /* A new line draws its group again (the header changes with it). A new hand folds the one before, unless the
-     reader opened or folded that one. */
-  function appendLog(/** @type {string} */ text, /** @type {string} */ cls) {
+  function appendLog(text, cls) {
     logLines.push([text, cls]);
+    const ol = $('gameLog');
+    ol.appendChild(logItem(text, cls));
     const max = LOG_MAX();
-    if (logLines.length > max) { logLines.splice(0, logLines.length - max); redrawLog(); return; }
-    const box = $('gameLog'), gs = logGroups(logLines), i = gs.length - 1, el = logGroupEl(gs[i], i, true), old = box.children[i];
-    if (old) { old.replaceWith(el); return; }
-    box.appendChild(el);
-    const prev = box.children[i - 1];
-    if (gs[i].hand && prev instanceof HTMLDetailsElement && !logFold.has(i - 1)) prev.open = false;
+    while (ol.children.length > max) ol.removeChild(ol.firstChild);
+    if (logLines.length > max) logLines.splice(0, logLines.length - max);
   }
   /* Draws the whole log again from its text. A name's color belongs to its seat, so after
      a seat swap the earlier lines must be drawn again with the new seats. */
   function redrawLog() {
-    const box = $('gameLog'), keep = box.scrollTop, gs = logGroups(logLines);
-    let lastHand = -1;
-    gs.forEach((g, i) => { if (g.hand) lastHand = i; });
-    box.replaceChildren(...gs.map((g, i) => logGroupEl(g, i, i === lastHand)));
-    box.scrollTop = keep;
+    const ol = $('gameLog'), keep = ol.scrollTop;
+    ol.replaceChildren(...logLines.map(([text, cls]) => logItem(text, cls)));
+    ol.scrollTop = keep;
     showLatest(true);
   }
   /* The Latest cell: the newest line of the Latest Scroll, trick headings left out. A new line drops in
@@ -7482,7 +7359,7 @@ const App = (() => {
     clearTimeout(nextUp); nextUntil = 0;
     let lines = note ? [note] : [];
     if (!note && burstOpen && burst.length) lines = burstLines().map(latestHTML);
-    else if (!note) for (let i = logLines.length - 1; i >= 0; i--) if (!/\btrick-head\b/.test(logLines[i][1])) { lines = [latestHTML(logItem(logLines[i][0], logLines[i][1]))]; break; }
+    else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
     /* One line at a time on a phone: a move's second line drops in after a pause, unless a newer line comes first
        (your move: a bot's waits for it). */
     if (lines.length > 1 && oneLine()) {
@@ -9220,11 +9097,6 @@ const App = (() => {
 
   function init() {
     SuitText.watch(document.body);
-    /* A hand's header in the Latest Scroll: the reader's choice to open or fold it is kept while the game runs. */
-    $('gameLog').addEventListener('click', ev => {
-      const d = ev.target instanceof Element && ev.target.closest('.lg-hh') && ev.target.closest('details');
-      if (d instanceof HTMLDetailsElement) logFold.set(Number(d.dataset.g), !d.open);
-    });
     $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
     aboutKings();
     document.addEventListener('click', ev => {
