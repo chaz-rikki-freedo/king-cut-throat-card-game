@@ -264,7 +264,7 @@ Opens when a player reaches 10 points.
 | Final scores | `table` | R | Only when there are no hand stats. |
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave. |
-| Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. Closes the dialog. The end buttons stay in the action bar. |
+| Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. It rests sunk in a well and rises flat, its label dimmed, when pressed. Closes the dialog. The end buttons stay in the action bar. |
 | End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
 | Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. **‹ Back**, Escape or a click outside closes it. |
 
