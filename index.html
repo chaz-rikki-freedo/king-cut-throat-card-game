@@ -992,7 +992,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '9084549', date: '2026-10-28' });
+const BUILD = Object.freeze({ commit: 'd1e3903', date: '2026-10-29' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5934,8 +5934,8 @@ const App = (() => {
   }
   function gameStatus(st, personas, wave) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    return [(wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+    return [(wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats'),
+      name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
