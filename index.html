@@ -1007,7 +1007,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '07ba24e', date: '2026-10-30' });
+const BUILD = Object.freeze({ commit: '636147e', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1191,7 +1191,8 @@ const Dev = (() => {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: false, ops: {} };
+      if (rest.length === 2 && rest.join(' ').toLowerCase() === 'easing reset') return { ok: true, reset: false, easing: true, ops: {} };
       const ops = {};
       for (const w of rest) {
         const m = /^([a-z]+)=(\d{1,7})$/i.exec(w), k = m ? m[1].toLowerCase() : '';
@@ -1201,7 +1202,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, ops };
+      return { ok: true, reset: false, easing: false, ops };
     }
   };
   return D;
@@ -7201,7 +7202,7 @@ const App = (() => {
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, ops: d.ops } };
     }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
@@ -7225,7 +7226,8 @@ const App = (() => {
   }
   function devText() {
     const keys =  (Object.keys(DEV_KEYS));
-    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
+    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
+      '. !dev easing reset sets Dynamic\'s easing back to a new player\'s, after a question.';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
@@ -7237,6 +7239,7 @@ const App = (() => {
     const input =  (document.getElementById('codeIn'));
     if (!input) return;
     const r = readCode(input.value, true), say = ( t) => { $('codeRead').textContent = t; };
+    if (r.dev && r.dev.easing) { resetEasing(); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -7261,6 +7264,14 @@ const App = (() => {
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+  }
+  async function resetEasing() {
+    const yes = await ask({ title: 'Reset Dynamic\'s easing?', text: '<p>Dynamic\'s profile of your play starts again from blank, so your next ' + Dynamic.HOLD_HANDS +
+      ' hands of Dynamic meet the bots at full easing. The habit counts in Your profile start again too. A saved Dynamic game keeps its easing. ' +
+      'Results, replay codes, other modes and settings stay.</p><p>This can\'t be undone.</p>', ok: 'Reset easing', cancel: 'Cancel', danger: true });
+    if (yes) { profile.reset(); Logger.log('DEV', { easing: 'reset' }); linkNote = 'Dynamic\'s easing is reset.'; }
+    menuView = 'home';
+    showMenu(app.menuLaunch);
   }
   const TEST_AREAS = {
     cards: 'Card order', deal: 'Dealing', 'discard order': 'Discards', bidding: 'Bidding', follow: 'Follow suit',
@@ -8022,10 +8033,10 @@ const SelfTest = (() => {
       eq('Load a code: empty, too large a seed, a cut code and junk', kinds(['  ', '4294967296', code.slice(0, code.length - 30), 'hello', 'https://example.com/?x=1']), ['empty', 'bad', 'bad', 'bad', 'bad']);
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(6).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev],
-        [{ kind: 'dev', dev: { reset: false, ops: { saves: 40, log: 300 } } }, { reset: false, ops: {} }, { reset: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(9).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing RESET').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: false, ops: {} }, { reset: true, easing: false, ops: {} }, { reset: false, easing: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset now', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(11).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
