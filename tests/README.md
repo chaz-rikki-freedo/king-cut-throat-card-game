@@ -44,8 +44,9 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node waves.js shark 60 4` | Not a check. The Shark run's **Your win** (`SHARK_WIN` in `index.html`): the same, for the eighteen tables with both bots at Shark skill, 60 games per table. | about 18 min |
 | `node review.js 150 4` | Not a check. A player seat plays at rows of the easing ladder, and as a new player who throws away its best cards. Prints the time a post-game review takes, the review's signals per row, and how often the fast-path triggers fire. | about 5 min |
 | `node pace.js 20 5 4 100,50,30` | Not a check. The pace of Dynamic's slow path: for each value of `PROFILE_HANDS` (the K in w = h / (h + K), now 50), players at four strengths play careers of Dynamic games from a blank profile, with the bots eased as in the app and the review between games. Prints the starting and mean easing per game, the hands until the easing reaches 0.3, and win rates. It serves a patched copy of `index.html` and does not change the file. | about 25 min |
+| `node career.js 12 4 0,80` | Not a check. A career of 82 Dynamic games from a blank profile for a player who starts bad (8 bad games, then 24 that are bad half the time, then 50 okay ones), with a hold length (`HOLD_HANDS`) of 0 hands (no hold) and 80 (the build). `--gross` makes a bad player throw away its best cards at 40% of its first discards. Prints, per phase, the easing, Sharks at the table and win rates, and for the first 8 games the wins per career and the loss streaks. It serves a patched copy of `index.html` and does not change the file. | about 25 min for 16 careers |
 
-The last four scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
+The last five scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
 `npm test` runs `typecheck.js`, `palette.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js`, `forced.js`, `backup-ui.js`, `theme.js`, `resets.js`, `settings.js`, `restart.js` and `stress.js all 4`.
 

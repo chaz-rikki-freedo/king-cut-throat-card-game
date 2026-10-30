@@ -40,7 +40,7 @@ async function checks() {
 
     console.log('A Dynamic game from the menu');
     /* A profile with the gross-mistake mark: the game starts at full easing (the bots at the floor). */
-    await page.evaluate(() => localStorage.setItem('kct.profile', JSON.stringify({ v: 1, hands: 40, games: 4, mark: true, share: { me: 3, all: 20 }, calls: { n: 4, failed: 3, value: 8 }, bids: { n: 30, errors: 2 }, discards: { n: 30, loss: 40 }, habits: { calls: 4, made: 1, value: 8 } })));
+    await page.evaluate(() => localStorage.setItem('kct.profile', JSON.stringify({ v: 1, hands: 100, games: 9, mark: true, share: { me: 3, all: 20 }, calls: { n: 4, failed: 3, value: 8 }, bids: { n: 30, errors: 2 }, discards: { n: 30, loss: 40 }, habits: { calls: 4, made: 1, value: 8 } })));
     await page.reload();
     r = await step(`
       const out = { card: !!q('[data-action="new-dynamic"]'), resumeOff: !!q('[data-action="resume-dynamic"][disabled]') };
@@ -62,7 +62,7 @@ async function checks() {
     expect('the menu has a Dynamic card with New game, and Resume off with no saved game', r.card && r.resumeOff, r);
     expect('Dynamic opens the seat dialog, and the header says Dynamic', r.swap && r.mode === 'dynamic' && r.chip === 'Dynamic', r);
     expect('in Dynamic, the seat dialog says the opponents are random from those appropriate for you right now, with the Sharks out at full easing', /not go through every bot/.test(r.note) && /Sharks \(Vex, Doc and Mei\) sit out/.test(r.note), r.note);
-    expect('a marked profile starts the game at full easing, from a snapshot of the profile', r.e0 === 1 && r.snap.mark === true && r.snap.h === 40, [r.e0, r.snap]);
+    expect('a marked profile starts the game at full easing, from a snapshot of the profile', r.e0 === 1 && r.snap.mark === true && r.snap.h === 100, [r.e0, r.snap]);
     expect('in Dynamic, the Bots tab says the bots play as themselves', r.personasLocked);
     expect('play reaches hand 3 and saves the game with its snapshot', r.stop === 'stop' && r.slot && JSON.stringify(r.slotSnap) === JSON.stringify(r.snap), r);
     expect('no bot decision reads the profile during a game: both bots follow the game\'s one easing amount', r.sameCfg && r.cfgFromEase && r.e < 1, [r.sameCfg, r.cfgFromEase, r.e]);
