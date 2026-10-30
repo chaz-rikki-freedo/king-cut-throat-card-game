@@ -1007,7 +1007,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '636147e', date: '2026-10-30' });
+const BUILD = Object.freeze({ commit: '2580234', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1191,8 +1191,11 @@ const Dev = (() => {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: false, ops: {} };
-      if (rest.length === 2 && rest.join(' ').toLowerCase() === 'easing reset') return { ok: true, reset: false, easing: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, ops: {} };
+      if (rest.some(w => /^easing(=|$)/i.test(w))) {
+        const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
+        return m ? { ok: true, reset: false, easing: Number(m[1]), ops: {} } : { ok: false, why: 'Write it on its own as easing=hands, for example !dev easing=0.' };
+      }
       const ops = {};
       for (const w of rest) {
         const m = /^([a-z]+)=(\d{1,7})$/i.exec(w), k = m ? m[1].toLowerCase() : '';
@@ -1202,7 +1205,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: false, ops };
+      return { ok: true, reset: false, easing: null, ops };
     }
   };
   return D;
@@ -3305,6 +3308,8 @@ const Dynamic = (() => {
   const KNOWLEDGE_OFF = Object.freeze({ bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false });
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
   const HOLD_HANDS = 80;
+  const TAPER_HANDS = 80;
+  const floorEase = h => Math.min(1, Math.max(0, 1 - (h - HOLD_HANDS) / TAPER_HANDS));
   const TUNE = Object.freeze({
     DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
     FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2,
@@ -3422,7 +3427,7 @@ const Dynamic = (() => {
       T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
-  const startEase = snap => (snap.mark || snap.h < HOLD_HANDS ? 1 : slowTarget(snap));
+  const startEase = snap => (snap.mark ? 1 : Math.max(floorEase(snap.h), slowTarget(snap)));
   const HAND_ENDS =  (Object.freeze([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED]));
   const handEnded = (events, after) => HAND_ENDS.includes(after.phase) && events.some(e => (e.type === 'HAND_SCORED' && e.outcome !== 'SHOWDOWN') || e.type === 'SHOWDOWN_SCORED' || e.type === 'HAND_ABANDONED');
   function readHand(v, me) {
@@ -3455,7 +3460,7 @@ const Dynamic = (() => {
           const fire = t.visible.slice(-3).filter(Boolean).length >= 2;
           if (fire) { t.fast = true; t.quiet = 0; } else if (t.fast && ++t.quiet >= LET_GO) t.fast = false;
         }
-        t.target = t.fast || t.h < HOLD_HANDS ? 1 : slowTarget(t);
+        t.target = t.fast ? 1 : Math.max(floorEase(t.h), slowTarget(t));
         t.e += (t.target > t.e ? EASE_UP : EASE_DOWN) * (t.target - t.e);
         return r;
       },
@@ -3548,10 +3553,11 @@ const Dynamic = (() => {
     return Object.freeze({
       get: () => JSON.parse(JSON.stringify(p)),
       add(rv, mode, at) { p = addGame(p, rv, mode, at); js.save(p); return JSON.parse(JSON.stringify(p)); },
-      reset() { p = blankProfile(); js.save(p); }
+      reset() { p = blankProfile(); js.save(p); },
+      setHands(n) { p.hands = n; p.mark = false; js.save(p); }
     });
   }
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 const SUIT_SVG = Object.freeze({
   S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
@@ -7227,7 +7233,7 @@ const App = (() => {
   function devText() {
     const keys =  (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
-      '. !dev easing reset sets Dynamic\'s easing back to a new player\'s, after a question.';
+      '. !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
@@ -7239,7 +7245,7 @@ const App = (() => {
     const input =  (document.getElementById('codeIn'));
     if (!input) return;
     const r = readCode(input.value, true), say = ( t) => { $('codeRead').textContent = t; };
-    if (r.dev && r.dev.easing) { resetEasing(); return; }
+    if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -7265,11 +7271,14 @@ const App = (() => {
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
   }
-  async function resetEasing() {
-    const yes = await ask({ title: 'Reset Dynamic\'s easing?', text: '<p>Dynamic\'s profile of your play starts again from blank, so your next ' + Dynamic.HOLD_HANDS +
-      ' hands of Dynamic meet the bots at full easing. The habit counts in Your profile start again too. A saved Dynamic game keeps its easing. ' +
-      'Results, replay codes, other modes and settings stay.</p><p>This can\'t be undone.</p>', ok: 'Reset easing', cancel: 'Cancel', danger: true });
-    if (yes) { profile.reset(); Logger.log('DEV', { easing: 'reset' }); linkNote = 'Dynamic\'s easing is reset.'; }
+  async function setEasing(n) {
+    const hold = Dynamic.HOLD_HANDS, end = hold + Dynamic.TAPER_HANDS, was = profile.get().hands;
+    const what = n < hold ? 'Dynamic plays at full easing for the next ' + (hold - n) + ' hands, then eases less over ' + Dynamic.TAPER_HANDS + ' more.'
+      : n < end ? 'The easing is in its taper: it can fall no lower than ' + Math.round(100 * Dynamic.floorEase(n)) + '% now, and reaches 0 after ' + (end - n) + ' more hands.'
+      : 'There is no hold or taper: the easing follows your record.';
+    const yes = await ask({ title: 'Set Dynamic\'s easing to ' + n + ' hands?', text: '<p>Your Dynamic profile has ' + was + ' hands. ' + what +
+      ' Your record, Your profile, results, replay codes, other modes and settings stay. A saved Dynamic game keeps its easing.</p>', ok: 'Set easing', cancel: 'Cancel', danger: true });
+    if (yes) { profile.setHands(n); Logger.log('DEV', { easing: n, was }); linkNote = 'Dynamic\'s easing is set to ' + n + ' hands.'; }
     menuView = 'home';
     showMenu(app.menuLaunch);
   }
@@ -8033,10 +8042,10 @@ const SelfTest = (() => {
       eq('Load a code: empty, too large a seed, a cut code and junk', kinds(['  ', '4294967296', code.slice(0, code.length - 30), 'hello', 'https://example.com/?x=1']), ['empty', 'bad', 'bad', 'bad', 'bad']);
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing RESET').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: false, ops: {} }, { reset: true, easing: false, ops: {} }, { reset: false, easing: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset now', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(11).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, ops: {} }, { reset: true, easing: null, ops: {} }, { reset: false, easing: 120, ops: {} }, { reset: false, easing: 0, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
@@ -8707,7 +8716,7 @@ const SelfTest = (() => {
           handStats: { pts: [0, 1, 2].map(() => ({ king: 0, hand: 1, showdown: 0 })) } }, o || {});
       };
       const blank = DY.snapshotOf(null);
-      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS });
+      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS });
       let t = DY.tracker(seasoned);
       const es = [weak, weak, strong].map(h => { t.hand(ended(h)); return [Math.round(t.e * 1000) / 1000, t.fast]; });
       eq('fast path: two weak visible hands set the target to 1; e closes half the gap each hand', es, [[0, false], [0.5, true], [0.75, true]]);
@@ -8729,10 +8738,13 @@ const SelfTest = (() => {
       for (let k = 0; k < DY.HOLD_HANDS - 1; k++) t.hand(ended(strong));
       eq('the easing holds at 1 until the profile has HOLD_HANDS hands', [t.h, t.e], [DY.HOLD_HANDS - 1, 1]);
       t.hand(ended(strong));
-      eq('the hand that brings the profile to HOLD_HANDS hands ends the hold: the target is 0 and the easing closes 15% of the gap', [t.h, t.e, t.target], [DY.HOLD_HANDS, 0.85, 0]);
+      eq('the hand that brings the profile to HOLD_HANDS hands starts the taper at 1', [t.h, t.e, t.target], [DY.HOLD_HANDS, 1, 1]);
       t.hand(ended(strong));
-      check('then the easing keeps tightening', Math.abs(t.e - 0.85 * 0.85) < 1e-9, String(t.e));
-      eq('a profile with HOLD_HANDS hands and an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
+      const step1 = 1 - 1 / DY.TAPER_HANDS;
+      check('the next hand: the target is the taper\'s floor, and the easing closes 15% of the gap', Math.abs(t.target - step1) < 1e-9 && Math.abs(t.e - (1 - 0.15 * (1 - step1))) < 1e-9, JSON.stringify([t.target, t.e]));
+      eq('the floor: 1 through the hold, halfway down mid-taper, 0 after it', [0, DY.HOLD_HANDS - 1, DY.HOLD_HANDS, DY.HOLD_HANDS + DY.TAPER_HANDS / 2, DY.HOLD_HANDS + DY.TAPER_HANDS, 1e6].map(DY.floorEase), [1, 1, 1, 0.5, 0, 0]);
+      eq('a game starts at the taper\'s floor, or higher when the record says so', [DY.startEase(Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS / 2 })), DY.startEase(Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS / 2, share: { me: 0, all: 400 } })) > 0.5], [0.5, true]);
+      eq('a profile past the taper with an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
       const play = (seed, discard) => {
         const s = Engine.createGame(seed); D(s, { type: 'START_GAME' });
         const live = DY.tracker(blank), reads = [];
