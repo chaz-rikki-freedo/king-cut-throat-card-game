@@ -44,7 +44,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node waves.js shark 60 4` | Not a check. The Shark run's **Your win** (`SHARK_WIN` in `index.html`): the same, for the eighteen tables with both bots at Shark skill, 60 games per table. | about 18 min |
 | `node review.js 150 4` | Not a check. A player seat plays at rows of the easing ladder, and as a new player who throws away its best cards. Prints the time a post-game review takes, the review's signals per row, and how often the fast-path triggers fire. | about 5 min |
 | `node pace.js 20 5 4 100,50,30` | Not a check. The pace of Dynamic's slow path: for each value of `PROFILE_HANDS` (the K in w = h / (h + K), now 50), players at four strengths play careers of Dynamic games from a blank profile, with the bots eased as in the app and the review between games. Prints the starting and mean easing per game, the hands until the easing reaches 0.3, and win rates. It serves a patched copy of `index.html` and does not change the file. | about 25 min |
-| `node career.js 12 4 0,80` | Not a check. A career of 82 Dynamic games from a blank profile for a player who starts bad (8 bad games, then 24 that are bad half the time, then 50 okay ones), with a hold length (`HOLD_HANDS`) of 0 hands (no hold) and 80 (the build). `--gross` makes a bad player throw away its best cards at 40% of its first discards. Prints, per phase, the easing, Sharks at the table and win rates, and for the first 8 games the wins per career and the loss streaks. It serves a patched copy of `index.html` and does not change the file. | about 25 min for 16 careers |
+| `node career.js 12 4 80:0,80:80` | Not a check. A career of 82 Dynamic games from a blank profile for a player who starts bad (8 bad games, then 24 that are bad half the time, then 50 okay ones), for each setting `hold:taper` (`HOLD_HANDS`:`TAPER_HANDS`): `0:0` is neither, `80:0` a hold that ends at once, `80:80` the build. `--gross` makes a bad player throw away its best cards at 40% of its first discards. Prints, per phase, the easing, Sharks at the table and win rates, and for the first 8 games the wins per career and the loss streaks. It serves a patched copy of `index.html` and does not change the file. | about 25 min for 16 careers |
 
 The last five scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
@@ -57,7 +57,7 @@ GitHub Actions has two workflows:
 
 ## Dev commands
 
-For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress. The one exception is `!dev easing reset` (see below).
+For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress. The one exception is `!dev easing=N` (see below).
 
 The field gives no hint of dev commands: it reads nothing while you type, and other text that starts with `!` reads as not a code. Only Enter (or **Load**) on a `!dev` command runs it: a valid command applies at once and returns to the home card, `!dev` alone shows the keys, and a bad key or value shows the reason.
 
@@ -65,7 +65,7 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 !dev saves=40 log=300     set one or more caps
 !dev                      list the caps in use and their defaults
 !dev reset                go back to the defaults
-!dev easing reset         reset Dynamic's easing (asks first)
+!dev easing=0             set Dynamic's profile to 0 hands (asks first)
 ```
 
 | Key | Default | Range | What it sets |
@@ -79,7 +79,7 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 - A lower cap trims at the next write: older replays or lines are removed for good. There's no preview, so check the value before you press Enter.
 - While an override is set, the About card shows **DEV** and the values after the build.
 - Self-tests always run with the defaults.
-- `!dev easing reset` asks first, then sets Dynamic's profile (`kct.profile`) back to blank, so the next 80 hands of Dynamic play at full easing (`HOLD_HANDS`). The habit counts in **Your profile** start again too. Everything else stays: Dynamic's saved game (which keeps the easing it started with), results and replay codes, the other modes and the settings. Unlike the caps, the reset is kept after the tab closes, and there's no undo. The menu says **Dynamic's easing is reset.** **Cancel** changes nothing.
+- `!dev easing=N` (N from 0 to 9999999) asks first, then sets the hand count of Dynamic's profile (`kct.profile`) to N and clears the gross-mistake mark. The hand count places you in the hold and the taper: below 80 (`HOLD_HANDS`), full easing until hand 80; from 80 to 160 (`TAPER_HANDS`), the taper; 160 or more, the record alone. The question says which applies. Everything else stays: the record of your play, the habit counts in **Your profile**, Dynamic's saved game (which keeps the easing it started with), results and replay codes, the other modes and the settings. Unlike the caps, the change is kept after the tab closes, and there's no undo. The menu says **Dynamic's easing is set to N hands.** **Cancel** changes nothing. Write it on its own: `!dev easing=0 saves=40` is refused.
 - Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
 
 ## Stress sections
