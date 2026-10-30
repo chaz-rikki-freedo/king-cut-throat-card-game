@@ -57,7 +57,7 @@ GitHub Actions has two workflows:
 
 ## Dev commands
 
-For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress.
+For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress. The one exception is `!dev easing reset` (see below).
 
 The field gives no hint of dev commands: it reads nothing while you type, and other text that starts with `!` reads as not a code. Only Enter (or **Load**) on a `!dev` command runs it: a valid command applies at once and returns to the home card, `!dev` alone shows the keys, and a bad key or value shows the reason.
 
@@ -65,6 +65,7 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 !dev saves=40 log=300     set one or more caps
 !dev                      list the caps in use and their defaults
 !dev reset                go back to the defaults
+!dev easing reset         reset Dynamic's easing (asks first)
 ```
 
 | Key | Default | Range | What it sets |
@@ -78,6 +79,7 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 - A lower cap trims at the next write: older replays or lines are removed for good. There's no preview, so check the value before you press Enter.
 - While an override is set, the About card shows **DEV** and the values after the build.
 - Self-tests always run with the defaults.
+- `!dev easing reset` asks first, then sets Dynamic's profile (`kct.profile`) back to blank, so the next 80 hands of Dynamic play at full easing (`HOLD_HANDS`). The habit counts in **Your profile** start again too. Everything else stays: Dynamic's saved game (which keeps the easing it started with), results and replay codes, the other modes and the settings. Unlike the caps, the reset is kept after the tab closes, and there's no undo. The menu says **Dynamic's easing is reset.** **Cancel** changes nothing.
 - Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
 
 ## Stress sections
