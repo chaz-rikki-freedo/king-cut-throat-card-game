@@ -4132,7 +4132,7 @@ const Dynamic = (() => {
   const HOLD_HANDS = 80;
   const TAPER_HANDS = 80;
   /** The least easing at a profile of h hands: 1 through the hold, then down to 0 over the taper. @param {number} h */
-  const floorEase = h => Math.min(1, Math.max(0, 1 - (h - HOLD_HANDS) / TAPER_HANDS));
+  const floorEase = h => (h < HOLD_HANDS ? 1 : h >= HOLD_HANDS + TAPER_HANDS ? 0 : 1 - (h - HOLD_HANDS) / TAPER_HANDS);
   /* Tuning defaults, not owner decisions (the record leaves them to playtests):
      - DECAY: each new sample keeps this share of the old sums, so the profile follows the last ~100 samples.
      - Prior counts pull a small sample toward normal play: SHARE_PRIOR points at an even share (1/3),
