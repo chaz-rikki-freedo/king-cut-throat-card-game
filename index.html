@@ -1007,7 +1007,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '33e7ab4', date: '2026-10-29' });
+const BUILD = Object.freeze({ commit: '07ba24e', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3303,6 +3303,7 @@ const Dynamic = (() => {
   const START_ROW = Object.freeze({ shark: 0, club: 1, casual: 4, novice: 6 });
   const KNOWLEDGE_OFF = Object.freeze({ bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false });
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
+  const HOLD_HANDS = 80;
   const TUNE = Object.freeze({
     DECAY: 0.99, SHARE_EVEN: 1 / 3, SHARE_FULL: 0.2, SHARE_PRIOR: 10, FAIL_NORMAL: 0.45, FAIL_SPAN: 0.35, FAIL_PRIOR: 5,
     FAIL_WEIGHT: 0.25, BID_SPAN: 0.25, BID_PRIOR: 10, BID_WEIGHT: 0.25, CALL_LOW: 1.2, PASS_HIGH: 4.2,
@@ -3420,7 +3421,7 @@ const Dynamic = (() => {
       T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
-  const startEase = snap => (snap.mark ? 1 : slowTarget(snap));
+  const startEase = snap => (snap.mark || snap.h < HOLD_HANDS ? 1 : slowTarget(snap));
   const HAND_ENDS =  (Object.freeze([P.HAND_SCORE, P.SHOWDOWN_SCORE, P.ABANDONED]));
   const handEnded = (events, after) => HAND_ENDS.includes(after.phase) && events.some(e => (e.type === 'HAND_SCORED' && e.outcome !== 'SHOWDOWN') || e.type === 'SHOWDOWN_SCORED' || e.type === 'HAND_ABANDONED');
   function readHand(v, me) {
@@ -3453,7 +3454,7 @@ const Dynamic = (() => {
           const fire = t.visible.slice(-3).filter(Boolean).length >= 2;
           if (fire) { t.fast = true; t.quiet = 0; } else if (t.fast && ++t.quiet >= LET_GO) t.fast = false;
         }
-        t.target = t.fast ? 1 : slowTarget(t);
+        t.target = t.fast || t.h < HOLD_HANDS ? 1 : slowTarget(t);
         t.e += (t.target > t.e ? EASE_UP : EASE_DOWN) * (t.target - t.e);
         return r;
       },
@@ -3549,7 +3550,7 @@ const Dynamic = (() => {
       reset() { p = blankProfile(); js.save(p); }
     });
   }
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 const SUIT_SVG = Object.freeze({
   S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
@@ -8695,7 +8696,8 @@ const SelfTest = (() => {
           handStats: { pts: [0, 1, 2].map(() => ({ king: 0, hand: 1, showdown: 0 })) } }, o || {});
       };
       const blank = DY.snapshotOf(null);
-      let t = DY.tracker(blank);
+      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS });
+      let t = DY.tracker(seasoned);
       const es = [weak, weak, strong].map(h => { t.hand(ended(h)); return [Math.round(t.e * 1000) / 1000, t.fast]; });
       eq('fast path: two weak visible hands set the target to 1; e closes half the gap each hand', es, [[0, false], [0.5, true], [0.75, true]]);
       for (let k = 0; k < 3; k++) t.hand(ended(strong));
@@ -8704,13 +8706,22 @@ const SelfTest = (() => {
       t.hand(ended(strong));
       check('fast path lets go after 4 visible hands in a row without a trigger', !t.fast && t.target === 0, JSON.stringify([t.fast, t.target]));
       check('tightening back closes 15% of the gap', Math.abs(t.e - before * 0.85) < 1e-9, before + ' -> ' + t.e);
-      t = DY.tracker(blank);
+      t = DY.tracker(seasoned);
       for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 0, receiver: 1, handSummary: { outcome: 'CLEAR_WINNER', winner: 1, tricks: [1, 6, 0] } }));
       eq('the fast path never fires on hands where the player called (decision 20)', [t.fast, t.visible.length], [false, 0]);
-      t = DY.tracker(blank);
+      t = DY.tracker(seasoned);
       for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 2, receiver: 0 }));
       eq('a hand where the player received the turned card or the kitty is not visible either', t.visible.length, 0);
       eq('a marked profile starts the game at full easing', DY.tracker(Object.assign({}, blank, { mark: true })).e, 1);
+      t = DY.tracker(blank);
+      eq('a blank profile starts at full easing', [t.e0, t.e, DY.startEase(blank)], [1, 1, 1]);
+      for (let k = 0; k < DY.HOLD_HANDS - 1; k++) t.hand(ended(strong));
+      eq('the easing holds at 1 until the profile has HOLD_HANDS hands', [t.h, t.e], [DY.HOLD_HANDS - 1, 1]);
+      t.hand(ended(strong));
+      eq('the hand that brings the profile to HOLD_HANDS hands ends the hold: the target is 0 and the easing closes 15% of the gap', [t.h, t.e, t.target], [DY.HOLD_HANDS, 0.85, 0]);
+      t.hand(ended(strong));
+      check('then the easing keeps tightening', Math.abs(t.e - 0.85 * 0.85) < 1e-9, String(t.e));
+      eq('a profile with HOLD_HANDS hands and an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
       const play = (seed, discard) => {
         const s = Engine.createGame(seed); D(s, { type: 'START_GAME' });
         const live = DY.tracker(blank), reads = [];
@@ -8784,6 +8795,7 @@ const SelfTest = (() => {
       const sharks = ( t) => t.filter(id => PERSONA_BY_ID[id].tier === 'shark').length;
       const most = ( e0) => Math.max(...Array.from({ length: 300 }, (_, k) => sharks(A.dynamicTable(k * 7919, e0, []))));
       eq('Dynamic opponents: no Shark for a new player, one at most, then any pair', [most(0.8), most(0.4), most(0)], [0, 1, 2]);
+      eq('a new profile seats no Shark (the hold starts the game at full easing)', [DY.startEase(blank), most(DY.startEase(blank))], [1, 0]);
       eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
       const seat = A.dynamicTable(12345, 0.8, []);
       check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
