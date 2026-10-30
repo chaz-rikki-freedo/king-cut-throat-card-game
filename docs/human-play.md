@@ -153,6 +153,26 @@ The record left only tuning open. The build uses these values, in `Dynamic.TUNE`
 
 `node tests/dynamic.js rates 80 4` measured the fast path in the build: it caught a new player who throws away their best cards within 3 visible hands in 90.9% of games, and fired on at most 1.4% of 3-hand windows for ladder rows 4, 6 and 8.
 
+### The hold (2026-10-30)
+
+A new profile held the easing at 0, so a new player's first game met bots at full strength, and about half the time a Shark. The slow path needs about 50 hands of record to count, so a weak player gained little in the first 8 games. The build now holds the easing at 1 until the profile has `HOLD_HANDS` = 80 hands (about 8 games, counting every mode). The hold ends at once and the easing tightens as before (15% of the gap each hand).
+
+`node tests/career.js 16 4 0,80` plays careers of 82 games from a blank profile: 8 bad games, 24 that are bad half the time, then 50 okay ones. A bad game is a floor-strength bot (1 hunch, 60% brain farts). 16 careers each, 128 games in the first 8:
+
+| Beginner | Hold | First 8 games won | Wins per career | Longest loss streak | Careers with no win |
+|---|---|---|---|---|---|
+| Weak, sensible | none | 23% | 1.8 | 4.6 | 2 of 16 |
+| Weak, sensible | 80 hands | 40% | 3.2 | 3.3 | 0 of 16 |
+| Throws away its best cards 40% of the time | none | 7% | 0.6 | 6.5 | 8 of 16 |
+| Throws away its best cards 40% of the time | 80 hands | 14% | 1.1 | 5.2 | 4 of 16 |
+
+The games after the hold match the build without it, within the margin: the okay player wins 33% to 41% of games 33 to 82. The margin is about ±8 points for 128 games. Two limits stay open:
+
+- **A cliff at game 9.** The easing drops from 1 to about 0.2 in one game, and the weak player's win rate in bad games falls from about 40% to about 23%. A taper over games 6 to 12 would soften it. It has not been measured.
+- **Gross mistakes still lose.** A player who throws away good cards wins 14% of the first 8 games even at the floor. Only help with the discard (feedback or a suggestion) addresses that.
+
+The players are bots. Real beginners need playtests.
+
 ## Habit report (2026-10-20)
 
 The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.

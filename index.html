@@ -4033,6 +4033,11 @@ const Dynamic = (() => {
      path lets go. LOSS: a discard loss above this is a gross mistake. PROFILE_HANDS: the K in w = h / (h + K). Decision 14 set 100; it is 50 since
      tests/pace.js showed that 100 barely helps a weak player within five games (PR #124). */
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
+  /* HOLD_HANDS: while a profile holds fewer hands than this (about the first 8 games), the easing stays at 1: the bots at
+     the floor and no Shark at the table. A new player is bad for a while, and the slow path needs about 50 hands of record
+     before it weighs in. The hold counts every hand in the profile, from any mode. It ends at once, and the easing then
+     tightens as usual (tests/career.js: a weak player won about 40% of the first 8 games, up from about 23%). */
+  const HOLD_HANDS = 80;
   /* Tuning defaults, not owner decisions (the record leaves them to playtests):
      - DECAY: each new sample keeps this share of the old sums, so the profile follows the last ~100 samples.
      - Prior counts pull a small sample toward normal play: SHARE_PRIOR points at an even share (1/3),
@@ -4196,7 +4201,7 @@ const Dynamic = (() => {
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
   /** The easing a game starts at: 1 when the profile is marked, else w × e_profile. @param {DynSnapshot} snap */
-  const startEase = snap => (snap.mark ? 1 : slowTarget(snap));
+  const startEase = snap => (snap.mark || snap.h < HOLD_HANDS ? 1 : slowTarget(snap));
 
   /* ---- The read of a hand (decisions 5 and 20) ---- */
   /* The phases where a hand has ended (its points are in), before the next deal. A game that ends mid-hand has no read. */
@@ -4243,7 +4248,7 @@ const Dynamic = (() => {
           const fire = t.visible.slice(-3).filter(Boolean).length >= 2;
           if (fire) { t.fast = true; t.quiet = 0; } else if (t.fast && ++t.quiet >= LET_GO) t.fast = false;
         }
-        t.target = t.fast ? 1 : slowTarget(t);
+        t.target = t.fast || t.h < HOLD_HANDS ? 1 : slowTarget(t);
         t.e += (t.target > t.e ? EASE_UP : EASE_DOWN) * (t.target - t.e);
         return r;
       },
@@ -4356,7 +4361,7 @@ const Dynamic = (() => {
     });
   }
 
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -10260,7 +10265,9 @@ const SelfTest = (() => {
           handStats: { pts: [0, 1, 2].map(() => ({ king: 0, hand: 1, showdown: 0 })) } }, o || {});
       };
       const blank = DY.snapshotOf(null);
-      let t = DY.tracker(blank);
+      /* A profile past the hold (no score, calls or slips on record, so the slow path stays at 0). */
+      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS });
+      let t = DY.tracker(seasoned);
       const es = [weak, weak, strong].map(h => { t.hand(ended(h)); return [Math.round(t.e * 1000) / 1000, t.fast]; });
       eq('fast path: two weak visible hands set the target to 1; e closes half the gap each hand', es, [[0, false], [0.5, true], [0.75, true]]);
       for (let k = 0; k < 3; k++) t.hand(ended(strong));
@@ -10269,13 +10276,23 @@ const SelfTest = (() => {
       t.hand(ended(strong));
       check('fast path lets go after 4 visible hands in a row without a trigger', !t.fast && t.target === 0, JSON.stringify([t.fast, t.target]));
       check('tightening back closes 15% of the gap', Math.abs(t.e - before * 0.85) < 1e-9, before + ' -> ' + t.e);
-      t = DY.tracker(blank);
+      t = DY.tracker(seasoned);
       for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 0, receiver: 1, handSummary: { outcome: 'CLEAR_WINNER', winner: 1, tricks: [1, 6, 0] } }));
       eq('the fast path never fires on hands where the player called (decision 20)', [t.fast, t.visible.length], [false, 0]);
-      t = DY.tracker(blank);
+      t = DY.tracker(seasoned);
       for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 2, receiver: 0 }));
       eq('a hand where the player received the turned card or the kitty is not visible either', t.visible.length, 0);
       eq('a marked profile starts the game at full easing', DY.tracker(Object.assign({}, blank, { mark: true })).e, 1);
+      /* The hold: a new profile starts at full easing and keeps it for HOLD_HANDS hands, then tightens as usual. */
+      t = DY.tracker(blank);
+      eq('a blank profile starts at full easing', [t.e0, t.e, DY.startEase(blank)], [1, 1, 1]);
+      for (let k = 0; k < DY.HOLD_HANDS - 1; k++) t.hand(ended(strong));
+      eq('the easing holds at 1 until the profile has HOLD_HANDS hands', [t.h, t.e], [DY.HOLD_HANDS - 1, 1]);
+      t.hand(ended(strong));
+      eq('the hand that brings the profile to HOLD_HANDS hands ends the hold: the target is 0 and the easing closes 15% of the gap', [t.h, t.e, t.target], [DY.HOLD_HANDS, 0.85, 0]);
+      t.hand(ended(strong));
+      check('then the easing keeps tightening', Math.abs(t.e - 0.85 * 0.85) < 1e-9, String(t.e));
+      eq('a profile with HOLD_HANDS hands and an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
 
       /* 3. Real games: the read uses only what the table saw, and replaying the moves gives the live easing. */
       const play = (seed, discard) => {
@@ -10361,6 +10378,7 @@ const SelfTest = (() => {
       const sharks = (/** @type {string[]} */ t) => t.filter(id => PERSONA_BY_ID[id].tier === 'shark').length;
       const most = (/** @type {number} */ e0) => Math.max(...Array.from({ length: 300 }, (_, k) => sharks(A.dynamicTable(k * 7919, e0, []))));
       eq('Dynamic opponents: no Shark for a new player, one at most, then any pair', [most(0.8), most(0.4), most(0)], [0, 1, 2]);
+      eq('a new profile seats no Shark (the hold starts the game at full easing)', [DY.startEase(blank), most(DY.startEase(blank))], [1, 0]);
       eq('with no limit and no last game, the seed\'s own table', Array.from({ length: 50 }, (_, k) => A.dynamicTable(k, 0, []).join()).filter((t, k) => t !== RNG.shuffle(PERSONAS.map(x => x.id), { s: (k ^ 0x5bd1e995) >>> 0 }).slice(0, 2).join()), []);
       const seat = A.dynamicTable(12345, 0.8, []);
       check('a new pair shares no bot with the last game', A.dynamicTable(12345, 0.8, seat).every(id => !seat.includes(id)));
