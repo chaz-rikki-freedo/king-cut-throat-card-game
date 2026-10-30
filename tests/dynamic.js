@@ -5,6 +5,7 @@
      from the moves), the end: results, the replay code (mode 3 and its META), the review and the profile, backups.
    - Replay Seed plays the same game from the old game's snapshot, also after the review changed the profile.
    - A game where the AI played your seat adds nothing to the profile.
+   - '!dev easing reset' in Load a code asks, then sets only the profile back to blank.
    Your seat is played by the fast AI, by clicks.
    Usage: node dynamic.js            the checks above (about 1-2 min)
           node dynamic.js rates [games-per-setting=60] [workers=4]
@@ -129,6 +130,31 @@ async function checks() {
       out.stats = A.stats.get().modes.dynamic;
       return out;`);
     expect('a Dynamic game where the AI played your seat adds nothing to the profile or the results', r.handed && r.stop === 'game-over' && r.same && r.stats.played === 2, r);
+
+    console.log('!dev easing reset');
+    r = await step(`
+      const type = v => { const i = q('#codeIn'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
+      const enter = async () => { q('#codeIn').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(50); };
+      const keep = () => JSON.stringify({ stats: A.stats.get(), replays: localStorage.getItem('kct.replays'), slots: localStorage.getItem('kct.slots'), waves: localStorage.getItem('kct.waves') });
+      const before = A.profile.get(), kept = keep();
+      A.showMenu(); await sleep(50);
+      click('#overlay .mfoot [data-view="code"]'); await sleep(50);
+      type('!dev easing reset'); await enter();
+      const out = { asked: askOpen() && /easing/i.test(q('#askLayer').textContent) };
+      click('[data-action="ask-cancel"]'); await sleep(50);
+      out.cancelSame = JSON.stringify(A.profile.get()) === JSON.stringify(before);
+      click('#overlay .mfoot [data-view="code"]'); await sleep(50);
+      type('!dev easing reset'); await enter();
+      click('[data-action="ask-ok"]'); await sleep(50);
+      const p = A.profile.get();
+      out.had = before.hands; out.blank = p.hands === 0 && p.games === 0 && !p.mark && JSON.stringify(p) === localStorage.getItem('kct.profile');
+      out.start = KCT.Dynamic.startEase(KCT.Dynamic.snapshotOf(p));
+      out.kept = keep() === kept;
+      out.note = /easing is reset/.test(q('#overlay').textContent);
+      return out;`);
+    expect('!dev easing reset asks first, and Cancel changes nothing', r.asked && r.cancelSame, r);
+    expect('on OK, the profile is blank, so the next game starts at full easing', r.had > 0 && r.blank && r.start === 1, r);
+    expect('results, replay codes, saved games and other modes stay, and the menu says so', r.kept && r.note, r);
     expect('no page errors', errors.length === 0, errors);
   } finally {
     await browser.close(); srv.close();

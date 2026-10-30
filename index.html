@@ -1365,6 +1365,8 @@ const RNG = (() => {
    "!dev key=value ...", "!dev" (list) or "!dev reset". Only caps that do
    not change a game: no rule, deal, bot or progress. They last for the tab
    (sessionStorage 'kct-dev': not a 'kct.' key, so never in a backup).
+   One command is not a cap: "!dev easing reset" sets Dynamic's profile
+   (kct.profile) back to blank, after a question, and keeps everything else.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1403,13 +1405,14 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
     reset() { vals = {}; D.set({}); },
-    /** Reads a dev command: '!dev', '!dev reset' or '!dev key=value ...'. Never changes anything.
-        @param {string} text @returns {{ ok: true, reset: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+    /** Reads a dev command: '!dev', '!dev reset', '!dev easing reset' or '!dev key=value ...'. Never changes anything.
+        @param {string} text @returns {{ ok: true, reset: boolean, easing: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: false, ops: {} };
+      if (rest.length === 2 && rest.join(' ').toLowerCase() === 'easing reset') return { ok: true, reset: false, easing: true, ops: {} };
       /** @type {Partial<Record<DevKey, number>>} */
       const ops = {};
       for (const w of rest) {
@@ -1420,7 +1423,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, ops };
+      return { ok: true, reset: false, easing: false, ops };
     }
   };
   return D;
@@ -8951,14 +8954,14 @@ const App = (() => {
      other '!' text reads as text that is not a code, so nothing hints at it. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, ops: d.ops } };
     }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
@@ -8983,7 +8986,8 @@ const App = (() => {
   /* '!dev' submitted alone: the keys, their values for this tab and their defaults. */
   function devText() {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
-    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
+    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
+      '. !dev easing reset sets Dynamic\'s easing back to a new player\'s, after a question.';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -8995,11 +8999,13 @@ const App = (() => {
   /* Load (or Enter) reads the field, then loads it or says why not: a replay opens the viewer (Exit returns to the
      menu). A seed first shows where to play it (a link's wave is chosen); Play then starts it there, as New game does
      (a begun unfinished game of that mode is lost only if you agree). Only open waves are listed. A Dev command
-     applies and returns home, where the build line shows it; '!dev' alone lists the keys. */
+     applies and returns home, where the build line shows it; '!dev' alone lists the keys. '!dev easing reset' asks first,
+     then sets Dynamic's profile back to blank (the hold: full easing for HOLD_HANDS hands) and keeps everything else. */
   function loadCode() {
     const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
     if (!input) return;
     const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
+    if (r.dev && r.dev.easing) { resetEasing(); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -9024,6 +9030,16 @@ const App = (() => {
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+  }
+  /* '!dev easing reset': only kct.profile goes back to blank. Dynamic's saved game keeps the snapshot it started from;
+     its results and replay codes, the other modes and the settings stay. */
+  async function resetEasing() {
+    const yes = await ask({ title: 'Reset Dynamic\'s easing?', text: '<p>Dynamic\'s profile of your play starts again from blank, so your next ' + Dynamic.HOLD_HANDS +
+      ' hands of Dynamic meet the bots at full easing. The habit counts in Your profile start again too. A saved Dynamic game keeps its easing. ' +
+      'Results, replay codes, other modes and settings stay.</p><p>This can\'t be undone.</p>', ok: 'Reset easing', cancel: 'Cancel', danger: true });
+    if (yes) { profile.reset(); Logger.log('DEV', { easing: 'reset' }); linkNote = 'Dynamic\'s easing is reset.'; }
+    menuView = 'home';
+    showMenu(app.menuLaunch);
   }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   /* The areas in the order the summary lists them: a hand from deal to score, the bots, whole games, the modes,
@@ -9886,10 +9902,10 @@ const SelfTest = (() => {
       /* Dev commands: '!' is never a code. While you type it reads as any text that is not a code; only a submitted
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(6).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev],
-        [{ kind: 'dev', dev: { reset: false, ops: { saves: 40, log: 300 } } }, { reset: false, ops: {} }, { reset: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(9).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing RESET').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: false, ops: {} }, { reset: true, easing: false, ops: {} }, { reset: false, easing: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset now', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(11).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
