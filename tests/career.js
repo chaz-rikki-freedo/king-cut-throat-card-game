@@ -7,11 +7,12 @@
      games 33-82   okay
    A bad game is a floor-strength bot (1 hunch, 60% brain farts, knowledge off). With --gross, a bad player also throws away
    its 3 best cards at 40% of its first discards (the gross mistakes of a new player). An okay game is 5 hunches, knowledge off.
-   Each setting runs with a hold length (Dynamic.HOLD_HANDS): 0 hands is Dynamic without the hold, 80 is the build.
+   Each setting runs with a hold length (Dynamic.HOLD_HANDS) and a taper length (Dynamic.TAPER_HANDS), written hold:taper
+   (a bare hold has the build's taper of 80): 0:0 is Dynamic without either, 80:0 the hold that ends at once, 80:80 the build.
    Prints, per phase: the starting and mean easing, Sharks at the table, the win rate (all, bad and okay games) and the
    score share, and for the first 8 games: wins per career, the longest loss streak and the careers with no win.
-   It serves a patched copy of index.html (HOLD_HANDS read from the page) and does not change the file.
-   Usage: node career.js [careers=12] [workers=4] [holds=0,80] [--gross] */
+   It serves a patched copy of index.html and does not change the file.
+   Usage: node career.js [careers=12] [workers=4] [settings=80:0,80:80] [--gross] */
 'use strict';
 const fs = require('fs'), path = require('path'), http = require('http');
 const { launch, openPage, run, ROOT } = require('./lib/browser');
@@ -22,9 +23,10 @@ const PHASES = [['games 1-8', 0, 8], ['games 9-16', 8, 16], ['games 17-32', 16, 
 
 function patchedPage() {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const at = 'const HOLD_HANDS = 80;';
-  if (!html.includes(at)) throw new Error('index.html changed: the patch point is gone');
-  return html.replace(at, 'let HOLD_HANDS = 80; window.__setHold = v => { HOLD_HANDS = v; };');
+  const at = 'const HOLD_HANDS = 80;', at2 = 'const TAPER_HANDS = 80;';
+  if (!html.includes(at) || !html.includes(at2)) throw new Error('index.html changed: the patch point is gone');
+  return html.replace(at, 'let HOLD_HANDS = 80; window.__setHold = v => { HOLD_HANDS = v; };')
+    .replace(at2, 'let TAPER_HANDS = 80; window.__setTaper = v => { TAPER_HANDS = v; };');
 }
 function servePatched(html) {
   const srv = http.createServer((req, res) => {
@@ -40,7 +42,7 @@ function servePatched(html) {
 const PAGE = `
   const { Engine, AI, Replay, RNG, Rules: R, buildView, Dynamic: DY, PERSONAS } = KCT;
   const P = Engine.P, job = arg.job;
-  window.__setHold(job.hold);
+  window.__setHold(job.hold); window.__setTaper(job.taper);
   const base = AI.personaConfig({ tier: 'shark', courage: 'normal', realTable: false, leadPick: 'fair' });
   const mk = th => AI.config(base, { thinking: th, knowledge: ${JSON.stringify(OFF)} });
   const cfgBad = mk(job.bad), cfgOk = mk(job.ok);
@@ -86,26 +88,26 @@ const pct = L => L.length ? f(100 * mean(L.map(g => g.won ? 1 : 0)), 1) : '-';
 
 (async () => {
   const args = process.argv.slice(2), gross = args.includes('--gross'), pos = args.filter(a => !a.startsWith('--'));
-  const [c = '12', w = '4', h = '0,80'] = pos;
-  const careers = Number(c), workers = Number(w), holds = h.split(',').map(Number);
+  const [c = '12', w = '4', h = '80:0,80:80'] = pos;
+  const careers = Number(c), workers = Number(w), holds = h.split(',').map(x => { const [a, b = '80'] = x.split(':'); return { hold: Number(a), taper: Number(b), name: a + ':' + b }; });
   const jobs = [];
-  for (const hold of holds) for (let i = 0; i < careers; i++) jobs.push({ hold, gross, bad: BAD, ok: OK, seed: (4242 * 1000003 + i * 104729) >>> 0 });
+  for (const { hold, taper, name } of holds) for (let i = 0; i < careers; i++) jobs.push({ hold, taper, name, gross, bad: BAD, ok: OK, seed: (4242 * 1000003 + i * 104729) >>> 0 });
   const srv = await servePatched(patchedPage()), browser = await launch(), t0 = Date.now();
   let done = 0;
   const res = (await Promise.all(Array.from({ length: workers }, async (_, k) => {
     const mine = jobs.filter((_, i) => i % workers === k), { page } = await openPage(browser, srv.url), r = [];
     for (const job of mine) {
-      r.push({ hold: job.hold, games: await run(page, PAGE, { job }) });
+      r.push({ name: job.name, games: await run(page, PAGE, { job }) });
       if (++done % 4 === 0) console.error(done + '/' + jobs.length + ' careers, ' + Math.round((Date.now() - t0) / 1000) + ' s');
     }
     await page.context().close(); return r;
   }))).flat();
   await browser.close(); srv.close();
 
-  console.log('Beginner: ' + (gross ? 'floor strength, throws away its best cards at 40% of first discards' : 'floor strength, no gross mistakes') + '; ' + careers + ' careers of 82 games per hold');
-  for (const hold of holds) {
-    const C = res.filter(x => x.hold === hold).map(x => x.games);
-    console.log('\nHOLD_HANDS ' + hold + (hold ? '' : ' (no hold)'));
+  console.log('Beginner: ' + (gross ? 'floor strength, throws away its best cards at 40% of first discards' : 'floor strength, no gross mistakes') + '; ' + careers + ' careers of 82 games per setting');
+  for (const { hold, taper, name } of holds) {
+    const C = res.filter(x => x.name === name).map(x => x.games);
+    console.log('\nHOLD_HANDS ' + hold + ', TAPER_HANDS ' + taper);
     console.log('phase        start e  mean e  Sharks  win%   bad%   okay%  share%');
     for (const [name, a, b] of PHASES) {
       const G = C.flatMap(x => x.slice(a, b));
