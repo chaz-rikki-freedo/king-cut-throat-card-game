@@ -304,7 +304,7 @@ button.card{cursor:pointer}
 }
 .overlay[hidden]{display:none}
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
-.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s cubic-bezier(.83,0,.17,1)}
+.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in 2s cubic-bezier(.83,0,.17,1)}
 @keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
 @media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
@@ -1013,7 +1013,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'd6bbe50', date: '2026-10-31' });
+const BUILD = Object.freeze({ commit: '5f987a7', date: '2026-10-31' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
