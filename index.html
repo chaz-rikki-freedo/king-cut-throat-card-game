@@ -384,7 +384,8 @@ button.card{cursor:pointer}
 /* The award (Awards, a dev feature): a heavy stroke in the band's color, neon red (0) to emerald neon green (6), that
    fades in once the grade is worked out. The 7 colors are evenly spaced to the eye (CIEDE2000 steps of 14 to 18). */
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
-.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s ease-out}
+/* The stroke comes in on easeInOutQuint (16x^5 to the middle, then 1 - (2 - 2x)^5 / 2), as a cubic-bezier. */
+.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s cubic-bezier(.83,0,.17,1)}
 @keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
 @media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
