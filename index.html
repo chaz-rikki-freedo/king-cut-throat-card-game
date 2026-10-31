@@ -23,6 +23,7 @@
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
+  --award0:#ff1744; --award1:#ff5722; --award2:#ff9100; --award3:#ffea00; --award4:#c6ff00; --award5:#76ff03; --award6:#39ff14;
   --set-bg:#0b0f0c; --set-card:#111b15; --set-line:#24382c; --set-field:#16261d; --set-hint:#8fb89a; --set-switch:#2f4337; --set-switch-edge:#3d5747;
   --mode-free:#7cc4ff; --mode-free-ink:#07233a; --mode-dynamic:#b9a3ff; --mode-dynamic-ink:#1c1240; --mode-waves:#0e7490; --mode-waves-ink:#ecfeff;
   --bot-vex:#ff7a7a; --bot-doc:#9db0ff; --bot-ace:#5fdc8f; --bot-mei:#ff9fd0; --bot-gus:#5cb8ff;
@@ -380,6 +381,12 @@ button.card{cursor:pointer}
   .modal.profile .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
+/* The award (Awards, a dev feature): a heavy stroke in the band's color, neon red (0) to neon green (6), that fades in
+   once the grade is worked out. */
+.modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
+.modal.gameover.award{border:0.375rem solid var(--award);box-shadow:0 0 1.25rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s ease-out}
+@keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
+@media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
 .modal h2{margin:0 0 0.625rem}
 .modal .big{font-size:1.75rem;font-weight:900;color:var(--gold)}
@@ -1370,6 +1377,8 @@ const RNG = (() => {
    Dynamic's profile (kct.profile) to N, after a question, which moves the
    hold and the taper. The record and everything else stay. "!dev easing"
    alone shows a terse readout of the easing (legend: tests/README.md).
+   "!dev awards=on" or "=off" shows or hides the award on the game-over box
+   (Awards), kept on the device until changed.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1408,18 +1417,23 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
     reset() { vals = {}; D.set({}); },
-    /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N' or '!dev key=value ...'. Never changes
-        anything. easing: the hand count N, or null. look: '!dev easing', the readout. @param {string} text
-        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+    /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
+        Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
+        (false) or not given (null). @param {string} text
+        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, awards: boolean | null, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, ops: {} };
-      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, awards: null, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, awards: null, ops: {} };
       if (rest.some(w => /^easing(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, awards: null, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+      }
+      if (rest.some(w => /^awards(=|$)/i.test(w))) {
+        const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
+        return m ? { ok: true, reset: false, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
       }
       /** @type {Partial<Record<DevKey, number>>} */
       const ops = {};
@@ -1431,7 +1445,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: null, look: false, ops };
+      return { ok: true, reset: false, easing: null, look: false, awards: null, ops };
     }
   };
   return D;
@@ -4794,6 +4808,197 @@ const Tally = (() => {
 })();
 
 /* ---------------------------------------------------------------------
+   6f. AWARDS — how well a seat chose, with the cards it was dealt, graded
+   at the end of a game, for performance recognition. A dev feature for now:
+   off until "!dev awards=on" (localStorage 'kct-awards': not a 'kct.' key,
+   so never in a backup), and then shown as the color of the game-over box.
+   The grade is the cost of the seat's choices, never its score, so a loss
+   on a poor deal played well grades as high as any win. Each choice costs
+   the value of the best option less the value of the one chosen, in
+   expected tricks plus 0.9 x King points:
+   - a card in a main trick: with every hand face up (in hindsight), the
+     most the seat could still take, its two opponents defending together
+     (solver). The kitty, the trump and how the cards split are fixed, so
+     only the choice counts.
+   - a discard, the trump it names, the cards it gives in the exchange: the
+     fitted hand estimate (Dynamic.handEstimate) of the best option.
+   read(rec, seat) gives the mean cost per choice and its band: 6 (best,
+   neon green) to 0 (worst, neon red), or null for a game that did not
+   finish or does not replay. It takes about 0.2 seconds (at most about 2),
+   so the app uses start(), which works in slices and calls back. EDGES are fitted on bot
+   games of every tier (tests/awards.js): about 5% of seat-games fall in
+   each end band.
+   --------------------------------------------------------------------- */
+/** @typedef {{ cost: number, n: number }} AwardPart */
+/** @typedef {{ band: number, cost: number, choices: number, parts: { play: AwardPart, discard: AwardPart, name: AwardPart, exchange: AwardPart } }} Award */
+const Awards = (() => {
+  const KEY = 'kct-awards', P = Engine.P, R = Rules, KW = 0.9, BANDS = 7;
+  /* The mean costs per choice where each band below the best starts: below EDGES[0] is band 6. */
+  const EDGES = Object.freeze([0.071, 0.106, 0.144, 0.201, 0.263, 0.334]);
+  /** The band of a mean cost per choice: 6 (best) to 0. @param {number} cost */
+  const bandOf = cost => BANDS - 1 - EDGES.filter(e => cost >= e).length;
+  const SUIT_NO = Object.freeze({ S: 0, H: 1, D: 2, C: 3 });
+
+  /** The face-up solver of one hand's main tricks for seat me, from the hands at the first trick (3 x 7 cards).
+      value(hands, leader, plays): the tricks plus KW x King tricks me can still take from that point (a trick in progress:
+      its leader and plays so far), me choosing for the most and the other two for the least.
+      @param {string[][]} hands @param {string} trump @param {number} me */
+  function solver(hands, trump, me) {
+    const ids = hands[0].concat(hands[1], hands[2]), n = ids.length;
+    const idx = new Map(ids.map((c, i) => [c, i]));
+    const suit = ids.map(c => SUIT_NO[/** @type {string} */ (R.getEffectiveSuit(c, trump))]);
+    const king = ids.map(c => R.isKing(c));
+    const trumpPow = ids.map(c => R.isTrump(c, trump) ? R.trickPower(c, null, trump) : 0);
+    const facePow = ids.map(c => R.getCardStrength(c, trump));
+    /* Each suit's cards from weakest to strongest, and its mask. */
+    const bySuit = [0, 1, 2, 3].map(s => ids.map((_, i) => i).filter(i => suit[i] === s).sort((a, b) => facePow[a] - facePow[b]));
+    const suitMask = bySuit.map(l => l.reduce((m, i) => m | (1 << i), 0));
+    const power = (/** @type {number} */ i, /** @type {number} */ lead) => trumpPow[i] || (suit[i] === lead ? 100 + facePow[i] : 0);
+    /** @type {Map<number, number>} */
+    const memo = new Map();
+    /* The cards worth trying from mask m: the legal ones, and of two that touch in their suit (no live card between,
+       neither a King) only the first, as they do the same. live: every card still in a hand or in this trick. */
+    function choices(m, lead, live) {
+      const pool = lead >= 0 && (m & suitMask[lead]) ? m & suitMask[lead] : m, out = [];
+      for (let s = 0; s < 4; s++) {
+        if (!(pool & suitMask[s])) continue;
+        let prev = -1;
+        for (const i of bySuit[s]) {
+          if (!(live & (1 << i))) continue;
+          if (pool & (1 << i)) { if (prev < 0 || king[i] || king[prev]) out.push(i); prev = i; } else prev = -1;
+        }
+      }
+      return out;
+    }
+    function board(m0, m1, m2, leader) {
+      const all = m0 | m1 | m2;
+      if (!all) return 0;
+      const key = all * 4 + leader, hit = memo.get(key);
+      if (hit !== undefined) return hit;
+      const v = play(m0, m1, m2, leader, 0, -1, -1);
+      memo.set(key, v);
+      return v;
+    }
+    function resolve(m0, m1, m2, leader, a, b, c) {
+      const lead = suit[a], cards = [a, b, c];
+      let w = 0;
+      for (let k = 1; k < 3; k++) if (power(cards[k], lead) > power(cards[w], lead)) w = k;
+      const winner = (leader + w) % 3;
+      return (winner === me ? 1 + (king[cards[w]] ? KW : 0) : 0) + board(m0, m1, m2, winner);
+    }
+    function play(m0, m1, m2, leader, i, a, b) {
+      const p = (leader + i) % 3, m = p === 0 ? m0 : p === 1 ? m1 : m2, lead = i ? suit[a] : -1;
+      const live = m0 | m1 | m2 | (i > 0 ? 1 << a : 0) | (i > 1 ? 1 << b : 0);
+      let best = p === me ? -1 : 1e9;
+      for (const c of choices(m, lead, live)) {
+        const bit = ~(1 << c), n0 = p === 0 ? m0 & bit : m0, n1 = p === 1 ? m1 & bit : m1, n2 = p === 2 ? m2 & bit : m2;
+        const v = i < 2 ? play(n0, n1, n2, leader, i + 1, i ? a : c, i ? c : -1) : resolve(n0, n1, n2, leader, a, b, c);
+        if (p === me ? v > best : v < best) best = v;
+      }
+      return best;
+    }
+    const maskOf = (/** @type {string[]} */ h) => h.reduce((m, c) => idx.has(c) ? m | (1 << /** @type {number} */ (idx.get(c))) : m, 0);
+    return {
+      n,
+      /** @param {string[][]} now @param {number} leader @param {{ player: number, card: string }[]} plays */
+      value(now, leader, plays) {
+        const [m0, m1, m2] = now.map(maskOf), c = plays.map(x => /** @type {number} */ (idx.get(x.card)));
+        return c.length === 3 ? resolve(m0, m1, m2, leader, c[0], c[1], c[2]) : play(m0, m1, m2, leader, c.length, c.length ? c[0] : -1, c.length > 1 ? c[1] : -1);
+      }
+    };
+  }
+  /** Every way to keep k of the cards. @param {string[]} cards @param {number} k @returns {string[][]} */
+  function keeps(cards, k) {
+    const out = [], pick = /** @type {string[]} */ ([]);
+    const rec = (/** @type {number} */ i) => {
+      if (pick.length === k) { out.push(pick.slice()); return; }
+      for (let j = i; j <= cards.length - (k - pick.length); j++) { pick.push(cards[j]); rec(j + 1); pick.pop(); }
+    };
+    rec(0);
+    return out;
+  }
+  /** The work of grading, one slice per yield (a solver call or one choice). Its return is the award, or null.
+      @param {any} recOrCode @param {number} seat @returns {Generator<void, Award | null>} */
+  function* grade(recOrCode, seat) {
+    let rec = null;
+    try { rec = typeof recOrCode === 'string' ? Replay.decode(recOrCode) : recOrCode; } catch (e) { return null; }
+    if (!rec || !rec.result || !rec.result.finished) return null;
+    /** @type {Award['parts']} */
+    const parts = { play: { cost: 0, n: 0 }, discard: { cost: 0, n: 0 }, name: { cost: 0, n: 0 }, exchange: { cost: 0, n: 0 } };
+    const add = (/** @type {AwardPart} */ x, /** @type {number} */ c) => { x.cost += Math.max(0, c); x.n++; };
+    try {
+      const cur = Replay.cursor(rec);
+      /** @type {ReturnType<typeof solver> | null} */
+      let sv = null;
+      for (;;) {
+        const s = cur.state, ph = s.phase, mine = s.hands[seat].slice();
+        const inTricks = ph === P.TRICK_PLAY && !(s.showdown && s.showdown.active);
+        if (ph !== P.TRICK_PLAY && ph !== P.TRICK_DONE) sv = null;
+        /** @type {Map<string, number> | null} */
+        let vals = null;
+        if (inTricks && s.currentPlayer === seat) {
+          const lead = s.trick.plays.length ? R.getEffectiveSuit(s.trick.plays[0].card, s.trump) : null, legal = R.legalCards(mine, lead, s.trump);
+          if (legal.length > 1) {
+            if (!sv) sv = solver(s.hands.map(h => h.slice()), /** @type {string} */ (s.trump), seat);
+            vals = new Map();
+            for (const c of legal) {
+              vals.set(c, sv.value(s.hands.map((h, q) => q === seat ? h.filter(x => x !== c) : h), s.trick.leader, s.trick.plays.concat([{ player: seat, card: c }])));
+              yield;
+            }
+          }
+        } else if (inTricks && !sv) sv = solver(s.hands.map(h => h.slice()), /** @type {string} */ (s.trump), seat);
+        const st = cur.step();
+        if (!st) break;
+        const a = st.action;
+        if (!a || a.player !== seat) continue;
+        if (vals && a.type === 'PLAY' && vals.has(a.card)) add(parts.play, Math.max(...vals.values()) - /** @type {number} */ (vals.get(a.card)));
+        else if (a.type === 'DISCARD' && ph === P.DISCARD) {
+          const kept = mine.filter(c => !a.cards.includes(c));
+          add(parts.discard, Dynamic.bestKeep(mine, kept.length) - Dynamic.bestEstimate(kept)); yield;
+        } else if (a.type === 'NAME' && a.suit) {
+          const ok = R.SUITS.filter(x => x === a.suit || Engine.validate(s, Object.assign({}, a, { suit: x })) === null);
+          add(parts.name, Math.max(...ok.map(x => Dynamic.handEstimate(mine, x))) - Dynamic.handEstimate(mine, a.suit));
+        } else if (a.type === 'EXCHANGE' && s.trump) {
+          const kept = mine.filter(c => !a.cards.includes(c)), t = /** @type {string} */ (s.trump);
+          add(parts.exchange, Math.max(...keeps(mine, kept.length).map(k => Dynamic.handEstimate(k, t))) - Dynamic.handEstimate(kept, t)); yield;
+        }
+      }
+    } catch (e) { return null; }
+    const all = [parts.play, parts.discard, parts.name, parts.exchange], choices = all.reduce((x, p) => x + p.n, 0);
+    const cost = choices ? all.reduce((x, p) => x + p.cost, 0) / choices : 0;
+    return { band: bandOf(cost), cost, choices, parts };
+  }
+  /** The award of a finished game for a seat (0 is you), worked out at once, or null.
+      @param {any} recOrCode a replay code or its record @param {number} [seat] @returns {Award | null} */
+  function read(recOrCode, seat = 0) {
+    const it = grade(recOrCode, seat);
+    for (;;) { const r = it.next(); if (r.done) return r.value; }
+  }
+  /** Works out the award in slices of about 12 ms between pauses, then calls done(award). Returns a function that stops it.
+      @param {any} recOrCode @param {number} seat @param {(a: Award | null) => void} done @returns {() => void} */
+  function start(recOrCode, seat, done) {
+    const it = grade(recOrCode, seat);
+    let stopped = false;
+    const slice = () => {
+      if (stopped) return;
+      const t = performance.now();
+      while (performance.now() - t < 12) { const r = it.next(); if (r.done) { done(r.value); return; } }
+      setTimeout(slice, 0);
+    };
+    setTimeout(slice, 0);
+    return () => { stopped = true; };
+  }
+  const A = {
+    EDGES, BANDS, bandOf, solver, read, start,
+    /** Whether the game-over box shows the award. Off when nothing is saved. */
+    on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
+    /** @param {boolean} v */
+    set(v) { try { if (v) localStorage.setItem(KEY, 'on'); else localStorage.removeItem(KEY); } catch (e) { /* no storage: stays off */ } }
+  };
+  return Object.freeze(A);
+})();
+
+/* ---------------------------------------------------------------------
    7. RENDER — draws a View for the human seat. Reads nothing hidden.
    --------------------------------------------------------------------- */
 const Render = (() => {
@@ -7609,8 +7814,40 @@ const App = (() => {
     return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
 
-  function showGameOver() {
-    const st = app.state;
+  /* The award of the game that ended, while awards are on (Awards): worked out in slices after the box opens (about
+     0.2 seconds), then the box's stroke fades in, in its band's color, and its title says the numbers. Your seat is graded
+     whoever played it. Worked out once per code; a new box stops the work for the last one. */
+  let awardOf = /** @type {{ code: string, a: Award | null | undefined, stop: () => void } | null} */ (null);
+  /** @param {Element} box @param {Award} a */
+  function showAward(box, a) {
+    const f = (/** @type {AwardPart} */ x) => x.n ? (x.cost / x.n).toFixed(2) : '-';
+    box.classList.add('award');
+    box.setAttribute('data-award', String(a.band));
+    box.setAttribute('title', 'Award ' + (a.band + 1) + ' of ' + Awards.BANDS + ': your choices cost ' + a.cost.toFixed(3) + ' each over ' + a.choices +
+      ' (cards ' + f(a.parts.play) + ', discards ' + f(a.parts.discard) + ', trump ' + f(a.parts.name) + ', exchange ' + f(a.parts.exchange) + ')');
+  }
+  /** @param {Element} box @param {string | null} code */
+  function awardBox(box, code) {
+    if (!code || !Awards.on()) return;
+    if (awardOf && awardOf.code === code) {
+      if (awardOf.a) showAward(box, awardOf.a);
+      if (awardOf.a !== undefined) return;
+    }
+    if (awardOf) awardOf.stop();
+    const job = { code, a: /** @type {Award | null | undefined} */ (undefined), stop: () => {} };
+    awardOf = job;
+    job.stop = Awards.start(code, HUMAN, a => {
+      job.a = a;
+      if (a) Logger.log('AWARD', { band: a.band, cost: Math.round(1000 * a.cost) / 1000, choices: a.choices });
+      const now = $('overlay').firstElementChild;
+      if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
+    });
+  }
+  /* The game-over box. From the replay viewer (code: the code watched), at the end of a finished game while awards are
+     on: no end buttons, wave note, update offer or review. */
+  /** @param {string} [code] */
+  function showGameOver(code) {
+    const st = app.state, viewer = code !== undefined;
     const v = buildView(st, HUMAN);
     const n = p => Render.nameOf(v, p);
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
@@ -7618,9 +7855,11 @@ const App = (() => {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
-      waveEndHTML() +
-      '<div class="row">' + app.ui.endButtons + '</div></div>';
+      (viewer ? '' : waveEndHTML()) +
+      '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;
+    if (ov.firstElementChild) awardBox(ov.firstElementChild, viewer ? /** @type {string} */ (code) : endCode);
+    if (viewer) return;
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
     if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
@@ -7740,7 +7979,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length || Awards.on() ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).concat(Awards.on() ? ['awards'] : []).join(' ')) + '</b>' : '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {
@@ -7916,7 +8155,7 @@ const App = (() => {
     clearTimer();
     const ov = $('overlay');
     watch = {
-      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
+      cur: Replay.cursor(rec, names), code, from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
       back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
@@ -7976,6 +8215,7 @@ const App = (() => {
       w.preview = cards;
       app.ui.selected = new Set(cards || []);
       draw(cards ? [] : watchStep() || []);
+      watchEnd();
       return;
     }
     w.preview = null;
@@ -7992,6 +8232,14 @@ const App = (() => {
     }
     resetDraw();
     draw([]);
+    watchEnd();
+  }
+  /* The last move of a finished game, while awards are on: the game-over box with its award, after a trick's wait so the
+     last trick shows. Back returns to the viewer. */
+  function watchEnd() {
+    const w = watch;
+    if (!w || w.cur.steps < w.total || !app.state.gameOver || !Awards.on()) return;
+    setTimeout(() => { if (watch === w && w.cur.steps >= w.total && $('overlay').hidden) showGameOver(w.code); }, DELAYS[app.ui.speed].trick);
   }
   /* The next decision, or null when the next step is the table's own (a deal, a trick's end). */
   function watchPeek() {
@@ -9043,14 +9291,14 @@ const App = (() => {
      text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, awards: boolean | null, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -9077,7 +9325,8 @@ const App = (() => {
   function devText() {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
-      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
+      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
+      'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device.';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -9091,12 +9340,21 @@ const App = (() => {
      menu). A seed first shows where to play it (a link's wave is chosen); Play then starts it there, as New game does
      (a begun unfinished game of that mode is lost only if you agree). Only open waves are listed. A Dev command
      applies and returns home, where the build line shows it; '!dev' alone lists the keys. '!dev easing=N' asks first,
-     then sets the profile's hand count to N (the hold and the taper count from it) and keeps everything else. */
+     then sets the profile's hand count to N (the hold and the taper count from it) and keeps everything else.
+     '!dev awards=on' or '=off' applies and returns home, which says so. */
   function loadCode() {
     const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
     if (!input) return;
     const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
     if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
+    if (r.dev && r.dev.awards !== null) {
+      Awards.set(r.dev.awards);
+      Logger.log('DEV', { awards: r.dev.awards });
+      linkNote = 'Awards are ' + (r.dev.awards ? 'on: the game-over box shows how you did with your cards.' : 'off.');
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
@@ -9175,7 +9433,7 @@ const App = (() => {
     scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart',
     'ai knowledge': 'AI knowledge', planner: 'AI planner', 'hand stats': 'Hand stats', habits: 'Habits',
     'random games': 'Random games', simulation: 'Simulations',
-    waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats',
+    waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats', tally: 'Tally', awards: 'Awards',
     memory: 'Saves', replay: 'Replays', backup: 'Backup',
     interface: 'Interface', 'app logic': 'App logic',
     'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
@@ -10029,10 +10287,11 @@ const SelfTest = (() => {
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, ops: {} }, { reset: true, easing: null, look: false, ops: {} },
-          { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, awards: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, awards: null, ops: {} }, { reset: true, easing: null, look: false, awards: null, ops: {} },
+          { reset: false, easing: 120, look: false, awards: null, ops: {} }, { reset: false, easing: 0, look: false, awards: null, ops: {} }, { reset: false, easing: null, look: true, awards: null, ops: {} },
+          { reset: false, easing: null, look: false, awards: true, ops: {} }, { reset: false, easing: null, look: false, awards: false, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(18).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
@@ -10934,6 +11193,21 @@ const SelfTest = (() => {
       check('a game still running has a tally, and its last hand is not scored', !!part && part.deals.length > 0 && !part.deals[part.deals.length - 1].scored, JSON.stringify(part && part.deals.length));
       eq('a code that is not a code has no tally', [Tally.read('nope'), Tally.read(null)], [null, null]);
     });
+    /* --- Awards: the cost of a seat's choices, a band from 6 (neon green, best) to 0 (neon red). tests/awards.js checks
+       the grade on whole games; here, its parts. --- */
+    safeRun('awards', () => {
+      eq('7 bands, 6 edges in rising order', [Awards.BANDS, Awards.EDGES.length, Awards.EDGES.every((x, i) => !i || x > Awards.EDGES[i - 1])], [7, 6, true]);
+      eq('no cost is band 6, a cost on an edge is the band it starts, a cost above every edge band 0', [Awards.bandOf(0), Awards.bandOf(Awards.EDGES[0]), Awards.bandOf(Awards.EDGES[3]), Awards.bandOf(9)], [6, 5, 2, 0]);
+      /* The solver is built from the hands at the first trick; a value is asked with the cards played out of the hands. */
+      const val = (/** @type {string[][]} */ h, /** @type {number} */ me, /** @type {number} */ leader, /** @type {{ player: number, card: string }[]} */ plays) =>
+        Awards.solver(h, 'S', me).value(h.map((x, p) => x.filter(c => !plays.some(y => y.player === p && y.card === c))), leader, plays);
+      eq('a King that wins its trick is worth 1.9, a trick 1, a trick lost 0', [val([['KH'], ['7H'], ['8H']], 0, 0, []), val([['AH'], ['7H'], ['8H']], 0, 0, []), val([['KH'], ['AH'], ['8H']], 0, 0, [])], [1.9, 1, 0]);
+      eq('a trump wins an off-suit lead; with no card of the suit led, any card may be played', [val([['7H'], ['8S'], ['AH']], 1, 0, []), val([['7H'], ['8C'], ['AH']], 1, 0, [])], [1, 0]);
+      const h2 = [['KH', 'AC'], ['AH', '7C'], ['8H', '8C']];
+      eq('the others defend together: either lead takes 1 of the 2 tricks', [val(h2, 0, 0, [{ player: 0, card: 'AC' }]), val(h2, 0, 0, [{ player: 0, card: 'KH' }]), val(h2, 0, 0, [])], [1, 1, 1]);
+      eq('a trick in progress counts its plays so far', [val([['KH'], ['7H'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }]), val([['KH'], ['AH'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }, { player: 1, card: 'AH' }])], [1.9, 0]);
+      eq('a game that did not finish, or a code that is not a code, has no award', [Awards.read({ result: null }), Awards.read({ result: { finished: false } }), Awards.read('nope'), Awards.read(null)], [null, null, null, null]);
+    });
     safeRun('seats', () => {
       const vex = PERSONA_BY_ID.vex;
       eq('a tune keeps only valid fields, clamped', AI.cleanTune({ courage: 'reckless', realTable: 1, leadPick: 'shrewd', worlds: 999.4, playoutSkill: -2, knowledge: { bids: false, voids: 'yes', x: true }, extra: 1 }),
@@ -11221,7 +11495,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

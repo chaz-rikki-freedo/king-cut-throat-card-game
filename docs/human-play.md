@@ -225,6 +225,74 @@ What it says:
 - **A game's deal is worth about 0.6 points.** A swing of one standard deviation in the table's strength moves a seat's points by about 0.6 of 10. So the Shark 11 deal below, 31% against 36% for Lou, is worth about 1 point of the 2-point loss, not all of it.
 - **Level 0 is a guide, not a verdict.** A reading as a share of the strength is safe. A reading as luck, or in points, needs a better model. Level 1 (rollouts) is the next step, and it costs minutes per game.
 
+## Awards: how you did with your cards (2026-10-31)
+
+The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades how well your seat chose with the cards it was dealt. With `!dev awards=on` (see [tests/README.md](../tests/README.md#dev-commands)), the game-over box shows the grade as a heavy stroke in one of 7 colors, which fades in once it's worked out. It's a dev feature: off for a new install, and nothing else uses it.
+
+The grade is never your score. Each of your choices costs the value of the best option less the value of the one you chose, in expected tricks plus 0.9 × King points. A choice that was the best option costs 0. The grade is the mean cost per choice:
+
+- **A card in a main trick:** with every hand face up, the most your seat could still take after each card you could have played, your two opponents defending together. The kitty, the trump and how the cards split are the same for every option, so only the choice counts.
+- **A discard, the trump you name, and the cards you give in the exchange:** the fitted hand estimate (`Dynamic.handEstimate`) of the best option against yours.
+
+Bids and Showdown play aren't graded.
+
+Terms:
+
+| Term | Meaning |
+|---|---|
+| Award | The grade of one seat in one finished game: its band, its mean cost per choice, and each part. `Awards.read(code, seat)`. |
+| Band | The award's step, 6 (best) to 0 (worst), and its color on the award stroke. |
+| Choice | A decision that is graded: a card played in a main trick with more than one legal card, a discard, the trump you name, or the cards you give in the exchange. |
+| Best option | Of the options a choice had, the one with the most value. |
+| Cost | The value of the best option less the value of the option chosen. Never below 0. |
+| Mean cost per choice | The costs of a seat's choices added up, over the number of choices. The award's number: lower is better. |
+| Value | Expected tricks plus 0.9 × King points, the unit of Tally and `Dynamic.handEstimate`. |
+| Hindsight solver | `Awards.solver`: the value of a card in a main trick with every hand face up, the seat choosing for the most and both opponents for the least. |
+| Defend together | How the hindsight solver plays the opponents: as one side against the graded seat. |
+| Part | The cost and count of one kind of choice: cards, discards, trump or exchange. The award title lists them. |
+| `EDGES` | The mean costs where bands 5 to 0 start. Fitted by `tests/awards.js`. |
+| Award stroke | The colored border of the game-over dialog while awards are on (see [vocabulary](ui/vocabulary.md#36-game-over-dialog)). |
+
+`EDGES` cut the mean cost into bands 6 (best) to 0. They're fitted on bot games of every tier, so that 5, 12, 20, 26, 20, 12 and 5% of seat-games fall in bands 6 to 0.
+
+| Band | Color token | Mean cost per choice |
+|---|---|---|
+| 6 | `--award6` neon green | below 0.071 |
+| 5 | `--award5` green | 0.071 |
+| 4 | `--award4` yellow-green | 0.106 |
+| 3 | `--award3` yellow | 0.144 |
+| 2 | `--award2` orange | 0.201 |
+| 1 | `--award1` red-orange | 0.263 |
+| 0 | `--award0` neon red | 0.334 and up |
+
+### Validation (2026-10-31)
+
+`node tests/awards.js 900 4 9191` fits the edges. `node tests/awards.js 600 4 5150` checks them on 600 other games (1,800 seat-games):
+
+| Measure | Result |
+|---|---|
+| Seat-games in bands 6 to 0 (target 5, 12, 20, 26, 20, 12, 5%) | 6.5, 13.3, 19.4, 23.3, 21.9, 11.7, 3.9% |
+| Mean cost per choice: Shark, Club, Novice, Casual bots | 0.127, 0.153, 0.197, 0.261 |
+| Win rate of the same | 52, 35, 18, 25% |
+| Mean cost of winners, of losers | 0.171, 0.183 (r −0.07 against winning) |
+| Losses in band 6, in band 5 | 77 and 160 of 1,200 |
+| Time to grade a seat | median 214 ms, 95% under 460 ms, most 1.1 s |
+
+[tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from that check. Its band 0 code is a game that seat won.
+
+What it says:
+
+- **The result barely matters.** Winners' and losers' costs differ by about 0.02 per choice, and a loss reaches neon green about as often as any game. A game the deal decided grades on its choices.
+- **It ranks the tiers.** Sharks cost least and Club bots next. Casual bots cost more than Novice bots because of their discards: the fitted estimate scores the discards of Casual personalities as poor. That part of the grade is the least certain.
+- **It's fast.** Grading your seat takes about 0.2 seconds (at most about 2), in slices, so the table never stalls.
+
+Limits:
+
+- **Hindsight is face up.** A card that was right on what you could see can cost something when every hand is shown. Every seat pays that, so the bands allow for it.
+- **The two opponents are taken to defend together.** Real bots don't, so the solver is strict.
+- **The estimate grades discards, trump and exchange.** It leaves out the kitty and the play, so it can call a sound discard poor.
+- **Adjacent colors are close for color-blind players.** Hold the pointer on the box: its title says the band, the mean cost and each part.
+
 ## Habit report (2026-10-20)
 
 The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.

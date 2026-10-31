@@ -165,7 +165,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Big button | `.mgo` | C | **Continue**, with the game in two short lines: the game being played (`close-menu`) or the last one saved (`resume-<mode>`). With no game, **New game**, which opens the New game view. |
 | Home lines | `.mlist` | C | **New game** (when the big button is Continue), **How to play** and **Lore**. |
 | Small links | `.mfoot` | C | **Your profile** (`menu-profile`, all modes), **Load a code**, **Settings** (`toggle-settings`), and **Install** (`install-app`) when the browser offers it. |
-| Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. |
+| Credit and build | `.about-credit`, `.about-build` | D | As on the About screen. While a dev cap is set or awards are on, the build line ends with the dev mark (`.dev-mark`): **DEV**, then the caps and `awards`. |
 
 **New game** (`menuNewHTML()`): a line per mode with its color bar (`.mdot`) and a note: "Playing now", "Saved game", or the mode's goal.
 
@@ -190,7 +190,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
-| Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Nothing is read while you type; an edit clears the last reading. Enter loads. |
+| Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Nothing is read while you type; an edit clears the last reading. Enter loads. It also takes dev commands, such as `!dev awards=on` (see [tests/README.md](../../tests/README.md#dev-commands)). |
 | Code reading | `#codeRead`, `readCode()` | S | Empty until **Load** or Enter. Then, for a seed, which one it is; for a backup, to restore it in Settings; else why it cannot load. A replay code opens the viewer. |
 | Play it in | `#codeWhere`, `#codeMode` | C | Shown when a seed is loaded: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
 | Load button | `code-load` | C | **Load**, always on. It becomes **Play** once a seed is loaded; **Play** starts the seed in the chosen mode. |
@@ -254,7 +254,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 
 ### 3.6 Game-over dialog
 
-Opens when a player reaches 10 points.
+Opens when a player reaches 10 points. While awards are on (`!dev awards=on`), it also opens in the replay viewer at the last move of a finished game, without the wave note or the end buttons; **‹ Back** returns to the viewer.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
@@ -264,6 +264,8 @@ Opens when a player reaches 10 points.
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave. |
 | Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. Closes the dialog. The end buttons stay in the action bar. |
+| Award stroke | `.modal.gameover.award`, `data-award`, `--award0` to `--award6`, `awardBox()` | S | A dev feature, only while awards are on: a heavy stroke around the dialog in the color of your seat's award band, neon green (band 6, the best) through yellow (band 3) to neon red (band 0, the worst). It fades in once the grade is worked out (about 0.2 s). Not your score: see [Awards](../human-play.md#awards-how-you-did-with-your-cards-2026-10-31). |
+| Award title | `title` of `.modal.gameover.award` | D | On hover: "Award *n* of 7: your choices cost *x* each over *n* (cards, discards, trump, exchange)". |
 | End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
 | Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. **‹ Back**, Escape or a click outside closes it. |
 
