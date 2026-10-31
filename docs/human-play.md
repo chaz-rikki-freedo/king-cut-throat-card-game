@@ -194,17 +194,36 @@ An earlier measurement of the hold that ends at once had a fault: with `TAPER_HA
 
 ## Tally: what each seat was dealt (2026-10-31)
 
-Luck is as large as the margin of most games. A seat's points per hand average about 0.8 with a spread of about 0.8, so a 10-hand game carries about ±2.5 to 3 points of luck. `KCT.Tally.read(code)` (section 6e of `index.html`) is level 0 of a luck readout. Nothing in the app calls it yet, and it is not in the README on purpose.
+Chance is as large as the margin of most games: a seat's points per hand average about 0.8 with a spread of about 0.8, so a 10-hand game carries about ±2.5 to 3 points of it. The cards a seat is dealt are only one part of that chance (see Validation). `KCT.Tally.read(code)` (section 6e of `index.html`) is level 0 of a luck readout. Nothing in the app calls it yet, and it is not in the README on purpose.
 
 It replays a code or record and returns, for each deal, the fitted value of what each seat held: `dealt` (the best 7 of its 10 cards) and `kept` (the 7 it kept), by seat (0 is you). The value is `Dynamic.bestEstimate`: expected tricks plus 0.9 × expected King points, in the seat's best suit. It also returns `totals` and each seat's `share` of the table's total, over the scored hands only. A Joker redeal and an abandoned hand are listed and not counted. A game that ended inside a hand counts that hand.
 
 Limits:
 
 - **It says how strong a hand was, not how many points it was worth.** It leaves out the kitty, the trump that was named and the other seats' play.
-- **The fit is rough.** The hand estimate has not been checked against the points a hand scored. Do that before reading a share as luck.
+- **The fit is rough.** See Validation: strength explains only part of the points.
 - **A share is not points.** A seat's share times the points scored in the game would split them in proportion. That is not calibrated, so it is not computed.
 
 First reading, Shark 11 (seed 437250166 for the AI game, the same deals in your game): you were dealt 31% of the table's strength and Lou 36%, in a game you lost 8–10 to Lou. The AI that played your seat on the same deals got 29% and won 10–8. Both games dealt your seat the weakest hands, so the loss was partly the deal.
+
+### Validation (2026-10-31)
+
+`node tests/tally.js 300 4` plays 300 bot games (three default personalities at each table) and compares each seat's kept value with the points it scored. 299 games, 2,813 scored hands, 8,439 seat-hands:
+
+| Measure | Result |
+|---|---|
+| Points of a seat-hand against its kept value | r 0.26, R2 0.07, slope 0.21 points per unit |
+| The same within the hand (strength minus the table mean) | r 0.30, R2 0.09 |
+| Mean points by kept value: below 3, 3-4, 4-5, 5-6, 6 and up | 0.36, 0.64, 0.84, 1.02, 1.16 |
+| Mean points of the strongest, middle and weakest seat in a hand | 1.02, 0.72, 0.46 |
+| Game level: a seat's share of the table's strength against its share of the points | r 0.39, R2 0.15, slope 1.6 |
+
+What it says:
+
+- **The direction is right and steady.** The points rise with each step of strength, and the strongest seat scores more than twice the weakest.
+- **It explains little.** Strength explains about 7% to 9% of a hand's points and about 15% of a game's points share. The rest is the kitty, the trump that was named, who called and how the hands were played.
+- **A game's deal is worth about 0.6 points.** A swing of one standard deviation in the table's strength moves a seat's points by about 0.6 of 10. So the Shark 11 deal below, 31% against 36% for Lou, is worth about 1 point of the 2-point loss, not all of it.
+- **Level 0 is a guide, not a verdict.** A reading as a share of the strength is safe. A reading as luck, or in points, needs a better model. Level 1 (rollouts) is the next step, and it costs minutes per game.
 
 ## Habit report (2026-10-20)
 
