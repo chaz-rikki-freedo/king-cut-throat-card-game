@@ -7853,6 +7853,8 @@ const App = (() => {
   }
   /* The game-over box. From the replay viewer (code: the code watched), at the end of a finished game while awards are
      on: no end buttons, wave note, update offer or review. */
+  let backdropPressed = false;
+  const gameOverOpen = () => !$('overlay').hidden && !!$('overlay').querySelector(':scope > .modal.gameover');
   /** @param {string} [code] */
   function showGameOver(code) {
     const st = app.state, viewer = code !== undefined;
@@ -9524,8 +9526,12 @@ const App = (() => {
       const a = /** @type {HTMLButtonElement | null} */ (ev.target.closest('[data-action]'));
       if (a && !a.disabled) { onAction(a.getAttribute('data-action'), a); return; }
       if (ev.target.id === 'askLayer') { answerAsk(false); return; }
+      /* A tap outside the game-over box goes back, as its Back does. Only a press that also starts outside it counts:
+         a drag that begins in the box and ends outside it is a text selection, not a tap. */
+      if (ev.target.id === 'overlay' && backdropPressed && gameOverOpen()) { $('overlay').hidden = true; return; }
       if (ev.target.closest('#center') && app.timerFn) skip();
     });
+    document.addEventListener('pointerdown', ev => { backdropPressed = ev.target instanceof Element && ev.target.id === 'overlay'; }, true);
     /* The replay controls act on a mouse press: at Instant the steps move them as the table changes, and a release
        away from the button pressed gets no click. A touch still taps, so a swipe that starts on a button can scroll. */
     document.addEventListener('pointerdown', ev => {
@@ -9550,6 +9556,7 @@ const App = (() => {
         }
         return;
       }
+      if (ev.key === 'Escape' && gameOverOpen()) { ev.preventDefault(); $('overlay').hidden = true; return; }
       if (ev.key === 'Escape' && needsSwap() && !$('overlay').hidden && $('overlay').querySelector('.swap')) { ev.preventDefault(); swapBack(); return; }
       /* Escape goes back one view in the menu, then closes it (at launch, to the About screen). */
       if (ev.key === 'Escape' && app.menuOpen && !$('overlay').hidden && $('overlay').querySelector('.menu-stage')) {
