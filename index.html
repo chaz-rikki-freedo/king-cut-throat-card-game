@@ -1018,7 +1018,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '424166f', date: '2026-10-31' });
+const BUILD = Object.freeze({ commit: '6764be7', date: '2026-10-31' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3952,8 +3952,8 @@ const Awards = (() => {
   }
   const A = {
     EDGES, BANDS, DISCARD_WEIGHT, bandOf, solver, read, start,
-    on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
-    set(v) { try { if (v) localStorage.setItem(KEY, 'on'); else localStorage.removeItem(KEY); } catch (e) {  } }
+    on() { try { return localStorage.getItem(KEY) !== 'off'; } catch (e) { return true; } },
+    set(v) { try { if (v) localStorage.removeItem(KEY); else localStorage.setItem(KEY, 'off'); } catch (e) {  } }
   };
   return Object.freeze(A);
 })();
@@ -6291,7 +6291,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length || Awards.on() ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).concat(Awards.on() ? ['awards'] : []).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   function menuNewHTML() {
     const playing = gameOn();
