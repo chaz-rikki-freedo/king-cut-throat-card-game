@@ -7815,16 +7815,13 @@ const App = (() => {
   }
 
   /* The award of the game that ended, while awards are on (Awards): worked out in slices after the box opens (about
-     0.2 seconds), then the box's stroke fades in, in its band's color, and its title says the numbers. Your seat is graded
-     whoever played it. Worked out once per code; a new box stops the work for the last one. */
+     0.2 seconds), then the box's stroke fades in, in its band's color. The stroke is all a player sees: no words or
+     numbers (the event log has them, for development). Your seat is graded whoever played it. Worked out once per code; a new box stops the work for the last one. */
   let awardOf = /** @type {{ code: string, a: Award | null | undefined, stop: () => void } | null} */ (null);
   /** @param {Element} box @param {Award} a */
   function showAward(box, a) {
-    const f = (/** @type {AwardPart} */ x) => x.n ? (x.cost / x.n).toFixed(2) : '-';
     box.classList.add('award');
     box.setAttribute('data-award', String(a.band));
-    box.setAttribute('title', 'Award ' + (a.band + 1) + ' of ' + Awards.BANDS + ': your choices cost ' + a.cost.toFixed(3) + ' each over ' + a.choices +
-      ' (cards ' + f(a.parts.play) + ', discards ' + f(a.parts.discard) + ', trump ' + f(a.parts.name) + ', exchange ' + f(a.parts.exchange) + ')');
   }
   /** @param {Element} box @param {string | null} code */
   function awardBox(box, code) {
@@ -7838,7 +7835,8 @@ const App = (() => {
     awardOf = job;
     job.stop = Awards.start(code, HUMAN, a => {
       job.a = a;
-      if (a) Logger.log('AWARD', { band: a.band, cost: Math.round(1000 * a.cost) / 1000, choices: a.choices });
+      const r = (/** @type {number} */ x) => Math.round(1000 * x) / 1000, part = (/** @type {AwardPart} */ x) => x.n ? r(x.cost / x.n) : null;
+      if (a) Logger.log('AWARD', { band: a.band, cost: r(a.cost), choices: a.choices, cards: part(a.parts.play), discards: part(a.parts.discard), trump: part(a.parts.name), exchange: part(a.parts.exchange) });
       const now = $('overlay').firstElementChild;
       if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
     });

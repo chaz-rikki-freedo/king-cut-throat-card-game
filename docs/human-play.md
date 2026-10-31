@@ -249,7 +249,7 @@ Terms:
 | Value | Expected tricks plus 0.9 × King points, the unit of Tally and `Dynamic.handEstimate`. |
 | Hindsight solver | `Awards.solver`: the value of a card in a main trick with every hand face up, the seat choosing for the most and both opponents for the least. |
 | Defend together | How the hindsight solver plays the opponents: as one side against the graded seat. |
-| Part | The cost and count of one kind of choice: cards, discards, trump or exchange. The award title lists them. |
+| Part | The cost and count of one kind of choice: cards, discards, trump or exchange. The `AWARD` line of the event log lists them. |
 | `EDGES` | The mean costs where bands 5 to 0 start. Fitted by `tests/awards.js`. |
 | Award stroke | The colored border of the game-over dialog while awards are on (see [vocabulary](ui/vocabulary.md#36-game-over-dialog)). |
 
@@ -291,7 +291,8 @@ Limits:
 - **Hindsight is face up.** A card that was right on what you could see can cost something when every hand is shown. Every seat pays that, so the bands allow for it.
 - **The two opponents are taken to defend together.** Real bots don't, so the solver is strict.
 - **The estimate grades discards, trump and exchange.** It leaves out the kitty and the play, so it can call a sound discard poor.
-- **Adjacent colors are close for color-blind players.** Hold the pointer on the box: its title says the band, the mean cost and each part.
+- **The player sees only the color.** No words, numbers or hover text explain the stroke. For development, the event log's `AWARD` line has the band, the mean cost and each part, and `KCT.Awards.read(code)` gives them for any replay code.
+- **Adjacent colors are close for color-blind players.** With no words on the box, that is not solved yet.
 
 ## Habit report (2026-10-20)
 
