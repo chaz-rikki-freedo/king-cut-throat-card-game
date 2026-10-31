@@ -1013,7 +1013,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '8433341', date: '2026-10-31' });
+const BUILD = Object.freeze({ commit: 'efee5a7', date: '2026-10-31' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4860,7 +4860,7 @@ const App = (() => {
     sdSkip: false,
     ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       scoreHold:  ({}) },
-    wave: { n: null, wasOpenAtStart: false, result: null },
+    wave: { n: null, wasOpenAtStart: false, practice: false, result: null },
     humanSeatWasAutoplayed: false,
     seatSwapPending: false,
     houseRules: HOUSE,
@@ -4929,7 +4929,7 @@ const App = (() => {
     app.ui.tunes = opts && opts.tunes ? opts.tunes.map(t => AI.cleanTune(t)) : [null, ...[1, 2].map(p => (app.mode === 'free' ? AI.cleanTune(app.seats[p].tune) : null))];
     app.ui.swapped = false;
     app.said = {};
-    app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), result: null };
+    app.wave = { n: w ? w.n : null, wasOpenAtStart: !!w && Waves.isUnlocked(w.n), practice: !!w && !!(opts && opts.practice), result: null };
     app.humanSeatWasAutoplayed = app.ui.autoplay;
     app.seatSwapPending = !w && !app.ui.autoplay;
     app.ui.endButtons = '';
@@ -4952,7 +4952,7 @@ const App = (() => {
     runReview();
     app.mode = null;
     app.dyn = null;
-    app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.wave = { n: null, wasOpenAtStart: false, practice: false, result: null };
     app.ui.autoplay = false;
     app.seatSwapPending = false;
     app.ui.tunes = [null, null, null];
@@ -5022,6 +5022,7 @@ const App = (() => {
     app.ui.tunes.forEach((t, p) => { if (t) m['ai.tune' + p] = JSON.stringify(t); });
     const out = m;
     if (app.ui.swapped) out['seats.swapped'] = true;
+    if (app.wave.practice) out['wave.practice'] = true;
     return out;
   }
   function finishGame() {
@@ -5056,7 +5057,7 @@ const App = (() => {
   function saveGame() {
     if (watch || !app.mode || !app.state || app.state.gameOver || app.state.phase === P.SETUP) return;
     slots.put(app.mode, {
-      state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart },
+      state: app.state, personas: app.ui.personas.slice(), wave: { n: app.wave.n, open: app.wave.wasOpenAtStart, practice: app.wave.practice },
       assisted: app.humanSeatWasAutoplayed, autoplay: app.ui.autoplay, swapDone: !app.seatSwapPending, tunes: app.ui.tunes, swapped: app.ui.swapped, log: logLines.slice(-LOG_SAVE_MAX()),
       dynamic: app.dyn ? app.dyn.snap : null
     });
@@ -5293,7 +5294,7 @@ const App = (() => {
       app.dyn = mode === 'dynamic' ? Dynamic.trace(s.dynamic, app.state) : null;
       app.said = {};
       Fx.reset();
-      app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, result: null };
+      app.wave = { n: s.wave.n, wasOpenAtStart: !!s.wave.open, practice: !!s.wave.practice, result: null };
       app.humanSeatWasAutoplayed = !!s.assisted;
       app.ui.autoplay = !!s.autoplay && app.ui.allowSeatAI;
       app.seatSwapPending = s.swapDone === false;
@@ -5855,12 +5856,12 @@ const App = (() => {
   ]);
   const inWaves = (a = app) => !!a.wave.n;
   const inShark = (a = app) => !!(a.wave.n && WAVES[a.wave.n - 1] && WAVES[a.wave.n - 1].shark);
-  const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.humanSeatWasAutoplayed;
+  const waveCounts = (a = app) => inWaves(a) && a.wave.wasOpenAtStart && !a.wave.practice && !a.humanSeatWasAutoplayed;
   function forfeitWave(a = app, saved = slots.get('waves'), cleared = Waves.progress().cleared) {
     const live = a.mode === 'waves' && gameOn(a), st = live ? a.state : saved && saved.state;
     if (!st || handNo(st) < 2) return null;
     const n = live ? a.wave.n : saved.wave && saved.wave.n;
-    const counts = live ? waveCounts(a) : !!(saved.wave && saved.wave.open && !saved.assisted);
+    const counts = live ? waveCounts(a) : !!(saved.wave && saved.wave.open && !saved.wave.practice && !saved.assisted);
     return n && counts && !cleared.includes(n) ? n : null;
   }
   const gameOn = (a = app) => !!a.mode && !!a.state && !a.state.gameOver;
@@ -6199,6 +6200,7 @@ const App = (() => {
     const n = app.wave.n, won = app.state.winner === HUMAN, r = app.wave.result, name = waveName(n), shark = WAVES[n - 1].shark;
     if (won && app.humanSeatWasAutoplayed) return '<p class="wave-note">' + name + ': the AI played your seat, so this win does not clear ' + (shark ? 'the table' : 'the wave') + '.</p>';
     if (won && !app.wave.wasOpenAtStart) return '<p class="wave-note">' + name + ' was locked, so this win does not clear it.</p>';
+    if (app.wave.practice) return '<p class="wave-note">' + name + ' was played from a seed you entered, for practice: ' + (won ? 'this win does not clear it.' : 'no try is counted.') + '</p>';
     if (won && shark && r.sharkComplete) return '<p class="wave-note">' + name + ' cleared. You have beaten every table at full strength!</p>';
     if (won && n === WAVE_RUN && r.sharkOpen) return '<p class="wave-note">' + name + ' cleared.' + (r.complete ? ' You have cleared every wave!' : '') + '</p>' +
       '<p class="wave-note">The Shark run is open: the same eighteen tables, with both bots at full strength. Shark 1 is open.</p>';
@@ -6395,7 +6397,7 @@ const App = (() => {
     const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
     const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
     return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '', politePlay: !rec.politeOff },
-      more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
+      more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : rec.mode === 'waves' && rec.meta['wave.practice'] === true ? { practice: true } : undefined };
   }
   function replaySeedRow(at) {
     const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
@@ -6429,7 +6431,7 @@ const App = (() => {
     ov.hidden = true;
     app.menuOpen = false;
     app.mode = null; app.dyn = null; app.ui.autoplay = false;
-    app.wave = { n: null, wasOpenAtStart: false, result: null };
+    app.wave = { n: null, wasOpenAtStart: false, practice: false, result: null };
     app.state = watch.cur.state;
     seatBots(west, east);
     app.ui.selected.clear();
@@ -7176,7 +7178,7 @@ const App = (() => {
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '', politePlay: !app.state.politeOff },
-          inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
+          inWaves() ? (app.wave.practice ? { practice: true } : undefined) : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
       case 'swap-done': swapDone(); break;
@@ -7500,12 +7502,12 @@ const App = (() => {
       if (r.wave && sel.querySelector('option[value="w' + r.wave + '"]')) sel.value = 'w' + r.wave;
       $('codeWhere').hidden = false;
       $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Play';
-      say('Seed ' + r.seed + '. Choose where to play its deals.');
+      say('Seed ' + r.seed + '. Choose where to play its deals.' + (sel.querySelector('option[value^="w"]') ? ' In a wave it plays for practice: a win does not clear the wave, and no try is counted.' : ''));
       return;
     }
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
-    confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+    confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined, undefined, undefined, n ? { practice: true } : undefined) : showMenu(app.menuLaunch));
   }
   function easingReadout() {
     const DY = Dynamic, p = profile.get(), snap = DY.snapshotOf(p), h = p.hands, end = DY.HOLD_HANDS + DY.TAPER_HANDS;
@@ -7753,7 +7755,7 @@ const App = (() => {
     if (replayParam !== null) {
       if (!watchGame(replayParam.trim(), 'link')) { linkNote = 'This replay link does not hold a game that this app can show.'; showMenu(true); }
     } else if (!badLink && (seed !== undefined || Waves.get(wave))) {
-      confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave); else showMenu(true); });
+      confirmReplace(Waves.get(wave) ? 'waves' : 'free').then(yes => { if (yes) newGame(seed, wave, seed !== undefined ? { practice: true } : undefined); else showMenu(true); });
     } else showMenu(true);
     if (TabLock.stale) showStale(); else TabLock.check();
   }
@@ -8889,14 +8891,16 @@ const SelfTest = (() => {
       eq('inWaves and waveCounts: a win counts only in an open wave the AI never played your seat in',
         [A.inWaves(mk({ mode: 'free', state: live })), A.inWaves(w({})), A.waveCounts(w({})), A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: false } })), A.waveCounts(w({ humanSeatWasAutoplayed: true })), A.waveCounts(mk({ mode: 'free', state: live }))],
         [false, true, true, false, false, false]);
+      eq('waveCounts: a wave played from a seed you entered is practice and never counts', A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: true, practice: true } })), false);
       {
         const h = ( k) => ({ gameOver: false, handNumber: k, phase: 'play', redeals: 0 });
         const sv = ( x) => Object.assign({ state: h(3), wave: { n: 4, open: true }, assisted: false }, x);
         eq('forfeitWave: leaving a wave game costs a try from hand 2, only when a win would clear the wave',
           [A.forfeitWave(w({ state: h(1) }), null, []), A.forfeitWave(w({ state: h(2) }), null, []), A.forfeitWave(w({ state: h(2) }), null, [2]),
             A.forfeitWave(w({ state: h(5), humanSeatWasAutoplayed: true }), null, []), A.forfeitWave(w({ state: h(5), wave: { n: 2, wasOpenAtStart: false } }), null, []),
-            A.forfeitWave(w({ state: h(5) }), sv({}), [])],
-          [null, 2, null, null, null, 2]);
+            A.forfeitWave(w({ state: h(5) }), sv({}), []), A.forfeitWave(w({ state: h(5), wave: { n: 2, wasOpenAtStart: true, practice: true } }), null, []),
+            A.forfeitWave(mk({}), sv({ wave: { n: 4, open: true, practice: true } }), [])],
+          [null, 2, null, null, null, 2, null, null]);
         eq('forfeitWave: a saved wave game, when another mode is being played',
           [A.forfeitWave(mk({ mode: 'free', state: live }), sv({}), []), A.forfeitWave(mk({}), sv({ state: h(1) }), []), A.forfeitWave(mk({}), sv({ assisted: true }), []),
             A.forfeitWave(mk({}), sv({ wave: { n: 4, open: false } }), []), A.forfeitWave(mk({}), sv({}), [4]), A.forfeitWave(mk({}), null, [])],
