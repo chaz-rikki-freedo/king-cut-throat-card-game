@@ -498,6 +498,7 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
 .mlore{margin:0;text-align:left;line-height:1.65;font-style:italic}
 .mnote{margin:0;align-self:stretch;text-align:left;font-size:0.8125rem;color:var(--muted)}
 .mnote:empty{display:none}
+.mnote.dev-read{white-space:pre-line;font-family:ui-monospace,Menlo,Consolas,monospace;user-select:text}
 .mlabel{align-self:stretch;text-align:left;font-size:0.875rem;color:var(--muted)}
 .code-in{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:0.875rem!important}
 .mload{align-self:flex-end;min-width:7rem;min-height:3rem;margin:0}
@@ -1007,7 +1008,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '7bc3501', date: '2026-10-30' });
+const BUILD = Object.freeze({ commit: 'a327b00', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1191,10 +1192,11 @@ const Dev = (() => {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, ops: {} };
       if (rest.some(w => /^easing(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: Number(m[1]), ops: {} } : { ok: false, why: 'Write it on its own as easing=hands, for example !dev easing=0.' };
+        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
       }
       const ops = {};
       for (const w of rest) {
@@ -1205,7 +1207,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: null, ops };
+      return { ok: true, reset: false, easing: null, look: false, ops };
     }
   };
   return D;
@@ -3557,7 +3559,7 @@ const Dynamic = (() => {
       setHands(n) { p.hands = n; p.mark = false; js.save(p); }
     });
   }
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, PROFILE_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 const SUIT_SVG = Object.freeze({
   S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
@@ -7208,7 +7210,7 @@ const App = (() => {
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
     }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
@@ -7233,11 +7235,12 @@ const App = (() => {
   function devText() {
     const keys =  (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
-      '. !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
+      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
     $('codeRead').textContent = '';
+    $('codeRead').classList.remove('dev-read');
     $('codeWhere').hidden = true;
     $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Load';
   }
@@ -7246,6 +7249,7 @@ const App = (() => {
     if (!input) return;
     const r = readCode(input.value, true), say = ( t) => { $('codeRead').textContent = t; };
     if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
+    if (r.dev && r.dev.look) { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -7270,6 +7274,24 @@ const App = (() => {
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+  }
+  function easingReadout() {
+    const DY = Dynamic, p = profile.get(), snap = DY.snapshotOf(p), h = p.hands, end = DY.HOLD_HANDS + DY.TAPER_HANDS;
+    const pc = ( x) => String(Math.round(100 * x)).padStart(2, '0');
+    const rate = ( a,  b) => (b > 0 ? pc(a / b) : '--');
+    const next = DY.startEase(snap);
+    const lines = [
+      'P h' + h + (h < DY.HOLD_HANDS ? 'H' : h < end ? 'T' : 'R') + ' f' + pc(DY.floorEase(h)) + ' t' + pc(DY.slowTarget(snap)) + ' n' + pc(next) + ' k' + sharkLimit(next) + ' m' + (p.mark ? 1 : 0),
+      'S sh' + rate(p.share.me, p.share.all) + ' fc' + rate(p.calls.failed, p.calls.n) + ' be' + rate(p.bids.errors, p.bids.n) + ' sl' + rate(p.plays.slips, p.plays.n) + ' w' + pc(h / (h + DY.PROFILE_HANDS))
+    ];
+    const d = app.dyn;
+    if (app.mode === 'dynamic' && d && app.state && !app.state.gameOver) lines.push('G h' + d.hands + ' s' + pc(d.e0) + ' e' + pc(d.e) + ' t' + pc(d.target) + ' F' + (d.fast ? 1 : 0) + ' v' + d.weakSeen + '/' + d.visible.length);
+    const games = replays.list().filter(e => e.mode === 'dynamic').slice(0, 5).map(e => {
+      const rec = safe(() => Replay.decode(e.code)), sn = rec && rec.meta ? DY.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : null;
+      return (e.assisted ? 'A' : e.winner === 0 ? 'W' : 'L') + (sn ? pc(DY.startEase(sn)) : '--');
+    });
+    lines.push('L ' + (games.join(' ') || '-'));
+    return lines.join('\n');
   }
   async function setEasing(n) {
     const hold = Dynamic.HOLD_HANDS, end = hold + Dynamic.TAPER_HANDS, was = profile.get().hands;
@@ -8042,10 +8064,11 @@ const SelfTest = (() => {
       eq('Load a code: empty, too large a seed, a cut code and junk', kinds(['  ', '4294967296', code.slice(0, code.length - 30), 'hello', 'https://example.com/?x=1']), ['empty', 'bad', 'bad', 'bad', 'bad']);
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, ops: {} }, { reset: true, easing: null, ops: {} }, { reset: false, easing: 120, ops: {} }, { reset: false, easing: 0, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, ops: {} }, { reset: true, easing: null, look: false, ops: {} },
+          { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
