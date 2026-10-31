@@ -12,7 +12,9 @@
        out in the order of their win rates, and how the cost goes with skill (its tier's win rate) and with winning
      - one replay code per band, graded for seat 0: paste it in Menu -> Load a code with !dev awards=on, and the
        game-over box at its end shows that band's stroke
-   Usage: node awards.js [games=300] [workers=4] [first seed=5150] */
+   With a fourth argument, a file name, it also writes each seat's tier, result and parts there as JSON, to try weights
+   and edges without playing the games again.
+   Usage: node awards.js [games=300] [workers=4] [first seed=5150] [save.json] */
 'use strict';
 const { serve, launch, openPage, run } = require('./lib/browser');
 
@@ -41,7 +43,7 @@ const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 const f = (x, d = 3) => x.toFixed(d);
 
 (async () => {
-  const [g = '300', w = '4', s0 = '5150'] = process.argv.slice(2), games = Number(g), workers = Number(w);
+  const [g = '300', w = '4', s0 = '5150', save] = process.argv.slice(2), games = Number(g), workers = Number(w);
   const srv = await serve(), browser = await launch(), t0 = Date.now();
   const seeds = Array.from({ length: games }, (_, i) => (Number(s0) * 1000003 + i * 104729) >>> 0);
   const R = await Promise.all(Array.from({ length: workers }, async (_, k) => {
@@ -52,6 +54,7 @@ const f = (x, d = 3) => x.toFixed(d);
   await browser.close(); srv.close();
   const G = R.flatMap(r => r.out), EDGES = R[0].edges, WEIGHT = R[0].weight;
   const seats = G.flatMap(gm => [0, 1, 2].map(p => ({ cost: gm.cost[p], band: gm.bands[p], tier: gm.tiers[p], won: gm.winner === p, ms: gm.ms[p], parts: gm.parts[p], choices: gm.choices[p] })));
+  if (save) require('fs').writeFileSync(save, JSON.stringify(seats.map(({ tier, won, parts, choices }) => ({ tier, won, parts, choices }))));
   const ms = seats.map(x => x.ms).sort((a, b) => a - b);
   console.log(G.length + ' games, ' + seats.length + ' seat-games (' + Math.round((Date.now() - t0) / 1000) + ' s)');
   console.log('time to grade a seat: median ' + Math.round(ms[ms.length >> 1]) + ' ms, 95% ' + Math.round(ms[Math.floor(ms.length * 0.95)]) + ' ms, most ' + Math.round(ms[ms.length - 1]) + ' ms');
