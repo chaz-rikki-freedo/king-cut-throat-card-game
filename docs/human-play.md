@@ -225,6 +225,36 @@ What it says:
 - **A game's deal is worth about 0.6 points.** A swing of one standard deviation in the table's strength moves a seat's points by about 0.6 of 10. So the Shark 11 deal below, 31% against 36% for Lou, is worth about 1 point of the 2-point loss, not all of it.
 - **Level 0 is a guide, not a verdict.** A reading as a share of the strength is safe. A reading as luck, or in points, needs a better model. Level 1 (rollouts) is the next step, and it costs minutes per game.
 
+## Awards: how you did with your cards (2026-10-31)
+
+The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades your seat on what you did with the cards you kept. With `!dev awards=on` (see [tests/README.md](../tests/README.md#dev-commands)), the game-over box shows the grade as a heavy stroke in one of 7 colors. It's a dev feature: off for a new install, and nothing else uses it.
+
+The grade is the gap between two shares, both from the game alone:
+
+- **Your share of the points**: your final score over the table's total.
+- **The share your cards predict**: 1/3 + `SLOPE` × (your share of the kept strength − 1/3). The kept strength is Tally's.
+
+`EDGES` cut the gap into bands 0 to 6. The constants are fitted on bot games, every seat of three default personalities, so that 5, 12, 20, 26, 20, 12 and 5% of seat-games fall in bands 0 to 6: band 3 (yellow) is a bot's usual game, and each end band is about 1 game in 20.
+
+| Band | Color token | Gap from | Bot games (out of sample) |
+|---|---|---|---|
+| 0 | `--award0` neon red | below −0.24 | 4.9% |
+| 1 | `--award1` red-orange | −0.24 | 11.3% |
+| 2 | `--award2` orange | −0.14 | 22.4% |
+| 3 | `--award3` yellow | −0.05 | 24.8% |
+| 4 | `--award4` yellow-green | 0.04 | 20.2% |
+| 5 | `--award5` green | 0.14 | 11.8% |
+| 6 | `--award6` neon green | 0.28 | 4.6% |
+
+The fit is 1,200 games (`SLOPE` 1.83). The check is 600 other games (`node tests/awards.js 600 3 5150`): the bands match the targets within 2 points. [tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from that check.
+
+Limits:
+
+- **The grade is mostly your score.** Strength explains about 15% of a game's points share (see Tally), so the cards move the grade only a little. A loss on a weak deal can still grade yellow or better.
+- **The slope is loose.** Samples of 300 to 1,200 games give 1.4 to 1.8. The bands hold their targets because the edges are fitted with the slope.
+- **Bands are against default bots.** A game against Sharks grades lower than the same play against an eased Dynamic table.
+- **Adjacent colors are close for color-blind players.** Hold the pointer on the box: its title says the band and the numbers.
+
 ## Habit report (2026-10-20)
 
 The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.
