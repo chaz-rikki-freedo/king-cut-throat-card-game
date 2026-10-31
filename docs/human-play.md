@@ -258,10 +258,10 @@ Terms:
 
 | Band | Color token | Mean cost per choice |
 |---|---|---|
-| 6 | `--award6` neon green | below 0.038 |
+| 6 | `--award6` emerald neon green | below 0.038 |
 | 5 | `--award5` green | 0.038 |
-| 4 | `--award4` yellow-green | 0.067 |
-| 3 | `--award3` yellow | 0.097 |
+| 4 | `--award4` lemon | 0.067 |
+| 3 | `--award3` gold | 0.097 |
 | 2 | `--award2` orange | 0.135 |
 | 1 | `--award1` red-orange | 0.176 |
 | 0 | `--award0` neon red | 0.228 and up |
