@@ -44,10 +44,11 @@ const SEATS = [
     let step = (src, arg) => run(page, src, arg, ['drive.js']);
     await step(`
       const set = (id, v) => { const c = q('#' + id); if (c.type === 'checkbox') { if (c.checked !== v) c.click(); } else { c.value = String(v); c.dispatchEvent(new Event('change', { bubbles: true })); } };
-      click('[data-action="toggle-settings"]'); click('#setTabGame'); await sleep(20);
+      click('[data-action="toggle-settings"]'); click('#setTabTable'); await sleep(20);
       q('#setFelt input[value="winter"]').click();
       set('setColorBlind', true);
       for (const id of ['setMemTrumps', 'setMemKings', 'setMemTurned', 'setMemVoids']) set(id, true);
+      for (const id of ['setMemShowTurned', 'setMemShowDiscards', 'setMemShowPlays']) set(id, false);
       set('setMediatorLead', false); set('setJokerFlip', 'random'); set('setPolitePlay', false); set('setSeatAI', true);
       click('#setTabTools'); set('setEnable', true);
       click('#setTabBots'); await sleep(20);
@@ -83,12 +84,12 @@ const SEATS = [
       click('[data-action="toggle-settings"]'); await sleep(20);
       const tab = q('.set-tab[aria-selected="true"]').getAttribute('data-tab');
       const g = { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked,
-        mem: ['setMemTrumps', 'setMemKings', 'setMemTurned', 'setMemVoids'].map(id => q('#' + id).checked),
+        mem: ['setMemTrumps', 'setMemKings', 'setMemTurned', 'setMemVoids', 'setMemShowTurned', 'setMemShowDiscards', 'setMemShowPlays'].map(id => q('#' + id).checked).join(), preset: q('#setMemPreset').value,
         ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value, pp: q('#setPolitePlay').checked, seatAI: q('#setSeatAI').checked, log: q('#setEnable').checked };
       const seats = arg.map((fields, p) => Object.keys(fields).filter(f => q('#seat' + p + '-' + f).value !== fields[f]));
       return { tab, g, seats, app: JSON.parse(JSON.stringify(app.seats)), speed: app.ui.speed, speedSel: q('#speedSel').value };`, SEATS);
     expect('Settings opens on the tab it was on (Bots)', shown.tab === 'Bots', shown.tab);
-    expect('every Game setting is back', shown.g.felt === 'winter' && shown.g.cb && shown.g.mem.every(Boolean) && !shown.g.ml && shown.g.jf === 'random' && !shown.g.pp, shown.g);
+    expect('every Table setting is back', shown.g.felt === 'winter' && shown.g.cb && shown.g.mem === 'true,true,true,true,false,false,false' && shown.g.preset === 'custom' && !shown.g.ml && shown.g.jf === 'random' && !shown.g.pp, shown.g);
     expect('Event log is still on', shown.g.log === true);
     expect('every seat control shows its value', shown.seats.every(x => x.length === 0), shown.seats);
     expect('the seats are the same as before the restart', JSON.stringify(shown.app) === JSON.stringify(before.seats), [shown.app, before.seats]);
@@ -122,19 +123,19 @@ const SEATS = [
     console.log('Defaults set back, then a second restart');
     await step(`
       click('[data-action="toggle-settings"]'); click('#setTabBots'); await sleep(20);
-      click('[data-action="settings-reset"]');
-      KCT.App.gameReset('theme'); KCT.App.gameReset('memory'); KCT.App.gameReset('house');
+      click('[data-action="settings-reset"]'); await waitFor('#askLayer .modal'); click('[data-action="ask-ok"]'); await sleep(20);
+      KCT.App.tableReset();
       const e = q('#setEnable'); if (e.checked) e.click();
       return 1;`);
     await stop();
     page = await start();
     step = (src, arg) => run(page, src, arg, ['drive.js']);
     const again = await step(`
-      click('[data-action="toggle-settings"]'); click('#setTabGame'); await sleep(20);
-      return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, mem: ['setMemTrumps', 'setMemKings', 'setMemTurned', 'setMemVoids'].some(id => q('#' + id).checked),
+      click('[data-action="toggle-settings"]'); click('#setTabTable'); await sleep(20);
+      return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, mem: q('#setMemPreset').value,
         ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value, pp: q('#setPolitePlay').checked, log: q('#setEnable').checked,
         seats: app.seats.every(s => s.who === '' && s.tune === null), free: !!A.slots.get('free'), waves: !!A.slots.get('waves') };`);
-    expect('the defaults stay after a restart', again.felt === 'classic' && !again.cb && !again.mem && again.ml && again.jf === '' && again.pp && !again.log && again.seats, again);
+    expect('the defaults stay after a restart', again.felt === 'classic' && !again.cb && again.mem === 'standard' && again.ml && again.jf === '' && again.pp && !again.log && again.seats, again);
     expect('the saved games are still there', again.free && again.waves, again);
 
     expect('no page errors', errors.length === 0, errors);

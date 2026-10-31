@@ -72,6 +72,7 @@ GAME fields:
   - 6: the Showdown shuffle and a random Joker suit draw from a stream made for each deal from the seed and the deal number (every deal counts, a redeal too). They depend only on that deal's play, not on earlier hands.
 - **options** (rules version 3 and up): a bit field of house rules. Bit 0 (value 1), `mediatorLead`: after the Showdown discards, the mediator picks the leader with a SHOWDOWN_LEAD decision. Without it, the Showdown player who won the latest main trick leads. A record keeps it as `mediatorLead` (true or false).
   - Bits 1–3 (rules version 4 and up), `jokerFlip`, a number: 0 = off (a turned-up Joker voids the hand), 1 = Spades, 2 = Diamonds, 3 = Clubs, 4 = Hearts, 5 = Random. With a value, a turned-up Joker offers that suit for trump instead of a redeal; Random draws the suit from the RNG (the second RNG in rules version 5, the deal's stream from version 6) when the Joker is turned up, so the code needs no extra data. A reader refuses the values 6 and 7. A record keeps it as `jokerFlip`: `'S'`, `'D'`, `'C'`, `'H'`, `'random'` or `null`.
+  - Bit 4 (value 16), `politeOff`: the game was played with the house rule Polite Play off, so its trick circles only count. It changes no move, so it needs no rules version, and an older reader ignores it. Written only when off, so a code with Polite Play on is the same as before the bit. A record keeps it as `politeOff` (true or false).
 - **seed**: the 32-bit game seed.
 - **mode**: 0 = not known, 1 = Free play (`free`), 2 = Waves (`waves`), 3 = Dynamic (`dynamic`). A later version can add more values. A reader shows an unknown value as `mode<n>`.
 - **wave**: the wave number, or 0 for no wave. Waves 19 to 36 are the Shark run (Shark 1 to 18: the tables of waves 1 to 18 with both bots at Shark skill).
@@ -204,6 +205,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
   rules: 6,                   // the game's rules version (Engine.RULES_VERSION for a new game)
   mediatorLead: true,         // house rule: the mediator picks the Showdown leader
   jokerFlip: null,            // house rule: the suit a turned-up Joker takes ('S', 'D', 'C', 'H', 'random'), or null
+  politeOff: false,           // house rule: Polite Play was off (the trick circles only count)
   seed: 4242,
   mode: 'waves',              // 'free', 'waves', 'dynamic', null, or 'mode<n>'
   wave: 3,                    // or null
@@ -229,7 +231,7 @@ If the deck changes, raise `Engine.RULES_VERSION`.
 
 1. Decode the code. Refuse it if the version is newer, a required section is unknown, or the bytes stop early.
 2. Refuse it if `rules` is newer than `Engine.RULES_VERSION`.
-3. `state = Engine.createGame(seed, names, rules, { mediatorLead, jokerFlip })`.
+3. `state = Engine.createGame(seed, names, rules, { mediatorLead, jokerFlip, politePlay: !politeOff })`.
 4. Repeat until the game ends:
    - If `Engine.systemAction(state)` gives an action, dispatch it.
    - If not, skip MARK entries and dispatch the next decision. If there is no next decision, stop (an unfinished game). If the next entry is EXT, stop with an error.
@@ -255,7 +257,7 @@ The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes
 | A rule change that changes the game for the same decisions | Raise `Engine.RULES_VERSION`. |
 | A change to the layout of section 4 itself | Raise the format version (`KCT4-`). Keep a reader for the old versions. |
 
-Input that starts with `!` is reserved for dev commands in **Load a code** (`!dev`, see [tests/README.md](../tests/README.md#dev-commands)). No code family, link form or backup form may start with `!`. The self-test `replay` checks this.
+Input that starts with `!` is reserved for dev commands in **Load a code** (`!dev`, see [tests/README.md](../tests/README.md#dev-commands)). No code family, link form or backup form may start with `!`. The word `pulse` is reserved too: on **Load**, it shows Dynamic's easing readout. No code family may be that word. The self-test `replay` checks both.
 
 ## 11. Size and limits
 

@@ -19,7 +19,7 @@
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
   --page:#0a2a19; --panel:rgba(0,0,0,.26); --panel-strong:rgba(0,0,0,.42);
   --ink:#f5f2e9; --muted:#bccbbf; --gold:#f2c14e; --gold-ink:#3a2a00;
-  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b;
+  --accent:#7cc4ff; --danger:#ff8a80; --good:#9be59b; --mine:#8ff59a;
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
@@ -132,7 +132,6 @@ select{font:inherit;background:rgba(0,0,0,.3);color:var(--ink);border:1px solid 
 .seat-face:hover{transform:scale(1.08)}
 .seat-face:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 #seat0 .seat-name{color:var(--name0)}
-.playing-as{font-size:0.8125rem;color:var(--muted)}
 .modal.persona{max-width:22.5rem}
 .persona .sheet-body{display:flex;flex-direction:column;align-items:center;gap:0.875rem;text-align:center}
 .persona .p-face{width:8.25rem;height:8.25rem;background:center bottom/contain no-repeat}
@@ -207,6 +206,20 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .pf-glist .pf-g2{display:flex;align-items:center;gap:0.75rem;margin-left:auto}
 .pf-glist .pf-acts{display:inline-flex;gap:0.375rem}
 @media (max-width:600px){.pf-glist .pf-g1{flex-basis:100%}.pf-glist .pf-g2{margin-left:0;flex:1;justify-content:space-between}}
+/* The Games list: back-to-back games at one table under one header (the table, then how the tries went). A game is a
+   row: your score in a square (gold when you won), the opponents' scores and when, then its actions. */
+.pf-tg{margin:0 0 0.5rem;border-radius:0.75rem;background:rgba(255,255,255,.04);overflow:hidden}
+.pf-tg-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:0.125rem 0.75rem;padding:0.5rem 0.75rem 0.375rem;font-weight:700}
+.pf-tg-h small{font-size:0.75rem;font-weight:600;color:var(--muted)}
+.pf-tg-h small.won{color:var(--name0)}
+.pf-tg ol{list-style:none;margin:0;padding:0}
+.pf-tg li{display:flex;align-items:center;gap:0.75rem;padding:0.4375rem 0.75rem;border-top:1px solid rgba(255,255,255,.07)}
+.pf-sq{flex:none;display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:0.5625rem;background:rgba(255,255,255,.08);color:var(--muted);font-size:1.125rem;font-weight:800;font-variant-numeric:tabular-nums}
+.pf-sq.won{background:var(--gold);color:var(--gold-ink)}
+.pf-tg .pf-gm{flex:1;min-width:0;display:flex;flex-direction:column;font-size:0.875rem;line-height:1.3}
+.pf-tg .pf-gm .num{font-variant-numeric:tabular-nums}
+.pf-tg .pf-gm .dim{font-size:0.8125rem}
+.pf-tg .pf-acts{display:inline-flex;gap:0.375rem;flex:none}
 @media (max-width:480px){.pf-bar,.profile .pf-loss{display:none}.profile td,.profile th{padding:0.3125rem 0.25rem}.profile .pf-tables td:first-child{max-width:7.5rem}}
 .tag{font-size:0.6875rem;font-weight:700;letter-spacing:.05em;padding:1px 0.375rem;border-radius:0.3125rem;background:rgba(255,255,255,.16);text-transform:uppercase}
 .tag.ai{background:#33507a}
@@ -312,6 +325,8 @@ button.card{cursor:pointer}
 
 .gamelog{list-style:none;margin:0;padding:0.5rem 0.625rem;overflow:auto;overscroll-behavior:contain;font-size:0.8125rem;flex:1;max-height:60vh;background:rgba(0,0,0,.28);border-radius:0.625rem;box-shadow:inset 0 0.125rem 0.375rem rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.3)}
 .gamelog li{padding:0.1875rem 0}
+/* Table memory → Plays in the Latest Scroll and Turned-up card, off: the lines stay in the log and its save, unseen. */
+.gamelog.hide-plays li.play,.gamelog.hide-turned li.flip{display:none}
 .gamelog li.k{color:var(--gold);font-weight:700}
 .gamelog li.h,.gamelog li.s{font-weight:600}
 .gamelog .lead-h{color:var(--accent);font-weight:800}
@@ -438,16 +453,25 @@ body.set-open{overflow:hidden}
 .settings .set-row-pick select{max-width:none}
 .settings .set-row > .btn{margin:0;min-width:5.5rem}
 /* The switch: a checkbox drawn as a track and a knob. */
-.settings input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
-.settings input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
-.settings input.sw:checked{background:var(--gold);border-color:var(--gold)}
-.settings input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
-.settings input.sw:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.1875rem}
-@media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before{transition:none}}
+.settings input.sw,.panel input.sw{appearance:none;-webkit-appearance:none;flex:none;width:3rem;height:1.75rem;margin:0;border-radius:0.875rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.settings input.sw::before,.panel input.sw::before{content:'';position:absolute;top:0.1875rem;left:0.1875rem;width:1.25rem;height:1.25rem;border-radius:50%;background:#cfe0d4;box-shadow:0 1px 0.1875rem rgba(0,0,0,.4);transition:transform .15s}
+.settings input.sw:checked,.panel input.sw:checked{background:var(--gold);border-color:var(--gold)}
+.settings input.sw:checked::before,.panel input.sw:checked::before{transform:translateX(1.25rem);background:#fff}
+/* Mixed (Table memory → All aids, with some aids on): the knob waits halfway, on a gold edge. */
+.settings input.sw:indeterminate{border-color:var(--gold)}
+.settings input.sw:indeterminate::before{transform:translateX(0.625rem)}
+.settings input.sw:focus-visible,.panel input.sw:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.1875rem}
+@media (prefers-reduced-motion:reduce){.settings input.sw,.settings input.sw::before,.panel input.sw,.panel input.sw::before{transition:none}}
 .settings .k-hint{margin:0;color:var(--set-hint);font-size:0.8125rem;line-height:1.45}
 /* The running game plays a house rule other than the setting (see leadRuleNote). */
 .rule-note{border-left:0.1875rem solid var(--gold);padding-left:0.5rem}
 .settings .k-hint.rule-note{color:inherit}
+/* Outside a card, .set-note's padding would put the text against the gold bar: keep a gap, and the bar to the text. */
+.settings .set-pane > .rule-note,.settings .seat-body > .rule-note{padding:var(--s1) 0 var(--s1) var(--s3)}
+/* A pane's opening words: a lead line, its fine print, and room before what follows. */
+.settings .set-intro{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s2)}
+.settings .set-lead{margin:0;font-size:0.9375rem;line-height:1.5}
+.settings .set-pane > .rule-note{margin-bottom:var(--s2)}
 .settings .set-off{opacity:.45;pointer-events:none}
 /* Settings → Bots: one collapsed group per seat, with collapsed groups inside it. */
 .settings .seat-sets{display:flex;flex-direction:column;gap:var(--s3)}
@@ -462,6 +486,7 @@ body.set-open{overflow:hidden}
 .settings .seat-body > .set-card{background:none}
 .settings .seat-sub{border:1px solid var(--set-line);border-radius:0.75rem}
 .settings .seat-sub > summary{font-weight:700;padding:var(--s2) var(--s4);min-height:2.5rem}
+.settings #setMemEach{margin:var(--s3) 0}
 .settings .seat-sub > .set-card{border:0;border-top:1px solid var(--set-line);border-radius:0 0 0.75rem 0.75rem;background:none}
 .settings .seat-set .set-row.changed .set-name::after{content:' •';color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.settings .seat-set > summary::before,.settings .seat-sub > summary::before{transition:none}}
@@ -497,18 +522,30 @@ body.set-open{overflow:hidden}
 .overlay:has(> .menu-stage){padding:0}
 .menu-stage{place-self:stretch;position:relative;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-edge) 100%)}
 .menu-stage .about-kings{position:fixed}
-.menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem}
+.menu-card{margin:auto;width:min(100%,25rem);gap:0;padding:1.75rem 1.5rem 1.25rem;border-width:0.125rem}
 /* The versions under Load a code: a pill floating at the foot of the window, with room kept under the card. */
 .code-ver{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;margin:0;padding:0.375rem 0.875rem;white-space:nowrap;font-size:0.75rem;color:var(--muted);background:var(--panel-strong);border:1px solid rgba(255,255,255,.12);border-radius:999px;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);-webkit-backdrop-filter:blur(0.375rem);backdrop-filter:blur(0.375rem);pointer-events:none}
 .code-ver[hidden]{display:none}
 .menu-stage:has(> .code-ver:not([hidden])){padding-bottom:4rem}
+/* While a question is open, what it covers shows only as a plain backdrop, never peeking out around it: over the menu,
+   the felt and its kings, as on the About screen; over a panel (Your profile, Settings), the panel's own surface. Their
+   contents hide with their place kept, so nothing moves when the question closes. */
+body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #overlay > .modal.sheet > *, #settingsPanel > *){visibility:hidden}
 .mview{display:flex;flex-direction:column;align-items:center;gap:0.875rem;width:100%}
 .mview[hidden]{display:none}
 .mepi{font-style:italic;font-size:0.875rem}
 /* The one big button: Continue (with the game in two short lines) or New game. */
-.mgo{width:100%;border:0;border-radius:0.75rem;padding:0.75rem 1rem;background:var(--gold);color:var(--gold-ink);font:inherit;font-size:1.0625rem;font-weight:800;cursor:pointer}
+.mgo{width:100%;border:0;border-radius:0.75rem;padding:0.75rem 1rem 0.9375rem;background:var(--gold);color:var(--gold-ink);font:inherit;font-size:1.0625rem;font-weight:800;cursor:pointer}
 .mgo small{display:block;font-size:0.75rem;font-weight:600;opacity:.8}
 .mgo:hover{filter:brightness(1.07)}
+/* Weighted strokes: the menu's buttons sit on a lip, as pressable keys, and sink into it when pressed. The lip is
+   drawn outside the button, under its stroke, so it follows the corners: a darker gold under a gold button, a ledge in
+   the stroke's color under the others. */
+.menu-card .btn{border-width:0.125rem;font-weight:700;box-shadow:0 0.1875rem 0 rgba(255,255,255,.12)}
+.mgo,.menu-card .btn.primary{box-shadow:0 0.1875rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.menu-card .btn:active:not(:disabled){box-shadow:0 0.0625rem 0 rgba(255,255,255,.12)}
+.mgo:active,.menu-card .btn.primary:active:not(:disabled){box-shadow:0 0.0625rem 0 color-mix(in srgb,var(--gold) 60%,var(--gold-ink))}
+.mgo:active,.menu-card .btn:active:not(:disabled){transform:translateY(0.125rem)}
 .mgo:focus-visible,.mlist button:focus-visible,.mfoot button:focus-visible,.mback:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 /* A list of plain lines between thin rules: a name, a note and ›. */
 .mlist{width:100%;margin:0;padding:0;list-style:none;border-top:1px solid rgba(255,255,255,.12)}
@@ -518,29 +555,42 @@ body.set-open{overflow:hidden}
 .mlist .chev{color:var(--muted);font-weight:400}
 .mlist small + .chev{margin-left:0}
 .mlist .mname + .chev{margin-left:auto}
-.mdot{width:0.625rem;height:0.625rem;border-radius:50%;flex:none}
+.mdot{width:0.3125rem;height:1.375rem;border-radius:999px;flex:none}
 .mdot.dynamic{background:var(--mode-dynamic)}.mdot.waves{background:var(--mode-waves)}.mdot.free{background:var(--mode-free)}
 .mfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:0.125rem 0.25rem}
 .mfoot button{border:0;background:none;color:var(--muted);font:inherit;font-size:0.8125rem;padding:0.5rem;border-radius:0.375rem;cursor:pointer}
 .mfoot button:hover{color:var(--ink)}
 .menu-card .about-credit{margin-top:0.25rem!important}
 /* A view's heading: Back, then its title in the middle. */
-.mtop{display:grid;grid-template-columns:4.5rem 1fr 4.5rem;align-items:center;width:100%}
+.mtop{display:grid;grid-template-columns:minmax(4.5rem,1fr) auto minmax(4.5rem,1fr);align-items:center;width:100%}
+.mtop > :last-child:not(:first-child):not(h2,h3,.big){justify-self:end}
 .mtop h3{margin:0;font-size:1.125rem;text-align:center}
-.mtop h3 .mode-chip{font-size:0.875rem;padding:0.25rem 0.875rem}
+.mtop h3 .mode-chip{display:inline-block;font-size:0.875rem;padding:0.25rem 0.875rem;box-shadow:inset 0 -0.125rem 0 rgba(0,0,0,.25)}
 .mback{justify-self:start;border:0;background:none;color:var(--muted);font:inherit;font-weight:700;padding:0.5rem 0.25rem;cursor:pointer}
 .mback:hover{color:var(--ink)}
-/* A mode's view. Its goal opens Your profile for the mode. */
-.mstat{margin:0;display:flex;flex-direction:column;align-items:center;font-size:0.875rem;color:var(--muted);text-align:center}
-.mstat span:first-child{color:var(--ink);font-weight:700}
-.mtail{font-size:0.8125rem;color:var(--muted);background:none;border:0;font-family:inherit;cursor:pointer;padding:0.375rem;border-radius:0.375rem;text-decoration:underline dotted;text-underline-offset:0.1875rem}
-.mtail:hover{color:var(--ink)}
-.mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0}
-.mbtns{display:flex;align-items:center;justify-content:center;gap:0.5rem;width:100%}
-.mbtns .btn{flex:1;margin:0;min-height:2.75rem;max-width:9rem}
-.menu-card select,.menu-card .code-in{width:100%;background:var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
+/* A mode's view. Its game is a scoreboard in a well: the caption, then each player's name in their color over their
+   score. Without a game the well keeps its height, so nothing under it moves. */
+.mboard{box-sizing:border-box;width:100%;min-height:5.75rem;display:flex;flex-direction:column;justify-content:center;gap:0.375rem;padding:0.625rem 0.75rem;border-radius:0.75rem;background:rgba(0,0,0,.25);border:0.125rem solid rgba(255,255,255,.12);text-align:center}
+.mcap{margin:0;font-size:0.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mscores{display:grid;grid-template-columns:repeat(3,1fr);margin:0;padding:0;list-style:none}
+.mscores li{display:flex;flex-direction:column;align-items:center;min-width:0}
+.mscores li + li{border-left:0.125rem solid rgba(255,255,255,.12)}
+.mscores b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.875rem}
+.mscores span{font-size:1.5rem;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--ink)}
+.mboard.empty .mcap{font-size:0.875rem;letter-spacing:0;text-transform:none;color:var(--ink)}
+.mtag{margin:0;font-size:0.875rem;color:var(--muted)}
+/* The goal: a pill with its meter and ›, which opens Your profile for the mode. */
+.mtail{display:inline-flex;align-items:center;gap:0.5rem;min-height:2.25rem;font-size:0.8125rem;font-weight:700;color:var(--ink);background:none;border:0.125rem solid rgba(255,255,255,.12);border-radius:999px;font-family:inherit;cursor:pointer;padding:0.25rem 0.625rem 0.25rem 0.875rem}
+.mtail::after{content:'›';color:var(--muted);font-weight:400;font-size:1rem;line-height:1}
+.mtail:hover{border-color:rgba(255,255,255,.22)}
+.mtail:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.mmeter{width:3.5rem;height:0.375rem;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.mmeter i{display:block;height:100%;background:var(--gold);border-radius:inherit}
+.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:0.625rem;width:100%}
+.mbtns .btn{margin:0;min-height:3rem;font-size:1rem}
+.menu-card select,.menu-card .code-in{width:100%;background:var(--felt-edge);color:var(--ink);border:0.125rem solid rgba(255,255,255,.22);border-radius:0.5rem;padding:0.375rem 0.625rem;min-height:2.75rem;font:inherit}
 .menu-card select:focus-visible,.menu-card .code-in:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-/* Discard game: a faint icon before Resume, only with a game, so it never competes with Resume. */
+/* Discard game: a faint icon on the right of the heading, only with a game, so it never competes with Resume. */
 .mdel{width:2.75rem;height:2.75rem;display:grid;place-items:center;flex:none;padding:0;background:none;border:0;border-radius:0.625rem;color:var(--ink);opacity:.35;cursor:pointer}
 .mdel:hover,.mdel:focus-visible{opacity:.8}
 .mdel svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -557,9 +607,10 @@ body.set-open{overflow:hidden}
 .mlore{margin:0;text-align:left;line-height:1.65;font-style:italic}
 .mnote{margin:0;align-self:stretch;text-align:left;font-size:0.8125rem;color:var(--muted)}
 .mnote:empty{display:none}
+.mnote.dev-read{white-space:pre-line;font-family:ui-monospace,Menlo,Consolas,monospace;user-select:text}
 .mlabel{align-self:stretch;text-align:left;font-size:0.875rem;color:var(--muted)}
 .code-in{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:0.875rem!important}
-.mload{align-self:flex-end;min-width:7rem;min-height:2.75rem;margin:0}
+.mload{align-self:flex-end;min-width:7rem;min-height:3rem;margin:0}
 .about-king.pip.red > span{color:var(--pip-red)}
 @media (max-width:620px){
   .menu-stage{padding:1rem 0.75rem}
@@ -573,7 +624,7 @@ body.set-open{overflow:hidden}
 .swap-seat small{font-size:0.75rem;color:var(--muted)}
 .swap-side{font-size:0.6875rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .swap-btn{font-size:1.375rem;padding:0.5rem 0.875rem;flex:none;align-self:center}
-.swap-last{margin:0;font-size:0.8125rem;color:var(--muted)}
+.swap-last,.swap-note{margin:0;font-size:0.8125rem;color:var(--muted)}
 /* On a phone a seat's label can take two lines: both keep room for two, so the two figures line up. */
 @media (max-width:599px){ .swap-side{min-height:2.6em;display:flex;align-items:center} }
 .install-check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0.25rem;font-size:0.8125rem}
@@ -805,6 +856,10 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel p{margin:0.25rem 0;line-height:1.4}
 .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .panel .pnote{color:var(--muted);font-size:0.75rem}
+/* A switch in a popup (Forced plays, in the Human tag's): its name and a line, then the switch. */
+.panel .pswitch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0.75rem;margin:0.5rem 0 0.125rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
+.panel .pswitch b{display:block}
+.panel .pswitch span span{display:block;color:var(--muted);font-size:0.75rem;line-height:1.35}
 .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   .sscore{font-size:1.375rem!important}
@@ -839,9 +894,23 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel .pgrid{display:grid;align-items:center;justify-items:center;gap:0.25rem 0.375rem}
 .panel .pname{font-size:0.75rem;max-width:4.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel .led .micro{box-shadow:0 0 0 0.125rem #00838f}
+/* A card list in a popup (Trump, Kings): one card a row, highest first, with what is known about it to its right.
+   The popup that holds one is narrower: the list needs little width. */
+.panel.narrow{max-width:15rem}
+.panel .plist{display:grid;grid-template-columns:var(--card-micro) minmax(0,1fr);gap:0.375rem 0.75rem;align-items:center;margin:0.375rem 0 0.25rem 0.1875rem}
+/* Your cards in a popup (card lists, tricks): tinted green (also the Joker, which is otherwise black), with dark rank text for contrast. */
+.panel .micro.mine{background:var(--mine)!important;color:var(--black)!important}
+.panel .micro.mine .rank{color:var(--black)}
+.panel .plist .micro.gone{opacity:.35}
+.panel .plist .pn{white-space:nowrap}
+.panel .plist .pn.gone{color:var(--muted)}
+.panel .plist .pn.you{color:var(--mine)}
 .panel dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:0.25rem 0.625rem}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0}
+.panel dd .minis{gap:0.25rem}
+.panel dd .minis .micro{margin:0}
+.panel dl.pout{align-items:center}
 .panel .pip-red{color:var(--pip-red)}
 .panel .pvoid{display:flex;align-items:center;gap:0.5rem;margin:0.125rem 0 0}
 .panel .vpip{font-size:1.375rem;line-height:1;color:var(--ink)}
@@ -907,7 +976,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-title{font-size:1.875rem}
 }
 </style>
-<!-- Theme packs (Settings → Game → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
+<!-- Theme packs (Settings → Table → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
 <script type="application/json" id="themePacks">
 {"felts":{
@@ -1015,26 +1084,34 @@ window.kctTheme = (() => {
     <button class="mback" type="button" data-action="toggle-settings" aria-label="Back: close settings">‹ Back</button>
     <h2 class="set-title" id="setTitle">Settings</h2>
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
-      <button class="set-tab" type="button" role="tab" id="setTabGame" aria-controls="setPaneGame" data-action="set-tab" data-tab="Game">Game</button>
+      <button class="set-tab" type="button" role="tab" id="setTabTable" aria-controls="setPaneTable" data-action="set-tab" data-tab="Table">Table</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
   </header>
   <div class="set-body">
-    <section class="set-pane" id="setPaneGame" role="tabpanel" aria-labelledby="setTabGame">
-      <h3 class="set-head">Theme</h3>
-      <div class="set-card" id="setTheme">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
-          <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
-        <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
-      </div>
+    <section class="set-pane" id="setPaneTable" role="tabpanel" aria-labelledby="setTabTable">
       <h3 class="set-head">Table memory</h3>
       <div class="set-card" id="setInterface">
-        <p class="k-hint set-note">What every player has seen this hand, added to the popups. Never a card someone holds unseen.</p>
-        <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup lists the trumps played and not seen yet.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup lists the Kings still to come.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
-        <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
+        <p class="k-hint set-note">What the table keeps for you this hand. Off, you remember it yourself, as at a real table. Never a card someone holds unseen.</p>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setMemPreset">Help level</label><span class="set-desc">Full help: every aid on. Standard: what the table shows by default. Real table: you remember it all.</span></span>
+          <select id="setMemPreset"><option value="full">Full help</option><option value="standard">Standard</option><option value="real">Real table</option><option value="custom" disabled hidden>Custom</option></select></div>
+        <details class="seat-set" id="setMemEach"><summary><span class="set-name">Each aid</span><span class="seat-sum" id="setMemSum"></span></summary><div class="seat-body">
+          <div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">All aids</span><span class="set-desc">Turns every aid below on or off at once.</span></span><input class="sw" type="checkbox" id="setMemAll"></label>
+          </div>
+          <details class="seat-sub" id="setMemAdds"><summary>Added to popups</summary><div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">Trumps played</span><span class="set-desc">The Trump popup marks each trump: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemTrumps"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Kings not played</span><span class="set-desc">The Hand popup marks each King: yours, played or discarded.</span></span><input class="sw" type="checkbox" id="setMemKings"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Turned card</span><span class="set-desc">Who took the turned-up card, and whether they have played it.</span></span><input class="sw" type="checkbox" id="setMemTurned"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Voids</span><span class="set-desc">A bot's hand of backs shows the suits it can't follow.</span></span><input class="sw" type="checkbox" id="setMemVoids"></label>
+          </div></details>
+          <details class="seat-sub" id="setMemShows"><summary>Shown on the table</summary><div class="set-card">
+            <label class="set-row"><span class="set-text"><span class="set-name">Turned-up card</span><span class="set-desc">After the bidding, the Turned up cell, the popups and the Latest Scroll still show it. Off: you remember it.</span></span><input class="sw" type="checkbox" id="setMemShowTurned"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Your discards</span><span class="set-desc">The Outside and Kitty popups show the cards you discarded. Off: counts only.</span></span><input class="sw" type="checkbox" id="setMemShowDiscards"></label>
+            <label class="set-row"><span class="set-text"><span class="set-name">Plays in the Latest Scroll</span><span class="set-desc">Each card played stays in the Latest Scroll. Off: bids, trick winners and scores only.</span></span><input class="sw" type="checkbox" id="setMemShowPlays"></label>
+          </div></details>
+        </div></details>
       </div>
       <h3 class="set-head">House rules</h3>
       <div class="set-card" id="setHouseRules">
@@ -1043,27 +1120,29 @@ window.kctTheme = (() => {
         <div class="set-row"><span class="set-text"><label class="set-name" for="setJokerFlip">Turned-up Joker</label><span class="set-desc">Redeal: the hand is void. A suit: the Joker offers that suit for trump, to save a deal. Applies from your next game.</span></span>
           <select id="setJokerFlip"><option value="">Redeal</option><option value="S">Spades</option><option value="H">Hearts</option><option value="D">Diamonds</option><option value="C">Clubs</option><option value="random">Random</option></select></div>
         <p class="k-hint rule-note set-note" id="setJokerNow" hidden></p>
-        <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Advanced UI: a click on trick circles shows the tricks won. Off: you remember them. Applies at once.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
+        <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Won tricks stay face up, as at a real table: a click on trick circles shows them. Off: you remember them. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
+        <p class="k-hint rule-note set-note" id="setPoliteNow" hidden></p>
       </div>
-      <h3 class="set-head">Your seat</h3>
-      <div class="set-card" id="setSeat">
-        <label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>
-        <p class="k-hint set-note">Who the AI plays as in your seat, and how: Settings → Bots → Your seat. A game it plays clears no wave.</p>
+      <h3 class="set-head">Theme</h3>
+      <div class="set-card" id="setTheme">
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
+          <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
+        <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
       </div>
-      <h3 class="set-head">Gameplay defaults</h3>
-      <div class="set-card" id="setGameDefaults">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setGameReset">Reset to defaults</label><span class="set-desc">A setting goes back to its default. A mode also loses its progress, saved game, results and replay codes.</span></span>
-          <span class="set-btns"><select id="setGameReset"><option value="all">All settings and modes</option><optgroup label="Settings"><option value="theme">Theme</option><option value="memory">Table memory</option><option value="house">House rules</option></optgroup><optgroup label="Modes"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup></select><button class="btn" type="button" data-action="game-reset">Reset…</button></span></div>
+      <h3 class="set-head">Table defaults</h3>
+      <div class="set-card" id="setTableDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc">Table memory, House rules and Theme go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
       </div>
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
-      <p class="k-hint set-note">Who sits in each seat, and how each bot plays. <b>Its own</b> keeps a bot's personality; any other choice changes that one thing. Changes apply from your next game. A bot you change does not count in your results.</p>
-      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>Waves and Dynamic always seat their own bots, playing as themselves. West and East apply in Free play only. Your seat applies in every mode.</p>
+      <div class="set-intro"><p class="set-lead">Choose who sits in each seat and how each bot plays.</p>
+        <p class="k-hint">Changes start next game. A bot you change doesn't count in your results.</p></div>
+      <p class="k-hint set-note rule-note" id="setWaveNote" hidden>In Waves and Dynamic, only <b>Your seat</b> applies.</p>
       <div class="seat-sets" id="setSeats"></div>
       <h3 class="set-head">Bot defaults</h3>
-      <div class="set-card">
-        <div class="set-row"><span class="set-text"><span class="set-name">All seats</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself.</span></span><button class="btn" type="button" data-action="settings-reset">Reset</button></div>
+      <div class="set-card" id="setBotDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc">Every seat: the seed picks who sits, and each bot plays as itself. Your progress stays.</span></span><button class="btn" type="button" data-action="settings-reset">Reset…</button></div>
       </div>
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
@@ -1085,12 +1164,9 @@ window.kctTheme = (() => {
       <div class="set-card" id="setData">
         <div class="set-row"><span class="set-text"><span class="set-name">Back up</span><span class="set-desc">Save your progress, results, saved games and settings in a file.</span></span><button class="btn" type="button" data-action="backup-save">Save file</button></div>
         <div class="set-row"><span class="set-text"><span class="set-name">Restore</span><span class="set-desc">Replace all data on this device with a backup file.</span></span><button class="btn" type="button" data-action="backup-restore">Choose file…</button><input type="file" id="backupFile" aria-label="Backup file" hidden></div>
+        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase</label><span class="set-desc">Delete from this device, with no undo. The page reloads afterward. To keep a copy, use Back up first.</span></span>
+          <span class="set-btns"><select id="setClientReset"><optgroup label="One mode"><option value="waves">Waves progress</option><option value="dynamic">Dynamic progress</option><option value="free">Free play history</option></optgroup><optgroup label="All"><option value="profile">All progress</option><option value="all">Progress + settings</option><option value="full">Everything + game files</option></optgroup></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
         <p class="k-hint set-note" id="setDataNote" role="status" hidden></p>
-      </div>
-      <h3 class="set-head">Client resets</h3>
-      <div class="set-card" id="setClientResets">
-        <div class="set-row set-row-pick"><span class="set-text"><label class="set-name" for="setClientReset">Erase from this device</label><span class="set-desc">The page reloads afterward. To keep a copy, use Back up first.</span></span>
-          <span class="set-btns"><select id="setClientReset"><option value="profile">Progress</option><option value="all">Progress + settings</option><option value="full">Everything + game files</option></select><button class="btn" type="button" data-action="client-reset">Erase…</button></span></div>
       </div>
     </section>
   </div>
@@ -1290,6 +1366,10 @@ const RNG = (() => {
    "!dev key=value ...", "!dev" (list) or "!dev reset". Only caps that do
    not change a game: no rule, deal, bot or progress. They last for the tab
    (sessionStorage 'kct-dev': not a 'kct.' key, so never in a backup).
+   Two commands are not caps: "!dev easing=N" sets the hand count of
+   Dynamic's profile (kct.profile) to N, after a question, which moves the
+   hold and the taper. The record and everything else stay. "!dev easing"
+   alone shows a terse readout of the easing (legend: tests/README.md).
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1328,13 +1408,19 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
     reset() { vals = {}; D.set({}); },
-    /** Reads a dev command: '!dev', '!dev reset' or '!dev key=value ...'. Never changes anything.
-        @param {string} text @returns {{ ok: true, reset: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+    /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N' or '!dev key=value ...'. Never changes
+        anything. easing: the hand count N, or null. look: '!dev easing', the readout. @param {string} text
+        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, ops: {} };
+      if (rest.some(w => /^easing(=|$)/i.test(w))) {
+        const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
+        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+      }
       /** @type {Partial<Record<DevKey, number>>} */
       const ops = {};
       for (const w of rest) {
@@ -1345,7 +1431,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, ops };
+      return { ok: true, reset: false, easing: null, look: false, ops };
     }
   };
   return D;
@@ -1413,7 +1499,7 @@ const Logger = (() => {
  *   suit?: string | null, leader?: number }} Decision
  * @typedef {{ name: string, human: boolean }} PlayerInfo
  * @typedef {{
- *   version: number, seed: number, rules?: number, mediatorLead?: boolean, jokerFlip?: string, jokerSuit?: string,
+ *   version: number, seed: number, rules?: number, mediatorLead?: boolean, jokerFlip?: string, jokerSuit?: string, politeOff?: boolean,
  *   rng: { s: number }, sideRng?: { s: number }, playRng?: { s: number }, decisions?: Decision[],
  *   players: PlayerInfo[], scores: number[], dealer: number | null, handNumber: number,
  *   redeals?: number, redeal?: boolean, phase: string, gameOver: boolean, winner: number | null,
@@ -1428,7 +1514,7 @@ const Logger = (() => {
  *   showdown: Showdown | null, played: string[], playLog: Play[], voids: string[][],
  *   memory: { out: string[] }[], handSummary: HandSummary | null, handStats?: HandStats,
  *   planSeat?: number, plan?: string
- * }} GameState  rules, mediatorLead, jokerFlip, sideRng: see createGame. jokerSuit: see FLIP. playRng, planSeat, plan: AI play-out states only.
+ * }} GameState  rules, mediatorLead, jokerFlip, politeOff, sideRng: see createGame. jokerSuit: see FLIP. playRng, planSeat, plan: AI play-out states only.
  *   decisions, redeals, redeal, handStats: real games only.
  */
 /* ---------------------------------------------------------------------
@@ -1467,6 +1553,8 @@ const Engine = (() => {
      options.mediatorLead (house rule, from version 3): the Showdown mediator picks who leads. Kept only when on.
      options.jokerFlip (house rule, from version 4): a Joker turned up from the kitty takes a suit instead of a redeal:
      'S', 'H', 'D', 'C', or 'random' (drawn from the game's RNG at the turn). Kept only when on.
+     options.politePlay (house rule): false keeps politeOff, so the table's trick circles only count for the whole
+     game. It changes no move, so it needs no rules version. Kept only when off.
      sideRng (version 5 only): the draws that depend on play (the Showdown shuffle, a random Joker suit), so that rng
      makes only the dealer and the deck shuffles. From version 6 these draws come from dealRng instead. */
   function createGame(seed, names, rules = RULES_VERSION, options) {
@@ -1498,6 +1586,7 @@ const Engine = (() => {
     if (rules > 1) state.rules = rules;
     if (rules > 2 && options && options.mediatorLead) state.mediatorLead = true;
     if (rules > 3 && options && JOKER_FLIPS.includes(options.jokerFlip)) state.jokerFlip = options.jokerFlip;
+    if (options && options.politePlay === false) state.politeOff = true;
     if (rules === 5) state.sideRng = { s: (seed ^ 0x85EBCA6B) >>> 0 };
     resetHand(state);
     return state;
@@ -2129,8 +2218,9 @@ const Replay = (() => {
   const REPLAY_MODES = Object.freeze(['free', 'waves', 'dynamic']);
   const FLAG = Object.freeze({ assisted: 1 });
   /* House rules, a bit field at the end of GAME (rules version 3 and up). Bits 1-3 (rules version 4 and up) hold
-     jokerFlip as a number: 0 = off (redeal), then JOKER_FLIP_CODES. The order is part of the format. */
-  const OPTION = Object.freeze({ mediatorLead: 1 });
+     jokerFlip as a number: 0 = off (redeal), then JOKER_FLIP_CODES. Bit 4: Polite Play off (an older app ignores it).
+     The order is part of the format. */
+  const OPTION = Object.freeze({ mediatorLead: 1, politeOff: 16 });
   const JOKER_FLIP_SHIFT = 1, JOKER_FLIP_MASK = 7;
   const JOKER_FLIP_CODES = Object.freeze(['S', 'D', 'C', 'H', 'random']);
   const META_TYPE = Object.freeze({ INT: 0, TEXT: 1, BYTES: 2, BOOL: 3 });
@@ -2181,7 +2271,7 @@ const Replay = (() => {
   /* An empty record: every field that a code can carry. */
   function blank() {
     return {
-      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, jokerFlip: null, seed: 0, mode: null, wave: null,
+      v: VERSION, rules: Engine.RULES_VERSION, mediatorLead: false, jokerFlip: null, politeOff: false, seed: 0, mode: null, wave: null,
       seats: [null, null, null], decisions: [],
       result: null, flags: { assisted: false }, endedAt: null, meta: {}, unknown: []
     };
@@ -2196,6 +2286,7 @@ const Replay = (() => {
     rec.rules = state.rules || 1;
     rec.mediatorLead = !!state.mediatorLead;
     rec.jokerFlip = state.jokerFlip || null;
+    rec.politeOff = !!state.politeOff;
     rec.seed = state.seed >>> 0;
     rec.mode = m.mode || null;
     rec.wave = m.wave || null;
@@ -2293,7 +2384,7 @@ const Replay = (() => {
     if ((rec.rules || 1) >= 3) {
       const joker = (rec.rules || 1) >= 4 && rec.jokerFlip ? JOKER_FLIP_CODES.indexOf(rec.jokerFlip) + 1 : 0;
       if (joker === 0 && (rec.rules || 1) >= 4 && rec.jokerFlip) throw new Error('unknown Joker rule ' + rec.jokerFlip);
-      game.uint((rec.mediatorLead ? OPTION.mediatorLead : 0) | (joker << JOKER_FLIP_SHIFT));
+      game.uint((rec.mediatorLead ? OPTION.mediatorLead : 0) | (joker << JOKER_FLIP_SHIFT) | (rec.politeOff ? OPTION.politeOff : 0));
     }
     put(TAG.GAME, game);
     if (rec.seats && rec.seats.some(Boolean)) { const w = writer(); for (const s of rec.seats) w.text(s || ''); put(TAG.SEATS, w); }
@@ -2359,6 +2450,7 @@ const Replay = (() => {
           rec.wave = s.uint() || null; sawGame = true;
           const options = s.more() ? s.uint() : 0;
           rec.mediatorLead = !!(options & OPTION.mediatorLead);
+          rec.politeOff = !!(options & OPTION.politeOff);
           const joker = (options >> JOKER_FLIP_SHIFT) & JOKER_FLIP_MASK;
           if (joker > JOKER_FLIP_CODES.length) throw new Error('unknown Joker rule ' + joker + ' in replay code');
           rec.jokerFlip = joker ? JOKER_FLIP_CODES[joker - 1] : null;
@@ -2402,7 +2494,7 @@ const Replay = (() => {
     const rules = rec.rules || 1;
     if (!Number.isInteger(rules) || rules < 1 || rules > Engine.RULES_VERSION) throw new Error('replay uses rules version ' + rec.rules + ', this app has ' + Engine.RULES_VERSION);
     let state, next, steps;
-    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || undefined }); next = 0; steps = 0; }
+    function reset() { state = Engine.createGame(rec.seed, names, rules, { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || undefined, politePlay: !rec.politeOff }); next = 0; steps = 0; }
     const isMark = d => !!d && d.type === 'MARK';
     function skipMarks() { while (next < rec.decisions.length && isMark(rec.decisions[next])) next++; }
     function step() {
@@ -2488,7 +2580,7 @@ function buildView(state, seat) {
     round: state.round, bidTurn: state.bidTurn, bidLog: state.bidLog.map(b => Object.assign({}, b)),
     trump: state.trump, caller: state.caller, receiver: state.receiver, exchangeCount: state.exchangeCount,
     received: seat === state.receiver ? state.received.slice() : [],
-    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), actors: Engine.actors(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead,
+    pendingDiscard: state.pendingDiscard.slice(), discardTurn: Engine.discardTurn(state), actors: Engine.actors(state), rules: state.rules || 1, mediatorLead: !!state.mediatorLead, politeOff: !!state.politeOff,
     activePlayers: state.activePlayers.slice(),
     currentPlayer: state.currentPlayer, leader: state.leader,
     trickNumber: state.trickNumber, totalTricks: state.totalTricks,
@@ -4032,12 +4124,21 @@ const Dynamic = (() => {
      gap to the target that e closes after a hand. LET_GO: visible hands in a row without a trigger before the fast
      path lets go. LOSS: a discard loss above this is a gross mistake. PROFILE_HANDS: the K in w = h / (h + K). Decision 14 set 100; it is 50 since
      tests/pace.js showed that 100 barely helps a weak player within five games (PR #124). */
+  /* BAD_HAND: the readout's weak hand ('pulse', line B), not the fast path's WEAK. At 3.0 a seat is dealt about 0.9 a
+     game, against 0.4 at 2.5, and a seat that plays like the bots still scores what the bots score on them. */
+  const BAD_HAND = 3.0;
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
   /* HOLD_HANDS: while a profile holds fewer hands than this (about the first 8 games), the easing stays at 1: the bots at
      the floor and no Shark at the table. A new player is bad for a while, and the slow path needs about 50 hands of record
      before it weighs in. The hold counts every hand in the profile, from any mode. It ends at once, and the easing then
-     tightens as usual (tests/career.js: a weak player won about 40% of the first 8 games, up from about 23%). */
+     tightens as usual (tests/career.js: a weak player won about 40% of the first 8 games, up from about 23%).
+     TAPER_HANDS: after the hold, the easing never falls below a floor that runs from 1 down to 0 over this many hands.
+     Ending the hold at once dropped a weak player from 1 to about 0.17 in one game, since its record was made against the
+     floor; the taper lets the record build against stronger bots first. */
   const HOLD_HANDS = 80;
+  const TAPER_HANDS = 80;
+  /** The least easing at a profile of h hands: 1 through the hold, then down to 0 over the taper. @param {number} h */
+  const floorEase = h => (h < HOLD_HANDS ? 1 : h >= HOLD_HANDS + TAPER_HANDS ? 0 : 1 - (h - HOLD_HANDS) / TAPER_HANDS);
   /* Tuning defaults, not owner decisions (the record leaves them to playtests):
      - DECAY: each new sample keeps this share of the old sums, so the profile follows the last ~100 samples.
      - Prior counts pull a small sample toward normal play: SHARE_PRIOR points at an even share (1/3),
@@ -4148,6 +4249,9 @@ const Dynamic = (() => {
     share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
     habits: { calls: 0, made: 0, value: 0 },
+    /* Weak hands (a dealt hand whose best 7 cards are worth less than BAD_HAND): decayed counts and net points, yours (n,
+       pts) and the bots' at the same tables (bn, bpts). Only the readout ('pulse') shows them; no easing reads them. */
+    weak: { n: 0, pts: 0, bn: 0, bpts: 0 },
     /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
     mark: false, at: /** @type {number | null} */ (null)
   });
@@ -4164,6 +4268,8 @@ const Dynamic = (() => {
     p.discards = { n: num(d.n), loss: num(d.loss) };
     p.plays = { n: num(pl.n), slips: Math.min(num(pl.slips), num(pl.n)) };
     p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
+    const wk = o(x.weak), fin = (/** @type {any} */ y) => (typeof y === 'number' && isFinite(y) ? y : 0);
+    p.weak = { n: num(wk.n), pts: num(wk.n) ? fin(wk.pts) : 0, bn: num(wk.bn), bpts: num(wk.bn) ? fin(wk.bpts) : 0 };
     p.mark = x.mark === true;
     p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
     return p;
@@ -4200,8 +4306,9 @@ const Dynamic = (() => {
       T.SLIP_WEIGHT * clamp01((slips - T.SLIP_NORMAL) / T.SLIP_SPAN);
     return (x.h / (x.h + PROFILE_HANDS)) * clamp01(e);
   }
-  /** The easing a game starts at: 1 when the profile is marked, else w × e_profile. @param {DynSnapshot} snap */
-  const startEase = snap => (snap.mark || snap.h < HOLD_HANDS ? 1 : slowTarget(snap));
+  /** The easing a game starts at: 1 when the profile is marked, else w × e_profile, but never below the hold and taper's
+      floor. @param {DynSnapshot} snap */
+  const startEase = snap => (snap.mark ? 1 : Math.max(floorEase(snap.h), slowTarget(snap)));
 
   /* ---- The read of a hand (decisions 5 and 20) ---- */
   /* The phases where a hand has ended (its points are in), before the next deal. A game that ends mid-hand has no read. */
@@ -4248,7 +4355,7 @@ const Dynamic = (() => {
           const fire = t.visible.slice(-3).filter(Boolean).length >= 2;
           if (fire) { t.fast = true; t.quiet = 0; } else if (t.fast && ++t.quiet >= LET_GO) t.fast = false;
         }
-        t.target = t.fast || t.h < HOLD_HANDS ? 1 : slowTarget(t);
+        t.target = t.fast ? 1 : Math.max(floorEase(t.h), slowTarget(t));
         t.e += (t.target > t.e ? EASE_UP : EASE_DOWN) * (t.target - t.e);
         return r;
       },
@@ -4289,7 +4396,12 @@ const Dynamic = (() => {
         const step = cur.step();
         if (!step) break;
         const a = step.action, st = cur.state;
-        if (a.type === 'DEAL') { h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0] }; hands.push(h); }
+        if (a.type === 'DEAL') {
+          /* Which seats were dealt a weak hand: the best 7 of the dealt cards worth less than BAD_HAND. */
+          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < BAD_HAND);
+          h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0], weak, net: [0, 0, 0] };
+          hands.push(h);
+        }
         if (h && a.player === me) {
           if (a.type === 'DISCARD' && phase === P.DISCARD) h.loss = Math.max(0, bestKeep(mine, mine.length - a.cards.length) - bestEstimate(mine.filter(id => !a.cards.includes(id))));
           if (a.type === 'BID') {
@@ -4310,6 +4422,7 @@ const Dynamic = (() => {
           h.called = r.called && !!st.handSummary;
           h.failed = r.failed;
           h.gain = r.gain;
+          if (st.handStats) h.net = st.handStats.pts.map(x => x.king + x.hand + x.showdown);
           if (!h.called) h.callValue = null;
         }
       }
@@ -4343,6 +4456,11 @@ const Dynamic = (() => {
       }
       const all = h.gain[0] + h.gain[1] + h.gain[2];
       if (mode === 'dynamic' && all > 0) p.share = { me: p.share.me * D + h.gain[0], all: p.share.all * D + all };
+      if (h.weak && h.net) {
+        const w = p.weak;
+        if (h.weak[0]) { w.n = w.n * D + 1; w.pts = w.pts * D + h.net[0]; }
+        for (const q of [1, 2]) if (h.weak[q]) { w.bn = w.bn * D + 1; w.bpts = w.bpts * D + h.net[q]; }
+      }
     }
     p.games++;
     p.mark = rv.marked;
@@ -4357,11 +4475,13 @@ const Dynamic = (() => {
       get: () => JSON.parse(JSON.stringify(p)),
       /** @param {{ hands: any[], marked: boolean, plays?: DynPlays }} rv @param {string | null} mode @param {number} [at] */
       add(rv, mode, at) { p = addGame(p, rv, mode, at); js.save(p); return JSON.parse(JSON.stringify(p)); },
-      reset() { p = blankProfile(); js.save(p); }
+      reset() { p = blankProfile(); js.save(p); },
+      /** '!dev easing=N': the hand count only, which sets the hold and the taper; the record stays. @param {number} n */
+      setHands(n) { p.hands = n; p.mark = false; js.save(p); }
     });
   }
 
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, PROFILE_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -4698,11 +4818,13 @@ const Render = (() => {
   /* A personality's figure: a small button that opens its profile, or a large picture. */
   const faceButtonHTML = x => '<button type="button" class="seat-face" data-action="persona" data-id="' + escHTML(x.id) + '" aria-label="About ' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></button>';
   const faceHTML = x => '<div class="p-face" role="img" aria-label="' + escHTML(x.name) + '" style="background-image:url(' + PERSONA_ART[x.id] + ')"></div>';
-  /* The bottom seat's figure and name: yours, or a bot's in its color when the replay viewer sits there. */
+  /* The bottom seat's figure and name: yours, or a bot's in its color when the replay viewer sits there or the AI
+     plays your seat (then the bot's own name: the log and results still say You). */
   function meNameHTML(v, ui) {
     const bot = !v.players[v.seat].human && PERSONA_BY_ID[ui.personas[v.seat]];
     if (bot) return faceButtonHTML(bot) + '<span class="seat-name" style="color:' + escHTML(bot.color) + '">' + nameOf(v, v.seat) + '</span>';
     const mine = ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
+    if (mine) return meFaceHTML(mine) + '<span class="seat-name" style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</span>';
     return meFaceHTML(mine) + '<span class="seat-name">' + nameOf(v, v.seat) + '</span>';
   }
   /* Your figure while you play your own seat (opens Your profile); a bot playing for you shows its own. */
@@ -4720,21 +4842,31 @@ const Render = (() => {
     if (!x) return '<span class="seat-name">' + nameOf(v, p) + '</span>';
     return faceButtonHTML(x) + '<span class="seat-name" style="color:' + escHTML(x.color) + '">' + nameOf(v, p) + '</span>';
   }
-  function personaHTML(x) {
+  /* A bot's profile. cfg: the settings it plays with (its personality's when left out), so the dials show a seat's
+     tune or a Shark table's skill. note: a line under the dials, or ''. */
+  function personaHTML(x, cfg = AI.personaConfig(x), note = '') {
     const pips = n => '<span class="pips" aria-label="' + n + ' of 4">' + [1, 2, 3, 4].map(i => '<b' + (i <= n ? ' class="on"' : '') + '></b>').join('') + '</span>';
+    const st = cfg.style, ways = habitWords(st);
     return sheetHTML('persona', escHTML(x.name), '<h2 style="color:' + escHTML(x.color) + '">' + escHTML(x.name) + '</h2>') + faceHTML(x) +
       '<p class="p-quote">“' + escHTML(x.quote) + '”</p><p class="p-hint">' + escHTML(x.hint) + '</p>' +
-      '<div class="p-dials"><span>Card sense</span>' + pips(PERSONA_LEVEL[x.tier]) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[x.courage]) +
-      '<span>Reads you</span>' + pips(Math.round(4 * (x.credulity || 0))) + '<span>Feints</span>' + pips(Math.round(4 * (x.feint || 0))) +
-      (habitWords(x) ? '<span class="p-ways">' + escHTML(habitWords(x)) + '</span>' : '') +
-      (x.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div></div></div>';
+      '<div class="p-dials"><span>Card sense</span>' + pips(cardSense(cfg)) + '<span>Nerve</span>' + pips(PERSONA_LEVEL[st.courage]) +
+      '<span>Reads you</span>' + pips(Math.round(4 * st.credulity)) + '<span>Feints</span>' + pips(Math.round(4 * st.feint)) +
+      (ways ? '<span class="p-ways">' + escHTML(ways) + '</span>' : '') +
+      (st.realTable ? '<span class="habit">Set in their ways</span>' : '') + '</div>' + (note ? '<p class="p-hint">' + escHTML(note) + '</p>' : '') + '</div></div>';
   }
-  /* A bot's card habits in a few words, for its profile. */
-  function habitWords(x) {
-    const h = x.habits || {};
-    const W = { lead: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, win: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
-      void: { ruff: 'trumps in', low: 'throws low' }, kings: { early: 'Kings early', late: 'Kings late' } };
-    const w = /** @type {string[]} */ (['lead', 'win', 'void', 'kings'].map(k => /** @type {any} */ (W)[k][/** @type {any} */ (h)[k]]).filter(Boolean));
+  /* Card sense out of 4: the skill tier the settings match, else the tier nearest in hunches. */
+  function cardSense(cfg) {
+    const tier = AI.skillTierOf(cfg);
+    if (tier !== 'custom') return PERSONA_LEVEL[tier];
+    const gap = (/** @type {string} */ t) => Math.abs(Math.log(cfg.thinking.worlds / AI.SKILL_TIERS[t].thinking.worlds));
+    return PERSONA_LEVEL[Object.keys(AI.SKILL_TIERS).reduce((a, b) => (gap(b) < gap(a) ? b : a))];
+  }
+  /* A bot's card habits in a few words, for its profile; none at 0% habit strength. @param {Style} st */
+  function habitWords(st) {
+    if (!st.slack) return '';
+    const W = { leadHabit: { trump: 'leads trump', long: 'leads long suits', short: 'leads short suits', kings: 'leads Kings' }, winHabit: { cheap: 'wins cheap', big: 'wins big', duck: 'holds back' },
+      voidHabit: { ruff: 'trumps in', low: 'throws low' }, kingHabit: { early: 'Kings early', late: 'Kings late' } };
+    const w = /** @type {string[]} */ (Object.keys(W).map(k => /** @type {any} */ (W)[k][/** @type {any} */ (st)[k]]).filter(Boolean));
     return w.length ? w.join(' · ').replace(/^./, c => c.toUpperCase()) : '';
   }
 
@@ -4896,10 +5028,11 @@ const Render = (() => {
   let drawnKey = '';
 
   /* A text-sized card: rank and suit on white, as in the log. */
-  function microHTML(id, joker) {
-    const c = R.card(id);
-    if (c.isJoker) return '<span class="micro" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
-    return '<span class="micro"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
+  /* mine: one of your cards, tinted green in the popups. */
+  function microHTML(id, joker, mine) {
+    const c = R.card(id), cls = mine ? 'micro mine' : 'micro';
+    if (c.isJoker) return '<span class="' + cls + '" style="background:#000;color:#f2c14e">' + (joker || 'Joker') + '</span>';
+    return '<span class="' + cls + '"><span class="rank">' + c.rank + '</span><span class="' + (R.COLOR[c.suit] === 'red' ? 'pip-red' : 'pip-black') + '" role="img" aria-label="' + R.SUIT_NAME[c.suit] + '">' + suitSVG(c.suit, 'm-suit') + '</span></span>';
   }
   const turnSeat = v => { const t = [0, 1, 2].filter(p => isTurn(v, p)); return t.length === 1 ? t[0] : -1; };
   const sdShown = v => !!(v.showdown && (v.showdown.active || v.phase === P.SHOWDOWN_SETUP));
@@ -4919,7 +5052,7 @@ const Render = (() => {
     const tag = (kind, label, inner) => '<span class="tag ' + kind + ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="tag" data-tag="' + kind + '" data-seat="' + p + '" title="About ' + label + '">' + (inner || label) + '</span>';
     if (human && ui.allowSeatAI) t.push('<span class="tag ' + (auto ? 'ai' : 'you') + ' seat-toggle" role="button" tabindex="0" data-action="toggle-autoplay">' + (auto ? 'AI' : 'Human') + '</span>');
     else t.push(human && !auto ? tag('you', 'Human') : tag('ai', 'AI'));
-    if ((v.showdown ? v.showdown.mediator : v.dealer) === p) t.push(tag('dealer', 'Dealer'));
+    if (v.dealer === p) t.push(tag('dealer', 'Dealer'));
     if (v.caller === p && v.trump) t.push(tag('caller', 'Namer'));
     if (v.receiver === p && v.trump && !(v.showdown && v.showdown.active)) t.push(tag('receiver', 'Kitty'));
     if (turnSeat(v) === p) t.push(tag('turn', 'Turn'));
@@ -4929,13 +5062,14 @@ const Render = (() => {
     return '<div class="tagbox">' + t.join('') + '</div>';
   }
   /* Trick circles fill as tricks are won: 7 a hand; a Showdown player counts Showdown tricks (5). A click opens
-     the tricks that player won this hand, unless the house rule Polite Play is off: then the circles only count. */
+     the tricks that player won this hand, unless the game started with the house rule Polite Play off: then the
+     circles only count. */
   function advCircles(v, p, ui) {
     const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(p);
     const n = sd ? v.showdown.tricksWon[p] : v.tricksWon[p], of = sd ? Engine.C.SHOWDOWN_TRICKS : Engine.C.MAIN_TRICKS;
     let dots = ''; for (let i = 0; i < of; i++) dots += i < n ? '<i class="on"></i>' : '<i></i>';
     const label = n + ' of ' + of + ' tricks won';
-    if (ui && ui.houseRules && ui.houseRules.politePlay === false) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
+    if (v.politeOff) return '<div class="tpips" role="img" aria-label="' + label + '">' + dots + '</div>';
     return '<div class="tpips tappable" role="button" tabindex="0" data-action="adv-tricks" data-seat="' + p + '" aria-label="' + label + '">' + dots + '</div>';
   }
   /* A seat's score: a click opens the points (adv-info). */
@@ -4947,11 +5081,10 @@ const Render = (() => {
       advTags(v, p, ctx.ui) + '<div class="backs backrow tappable" role="button" tabindex="0" data-action="adv-info" data-kind="backs" data-seat="' + p + '" aria-label="' + v.handCounts[p] + ' cards">' + backs + '</div>' + advCircles(v, p, ctx.ui);
   }
   function advMeHTML(v, ui, ctx) {
-    const mine = v.players[v.seat].human && ui.autoplay && ui.personas[v.seat] && PERSONA_BY_ID[ui.personas[v.seat]];
     const hand = handHTML(v, ui).replace('<div class="hand" id="hand">', '<div class="hand" id="hand" style="--n:' + Math.max(2, v.hand.length) + '">');
     return '<div class="me-head">' + meNameHTML(v, ui) +
       scoreButton(v, v.seat, ctx) + advTags(v, v.seat, ui) +
-      (mine ? '<span class="playing-as">playing as <b style="color:' + escHTML(mine.color) + '">' + escHTML(mine.name) + '</b></span>' : '') + '</div>' +
+      '</div>' +
       hand + advCircles(v, v.seat, ui);
   }
 
@@ -4973,8 +5106,12 @@ const Render = (() => {
   });
   const stageLabel = v => (STAGES[v.phase] || [''])[0];
   const stageHelp = v => { const h = (STAGES[v.phase] || ['', ''])[1]; return typeof h === 'function' ? h(v) : h; };
+  /* Table memory (ui.memory), read where the table shows what a player could remember. Without ui, everything shows.
+     The turned-up card always shows while the bidding decides; showTurned off hides it after. */
+  const memShows = (ui, /** @type {'showTurned' | 'showDiscards' | 'showPlays'} */ key) => !ui || !ui.memory || ui.memory[key] !== false;
+  const turnedShown = (v, ui) => v.phase === P.BID1 || v.phase === P.BID2 || v.phase === P.JOKER_VOID || memShows(ui, 'showTurned');
   /* The strip's cells before and after the Latest cell, which the controller keeps (see showLatest). */
-  function advInfoHTML(v) {
+  function advInfoHTML(v, ui) {
     const cell = (cls, lab, val, kind) => '<div class="cell ' + cls + (kind ? ' tappable" role="button" tabindex="0" data-action="adv-info" data-kind="' + kind + '" title="About ' + lab : '') + '"><span class="lab">' + lab + '</span><span class="val">' + val + '</span></div>';
     const sd = sdShown(v), tricks = trickInPlay(v);
     const done = trickDone(v);
@@ -4984,13 +5121,14 @@ const Render = (() => {
     if (v.trump) html += cell('', 'Trump', '<span class="pip" style="color:' + (R.COLOR[v.trump] === 'red' ? 'var(--pip-red)' : 'var(--ink)') + '">' + R.SYMBOL[v.trump] + '</span>', 'trump');
     if (v.handNumber) html += cell(sd && trick ? 'hand wide' : 'hand', handLabel(v), trick || stageLabel(v), 'hand');
     before = html; html = '';
-    if (v.flipped && !sd && v.phase !== P.BID1) {
+    if (v.flipped && !sd && v.phase !== P.BID1 && turnedShown(v, ui)) {
       const blocked = v.phase === P.BID2 && v.flippedBlocked;
       html += cell('muted' + (blocked ? ' blockedcell' : ''), blocked ? 'Blocked' : 'Turned up', microHTML(v.flipped, v.jokerSuit ? 'Joker ' + R.SYMBOL[v.jokerSuit] : undefined), 'turned');
     }
     if (sd) {
       const n = v.showdown.active ? v.showdown.discardCount : 0;
-      let minis = ''; for (let i = 0; i < n; i++) minis += i < v.myOut.length ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
+      const mine = memShows(ui, 'showDiscards') ? v.myOut.length : 0;
+      let minis = ''; for (let i = 0; i < n; i++) minis += i < mine ? microHTML(v.myOut[i], 'Jkr') : '<span class="mc"></span>';
       if (n) html += '<div class="cell muted out tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val"><span class="minis">' + minis + '</span></span></div>';
     } else if (v.outsideCount > 0 || v.phase === P.DISCARD) {
       html += '<div class="cell muted tappable" role="button" tabindex="0" data-action="adv-outside"><span class="lab">Outside</span><span class="val" data-count>' + v.outsideCount + '</span></div>';
@@ -5138,7 +5276,7 @@ const Render = (() => {
     const said = statusText(v), live = $('liveStatus');
     if (live && live.textContent !== said) live.textContent = said;
     const order = Fx.discardOrder(v);
-    const parts = /** @type {[HTMLElement, string][]} */ ([...around(v).map(p => /** @type {[HTMLElement, string]} */ ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
+    const parts = /** @type {[HTMLElement, string][]} */ ([...around(v).map(p => /** @type {[HTMLElement, string]} */ ([$('seat' + p), advSeatHTML(v, p, ctx)])), [$('center'), advCenterHTML(v, ui, ctx, order)], [$('seat' + v.seat), advMeHTML(v, ui, ctx)], ...advInfoHTML(v, ui).map((h, i) => [$(i ? 'infoB' : 'infoA'), h])]);
     const norm = h => h.replace(/ (?:enter|flash)"/g, '"');
     const skip = ctx.skip ? '<button class="btn skip-top" type="button" data-action="skip">Skip ▶</button>' : '';
     const key = parts.map(([, h]) => norm(h)).join('\u0000') + skip;
@@ -5164,7 +5302,7 @@ const Render = (() => {
     return true;
   }
 
-  return Object.freeze({ render, ledTrick, advInfoHTML, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles });
+  return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
 })();
 
 /* ---------------------------------------------------------------------
@@ -5751,12 +5889,17 @@ const App = (() => {
     instant: { ai: 0, trick: 0, won: 0, sys: 0 }
   };
   const HUMAN = 0;
-  /* Settings → Game → Turned-up Joker, by value: what the rule notes call each choice. */
+  /* Settings → Table → Turned-up Joker, by value: what the rule notes call each choice. */
   const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs', random: 'Random' });
-  /* House rules (Settings → Game), for new games: a game keeps the rules it started with. Render reads
-     them through app.ui to say when the running game differs. politePlay is table manners, not a game rule: the
-     Advanced UI's trick circles open the tricks won. It applies at once and is not part of a game or replay code.
+  /* House rules (Settings → Table), for new games: a game keeps the rules it started with. Render reads
+     them through app.ui to say when the running game differs. A house rule is what the players at a real table agree
+     on; Table memory helps with what the rules make you remember. politePlay: the trick circles open the tricks won,
+     as tricks kept face up. It changes no move, so the engine ignores it, but the game and its replay code keep it.
      jokerFlip: '' (redeal) or the suit a turned-up Joker takes (Engine.JOKER_FLIPS). */
+  /* Table memory's aids. The first four add a fact to the popups and start off; the show ones keep what the table
+     shows today and start on. Off, the player remembers it. Standard is the default; Reset → Table memory goes back to it. */
+  /** @typedef {'trumps' | 'kings' | 'turned' | 'voids' | 'showTurned' | 'showDiscards' | 'showPlays'} MemoryKey */
+  const MEMORY_STANDARD = Object.freeze({ trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true });
   const HOUSE_DEFAULTS = Object.freeze({ mediatorLead: true, politePlay: true, jokerFlip: '' });
   const HOUSE = /** @type {{ mediatorLead: boolean, politePlay: boolean, jokerFlip: string }} */ (Object.assign({}, HOUSE_DEFAULTS));
   const app = {
@@ -5769,10 +5912,11 @@ const App = (() => {
     said: /** @type {Record<number, boolean>} */ ({}),
     /* Skip was pressed in this Showdown: the rest of it, up to its result, plays at Instant (see skipping). */
     sdSkip: false,
-    /* allowSeatAI: Settings → Game, the Human/AI tag works. Like speed, for this page load only. */
-    /* felt, colors: Settings → Game → Theme, the felt pack and the color pack ('' for none; see Theme).
-       memory: Table memory, what every player has seen this hand, one switch per fact (MEMORY_SWITCHES). All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: { trumps: false, kings: false, turned: false, voids: false }, houseRules: HOUSE,
+    /* allowSeatAI: Settings → Bots → Your seat, the Human/AI tag works. Like speed, for this page load only.
+       forced: Forced plays (Your seat, or the Human tag's popup): your only legal card in a trick plays itself. Kept. */
+    /* felt, colors: Settings → Table → Theme, the felt pack and the color pack ('' for none; see Theme).
+       memory: Table memory, what the table keeps for you this hand, one switch per aid (MEMORY_SWITCHES). All are kept. */
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: /** @type {Record<MemoryKey, boolean>} */ (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -5829,10 +5973,12 @@ const App = (() => {
      the first pair [West, East] that fits: no Shark while the starting easing e0 is above 0.5, at most one above 0.2,
      any pair below. Among those, a pair that shares no bot with the last Dynamic game (last: [West, East]) comes first,
      then one that is not the same pair. With no limit and no last game, it is seedTable. */
+  /** The most Sharks a Dynamic table seats at starting easing e0. @param {number} e0 */
+  const sharkLimit = e0 => (e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2);
   /** @param {number} s @param {number} e0 @param {string[]} last @returns {string[]} */
   function dynamicTable(s, e0, last) {
     const order = RNG.shuffle(PERSONAS.map(x => x.id), { s: (s ^ 0x5bd1e995) >>> 0 });
-    const max = e0 > 0.5 ? 0 : e0 > 0.2 ? 1 : 2;
+    const max = sharkLimit(e0);
     const pairs = [];
     for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) pairs.push([order[i], order[j]]);
     const fits = (/** @type {string[]} */ p) => p.filter(id => PERSONA_BY_ID[id].tier === 'shark').length <= max;
@@ -6216,53 +6362,36 @@ const App = (() => {
     if (!yes) return;
     try { await backup.restore(text); } catch (e) { dataNote('Nothing changed: ' + (e instanceof Error ? e.message : String(e)) + '.'); }
   }
-  /* ---- Gameplay defaults (Settings → Game) and Client resets (Settings → Tools). Each asks first. A reset of
-     settings applies at once. A reset of stored data saves the running game first, changes the data and reloads, so
-     no screen or timer keeps the old data, and StorageGate stops any write over it before the reload. ---- */
+  /* ---- Resets. Reset this tab (Table, Bots) sets that tab's settings back to their defaults, at once, and keeps all
+     progress. Erase (Settings → Tools → Your data) deletes stored data: it saves the running game first, changes the
+     data and reloads, so no screen or timer keeps the old data, and StorageGate stops any write over it before the
+     reload. Each asks first. ---- */
   const AFTER = '<p>The page reloads. There is no undo.</p>';
-  /** [title, text (HTML), OK button] for each choice. */
-  const GAME_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
-    all: ['Reset all settings and modes?', '<p>Theme, Table memory and House rules go back to their defaults. Waves, Dynamic and Free play lose their progress, saved games, results and replay codes. Bot settings stay.</p>' + AFTER],
-    theme: ['Reset the theme?', '<p>The felt goes back to Classic, and Color-blind safe colors turns off.</p>'],
-    memory: ['Reset Table memory?', '<p>Every Table memory switch turns off.</p>'],
-    house: ['Reset House rules?', '<p>Mediator picks the Showdown lead turns on, Turned-up Joker goes back to Redeal, and Polite Play turns on. A game in progress keeps the rules it started with.</p>'],
-    dynamic: ['Reset Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are removed.</p>' + AFTER],
-    waves: ['Reset Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are removed.</p>' + AFTER],
-    free: ['Reset Free play history?', '<p>Free play\'s saved game, results and replay codes are removed.</p>' + AFTER]
-  }));
-  const CLIENT_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
-    profile: ['Erase your progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase progress'],
-    all: ['Erase progress and settings?', '<p>All progress, results, saved games, replay codes and every setting on this device are erased, as on a first visit. The game files stay, so the game still opens offline.</p>' + AFTER, 'Erase progress and settings'],
-    full: ['Erase everything and the game files?', '<p>All progress and settings are erased, and so are the game files kept for offline play. The game downloads again, so do this only while you are online.</p>' + AFTER, 'Erase everything']
-  }));
-  /* Progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
-  const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
-  /* The service worker's caches (SHELL and PENDING in sw.js). Other project pages on the same origin keep theirs. */
-  const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
-  /** @param {string} what */
-  async function askGameReset(what) {
-    const r = GAME_RESETS[what];
-    if (!r || !await ask({ title: r[0], text: r[1], ok: 'Reset', cancel: 'Cancel', danger: true })) return;
-    gameReset(what);
+  /** Settings → Table → Reset this tab, after a question. */
+  async function askTableReset() {
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off. ' +
+      'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
+      'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    tableReset();
   }
-  /** Console: KCT.App.gameReset(what), with no question. @param {string} what */
-  function gameReset(what) {
-    if (!GAME_RESETS[what]) return false;
-    Logger.log('GAME_RESET', { what });
-    if (what === 'all' || what === 'theme') setTheme('classic', '');
-    if (what === 'all' || what === 'memory') for (const k of Object.keys(MEMORY_SWITCHES)) setMemory(/** @type {'trumps' | 'kings' | 'turned' | 'voids'} */ (k), false);
-    if (what === 'all' || what === 'house') {
-      Object.assign(app.houseRules, HOUSE_DEFAULTS);
-      $('setMediatorLead').checked = app.houseRules.mediatorLead;
-      $('setJokerFlip').value = app.houseRules.jokerFlip;
-      $('setPolitePlay').checked = app.houseRules.politePlay;
-      closePanel();
-      saveSettings();
-      draw([]);
-    }
-    const modes = what === 'all' ? MODES : MODES.includes(what) ? [what] : [];
-    if (modes.length) reloadAfter(() => { for (const m of modes) clearMode(m); });
+  /** Console: KCT.App.tableReset(), with no question. Table memory, House rules and Theme go back to their defaults. */
+  function tableReset() {
+    Logger.log('TABLE_RESET', {});
+    setMemoryAll(MEMORY_STANDARD);
+    Object.assign(app.houseRules, HOUSE_DEFAULTS);
+    $('setMediatorLead').checked = app.houseRules.mediatorLead;
+    $('setJokerFlip').value = app.houseRules.jokerFlip;
+    $('setPolitePlay').checked = app.houseRules.politePlay;
+    setTheme('classic', '');
+    closePanel();
+    saveSettings();
+    draw([]);
     return true;
+  }
+  /** Settings → Bots → Reset this tab, after a question. */
+  async function askBotsReset() {
+    if (!await ask({ title: 'Reset the Bots tab?', text: '<p>Every seat goes back to the seed\'s pick, and each bot plays as itself. Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    resetSeats();
   }
   /** A mode's progress (wave progress, Dynamic's profile), saved game, results and replay codes. @param {string} m */
   function clearMode(m) {
@@ -6272,6 +6401,19 @@ const App = (() => {
     stats.dropMode(m);
     replays.dropMode(m);
   }
+  /** [title, text (HTML), OK button] for each choice of Erase. */
+  const CLIENT_RESETS = /** @type {Readonly<Record<string, string[]>>} */ (Object.freeze({
+    waves: ['Erase Waves progress?', '<p>Waves and the Shark run lock again from wave 1. Their tries, saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Waves progress'],
+    dynamic: ['Erase Dynamic progress?', '<p>Dynamic\'s profile of your play starts again from blank. Its saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Dynamic progress'],
+    free: ['Erase Free play history?', '<p>Free play\'s saved game, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase Free play history'],
+    profile: ['Erase all progress?', '<p>Wave progress, Dynamic\'s profile, saved games, results and replay codes are erased. Settings stay.</p>' + AFTER, 'Erase all progress'],
+    all: ['Erase progress and settings?', '<p>All progress, results, saved games, replay codes and every setting on this device are erased, as on a first visit. The game files stay, so the game still opens offline.</p>' + AFTER, 'Erase progress and settings'],
+    full: ['Erase everything and the game files?', '<p>All progress and settings are erased, and so are the game files kept for offline play. The game downloads again, so do this only while you are online.</p>' + AFTER, 'Erase everything']
+  }));
+  /* Progress: everything Your profile and the modes keep. Settings (kct.settings, kct.setTab) stay. */
+  const PROFILE_KEYS = Object.freeze(['kct.waves', 'kct.slots', 'kct.stats', 'kct.replays', 'kct.profile']);
+  /* The service worker's caches (SHELL and PENDING in sw.js). Other project pages on the same origin keep theirs. */
+  const SW_CACHES = Object.freeze(['kct-shell', 'kct-pending']);
   /** @param {string} what */
   async function askClientReset(what) {
     const r = CLIENT_RESETS[what];
@@ -6282,7 +6424,8 @@ const App = (() => {
   function clientReset(what) {
     if (!CLIENT_RESETS[what]) return false;
     Logger.log('CLIENT_RESET', { what });
-    reloadAfter(() => { Backup.wipe(localStorage, what === 'profile' ? PROFILE_KEYS.slice() : undefined); }, what === 'full' ? dropOffline : undefined);
+    if (MODES.includes(what)) reloadAfter(() => clearMode(what));
+    else reloadAfter(() => { Backup.wipe(localStorage, what === 'profile' ? PROFILE_KEYS.slice() : undefined); }, what === 'full' ? dropOffline : undefined);
     return true;
   }
   /* Full client reset: the offline copy goes, so the reload fetches the page and registers the worker again. */
@@ -6390,7 +6533,7 @@ const App = (() => {
     sel.closest('.speed-pick').title = 'Speed: ' + sel.options[sel.selectedIndex].text;
   }
 
-  /* ---- Theme and Table memory (Settings → Game). ---- */
+  /* ---- Theme and Table memory (Settings → Table). ---- */
   /* Theme: a felt tile for each felt pack, drawn in that felt, and the color pack's switch. */
   function syncTheme() {
     $('setFelt').innerHTML = Object.entries(Theme.packs.felts).map(([id, p]) =>
@@ -6406,14 +6549,32 @@ const App = (() => {
     syncTheme();
     saveSettings();
   }
-  /* Table memory: each fact it adds to the popups, and its switch. */
-  const MEMORY_SWITCHES = { trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids' };
-  /** @param {'trumps' | 'kings' | 'turned' | 'voids'} key @param {boolean} on */
-  function setMemory(key, on) {
-    app.ui.memory[key] = on;
-    $(MEMORY_SWITCHES[key]).checked = on;
+  /* Table memory: each aid and its switch, and the Help level presets. Help level shows Custom for any other mix. */
+  const MEMORY_SWITCHES = /** @type {Record<MemoryKey, string>} */ ({ trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids',
+    showTurned: 'setMemShowTurned', showDiscards: 'setMemShowDiscards', showPlays: 'setMemShowPlays' });
+  const MEMORY_KEYS = /** @type {MemoryKey[]} */ (Object.keys(MEMORY_SWITCHES));
+  const memoryAll = (/** @type {boolean} */ on) => /** @type {Record<MemoryKey, boolean>} */ (Object.fromEntries(MEMORY_KEYS.map(k => [k, on])));
+  const MEMORY_PRESETS = /** @type {Record<string, Record<MemoryKey, boolean>>} */ ({ full: memoryAll(true), standard: MEMORY_STANDARD, real: memoryAll(false) });
+  /** @param {MemoryKey} key @param {boolean} on */
+  function setMemory(key, on) { setMemoryAll(Object.assign({}, app.ui.memory, { [key]: on })); }
+  /** @param {Record<MemoryKey, boolean>} values */
+  function setMemoryAll(values) {
+    for (const k of MEMORY_KEYS) app.ui.memory[k] = values[k];
+    syncMemory();
     closePanel();
     saveSettings();
+    if (app.state) draw([]);
+  }
+  /* The switches, the All aids switch (mixed when some are on), the Help level and the count in Each aid. */
+  function syncMemory() {
+    const mem = app.ui.memory, on = MEMORY_KEYS.filter(k => mem[k]).length;
+    for (const k of MEMORY_KEYS) $(MEMORY_SWITCHES[k]).checked = mem[k];
+    const all = $('setMemAll'); all.checked = on === MEMORY_KEYS.length; all.indeterminate = on > 0 && on < MEMORY_KEYS.length;
+    const preset = Object.keys(MEMORY_PRESETS).find(p => MEMORY_KEYS.every(k => MEMORY_PRESETS[p][k] === mem[k]));
+    $('setMemPreset').value = preset || 'custom';
+    $('setMemSum').textContent = on + ' of ' + MEMORY_KEYS.length + ' on';
+    $('gameLog').classList.toggle('hide-plays', !mem.showPlays);
+    $('gameLog').classList.toggle('hide-turned', !mem.showTurned);
   }
   /* The Latest cell opens and closes the dropdown. It pushes the table down, so a popup placed under the strip closes. */
   function openLog(open) {
@@ -6439,17 +6600,24 @@ const App = (() => {
     let title, body;
     if (kind === 'outside') {
       title = 'Outside pile · ' + v.outsideCount + (v.outsideCount === 1 ? ' card' : ' cards');
-      body = '<p>Face-down cards out of play: each player\'s 3 opening discards, then the kitty cards the receiver did not get and the receiver\'s discards (12 in all). Only a Showdown uses them.</p>' +
-        '<b class="psub">Your discards</b>' + (v.myOut.length ? '<div class="prow">' + v.myOut.map(mini).join('') + '</div>' : '<p>None yet.</p>');
+      /* Your discards by when you made them: the 3 opening ones, then the exchange (if the kitty came to you), then the
+         Showdown. Each row fits on one line. */
+      const opening = v.myOut.slice(0, 3), rest = v.myOut.slice(3), kitty = v.receiver === v.seat ? rest.slice(0, v.exchangeCount) : [];
+      const groups = /** @type {[string, string[]][]} */ ([['Opening', opening], ['Exchange', kitty], ['Showdown', rest.slice(kitty.length)]]).filter(([, ids]) => ids.length);
+      body = '<p>Face down, out of play until a Showdown.</p>';
+      /* With Table memory → Your discards off, how many only: the player remembers which. */
+      if (!app.ui.memory.showDiscards) body += v.myOut.length ? '<p>You discarded ' + v.myOut.length + '.</p><p class="pnote">Table memory → Your discards shows them.</p>' : '';
+      else if (groups.length) body += '<b class="psub">Your discards</b><dl class="pout">' +
+        groups.map(([k, ids]) => '<dt>' + k + '</dt><dd><span class="minis">' + ids.map(mini).join('') + '</span></dd>').join('') + '</dl>';
     } else if (kind !== 'tricks') {
       [title, body] = infoPanel(v, kind, seat, anchor).map(Render.youText);
     } else {
       /* One column per player, headed by their name: the trick winner first, then the others in table order. The card
-         that led the trick is ringed. A Showdown player's circles count Showdown tricks, so their list does too. */
+         that led the trick is ringed, and your cards are tinted. A Showdown player's circles count Showdown tricks, so their list does too. */
       const sd = v.showdown && v.showdown.active && v.showdown.participants.includes(seat);
       const winners = sd ? v.showdown.trickWinners : v.trickWinners, done = Engine.tricksOf(v)[sd ? 'showdown' : 'main'];
       const cols = [seat].concat([1, 2, 0].filter(p => p !== seat && (!sd || v.showdown.participants.includes(p))));
-      const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + mini(x.card) + '</span>' : '<span></span>'; };
+      const cell = (plays, p) => { const x = plays.find(y => y.player === p); return x ? '<span' + (x === plays[0] ? ' class="led" title="Led"' : '') + '>' + Render.microHTML(x.card, 'Jkr', p === v.seat) + '</span>' : '<span></span>'; };
       const rows = winners.map((w, i) => {
         if (w !== seat) return '';
         const plays = done[i] || [];
@@ -6460,12 +6628,14 @@ const App = (() => {
         cols.map(p => '<b class="pname" style="color:var(--name' + p + ')">' + Render.nameOf(v, p) + '</b>').join('') + rows + '</div>' : '<p>None yet.</p>';
     }
     const table = $('table'), r = anchor.getBoundingClientRect(), tb = table.getBoundingClientRect();
-    table.insertAdjacentHTML('beforeend', '<div class="panel" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
+    table.insertAdjacentHTML('beforeend', '<div class="panel' + (kind === 'outside' || kind === 'turned' || kind === 'hand' || kind === 'kitty' || anchor.getAttribute('data-tag') === 'receiver' || body.includes('class="plist"') ? ' narrow' : '') + '" role="dialog" aria-label="' + title + '"><b class="ptitle">' + title + '</b>' + body + '</div>');
     const pn = table.querySelector(':scope > .panel');
     /* Under the anchor; when it does not fit there, above it; always inside the window (a popup never opens off
-       screen, e.g. from your trick circles at the bottom of a phone). */
+       screen, e.g. from your trick circles at the bottom of a phone). While you pick cards to discard, a popup from
+       your seat opens above it when it fits, so it never covers your hand. */
     const h = pn.offsetHeight, below = r.bottom + 6, above = r.top - 6 - h;
-    const y = below + h <= innerHeight - 8 || above < 8 ? Math.max(8, Math.min(below, innerHeight - 8 - h)) : above;
+    const picking = anchor.closest('#seat' + HUMAN) && Engine.actors(app.state).includes(HUMAN) && (v.phase === P.DISCARD || v.phase === P.EXCHANGE || v.phase === P.SHOWDOWN_DISCARD);
+    const y = picking && above >= 8 ? above : below + h <= innerHeight - 8 || above < 8 ? Math.max(8, Math.min(below, innerHeight - 8 - h)) : above;
     if (anchor.closest('#topbar')) {
       pn.style.position = 'fixed';
       pn.style.left = Math.min(Math.max(8, r.left), innerWidth - pn.offsetWidth - 8) + 'px';
@@ -6480,18 +6650,35 @@ const App = (() => {
      With Settings → Table memory switches on, they add what every player at the table has seen, counted for you: the AI keeps
      the same facts (see its Knowledge settings). Never a card that someone holds unseen. Returns [title, body]. */
   function infoPanel(v, kind, seat, anchor) {
-    const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr'), minis = ids => '<div class="prow">' + ids.map(mini).join('') + '</div>';
+    const n = p => Render.nameOf(v, p), mini = id => Render.microHTML(id, 'Jkr');
     const mem = app.ui.memory, T = v.trump, suit = x => R.SYMBOL[x] + ' ' + R.SUIT_NAME[x];
     const p1 = t => '<p>' + t + '</p>', sub = t => '<b class="psub">' + t + '</b>';
     const callRound = () => { const b = Engine.trumpCall(v.bidLog); return b ? b.round : null; };
     const inHand = id => v.hand.includes(id);
+    /* Table memory → Turned-up card and Your discards: off, the popups name the turned card without showing it after
+       the bidding, and give your discards as a count. */
+    const showT = Render.turnedShown(v, app.ui), showD = mem.showDiscards;
+    const flipMini = () => showT ? mini(v.flipped) : 'the turned-up card';
     /* The turned card when it went to the receiver in round 1: public, so the receiver may still hold it. */
     const turnedTo = () => v.trump && v.flipped && !v.flippedOut && v.receiver !== null ? v.receiver : null;
     const turnedNote = () => {
       const r = turnedTo(); if (r === null) return '';
-      if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + mini(v.flipped) + ' and has played it.');
-      return p1(n(r) + ' took ' + mini(v.flipped) + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
+      if (v.played.includes(v.flipped)) return p1(n(r) + ' took ' + flipMini() + ' and has played it.');
+      return p1(n(r) + ' took ' + flipMini() + (r === v.seat ? '.' : ' and still holds it, unless it was one of the face-down discards.'));
     };
+    /* A card list (Trump, Kings): one card a row, with what you know about it to its right. Yours are tinted green
+       and have no note; played, discarded and outside cards are dimmed. The turned card says so, in any state. With known
+       off, the cards alone. */
+    const cardList = (/** @type {string[]} */ ids, /** @type {boolean} */ known) => '<div class="plist">' + ids.map(id => {
+      const played = v.played.includes(id), turned = showT && id === v.flipped, mine = known && inHand(id);
+      const gone = known && !mine && (played || v.myOut.includes(id) || (turned && v.flippedOut));
+      const note = !known ? '' : turned ? (played ? 'Turned, Played' : 'Turned') : mine ? '' : played ? 'Played' : v.myOut.includes(id) ? 'Discarded' : '';
+      /* A note for something you did (you played it or discarded it) is green, as your cards are. */
+      const byYou = known && (v.myOut.includes(id) || v.playLog.some(x => x.player === v.seat && x.card === id));
+      return (gone ? mini(id).replace('class="micro"', 'class="micro gone"') : Render.microHTML(id, 'Jkr', mine)) + '<span class="pn' + (byYou ? ' you' : gone ? ' gone' : '') + '">' + note + '</span>';
+    }).join('') + '</div>';
+    /* Label and value rows, the popups' way to say what is known now. */
+    const dl = (/** @type {[string, string][]} */ rows) => '<dl>' + rows.map(([k, x]) => '<dt>' + k + '</dt><dd>' + x + '</dd>').join('') + '</dl>';
     /* With a switch off, a note names the switch that adds its facts. */
     const off = (/** @type {boolean} */ on, /** @type {string} */ name, /** @type {string} */ adds) => on ? '' : '<p class="pnote">Settings → Table memory → ' + name + ' adds ' + adds + '.</p>';
     const blockedText = (/** @type {Suit} */ x) => [suit(x) + ' is blocked', p1('A suit passed by all players can\'t be selected.')];
@@ -6504,9 +6691,9 @@ const App = (() => {
         let body;
         if (play && best) {
           const led = play === plays[0], follows = R.getEffectiveSuit(play.card, T) === lead;
-          body = p1(n(seat) + (led ? ' led ' : ' played ') + mini(play.card) + '.' + (led ? ' Follow ' + sym + ' if you can.'
+          body = p1(n(seat) + (led ? ' led ' : ' played ') + Render.microHTML(play.card, 'Jkr', seat === v.seat) + '.' + (led ? ' Follow ' + sym + ' if you can.'
             : follows ? '' : R.isTrump(play.card, T) ? ' No ' + sym + ': trumped.' : ' No ' + sym + ': can\'t win.')) +
-            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + n(best.player) + '\'s ' + mini(best.card) + '.');
+            p1(best.player === seat ? 'Winning so far.' : 'Winning: ' + (best.player === v.seat ? 'your ' : n(best.player) + '\'s ') + Render.microHTML(best.card, 'Jkr', best.player === v.seat) + '.');
         } else if (seat === v.seat && best) {
           const haveTrump = v.hand.some(id => R.isTrump(id, T));
           body = p1(v.legal.length < v.hand.length ? 'Must follow ' + sym + '.' : 'No ' + sym + ': any card. ' + (lead !== T && haveTrump ? 'A trump can win.' : 'It can\'t win.')) +
@@ -6520,16 +6707,17 @@ const App = (() => {
         return [title, body];
       }
       case 'kitty': {
-        const left = n((v.seat + 1) % 3), s = v.flippedSuit;
+        /* Rows for the bid being decided. The kitty goes to the player left of whoever accepts or names; for the player
+           bidding now, that seat is named. */
+        const b = v.bidTurn, s = v.flippedSuit, which = b === null ? '' : ' (' + n(Engine.seatAfter(b)) + ' if ' + n(b) + (v.phase === P.BID1 ? ' accepts)' : ' names)');
         let body;
         if (v.phase === P.BID1 && s) {
-          body = p1('Accept: ' + R.SYMBOL[s] + ' is trump; ' + left + ' takes ' + mini(v.flipped) + ' and discards 1. The 2 face-down cards go outside.') +
-            p1('All pass: round 2, ' + R.SYMBOL[s] + ' blocked.');
+          body = dl([['Accept', suit(s) + ' is trump'], ['Goes to', 'Left of who accepts' + which], ['Takes', mini(v.flipped) + ', discards 1'],
+            ['The rest', '2 cards go outside'], ['All pass', 'Round 2, ' + R.SYMBOL[s] + ' blocked']]);
         } else if (v.phase === P.BID2 && s) {
-          body = p1(R.SYMBOL[s] + ' is blocked. Name a suit: ' + left + ' takes the 2 face-down cards and discards 2.') +
-            p1('All pass: the hand is thrown in.');
+          body = dl([['Blocked', suit(s)], ['Name', 'Any other suit'], ['Goes to', 'Left of who names' + which], ['Takes', '2 face-down cards, discards 2'], ['All pass', 'Hand thrown in']]);
         } else {
-          body = p1('After the discards, the top card is turned up; its suit is offered as trump. The player left of the namer gets the kitty.');
+          body = p1('After the discards, the top card is turned up and its suit is offered as trump.');
         }
         return ['Kitty · ' + v.kittyCount + (v.kittyCount === 1 ? ' card' : ' cards'), body];
       }
@@ -6549,38 +6737,40 @@ const App = (() => {
       }
       case 'trump': {
         const order = R.ALL_IDS.filter(id => R.isTrump(id, T)).sort((a, b) => R.getCardStrength(b, T) - R.getCardStrength(a, T));
-        let body = p1(suit(T) + (v.caller !== null ? ', named by ' + n(v.caller) + (callRound() ? ' in round ' + callRound() : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + minis(order);
-        if (mem.trumps) {
-          /* Seen but not played: your own discards, and the turned card (everyone saw it turned up). */
-          const played = order.filter(id => v.played.includes(id)), mine = order.filter(inHand), left = order.filter(id => !played.includes(id) && !inHand(id));
-          const discarded = left.filter(id => v.myOut.includes(id)), turnedOut = v.flippedOut && left.includes(v.flipped) ? v.flipped : null;
-          const unseen = left.filter(id => !discarded.includes(id) && id !== v.flipped);
-          body += sub('Played (' + played.length + ')') + (played.length ? minis(played) : p1('None yet.')) +
-            sub('Not seen yet (' + unseen.length + ')') + (unseen.length ? minis(unseen) : p1('None.')) +
-            p1('You hold ' + mine.length + '.' + (discarded.length ? ' You discarded ' + discarded.map(mini).join(' ') + '.' : '') +
-              (turnedOut ? ' The turned card ' + mini(turnedOut) + ' went to the outside pile.' : '') + ' The others are in other hands or out of play.');
-        }
-        if (mem.turned) body += turnedNote();
-        return ['Trump', body + off(mem.trumps, 'Trumps played', 'the trumps played and not seen yet')];
+        const r = callRound();
+        let body = p1(suit(T) + (v.caller !== null ? (r === 1 ? ', accepted by ' : ', named by ') + n(v.caller) + (r ? ' in round ' + r : '') : '') + '. Trumps beat every other suit.') + sub('Highest to lowest') + cardList(order, mem.trumps);
+        /* With Trumps played on, the list says where the turned card is; else the Turned card switch says it here. */
+        if (mem.turned && !mem.trumps) body += turnedNote();
+        return ['Trump', body + off(mem.trumps, 'Trumps played', 'which trumps are yours, played or discarded')];
       }
       case 'hand': {
+        /* Rows: who dealt, who leads the first trick, and the tricks won so far; a line on the stage when there is one;
+           then the Kings. */
         const sd = v.showdown && v.showdown.active;
-        let body = p1('Dealer: ' + n(v.dealer) + '. The player left of the dealer leads the first trick.');
+        const rows = [['Dealer', n(v.dealer)], ['First lead', n(Engine.seatAfter(v.dealer))]];
+        if (v.trickNumber > 0 || v.trickWinners.length) rows.push(['Tricks', [v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (SD ' + v.showdown.tricksWon[p] + ')' : '')).join(' · ')]);
+        let body = dl(/** @type {[string, string][]} */ (rows));
         if (Render.stageHelp(v)) body += p1(Render.stageHelp(v));
-        if (v.trickNumber > 0 || v.trickWinners.length) body += sub('Tricks this hand') + p1([v.seat].concat([1, 2].filter(p => p !== v.seat)).map(p => n(p) + ' ' + v.tricksWon[p] + (sd && v.showdown.participants.includes(p) ? ' (Showdown ' + v.showdown.tricksWon[p] + ')' : '')).join(' · '));
         if (mem.kings && T) {
-          const kings = R.ALL_IDS.filter(id => R.isKing(id)), out = kings.filter(id => !v.played.includes(id));
-          body += sub('Kings not played yet (' + out.length + ')') + (out.length ? minis(out) : p1('None.')) + p1('A King that wins a trick scores +1 at once.' + (out.some(inHand) ? ' You hold ' + out.filter(inHand).map(mini).join(' ') + '.' : ''));
-        }
-        return [handLabel(v), body + (T ? off(mem.kings, 'Kings not played', 'the Kings still to come') : '')];
+          /* The trump King first, then the suits in the order your hand shows them. */
+          body += sub('Kings') + cardList(R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T), true) + p1('A winning King scores +1.');
+        } else if (T) body += '<p class="pnote">Table memory → Kings not played lists the Kings.</p>';
+        return [handLabel(v), body];
       }
+      /* Rows of what is known now: the card, its suit's standing, where it went and, with Table memory → Turned card,
+         whether it was played. A rule line only while the bidding decides. */
       case 'turned': {
-        const blocked = v.phase === P.BID2 && v.flippedBlocked;
-        let body = blocked ? p1(suit(v.flippedSuit) + ' was turned down in round 1, so it cannot be named in round 2.')
-          : p1('The dealer turned up the top kitty card. In round 1, a player who accepts makes its suit trump, and this card goes to the player left of them.');
-        if (v.flippedOut) body += p1('Round 2 named another suit, so this card went to the outside pile.');
-        if (mem.turned) body += turnedNote(); else if (turnedTo() !== null) body += p1(n(turnedTo()) + ' took it.');
-        return [blocked ? 'Blocked suit' : 'Turned-up card', body + off(mem.turned, 'Turned card', 'whether it has been played')];
+        const c = v.flipped, s = v.flippedSuit, to = turnedTo(), you = to === v.seat;
+        const standing = v.phase === P.BID1 ? 'offered as trump' : v.phase === P.BID2 && v.flippedBlocked ? 'blocked' : T && s === T ? 'trump' : 'passed';
+        const rows = [['Card', Render.microHTML(c, 'Jkr', inHand(c))], ['Suit', s ? suit(s) + ', ' + standing : 'none: the hand is void']];
+        if (v.flippedOut) rows.push(['Went to', 'Outside pile']);
+        else if (to !== null) rows.push(['Went to', n(to)]);
+        if (to !== null && mem.turned) rows.push(['Now', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
+        let body = dl(/** @type {[string, string][]} */ (rows));
+        if (v.phase === P.BID1 && s) body += p1('If accepted, it goes to the player left of whoever accepts.');
+        else if (v.phase === P.BID2 && v.flippedBlocked) body += p1('All passed it in round 1, so it can\'t be named.');
+        if (to !== null && !mem.turned) body += '<p class="pnote">Table memory → Turned card shows if it was played.</p>';
+        return ['Turned-up card', body];
       }
       case 'score': {
         const st = v.handStats && v.handStats.pts[seat], win = Engine.C.WIN_SCORE, need = Math.max(0, win - v.scores[seat]);
@@ -6602,26 +6792,44 @@ const App = (() => {
       default: {
         const tag = anchor.getAttribute('data-tag'), who = n(seat);
         const id = app.ui.personas[seat], persona = id && PERSONA_BY_ID[id] ? PERSONA_BY_ID[id] : null, tuned = !watch && !!app.ui.tunes[seat];
-        const r = callRound();
+        const r = callRound(), you = seat === v.seat;
+        /* A verb for this seat: youText fixes "You" + verb only up to the first card chip, so sentences with a chip
+           pick the form here. */
+        const vb = (/** @type {string} */ forYou, /** @type {string} */ forOther) => you ? forYou : forOther;
+        const next = Engine.seatAfter(v.dealer), bid = v.phase === P.BID1 || v.phase === P.BID2;
         /* Each tag's [title, text], built only for the tag clicked: some read state that is not always there (the
            turned card is gone in a Showdown and before the reveal). */
         const TEXT = {
           ai: () => [who + ' · AI', who + ' is a computer player' + (persona ? '. Tap the figure for ' + who + '\'s profile: card sense, nerve and habits.' : '.') + (tuned ? ' This game, ' + who + ' plays with your Settings → Bots changes.' : '')],
-          you: () => ['You · Human', 'You play this seat. Settings → Game → AI can play your seat lets the AI take it.'],
-          dealer: () => [who + ' · Dealer', v.showdown
-            ? who + ' mediates the Showdown, so ' + who + ' deals it' + (Engine.discardsInTurn(v.rules) ? ': the discards go in turn from ' + who + '\'s left. ' : '. ') + n(v.dealer) + ' dealt this hand, and the deal passes to ' + n(v.dealer) + '\'s left after the hand.'
-            : who + ' dealt this hand, so ' + who + ' turns up the kitty card and bids last in both rounds. The deal passes to the left after the hand.'],
-          caller: () => [who + ' · Namer', who + ' named ' + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + who + '\'s left, got the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
-          receiver: () => [who + ' · Kitty', who + ' got ' + (v.exchangeCount > 1 ? 'the 2 face-down kitty cards' : 'the turned-up card' + (v.flipped ? ' ' + mini(v.flipped) : '')) + ' as the player left of the namer, and discarded ' + v.exchangeCount + ' face down.'],
+          you: () => ['You · Human', 'You play this seat. Settings → Bots → Your seat → AI can play your seat lets the AI take it.'],
+          /* Who dealt and who deals next. The Showdown's deal is the Mediator tag's. */
+          dealer: () => [who + ' · Dealer', (v.phase === P.JOKER_VOID ? who + ' dealt this hand and turned up the Joker, so ' + who + ' deals it again.'
+            : !v.flipped ? who + ' dealt this hand, so ' + who + ' turns up the top kitty card after the discards and bids last in both rounds.'
+            : who + ' dealt this hand, turned up ' + flipMini() + ' and ' + (bid ? vb('bid', 'bids') : 'bid') + ' last.') +
+            (v.phase === P.JOKER_VOID ? '' : ' ' + n(next) + ' deals the next hand.')],
+          caller: () => [who + ' · Namer', who + (r === 1 ? ' accepted ' : ' named ') + (T ? suit(T) : 'trump') + (r ? ' in round ' + r : '') + '. ' + (v.receiver !== null ? n(v.receiver) + ', on ' + vb('your', who + '\'s') + ' left, ' + (v.phase === P.EXCHANGE ? (v.receiver === v.seat ? 'get' : 'gets') : 'got') + ' the kitty card' + (v.exchangeCount > 1 ? 's' : '') + '. ' : '') + 'A failed call costs nothing; taking all 7 tricks scores +2.'],
+          receiver: () => [who + ' · Kitty', ''],
           turn: () => [who + ' · Turn', Render.statusText(v)],
           led: () => { const t = Render.ledTrick(v); return [who + ' · Led', t ? who + ' led this trick with ' + mini(t.plays[0].card) + '. Everyone must follow ' + (t.leadSuit ? suit(t.leadSuit) : 'suit') + ' if they can.' : who + ' led this trick.']; },
-          mediator: () => [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.'],
+          mediator: () => [who + ' · Mediator', who + ' won 1 trick, so ' + who + ' mediates the Showdown: ' + who + ' deals 6 cards to each Showdown player' + (v.mediatorLead ? ', picks who leads' : '') + ' and does not play.' +
+            (Engine.discardsInTurn(v.rules) ? ' The Showdown discards go in turn from ' + vb('your', who + '\'s') + ' left.' : '')],
           duelist: () => [who + ' · Showdown', who + ' plays the Showdown: 5 tricks with the same trump. Winner +1, loser −1 (not below 0). Kings that win still score +1.']
         };
         const [title, text] = TEXT[tag] ? TEXT[tag]() : [who, ''];
-        let body = p1(text);
-        if (tag === 'receiver' && mem.turned) body += turnedNote();
-        return [title, body];
+        if (tag === 'receiver') {
+          /* Rows: what this player got, from whose call, and the discard (still to come during the exchange; your own
+             discards as cards). With Table memory → Turned card, where a round-1 turned card is now. */
+          const now = v.phase === P.EXCHANGE, c = v.flipped, one = v.exchangeCount === 1, mine = v.myOut.slice(3, 3 + v.exchangeCount);
+          const rows = /** @type {[string, string][]} */ ([[now ? 'Gets' : 'Got', one ? (c && showT ? Render.microHTML(c, 'Jkr', inHand(c)) : 'The turned-up card') : '2 face-down kitty cards'],
+            ['Left of', n(v.caller) + ', the namer'],
+            [now ? 'Discards' : 'Discarded', !now && you && mine.length && showD ? '<span class="minis">' + mine.map(mini).join('') + '</span>' : v.exchangeCount + ' face down']]);
+          if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
+          return [title, dl(rows)];
+        }
+        /* Forced plays: a switch under the text, while you play a game (not in the replay viewer). */
+        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pswitch"><span><b>Forced plays</b><span>' + FORCED_DESC + '</span></span>' +
+          '<input class="sw" type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '></label>'];
+        return [title, p1(text)];
       }
     }
   }
@@ -6642,14 +6850,15 @@ const App = (() => {
       '<div class="row"><button class="btn" type="button" data-action="ask-cancel">' + escHTML(cancel || 'Cancel') + '</button>' +
       '<button class="btn ' + (danger ? 'danger' : 'primary') + '" type="button" data-action="ask-ok">' + escHTML(ok || 'OK') + '</button></div></div>';
     layer.hidden = false;
-    /* Over open Settings (which makes the rest of the page inert), the question is the one live part until answered. */
-    const panel = $('settingsPanel'), was = { layer: layer.inert, panel: panel.inert };
-    layer.inert = false; panel.inert = !panel.hidden;
+    /* Over open Settings (which makes the rest of the page inert), the question is the one live part until answered.
+       Over the menu, the menu stays in view behind it (its felt, not the table) but takes no focus. */
+    const panel = $('settingsPanel'), ov = $('overlay'), was = { layer: layer.inert, panel: panel.inert, ov: ov.inert };
+    layer.inert = false; panel.inert = !panel.hidden; ov.inert = !ov.hidden;
     /* A destructive question starts on Cancel, so Enter does not replace anything. */
     const first = /** @type {HTMLElement | null} */ (layer.querySelector(danger ? '[data-action="ask-cancel"]' : '[data-action="ask-ok"]'));
     if (first) first.focus();
     return new Promise(resolve => {
-      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; resolve(answer); schedule(); };
+      askDone = answer => { askDone = null; layer.hidden = true; layer.innerHTML = ''; layer.inert = was.layer; panel.inert = was.panel; ov.inert = was.ov; resolve(answer); schedule(); };
     });
   }
   function answerAsk(answer) { if (askDone) askDone(answer); }
@@ -6683,7 +6892,7 @@ const App = (() => {
   }
 
 
-  /* Settings → Game. Off while the AI has your seat: you take it back at once (the game stays assisted). */
+  /* Settings → Bots → Your seat. Off while the AI has your seat: you take it back at once (the game stays assisted). */
   function setAllowSeatAI(on) {
     app.ui.allowSeatAI = on;
     $('setSeatAI').checked = on;
@@ -6694,6 +6903,26 @@ const App = (() => {
       saveGame();
       if (app.state.gameOver) draw([]); else schedule();
     } else draw([]);
+  }
+
+  /* Forced plays: in a trick, your only legal card plays itself, after the AI's wait at this speed. Both switches (Your
+     seat, the Human tag's popup) show it. On while that card waits for you, it plays now; off during its wait, it waits for you. */
+  const FORCED_DESC = 'When only one card is legal, it plays itself. Off: you play every card.';
+  /** Your only legal card in this trick, or null: it is your turn to play and one card can follow. @param {GameState} st */
+  function forcedCard(st) {
+    if (!st || !Engine.PLAY_PHASES.includes(st.phase) || st.currentPlayer !== HUMAN || !st.players[HUMAN].human) return null;
+    const legal = R.legalCards(st.hands[HUMAN], st.trick ? st.trick.leadSuit : null, st.trump);
+    return legal.length === 1 ? legal[0] : null;
+  }
+  /** @param {boolean} on */
+  function setForced(on) {
+    app.ui.forced = on;
+    $('setForced').checked = on;
+    const pf = $('panelForced'); if (pf) pf.checked = on;
+    saveSettings();
+    if (!app.mode || app.ui.autoplay || !forcedCard(app.state)) return;
+    if (on && !app.timerFn) schedule();
+    else if (!on && app.timerFn) clearTimer();
   }
 
   function clearTimer() {
@@ -6766,6 +6995,9 @@ const App = (() => {
         /* Only a broken game state gets here: no legal move exists. */
         note('The game cannot continue: no legal move for ' + app.state.players[p].name + '.');
       });
+    } else if (app.ui.forced && forcedCard(st)) {
+      const card = forcedCard(st);
+      later(d.ai, () => act({ type: 'PLAY', player: HUMAN, card }));
     } else if (!actors.length) {
       const sys = Engine.systemAction(st);
       if (!sys) return;
@@ -6789,6 +7021,16 @@ const App = (() => {
     if (p !== HUMAN && inShark(a)) return { cfg: AI.personaConfig(sharkOf(persona)), persona: true };
     const tune = a.ui.tunes && a.ui.tunes[p];
     return { cfg: tune ? AI.tunedConfig(persona, tune) : AI.personaConfig(persona), persona: true };
+  }
+  /** What a bot's profile shows: the settings it plays with at this table (a seat's tune, a Shark table's skill, the
+     AI in your seat), and a note when a tune changes it. Dynamic's amount of easing stays out of sight: an eased bot
+     shows its personality, with a note that it is eased. Off the table, the personality. @param {any} x @returns {[AIConfig, string]} */
+  function personaShown(x) {
+    const p = app.mode ? app.ui.personas.indexOf(x.id) : -1;
+    if (p < 0) return [AI.personaConfig(x), ''];
+    if (app.mode === 'dynamic' && p !== HUMAN) return [AI.personaConfig(x), app.dyn && app.dyn.e > 0 ? 'Eased to your level.' : ''];
+    const n = p !== HUMAN && inShark() ? 0 : tuneSize(app.ui.tunes[p]);
+    return [botConfig(p).cfg, n ? 'This game: ' + n + (n === 1 ? ' change' : ' changes') + ' from Settings.' : ''];
   }
 
   /* A legal action for seat p from the rules and that seat's own hand only: the last guard when the AI fails. */
@@ -6945,7 +7187,8 @@ const App = (() => {
   /* House rules that a game fixes at its start: [note id, the game's value, the setting's value, the value in words]. */
   const HOUSE_NOTES = /** @type {[string, (s: any) => any, (h: any) => any, (x: any) => string][]} */ ([
     ['setMediatorNow', st => !!st.mediatorLead, h => h.mediatorLead, x => 'this rule ' + (x ? 'on' : 'off')],
-    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal']
+    ['setJokerNow', st => st.jokerFlip || '', h => h.jokerFlip, x => JOKER_FLIP_TEXT[x] || 'Redeal'],
+    ['setPoliteNow', st => !st.politeOff, h => h.politePlay, x => 'Polite Play ' + (x ? 'on' : 'off')]
   ]);
   /* Whether the game is a wave (newGame, resumeGame and enterIdle set the mode and the wave together). */
   const inWaves = (a = app) => !!a.wave.n;
@@ -7255,14 +7498,14 @@ const App = (() => {
       case 'DISCARD': addLog(n(e.player) + ' discards 3.', 'ind'); break;
       case 'KITTY_FLIPPED':
         if (e.jokerSuit) addLog(n(st.dealer) + ' turns up the Joker. House rule: it plays as ' + R.SUIT_NAME[e.jokerSuit] + ' for the bidding.', 'h');
-        else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind');
+        else addLog(n(st.dealer) + ' turns up ' + R.shortName(e.card) + '.', 'ind flip');
         break;
       case 'HAND_VOID': addLog('The Joker was turned. The hand is void and will be dealt again.', 'h'); break;
       case 'BID_PASS': addLog(n(e.player) + ' passes (round ' + e.round + ').', 'ind'); break;
       case 'BIDDING_ROUND': if (e.round === 2) addLog('Round 2: ' + R.SUIT_NAME[e.blocked] + ' is blocked. Players may name another suit.', 'ind'); break;
       case 'TRUMP_ACCEPTED': addLog(n(e.player) + ' accepts ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
       case 'TRUMP_NAMED': addLog(n(e.player) + ' names ' + R.SUIT_NAME[e.suit] + ' as trump.', 'h'); break;
-      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', 'ind'); break;
+      case 'KITTY_TRANSFER': addLog((e.publicCard ? R.shortName(e.publicCard) : 'The 2 face-down kitty cards') + ' go' + (e.publicCard ? 'es' : '') + ' to ' + n(e.to) + ' (left of the namer).', e.publicCard ? 'ind flip' : 'ind'); break;
       case 'EXCHANGE_DISCARD': addLog(n(e.player) + ' discards ' + e.count + '.', 'ind'); break;
       case 'HAND_ABANDONED': addLog('Everyone passed twice. The hand is abandoned.', 'h'); break;
       case 'TRICK_STARTED':
@@ -7346,17 +7589,17 @@ const App = (() => {
 
   /* ---- The menu. At launch it is the "welcome back" dialog; Close then leaves the empty table. ----
      One card per mode, then a row of tools. Every button is always in the same place: Resume is there with no saved
-     game (disabled), and the cards' status lines hold a fixed two lines, so nothing moves whatever is saved or running.
+     game (disabled), and the cards' scoreboards keep a fixed height, so nothing moves whatever is saved or running.
      Explanations sit in the status lines, never on the buttons. */
-  /* A game's two status lines: who, then the hand and the scores. now: the game being played. */
-  function gameStatus(st, personas, wave, now) {
+  /* A game's two status lines, for Continue: where, then the scores, seated as at the table: West, You, East. */
+  function gameStatus(st, personas, wave) {
     const name = id => escHTML((PERSONA_BY_ID[id] || {}).name || '?');
-    return [(now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + name(personas[1]) + ' and ' + name(personas[2]),
-      (st.handNumber ? handLabel(st) : 'Choosing seats') + ' · You ' + st.scores[0] + ' · ' + name(personas[1]) + ' ' + st.scores[1] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
+    return [(wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats'),
+      name(personas[1]) + ' ' + st.scores[1] + ' · You ' + st.scores[0] + ' · ' + name(personas[2]) + ' ' + st.scores[2]];
   }
   function slotStatus(m) {
     const sl = slots.get(m);
-    return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n, false) : null;
+    return sl ? gameStatus(sl.state, sl.personas, m === 'waves' && sl.wave.n) : null;
   }
   const menuButton = (action, label, o = {}) => '<button class="btn' + (o.primary ? ' primary' : '') + (o.cls ? ' ' + o.cls : '') + '" type="button" data-action="' + action + '"' + (o.attrs || '') +
     (o.disabled ? ' disabled' : '') + (o.title ? ' title="' + o.title + '"' : '') + '>' + label + '</button>';
@@ -7375,7 +7618,7 @@ const App = (() => {
     if (launch && !app.menuOpen) menuView = 'home';
     const ov = $('overlay');
     ov.innerHTML = '<div class="menu menu-stage" role="dialog" aria-modal="true" aria-labelledby="menuTitle"><div class="about-kings" aria-hidden="true">' + driftHTML() + '</div>' +
-      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML(launch) + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
+      '<section class="about-card menu-card">' + menuHomeHTML(launch) + menuNewHTML() + menuModesHTML() + menuRulesHTML() + menuLoreHTML() + menuCodeHTML() + '</section>' +
       /* Under Load a code, floating at the foot of the window: the replay code version and the Engine version (RULES_VERSION)
          that this app writes (docs/versions.md). Outside the card, whose backdrop filter would hold a fixed child. */
       '<p class="code-ver" id="codeVersion" hidden>Replay KCT' + Replay.VERSION + ' · Engine ' + Engine.RULES_VERSION + '</p></div>';
@@ -7393,13 +7636,15 @@ const App = (() => {
     for (const v of views) v.hidden = v.getAttribute('data-view') !== view;
     const ver = $('codeVersion'); if (ver) ver.hidden = view !== 'code';
     if (focus) {
-      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('button:not([disabled]), input, select'));
+      /* The focus starts on the view's main button, the likely choice, else on its first control. */
+      const shown = views.find(v => !v.hidden), first = shown && /** @type {HTMLElement | null} */ (shown.querySelector('.btn.primary:not([disabled])') || shown.querySelector('button:not([disabled]), input, select'));
       if (first) first.focus();
     }
   }
-  /* A view: its heading with Back (every view but home), then its body. */
-  const menuViewHTML = (/** @type {string} */ view, /** @type {string} */ title, /** @type {string} */ body, attrs = '', cls = '') => '<div class="mview' + cls + '" data-view="' + view + '"' + attrs + ' hidden>' +
-    (title ? '<div class="mtop"><button class="mback" type="button" data-action="menu-view" data-view="' + MENU_PARENT[view] + '">‹ Back</button><h3>' + title + '</h3></div>' : '') + body + '</div>';
+  /* A view: its heading with Back (every view but home), the title in the middle and end (a quiet icon) on the right,
+     then its body. */
+  const menuViewHTML = (/** @type {string} */ view, /** @type {string} */ title, /** @type {string} */ body, attrs = '', cls = '', end = '') => '<div class="mview' + cls + '" data-view="' + view + '"' + attrs + ' hidden>' +
+    (title ? '<div class="mtop"><button class="mback" type="button" data-action="menu-view" data-view="' + MENU_PARENT[view] + '">‹ Back</button><h3>' + title + '</h3>' + end + '</div>' : '') + body + '</div>';
   /* A line of a list: a name (with a mode's dot), a short note, and ›. */
   const menuLine = (/** @type {string} */ view, /** @type {string} */ name, note = '', dot = '') => '<li><button type="button" data-action="menu-view" data-view="' + view + '">' +
     (dot ? '<span class="mdot ' + dot + '" aria-hidden="true"></span>' : '') + '<span class="mname">' + name + '</span>' + (note ? '<small>' + note + '</small>' : '') + '<span class="chev" aria-hidden="true">›</span></button></li>';
@@ -7408,13 +7653,29 @@ const App = (() => {
     const p = Waves.progress();
     return m === 'waves' ? (p.sharkOpen ? 'Sharks: ' + p.sharks + ' of ' + p.total + ' cleared' : p.waves + ' of ' + p.total + ' cleared') : 'Beaten ' + beatenCount(stats.get(), m) + ' of ' + PERSONAS.length;
   }
+  /* The same goal as a share, 0 to 1, for its meter. */
+  function modeGoalShare(/** @type {string} */ m) {
+    const p = Waves.progress();
+    return m === 'waves' ? (p.sharkOpen ? p.sharks : p.waves) / p.total : beatenCount(stats.get(), m) / PERSONAS.length;
+  }
+  /* A mode card's game as a scoreboard: a caption (Playing now, the wave, the hand), then each player's name in their
+     color over their score, seated as at the table: West, You, East. Without a game, the caption and the mode's
+     tagline, in the same height. */
+  function menuBoardHTML(st, personas, wave, now) {
+    const cap = (now ? 'Playing now · ' : '') + (wave ? waveName(wave) + ' · ' : '') + (st.handNumber ? handLabel(st) : 'Choosing seats');
+    const who = [1, 0, 2].map(p => {
+      const x = p ? PERSONA_BY_ID[personas[p]] : null;
+      return '<li><b style="color:' + (p ? escHTML(x ? x.color : 'var(--name' + p + ')') : 'var(--name0)') + '">' + (p ? escHTML(x ? x.name : '?') : 'You') + '</b><span>' + st.scores[p] + '</span></li>';
+    }).join('');
+    return '<div class="mboard"><p class="mcap">' + cap + '</p><ol class="mscores">' + who + '</ol></div>';
+  }
   /* Home: the title and a line of the lore, then the one big button: Continue (the game being played, or the last one
      saved) or, with no game, New game. Then three lines, and the small links and the credit at the foot. */
   function menuHomeHTML(launch) {
     const playing = gameOn(), lost = slots.dropped();
     const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
     const last = playing ? app.mode : launch ? slots.last() || resumable[0] : slots.last() || resumable[0];
-    const st = playing ? gameStatus(app.state, app.ui.personas, app.mode === 'waves' && app.wave.n, false) : last ? slotStatus(last) : null;
+    const st = playing ? gameStatus(app.state, app.ui.personas, app.mode === 'waves' && app.wave.n) : last ? slotStatus(last) : null;
     const go = st
       ? '<button class="mgo primary" type="button" data-action="' + (playing ? 'close-menu' : 'resume-' + last) + '">Continue<small>' + modeName(last || '') + ' · ' + st[0] + '</small><small>' + st[1] + '</small></button>'
       : '<button class="mgo primary" type="button" data-action="menu-view" data-view="new">New game<small>Dynamic, Waves or Free play</small></button>';
@@ -7437,10 +7698,10 @@ const App = (() => {
     return menuViewHTML('new', 'New game', '<ul class="mlist">' + MODES_SHOWN.map(([m, name]) => menuLine('mode-' + m, name, note(m), m)).join('') + '</ul>');
   }
   const MODES_SHOWN = Object.freeze([['dynamic', 'Dynamic'], ['waves', 'Waves'], ['free', 'Free play']]);
-  /* A mode's view: its name and goal (Your profile for the mode), its game in two lines, the Waves list, then Discard,
-     Resume and New game (Play wave). Resume returns to the game: the one being played (the menu closes), or the saved
+  /* A mode's view: its name (Discard on the right), its game as a scoreboard, its goal (Your profile for the mode), the
+     Waves list, then Resume and New game (Play wave). Resume returns to the game: the one being played (the menu closes), or the saved
      one. Every button stays in the same place whatever is saved or running. */
-  function menuModesHTML(launch) {
+  function menuModesHTML() {
     const p = Waves.progress();
     const playing = gameOn();
     const lost = slots.dropped();
@@ -7453,22 +7714,24 @@ const App = (() => {
     const waveOptions = p.sharkOpen
       ? '<optgroup label="Waves">' + openWaves.filter(w => !w.shark).map(waveOption).join('') + '</optgroup><optgroup label="Shark run">' + openWaves.filter(w => w.shark).map(waveOption).join('') + '</optgroup>'
       : openWaves.map(waveOption).join('');
-    const resumable = MODES.filter(m => slots.get(m) && !(playing && app.mode === m));
-    const main = launch ? slots.last() || resumable[0] : null;
-    const view = (m, title, extra, button) => {
-      const now = playing && app.mode === m, st = now ? gameStatus(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : slotStatus(m);
-      const lines = st || [lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game', MODE_TAGLINE[m]];
-      const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: main === m, disabled: !now && !st });
-      /* Discard game: only with a game, and quiet, so it never competes with Resume. */
-      const del = st ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
+    /* The main (gold) button is the likely choice: Resume with a game, else New game (Play wave). */
+    const view = (m, title, extra, action, label) => {
+      const now = playing && app.mode === m, sl = now ? null : slots.get(m), has = now || !!sl;
+      const board = now ? menuBoardHTML(app.state, app.ui.personas, m === 'waves' && app.wave.n, true) : sl ? menuBoardHTML(sl.state, sl.personas, m === 'waves' && sl.wave.n, false)
+        : '<div class="mboard empty"><p class="mcap">' + (lost.includes(m) ? 'Your unfinished game could not be loaded.' : 'No saved game') + '</p><p class="mtag">' + MODE_TAGLINE[m] + '</p></div>';
+      const resume = menuButton(now ? 'close-menu' : 'resume-' + m, 'Resume', { primary: has, disabled: !has });
+      /* Discard game: only with a game, a quiet icon on the right of the heading, away from Resume. */
+      const del = has ? '<button class="mdel" type="button" data-action="discard-' + m + '" aria-label="Discard game" title="Discard game">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '';
-      const tail = '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + modeGoal(m) + '</button>';
+      /* The goal, with its meter: it opens Your profile for the mode. */
+      const tail = '<button class="mtail" type="button" data-action="menu-profile" data-mode="' + m + '" title="Your ' + modeName(m) + ' results">' + modeGoal(m) +
+        '<span class="mmeter" aria-hidden="true"><i style="width:' + Math.round(modeGoalShare(m) * 100) + '%"></i></span></button>';
       return menuViewHTML('mode-' + m, '<span class="mode-chip ' + m + '">' + title + '</span>',
-        '<p class="mstat"><span>' + lines[0] + '</span><span>' + (lines[1] || '&nbsp;') + '</span></p>' + tail + (extra || '') + '<div class="mbtns">' + del + resume + button + '</div>', ' data-mode="' + m + '"', ' mcard');
+        board + tail + (extra || '') + '<div class="mbtns">' + resume + menuButton(action, label, { primary: !has }) + '</div>', ' data-mode="' + m + '"', ' mcard', del);
     };
-    return view('dynamic', 'Dynamic', '', menuButton('new-dynamic', 'New game')) +
-      view('waves', 'Waves', '<label class="sr" for="waveSel">' + (p.sharkOpen ? 'Table' : 'Wave') + '</label><select id="waveSel">' + waveOptions + '</select>', menuButton('play-wave', p.sharkOpen ? 'Play table' : 'Play wave')) +
-      view('free', 'Free play', '', menuButton('new-free', 'New game'));
+    return view('dynamic', 'Dynamic', '', 'new-dynamic', 'New game') +
+      view('waves', 'Waves', '<label class="sr" for="waveSel">' + (p.sharkOpen ? 'Table' : 'Wave') + '</label><select id="waveSel">' + waveOptions + '</select>', 'play-wave', p.sharkOpen ? 'Play table' : 'Play wave') +
+      view('free', 'Free play', '', 'new-free', 'New game');
   }
   /* How to play: the tutorial (to come), the quick rules, and the full rules (to come). */
   function menuRulesHTML() {
@@ -7511,7 +7774,6 @@ const App = (() => {
   async function confirmReplace(mode) {
     const st = unfinished(mode);
     if (!st || st.scores.every(x => x === 0) && handNo(st) <= 1) return true;
-    if (app.menuOpen) $('overlay').hidden = true;
     const n = mode === 'waves' ? forfeitWave() : null;
     const yes = await ask({
       title: 'Start a new ' + modeName(mode) + ' game?',
@@ -7527,7 +7789,6 @@ const App = (() => {
   async function discardGame(mode) {
     const st = unfinished(mode);
     if (st) {
-      if (app.menuOpen) $('overlay').hidden = true;
       const n = mode === 'waves' ? forfeitWave() : null;
       const yes = await ask({ title: 'Discard your ' + modeName(mode) + ' game?', text: '<p>' + unfinishedText(mode, st) + ' ends. You cannot undo this.</p>' + forfeitText(n), ok: 'Discard', cancel: 'Keep it' });
       if (yes) {
@@ -7570,7 +7831,7 @@ const App = (() => {
     /* The same table and tunes (Free play), which the seed alone may not seat. */
     const seated = rec.mode !== 'waves' && PERSONA_BY_ID[rec.seats[1]] && PERSONA_BY_ID[rec.seats[2]];
     const tunes = [1, 2].map(p => AI.cleanTune(safe(() => JSON.parse(rec.meta['ai.tune' + p]))));
-    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '' },
+    return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '', politePlay: !rec.politeOff },
       more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : undefined };
   }
   function replaySeedRow(at) {
@@ -7987,11 +8248,21 @@ const App = (() => {
     ov.innerHTML = '<div class="modal swap" role="dialog" aria-label="Choose seats"><div class="mtop"><button class="mback swap-back" type="button" data-action="swap-back">‹ Back</button><h2>Choose seats</h2></div>' +
       '<p>You may swap your two opponents now, before the deal. This is your only chance: once the cards are dealt, the seats stay for the whole game.</p>' +
       '<div class="swap-seats">' + seatCardHTML(west, 'Your left · West') + '<button class="btn swap-btn" type="button" data-action="swap-preview" aria-label="Swap the two seats">⇄</button>' + seatCardHTML(east, 'Your right · East') + '</div>' +
-      lastGameHTML() +
+      dynamicNoteHTML() + lastGameHTML() +
       '<div class="row">' +
       '<button class="btn" type="button" data-action="swap-new">New opponents</button>' +
       '<button class="btn primary" type="button" data-action="swap-done">Play</button></div></div>';
     ov.hidden = false;
+  }
+  /* Dynamic only: how the opponents are picked, so New opponents is not read as a rotation through every bot. */
+  function dynamicNoteHTML() {
+    if (app.mode !== 'dynamic' || !app.dyn) return '';
+    const max = sharkLimit(app.dyn.e0);
+    const names = PERSONAS.filter(x => x.tier === 'shark').map(x => escHTML(x.name));
+    const list = (/** @type {string} */ and) => names.slice(0, -1).join(', ') + ' ' + and + ' ' + names[names.length - 1];
+    return '<p class="swap-note">Dynamic picks two opponents at random from those appropriate for you right now, and avoids the bots from your last game. It does not go through every bot in turn. ' +
+      (max === 0 ? 'For now, the Sharks (' + list('and') + ') sit out. They join as your play improves.' :
+        max === 1 ? 'For now, at most one Shark (' + list('or') + ') sits at your table.' : 'Any two bots can sit at your table.') + '</p>';
   }
   /* One line: how your latest finished game of this mode (Free play or Dynamic) ended. */
   function lastGameHTML() {
@@ -8048,11 +8319,12 @@ const App = (() => {
     ['Trump order', '<b>Joker, Right Bower, Left Bower, A, K, Q, 10, 9, 8, 7.</b> The Right Bower is the Jack of trump. The Left Bower is the other Jack of the same color, and counts as trump. ' +
       '<i>Bower</i> comes from the German <i>Bauer</i>, “farmer”: the Jacks are the farmers.'],
     ['Discard', 'Before bidding, each player discards 3 cards face down to the outside pile, leaving 7. The discards go in turn from the dealer\'s left, the dealer last.'],
-    ['Naming trump: round 1', 'The dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the caller</b>, who discards 1. ' +
+    ['Naming trump: round 1', 'The dealer turns the top kitty card. Accept its suit or pass. If it is accepted, the turned card goes to the player <b>left of the namer</b>, who discards 1. ' +
       'A turned-up Joker voids the hand; with the house rule <b>Turned-up Joker</b>, it offers the suit set in Settings instead, shown under its corner star for this hand.'],
-    ['Naming trump: round 2', 'Name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the caller, who discards 2. If all pass, the hand is abandoned. ' +
-      'The gift to the player left of the caller is the only price of trump: the caller loses no points for a failed call.'],
-    ['Play', '7 tricks. The player left of the dealer leads. Follow suit if you can.'],
+    ['Naming trump: round 2', 'Name another suit or pass. If a suit is named, the 2 face-down kitty cards go to the player left of the namer, who discards 2. If all pass, the hand is abandoned. ' +
+      'The gift to the player left of the namer is the only price of trump: the namer loses no points for a failed call.'],
+    ['Play', '7 tricks. Every hand starts with the player <b>left of the dealer</b> leading the first trick. You <b>must follow the led suit</b> if possible. ' +
+      'The <b>winner of each trick leads the next one</b>.'],
     ['Scoring', '<b>+1</b> at once when a King wins a trick (a losing King scores nothing). End of hand: most tricks <b>+1</b>, the namer takes all 7 <b>+2</b>, a non-namer takes all 7 <b>+3</b>.'],
     ['Showdown', 'On a 3–3–1 split, the 1-trick player mediates: shuffles the 12 outside cards and deals 6 to each tied player. Each discards 1, in turn from the mediator\'s left, and they play 5 tricks with the same trump. ' +
       'The mediator picks who leads (a house rule, on by default; off: the player who won the latest main trick between them leads). Winner <b>+1</b>, loser <b>−1</b> (not below 0).']
@@ -8193,17 +8465,33 @@ const App = (() => {
   /* A collapsed list in Your profile: its name and a short count as the summary. */
   const pfListHTML = (/** @type {string} */ cls, /** @type {string} */ name, /** @type {string} */ count, /** @type {string} */ body) =>
     '<details class="pf-list ' + cls + '"><summary><b>' + name + '</b> <span>' + count + '</span></summary>' + body + '</details>';
-  /* The long lists of Your profile, each collapsed. A game takes two lines: what it was, then when and its actions
-     (Watch, Try again, Export: its seed and replay code). @param {string} m @param {any} st @param {any[]} games @param {any} pr */
+  /* The long lists of Your profile, each collapsed. Games: back-to-back games at one table (the same mode, wave and
+     opponents) share a header that says how the tries went; each game is a row with its actions (Watch, Try again,
+     Export: its seed and replay code). @param {string} m @param {any} st @param {any[]} games @param {any} pr */
   function pfListsHTML(m, st, games, pr) {
     let html = '';
     if (games.length) {
       const at = (/** @type {any} */ e) => ' data-at="' + escHTML(String(e.at)) + '"';
-      html += pfListHTML('pf-games', 'Games', 'the last ' + games.length + ', newest first', '<ol class="pf-glist">' + games.map(e =>
-        '<li><span class="pf-g1"><b class="' + (e.winner === 0 ? 'won' : 'lost') + '">' + (e.winner === 0 ? 'Won' : 'Lost') + '</b> ' + pfModeName(e) + ' · ' + pfWho(e.west) + ' / ' + pfWho(e.east) +
-        (e.tuned ? ' <small>(tuned)</small>' : '') + ' <span class="num">' + e.scores.join('–') + '</span></span>' +
-        '<span class="pf-g2"><span class="dim">' + escHTML(pfWhen(e.at)) + '</span><span class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, at(e)) : '') +
-        (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, at(e)) : '') + tinyButton('replay-export', 'Export: seed and replay code', ICON_EXPORT, at(e)) + '</span></span></li>').join('') + '</ol>');
+      const runs = /** @type {any[][]} */ ([]);
+      for (const e of games) {
+        const last = runs[runs.length - 1], f = last && last[0];
+        if (f && f.mode === e.mode && f.wave === e.wave && f.west === e.west && f.east === e.east) last.push(e); else runs.push([e]);
+      }
+      const runNote = (/** @type {any[]} */ run) => {
+        const wins = run.filter(e => e.winner === 0).length;
+        if (run.length === 1) return wins ? 'Won' : 'Lost';
+        if (run[0].mode === 'waves') return (wins ? 'Won' : 'Not won') + ' · ' + run.length + ' tries';
+        return wins + ' of ' + run.length + ' won';
+      };
+      const row = (/** @type {any} */ e) => '<li><span class="pf-sq' + (e.winner === 0 ? ' won' : '') + '" title="Your score"><span class="sr">' + (e.winner === 0 ? 'Won' : 'Lost') + ', you scored </span>' + e.scores[0] + '</span>' +
+        '<span class="pf-gm"><span class="num">' + escHTML(pfName(e.west)) + ' ' + e.scores[1] + ' · ' + escHTML(pfName(e.east)) + ' ' + e.scores[2] + (e.tuned ? ' <small class="dim">(tuned)</small>' : '') + '</span>' +
+        '<span class="dim">' + escHTML(pfWhen(e.at)) + '</span></span><span class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, at(e)) : '') +
+        (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, at(e)) : '') + tinyButton('replay-export', 'Export: seed and replay code', ICON_EXPORT, at(e)) + '</span></li>';
+      html += pfListHTML('pf-games', 'Games', 'the last ' + games.length + ', newest first', runs.map(run => {
+        const e = run[0], note = runNote(run);
+        return '<section class="pf-tg"><div class="pf-tg-h"><span>' + pfModeName(e) + ' · ' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</span><small' + (/^Won/.test(note) ? ' class="won"' : '') + '>' + note + '</small></div>' +
+          '<ol>' + run.map(row).join('') + '</ol></section>';
+      }).join(''));
     }
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
     const met = PERSONAS.filter(x => opp[x.id] && opp[x.id].played).length;
@@ -8327,9 +8615,9 @@ const App = (() => {
       case 'name-pass': act({ type: 'NAME', player: HUMAN, suit: null }); break;
       case 'continue': { const sys = Engine.systemAction(app.state); if (sys) continueFrom(sys); break; }
       case 'skip': skipShowdown(); break;
-      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { $('overlay').innerHTML = Render.personaHTML(inShark() && gameOn() ? sharkOf(x) : x); $('overlay').hidden = false; } break; }
+      case 'persona': { const x = PERSONA_BY_ID[el.getAttribute('data-id')]; if (x) { const [cfg, note] = personaShown(x); $('overlay').innerHTML = Render.personaHTML(x, cfg, note); $('overlay').hidden = false; } break; }
       case 'toggle-log': toggleLog(); break;
-      case 'adv-tricks': if (app.houseRules.politePlay) showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
+      case 'adv-tricks': showPanel('tricks', Number(el.getAttribute('data-seat')), el); break;
       case 'adv-outside': showPanel('outside', null, el); break;
       case 'adv-info': showPanel(el.getAttribute('data-kind'), el.hasAttribute('data-seat') ? Number(el.getAttribute('data-seat')) : null, el); break;
       case 'close-overlay': $('overlay').hidden = true; break;
@@ -8413,7 +8701,7 @@ const App = (() => {
       case 'replay-seed':
         if (el.hasAttribute('data-at')) replaySeedRow(el.getAttribute('data-at') || '');
         /* The same table and tunes: the seed alone may seat another pair (seat settings, a swap, Dynamic's pick by level). */
-        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '' },
+        else startMode(app.mode, app.state.seed, app.wave.n, app.dyn ? app.dyn.snap : undefined, { mediatorLead: !!app.state.mediatorLead, jokerFlip: app.state.jokerFlip || '', politePlay: !app.state.politeOff },
           inWaves() ? undefined : dealtTable([app.ui.personas[1], app.ui.personas[2]], [app.ui.tunes[1], app.ui.tunes[2]], app.ui.swapped));
         break;
       case 'swap-preview': swapPreview(); break;
@@ -8425,14 +8713,14 @@ const App = (() => {
       case 'install-check': checkInstall({ update: true }); break;
       case 'backup-save': saveBackup(); break;
       case 'backup-restore': $('backupFile').click(); break;
-      case 'game-reset': askGameReset($('setGameReset').value); break;
+      case 'table-reset': askTableReset(); break;
       case 'client-reset': askClientReset($('setClientReset').value); break;
       case 'update-later': hideUpdateNote(); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
       case 'set-tab': showSettingsTab(el.getAttribute('data-tab'), true); break;
       case 'clear-log': Logger.clear(); $('setLog').textContent = ''; $('setTests').hidden = true; $('setTests').innerHTML = ''; break;
-      case 'settings-reset': resetSeats(); break;
+      case 'settings-reset': askBotsReset(); break;
       case 'seat-reset': resetSeats(Number(el.getAttribute('data-seat'))); break;
       case 'run-tests': {
         if (testsRunning) break;
@@ -8449,9 +8737,10 @@ const App = (() => {
   }
 
   /* ---- The Settings panel: full screen, one tab at a time. The tab last shown is remembered in this browser. ---- */
-  const SET_TABS = ['Game', 'Bots', 'Tools'];
+  const SET_TABS = ['Table', 'Bots', 'Tools'];
   function showSettingsTab(name, focus) {
-    const tab = SET_TABS.includes(name) ? name : 'Game';
+    /* Table was called Game until 2026-10: a kept 'Game' opens Table. */
+    const tab = SET_TABS.includes(name) ? name : 'Table';
     for (const t of SET_TABS) {
       const b = $('setTab' + t), on = t === tab;
       b.setAttribute('aria-selected', String(on));
@@ -8482,7 +8771,7 @@ const App = (() => {
        stays live: it shows over Settings (Check again finds a new version there), so its Reload must work. */
     for (const el of document.body.children) if (el !== d && el.id !== 'updateNote' && el instanceof HTMLElement && el.tagName !== 'SCRIPT') el.inert = open;
     if (!open) { const b = /** @type {HTMLElement | null} */ (document.querySelector('#topbar [data-action="toggle-settings"]')); if (b) b.focus(); return; }
-    showSettingsTab(loadSetTab() || 'Game', true);
+    showSettingsTab(loadSetTab() || 'Table', true);
     checkInstall();
     /* Lines logged while the panel was closed are shown when it opens. */
     const pre = $('setLog'); pre.replaceChildren(...Logger.lines.map(line => line + '\n')); pre.scrollTop = pre.scrollHeight;
@@ -8554,6 +8843,8 @@ const App = (() => {
       opts(PERSONAS.map(x => [x.id, x.name + ' (' + TIER_NAMES[x.tier] + ', ' + COURAGE_NAMES[x.courage].toLowerCase() + ')'])) + '</select>');
     return '<details class="seat-set" id="setSeat' + p + '"><summary><span class="set-name">' + SEAT_NAMES[p] + '</span><span class="seat-sum" id="setSeatSum' + p + '"></span></summary>' +
       '<div class="seat-body"><p class="k-hint set-note">' + SEAT_DESC[p] + '</p><p class="k-hint set-note rule-note" id="setSeatNow' + p + '" hidden></p>' +
+      (p === HUMAN ? '<div class="set-card"><label class="set-row"><span class="set-text"><span class="set-name">AI can play your seat</span><span class="set-desc">Click your Human tag to hand your seat to the AI for this game. A game it plays clears no wave. Off after a reload.</span></span><input class="sw" type="checkbox" id="setSeatAI"></label>' +
+        '<label class="set-row"><span class="set-text"><span class="set-name">Forced plays</span><span class="set-desc">' + FORCED_DESC + ' Also in your Human tag\'s popup.</span></span><input class="sw" type="checkbox" id="setForced"></label></div>' : '') +
       '<div class="set-card">' + who + '</div>' +
       sub('Skill', sel('tier', 'Skill', 'Sets hunches, brain farts and knowledge together.', [...Object.entries(TIER_NAMES), ['custom', 'Custom', 'off']]) +
         row('worlds', 'Hunches', 'Guesses about the hidden cards per decision, 1 to 200. Empty: its own.',
@@ -8696,18 +8987,21 @@ const App = (() => {
      ?seed= link (a link's wave comes too). A backup is named, so the dialog can say where it goes. Spaces and line
      breaks are dropped: a chat app may wrap a long code. kind: 'empty', 'replay', 'seed', 'backup', 'dev' or 'bad'
      (with why). Input that starts with '!' is never a code: only a '!dev' command with submit is read as one, and any
-     other '!' text reads as text that is not a code, so nothing hints at it. */
+     other '!' text reads as text that is not a code, so nothing hints at it. The one word 'pulse' with submit is kind
+     'readout' (the same as '!dev easing'), so a player can be asked for it without a dev command; typed, it reads as
+     text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
     }
+    if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
     if (/^https?:\/\/|^\?|[?&](replay|seed)=/i.test(t)) {
@@ -8731,23 +9025,28 @@ const App = (() => {
   /* '!dev' submitted alone: the keys, their values for this tab and their defaults. */
   function devText() {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
-    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') + '.';
+    return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
+      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
     $('codeRead').textContent = '';
+    $('codeRead').classList.remove('dev-read');
     $('codeWhere').hidden = true;
     $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Load';
   }
   /* Load (or Enter) reads the field, then loads it or says why not: a replay opens the viewer (Exit returns to the
      menu). A seed first shows where to play it (a link's wave is chosen); Play then starts it there, as New game does
      (a begun unfinished game of that mode is lost only if you agree). Only open waves are listed. A Dev command
-     applies and returns home, where the build line shows it; '!dev' alone lists the keys. */
+     applies and returns home, where the build line shows it; '!dev' alone lists the keys. '!dev easing=N' asks first,
+     then sets the profile's hand count to N (the hold and the taper count from it) and keeps everything else. */
   function loadCode() {
     const input = /** @type {HTMLInputElement | null} */ (document.getElementById('codeIn'));
     if (!input) return;
     const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
+    if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
+    if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -8772,6 +9071,50 @@ const App = (() => {
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+  }
+  /* '!dev easing' or 'pulse': a terse readout for someone who says Dynamic is too easy or too hard. Codes, not words, so a player
+     reading it over your shoulder learns nothing; the legend is in tests/README.md (Dev commands). Percentages are 0-100.
+     P: the profile (hands and phase H hold, T taper, R record; f floor, t slow target, n next game's start, k Sharks
+     allowed, m mark). S: the record's signals (score share, failed calls, bid errors, slips; w the record's weight).
+     B: points per weak hand (dealt best 7 worth less than BAD_HAND), yours and the bots' at your tables, and your weak hands.
+     G: the Dynamic game at the table, if any (hands, start, now, target, fast path, weak visible hands of visible).
+     L: the last 5 Dynamic games, newest first (W won, L lost, A the AI played your seat; then its start easing). */
+  function easingReadout() {
+    const DY = Dynamic, p = profile.get(), snap = DY.snapshotOf(p), h = p.hands, end = DY.HOLD_HANDS + DY.TAPER_HANDS;
+    const pc = (/** @type {number} */ x) => String(Math.round(100 * x)).padStart(2, '0');
+    const rate = (/** @type {number} */ a, /** @type {number} */ b) => (b > 0 ? pc(a / b) : '--');
+    const next = DY.startEase(snap);
+    const lines = [
+      'P h' + h + (h < DY.HOLD_HANDS ? 'H' : h < end ? 'T' : 'R') + ' f' + pc(DY.floorEase(h)) + ' t' + pc(DY.slowTarget(snap)) + ' n' + pc(next) + ' k' + sharkLimit(next) + ' m' + (p.mark ? 1 : 0),
+      'S sh' + rate(p.share.me, p.share.all) + ' fc' + rate(p.calls.failed, p.calls.n) + ' be' + rate(p.bids.errors, p.bids.n) + ' sl' + rate(p.plays.slips, p.plays.n) + ' w' + pc(h / (h + DY.PROFILE_HANDS))
+    ];
+    /* B: points per weak hand, yours (p) and the bots' at your tables (b), and your weak hands on record (n). */
+    const per = (/** @type {number} */ pts, /** @type {number} */ n) => (pts / n >= 0 ? '+' : '') + (pts / n).toFixed(1);
+    const w = p.weak;
+    lines.push(w.n >= 0.5 && w.bn >= 0.5 ? 'B p' + per(w.pts, w.n) + ' b' + per(w.bpts, w.bn) + ' n' + Math.round(w.n) : 'B --');
+    const d = app.dyn;
+    if (app.mode === 'dynamic' && d && app.state && !app.state.gameOver) lines.push('G h' + d.hands + ' s' + pc(d.e0) + ' e' + pc(d.e) + ' t' + pc(d.target) + ' F' + (d.fast ? 1 : 0) + ' v' + d.weakSeen + '/' + d.visible.length);
+    const games = replays.list().filter(e => e.mode === 'dynamic').slice(0, 5).map(e => {
+      const rec = safe(() => Replay.decode(e.code)), sn = rec && rec.meta ? DY.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : null;
+      return (e.assisted ? 'A' : e.winner === 0 ? 'W' : 'L') + (sn ? pc(DY.startEase(sn)) : '--');
+    });
+    lines.push('L ' + (games.join(' ') || '-'));
+    return lines.join('\n');
+  }
+  /* '!dev easing=N': only the hand count of kct.profile changes (and the gross-mistake mark clears). The record of your
+     play, the habit counts, Dynamic's saved game (it keeps the snapshot it started from), results, replay codes, the
+     other modes and the settings stay. */
+  /** @param {number} n */
+  async function setEasing(n) {
+    const hold = Dynamic.HOLD_HANDS, end = hold + Dynamic.TAPER_HANDS, was = profile.get().hands;
+    const what = n < hold ? 'Dynamic plays at full easing for the next ' + (hold - n) + ' hands, then eases less over ' + Dynamic.TAPER_HANDS + ' more.'
+      : n < end ? 'The easing is in its taper: it can fall no lower than ' + Math.round(100 * Dynamic.floorEase(n)) + '% now, and reaches 0 after ' + (end - n) + ' more hands.'
+      : 'There is no hold or taper: the easing follows your record.';
+    const yes = await ask({ title: 'Set Dynamic\'s easing to ' + n + ' hands?', text: '<p>Your Dynamic profile has ' + was + ' hands. ' + what +
+      ' Your record, Your profile, results, replay codes, other modes and settings stay. A saved Dynamic game keeps its easing.</p>', ok: 'Set easing', cancel: 'Cancel', danger: true });
+    if (yes) { profile.setHands(n); Logger.log('DEV', { easing: n, was }); linkNote = 'Dynamic\'s easing is set to ' + n + ' hands.'; }
+    menuView = 'home';
+    showMenu(app.menuLaunch);
   }
   /* Settings panel: self-test results as a summary, one line per area, and any failures. */
   /* The areas in the order the summary lists them: a hand from deal to score, the bots, whole games, the modes,
@@ -8812,7 +9155,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -8832,12 +9175,13 @@ const App = (() => {
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
     /* Table memory was one switch (a boolean) before it split into one per fact: it sets them all. Profiles → Show this
        hand's bids and voids (up to 0.6.14) was part of it. */
-    const mem = app.ui.memory, keys = /** @type {('trumps' | 'kings' | 'turned' | 'voids')[]} */ (Object.keys(mem));
-    if (x.memory === undefined && x.thisHand === true) for (const k of keys) mem[k] = true;
-    if (typeof x.memory === 'boolean') for (const k of keys) mem[k] = x.memory;
-    if (x.memory && typeof x.memory === 'object') for (const k of keys) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
+    const mem = app.ui.memory, adds = /** @type {MemoryKey[]} */ (['trumps', 'kings', 'turned', 'voids']);
+    if (x.memory === undefined && x.thisHand === true) for (const k of adds) mem[k] = true;
+    if (typeof x.memory === 'boolean') for (const k of adds) mem[k] = x.memory;
+    if (x.memory && typeof x.memory === 'object') for (const k of MEMORY_KEYS) if (typeof x.memory[k] === 'boolean') mem[k] = x.memory[k];
     if (typeof x.mediatorLead === 'boolean') app.houseRules.mediatorLead = x.mediatorLead;
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
+    if (typeof x.forced === 'boolean') app.ui.forced = x.forced;
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
   }
 
@@ -8928,11 +9272,10 @@ const App = (() => {
       box.querySelectorAll('.mbtns .btn').forEach(b => b.classList.toggle('primary', b.getAttribute('data-action') === 'play-wave'));
     });
     loadSettings();
-    for (const [k, id] of Object.entries(MEMORY_SWITCHES)) {
-      const key = /** @type {'trumps' | 'kings' | 'turned' | 'voids'} */ (k);
-      $(id).checked = app.ui.memory[key];
-      $(id).addEventListener('change', () => setMemory(key, $(id).checked));
-    }
+    for (const k of MEMORY_KEYS) $(MEMORY_SWITCHES[k]).addEventListener('change', () => setMemory(k, $(MEMORY_SWITCHES[k]).checked));
+    $('setMemAll').addEventListener('change', () => setMemoryAll(MEMORY_PRESETS[$('setMemAll').checked ? 'full' : 'real']));
+    $('setMemPreset').addEventListener('change', () => { const p = MEMORY_PRESETS[$('setMemPreset').value]; if (p) setMemoryAll(p); });
+    syncMemory();
     syncTheme();
     $('setFelt').addEventListener('change', ev => { const r = /** @type {HTMLInputElement} */ (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt, /** @type {HTMLInputElement} */ ($('setColorBlind')).checked ? 'colorblind' : ''));
@@ -8946,7 +9289,7 @@ const App = (() => {
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setJokerFlip').addEventListener('change', () => { app.houseRules.jokerFlip = $('setJokerFlip').value; saveSettings(); draw([]); });
     $('setPolitePlay').checked = app.houseRules.politePlay;
-    $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; closePanel(); saveSettings(); if (app.state) draw([]); });
+    $('setPolitePlay').addEventListener('change', () => { app.houseRules.politePlay = $('setPolitePlay').checked; saveSettings(); draw([]); });
     /* A save refused before this point (wave progress at load) is reported now; later ones as they happen. */
     SaveWatch.onFail = reportSaveFail;
     if (SaveWatch.failedKey) reportSaveFail(SaveWatch.failedKey);
@@ -8983,6 +9326,9 @@ const App = (() => {
     syncSeats();
     $('setSeatAI').checked = false;
     $('setSeatAI').addEventListener('change', () => setAllowSeatAI($('setSeatAI').checked));
+    $('setForced').checked = app.ui.forced;
+    $('setForced').addEventListener('change', () => setForced($('setForced').checked));
+    $('table').addEventListener('change', ev => { if (ev.target instanceof HTMLInputElement && ev.target.id === 'panelForced') setForced(ev.target.checked); });
     /* One text node per line, so a long log does not copy all its text for each new line. The panel keeps as many lines as the Logger. */
     Logger.listeners.push(line => {
       const pre = $('setLog');
@@ -9029,7 +9375,7 @@ const App = (() => {
      dialog also read. A reset clears both, so no screen shows games that the counts no longer hold. */
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, gameReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount };
+  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount, forcedCard };
 })();
 
 /* ---------------------------------------------------------------------
@@ -9631,11 +9977,13 @@ const SelfTest = (() => {
       /* Dev commands: '!' is never a code. While you type it reads as any text that is not a code; only a submitted
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(6).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev],
-        [{ kind: 'dev', dev: { reset: false, ops: { saves: 40, log: 300 } } }, { reset: false, ops: {} }, { reset: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(9).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, ops: {} }, { reset: true, easing: null, look: false, ops: {} },
+          { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
+      eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
       check('Load a code: a code of newer rules says to update', !newer || /newer rules/.test(rc(newer).why || ''), newer && rc(newer));
@@ -9691,6 +10039,12 @@ const SelfTest = (() => {
         const jcode = Replay.encode(Replay.fromState(g)), jr = Replay.run(jcode);
         eq('jokerFlip ' + flip + ': the code keeps the rule and replays the same game', [Replay.decode(jcode).jokerFlip, jr.ok, JSON.stringify(jr.state) === JSON.stringify(g)], [flip, true, true]);
       }
+      /* House rule Polite Play: kept by the game and its code (bit 4), only when off; it changes no move. */
+      let pg = Engine.createGame(7, null, Engine.RULES_VERSION, { politePlay: false });
+      for (let k = 0; k < 5000 && !pg.gameOver; k++) { const ac = Engine.actors(pg); D(pg, ac.length ? AI.fastAction(pg, ac[0]) : Engine.systemAction(pg)); }
+      const pcode = Replay.encode(Replay.fromState(pg)), pr = Replay.run(pcode), polite = JSON.parse(JSON.stringify(rec)); delete polite.politeOff;
+      eq('Polite Play off: the game and its code keep it, and the code replays the same game', [pg.politeOff, Replay.decode(pcode).politeOff, pr.ok, JSON.stringify(pr.state) === JSON.stringify(pg)], [true, true, true, true]);
+      eq('Polite Play on: the game keeps nothing and the code is unchanged', ['politeOff' in Engine.createGame(7, null, Engine.RULES_VERSION, { politePlay: true }), Replay.encode(polite) === Replay.encode(Object.assign({}, polite, { politeOff: false })), Replay.decode(Replay.encode(polite)).politeOff], [false, true, false]);
       const noJoker = JSON.parse(JSON.stringify(rec)); noJoker.rules = 3; noJoker.jokerFlip = 'S';
       eq('rules version 3 writes no Joker rule', Replay.decode(Replay.encode(noJoker)).jokerFlip, null);
       const badJoker = JSON.parse(JSON.stringify(rec)); badJoker.jokerFlip = 'X';
@@ -10078,7 +10432,7 @@ const SelfTest = (() => {
       }
       /* The popups the table can show at each step: strip cells, scores, hands of backs and the seat tags that apply. */
       const ui = App.app.ui, wasMemory = ui.memory, fails = [];
-      const memOf = (t, k, tu, vo) => ({ trumps: t, kings: k, turned: tu, voids: vo });
+      const memOf = (t, k, tu, vo, st = true, sd = true, sp = true) => ({ trumps: t, kings: k, turned: tu, voids: vo, showTurned: st, showDiscards: sd, showPlays: sp });
       let built = 0;
       const anchor = (tag, card) => { const a = document.createElement('span'); if (tag) a.setAttribute('data-tag', tag); if (card) a.setAttribute('data-card', card); return a; };
       const tryPanel = (v, kind, seat, tag, card) => {
@@ -10092,8 +10446,8 @@ const SelfTest = (() => {
       };
       try {
         for (let g = 0; g < 3; g++) {
-          /* Table memory all off, all on, then half of its switches. */
-          ui.memory = g === 0 ? memOf(false, false, false, false) : g === 1 ? memOf(true, true, true, true) : memOf(true, false, true, false);
+          /* Table memory all off (Real table), all on, then half of its switches. */
+          ui.memory = g === 0 ? memOf(false, false, false, false, false, false, false) : g === 1 ? memOf(true, true, true, true) : memOf(true, false, true, false, false, true, false);
           const s = Engine.createGame(2000 + g);
           D(s, { type: 'START_GAME' });
           for (let steps = 0; !s.gameOver && steps < 20000; steps++) {
@@ -10127,14 +10481,29 @@ const SelfTest = (() => {
       } finally { ui.memory = wasMemory; }
       eq('every information popup builds, all through 3 games, Table memory off, on and in part', fails, []);
       check('the popup check ran', built > 1000, built + ' popups');
-      /* Table memory: a trump you discarded, or the turned card, is never listed as not seen yet. */
+      /* Table memory: the Trump list marks each trump once. Yours are ringed, played and discarded ones are dimmed with a
+         note, the turned card says Turned in any state, and a trump with no mark and no note is not seen yet. */
       {
-        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker), m = id => Render.microHTML(id, 'Jkr');
-        Object.assign(tv, { trump: T, hand: [], played: [], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        const tv = buildView(Engine.createGame(2200), 0), T = 'S', trumps = R.ALL_IDS.filter(id => R.isTrump(id, T) && !R.card(id).isJoker);
+        Object.assign(tv, { trump: T, hand: [trumps[3]], played: [trumps[4]], myOut: [trumps[0]], flipped: trumps[1], flippedOut: true, receiver: null });
+        /* A chip's inside, which names its card. */
+        const face = (/** @type {string} */ id) => { const x = document.createElement('div'); x.innerHTML = Render.microHTML(id, 'Jkr'); return /** @type {Element} */ (x.firstElementChild).innerHTML; };
+        /* One row of the list: the chip's classes and the note beside it. */
+        const row = (/** @type {string} */ body, /** @type {string} */ id) => {
+          const d = document.createElement('div'); d.innerHTML = body;
+          const chips = [...d.querySelectorAll('.plist .micro')], c = chips.find(x => x.innerHTML === face(id));
+          return c ? { cls: c.className, note: c.nextElementSibling ? c.nextElementSibling.textContent : '', rows: chips.length } : null;
+        };
         ui.memory = memOf(true, false, false, false);
         try {
-          const body = App.infoPanel(tv, 'trump', null, anchor())[1], unseen = body.split('Not seen yet')[1].split('<p>')[0];
-          check('Table memory: own discards and the turned card are not listed as not seen yet', !unseen.includes(m(trumps[0])) && !unseen.includes(m(trumps[1])) && unseen.includes(m(trumps[2])) && body.includes('You discarded'));
+          const body = App.infoPanel(tv, 'trump', null, anchor())[1];
+          eq('Table memory: the Trump list marks each trump once, highest first', [row(body, trumps[0]), row(body, trumps[1]), row(body, trumps[2]), row(body, trumps[3]), row(body, trumps[4])],
+            [{ cls: 'micro gone', note: 'Discarded', rows: 10 }, { cls: 'micro gone', note: 'Turned', rows: 10 }, { cls: 'micro', note: '', rows: 10 }, { cls: 'micro mine', note: '', rows: 10 }, { cls: 'micro gone', note: 'Played', rows: 10 }]);
+          check('Table memory: the Trump list leaves out the old sections', !/Not seen yet|Played \(|You hold|You discarded/.test(body));
+          const tp = Object.assign({}, tv, { flippedOut: false, played: [trumps[1]] });
+          eq('Table memory: a played turned card says Turned, Played', row(App.infoPanel(tp, 'trump', null, anchor())[1], trumps[1]), { cls: 'micro gone', note: 'Turned, Played', rows: 10 });
+          const th = Object.assign({}, tv, { flippedOut: false, hand: [trumps[1]] });
+          eq('Table memory: the turned card in your hand is ringed and says Turned', row(App.infoPanel(th, 'trump', null, anchor())[1], trumps[1]), { cls: 'micro mine', note: 'Turned', rows: 10 });
           /* Each switch adds only its own facts: Trumps played alone leaves the hand of backs and the Kings to their notes. */
           const tv2 = Object.assign({}, tv, { voids: [[], ['H'], []] }), hs = Engine.createGame(2200);
           D(hs, { type: 'START_GAME' });
@@ -10143,27 +10512,113 @@ const SelfTest = (() => {
           check('Table memory: Trumps played alone keeps the Kings hidden', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Table memory → Kings not played'));
           ui.memory = memOf(false, true, false, true);
           check('Table memory: Voids shows the suits a bot can\'t follow', App.infoPanel(tv2, 'backs', 1, anchor())[1].includes('Void of'));
-          check('Table memory: Kings not played lists them in the Hand popup', App.infoPanel(hv, 'hand', null, anchor())[1].includes('Kings not played yet'));
-          check('Table memory: Trumps played off leaves its note in the Trump popup', !App.infoPanel(tv, 'trump', null, anchor())[1].includes('Not seen yet'));
+          const kb = App.infoPanel(hv, 'hand', null, anchor())[1], kd = document.createElement('div'); kd.innerHTML = kb;
+          eq('Table memory: Kings not played lists the 4 Kings in the Hand popup, the trump King first', [...kd.querySelectorAll('.plist .micro')].map(c => c.innerHTML), R.sortHand(R.ALL_IDS.filter(id => R.isKing(id)), T).map(face));
+          const offBody = App.infoPanel(tv, 'trump', null, anchor())[1];
+          check('Table memory: Trumps played off shows the trumps with no marks or notes, and names the switch', offBody.includes('class="plist"') && !/micro (mine|gone)|Discarded|Turned/.test(offBody) && offBody.includes('Table memory → Trumps played'));
+          /* The show switches, off: the player remembers the turned-up card after the bidding, and their discards. */
+          const play = Engine.PLAY_PHASES[0], cells = (/** @type {any} */ v) => Render.advInfoHTML(v, ui).join('');
+          const tt = Object.assign({}, tv, { phase: play, flippedOut: false, receiver: 1, caller: 0, dealer: 2, exchangeCount: 1, myOut: [trumps[0]] });
+          ui.memory = memOf(true, false, true, false);
+          check('Table memory: Turned-up card on keeps the Turned up cell and the card in the popups',
+            cells(tt).includes('data-kind="turned"') && App.infoPanel(tt, 'trump', null, anchor())[1].includes('Turned') && App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1].includes('class="micro'));
+          ui.memory = memOf(true, false, true, false, false);
+          const tb = App.infoPanel(tt, 'trump', null, anchor())[1];
+          check('Table memory: Turned-up card off drops the Turned up cell after the bidding', !cells(tt).includes('data-kind="turned"'));
+          check('Table memory: Turned-up card off keeps it while the bidding decides', cells(Object.assign({}, tt, { phase: P.BID2 })).includes('data-kind="turned"'));
+          check('Table memory: Turned-up card off names it without the card in the popups', !/Turned/.test(tb) && /the turned-up card/.test(App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1]) &&
+            !App.infoPanel(tt, 'tag', 2, anchor('dealer'))[1].includes('class="micro') && /The turned-up card/.test(App.infoPanel(tt, 'tag', 1, anchor('receiver'))[1]));
+          const mine = Object.assign({}, tt, { receiver: 0, caller: 2, myOut: [trumps[0], trumps[2], trumps[3], trumps[4]] });
+          ui.memory = memOf(false, false, false, false);
+          check('Table memory: Your discards on shows them in the Kitty popup', App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1].includes('class="minis"'));
+          ui.memory = memOf(false, false, false, false, true, false);
+          check('Table memory: Your discards off gives the Kitty popup a count only', /1 face down/.test(App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1]) && !App.infoPanel(mine, 'tag', 0, anchor('receiver'))[1].includes('class="minis"'));
         } finally { ui.memory = wasMemory; }
       }
+      /* A list note for something you did is green: a card you played or discarded. The Hand popup is rows. */
+      {
+        const lv = Object.assign(buildView(Engine.createGame(2600), 0), { trump: 'H', hand: [], played: ['AH', 'KH'], myOut: ['9H'], flipped: null, playLog: [{ player: 0, card: 'AH' }, { player: 1, card: 'KH' }] });
+        const was = ui.memory;
+        try {
+          ui.memory = memOf(true, false, false, false);
+          const d = document.createElement('div'); d.innerHTML = App.infoPanel(lv, 'trump', null, anchor())[1];
+          const notes = Object.fromEntries([...d.querySelectorAll('.plist .pn')].filter(x => x.textContent).map(x => [x.textContent + ' ' + (/** @type {Element} */ (x.previousElementSibling)).innerHTML.replace(/<[^>]+>/g, ''), x.className]));
+          eq('Trump list: notes for what you did are green, others muted', [notes['Played A'], notes['Played K'], notes['Discarded 9']], ['pn you', 'pn gone', 'pn you']);
+          const hd = document.createElement('div'); hd.innerHTML = App.infoPanel(Object.assign({}, lv, { dealer: 1 }), 'hand', null, anchor())[1];
+          eq('Hand popup: Dealer and First lead rows', [...hd.querySelectorAll('dt')].slice(0, 2).map(x => x.textContent + ': ' + (/** @type {Element} */ (x.nextElementSibling)).textContent), ['Dealer: ' + Render.nameOf(lv, 1), 'First lead: ' + Render.nameOf(lv, 2)]);
+        } finally { ui.memory = was; }
+      }
+      /* The Turned-up card popup: rows of what is known now, and a rule line only while bidding. */
+      {
+        const tv = buildView(Engine.createGame(2500), 0), rows = (/** @type {any} */ v) => {
+          const d = document.createElement('div'); d.innerHTML = App.infoPanel(v, 'turned', null, anchor()).map(Render.youText)[1];
+          return [...d.querySelectorAll('dt')].map(x => x.textContent + ': ' + (/** @type {Element} */ (x.nextElementSibling)).textContent).slice(1).concat([...d.querySelectorAll('p')].map(x => x.textContent));
+        };
+        const base = Object.assign({}, tv, { flipped: '9D', flippedSuit: 'D', flippedOut: false, receiver: null, trump: null, hand: [], played: [], myOut: [] });
+        const was = ui.memory;
+        try {
+          ui.memory = memOf(false, false, true, false);
+          eq('Turned popup: round 1 bidding', rows(Object.assign({}, base, { phase: P.BID1 })), ['Suit: ♦ Diamonds, offered as trump', 'If accepted, it goes to the player left of whoever accepts.']);
+          eq('Turned popup: round 2, blocked', rows(Object.assign({}, base, { phase: P.BID2, flippedBlocked: true })), ['Suit: ♦ Diamonds, blocked', 'All passed it in round 1, so it can\'t be named.']);
+          const acc = Object.assign({}, base, { phase: P.TRICK_PLAY, trump: 'D', receiver: 1 });
+          eq('Turned popup: accepted, held by another player', rows(acc), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Now: Not played yet']);
+          eq('Turned popup: accepted, in your hand', rows(Object.assign({}, acc, { receiver: 0, hand: ['9D'] })), ['Suit: ♦ Diamonds, trump', 'Went to: You', 'Now: In your hand']);
+          eq('Turned popup: accepted and played', rows(Object.assign({}, acc, { played: ['9D'] })), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Now: Played']);
+          eq('Turned popup: round 2 named another suit', rows(Object.assign({}, base, { phase: P.TRICK_PLAY, trump: 'S', flippedOut: true })), ['Suit: ♦ Diamonds, passed', 'Went to: Outside pile']);
+          ui.memory = memOf(false, false, false, false);
+          eq('Turned popup: Turned card off names the switch', rows(acc), ['Suit: ♦ Diamonds, trump', 'Went to: ' + Render.nameOf(tv, 1), 'Table memory → Turned card shows if it was played.']);
+        } finally { ui.memory = was; }
+      }
+      /* A trick slot tints your card, as the card lists do. */
+      {
+        const sv = Object.assign(buildView(Engine.createGame(2400), 0), { trump: 'S', trick: { plays: [{ player: 0, card: '9S' }, { player: 1, card: '7S' }], leadSuit: 'S' } });
+        const mine = App.infoPanel(sv, 'slot', 0, anchor())[1], theirs = App.infoPanel(sv, 'slot', 1, anchor())[1];
+        check('Trick slot: your card is tinted, in your slot and as the card winning in another', mine.includes(Render.microHTML('9S', 'Jkr', true)) && theirs.includes('Winning: your ' + Render.microHTML('9S', 'Jkr', true)) && !theirs.includes(Render.microHTML('7S', 'Jkr', true)));
+      }
+      /* Seat tags and the kitty say what is still to come in the present tense, and what is done in the past. */
+      {
+        const tv = buildView(Engine.createGame(2300), 0), tag = (/** @type {any} */ v, /** @type {number} */ p, /** @type {string} */ t) => App.infoPanel(v, 'tag', p, anchor(t)).map(Render.youText)[1];
+        const ex = Object.assign({}, tv, { trump: 'S', caller: 2, receiver: 1, exchangeCount: 2, phase: P.EXCHANGE, bidLog: [{ player: 2, round: 2, action: 'name', suit: 'S' }] });
+        /* The Kitty tag's rows, as "label: value". */
+        const krows = (/** @type {any} */ v, /** @type {number} */ p) => { const d = document.createElement('div'); d.innerHTML = tag(v, p, 'receiver'); return [...d.querySelectorAll('dt')].map(x => x.textContent + ': ' + (/** @type {Element} */ (x.nextElementSibling)).textContent); };
+        eq('Kitty tag: rows in the present tense while the exchange waits', krows(ex, 1), ['Gets: 2 face-down kitty cards', 'Left of: ' + Render.nameOf(tv, 2) + ', the namer', 'Discards: 2 face down']);
+        eq('Kitty tag: past tense after the exchange', krows(Object.assign({}, ex, { phase: P.TRICK_PLAY }), 1), ['Got: 2 face-down kitty cards', 'Left of: ' + Render.nameOf(tv, 2) + ', the namer', 'Discarded: 2 face down']);
+        const mineEx = Object.assign({}, ex, { phase: P.TRICK_PLAY, receiver: 0, myOut: ['7C', '8C', '9C', '9H', '10H'] });
+        check('Kitty tag: your own exchange discards show as cards', tag(mineEx, 0, 'receiver').includes(Render.microHTML('9H', 'Jkr') + Render.microHTML('10H', 'Jkr')));
+        const r1 = Object.assign({}, ex, { exchangeCount: 1, flipped: '9S', bidLog: [{ player: 2, round: 1, action: 'accept' }], phase: P.TRICK_PLAY });
+        check('Namer tag: accepted in round 1, named in round 2', tag(r1, 2, 'caller').includes('accepted ♠ Spades in round 1') && tag(ex, 2, 'caller').includes('named ♠ Spades in round 2'));
+        const dl = Object.assign({}, tv, { dealer: 1, flipped: null, phase: P.DISCARD });
+        check('Dealer tag: before the turn-up, and who deals next', tag(dl, 1, 'dealer').includes('turns up the top kitty card') && tag(dl, 1, 'dealer').includes(Render.nameOf(tv, 2) + ' deals the next hand'));
+        check('Dealer tag: after bidding, past tense', tag(Object.assign({}, dl, { flipped: '9S', phase: P.TRICK_PLAY }), 1, 'dealer').includes('and bid last.'));
+        check('Dealer tag: you deal next', tag(Object.assign({}, dl, { dealer: 2 }), 2, 'dealer').includes('You deal the next hand'));
+        check('Dealer tag: a turned-up Joker, the same dealer deals again', tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('deals it again') && !tag(Object.assign({}, dl, { flipped: 'JK', phase: P.JOKER_VOID }), 1, 'dealer').includes('next hand'));
+        const sdv = Object.assign({}, tv, { dealer: 1, showdown: { mediator: 2, participants: [0, 1], active: true } });
+        check('Dealer tag: stays on the dealer of the hand in a Showdown', Render.advTags(sdv, 1, ui).includes('data-tag="dealer"') && !Render.advTags(sdv, 2, ui).includes('data-tag="dealer"'));
+        const bd = Object.assign({}, tv, { phase: P.BID1, bidTurn: 1, flipped: '9S', flippedSuit: 'S', kittyCount: 3 });
+        check('Kitty: during bidding, names the player left of the one bidding now', App.infoPanel(bd, 'kitty', null, anchor())[1].includes('(' + Render.nameOf(tv, 2) + ' if ' + Render.nameOf(tv, 1) + ' accepts)'));
+      }
       /* Polite Play (house rule): on, trick circles open the tricks won; off, they only count. */
-      const pv = buildView(Engine.createGame(2100), 0), circles = polite => Render.advCircles(pv, 1, { houseRules: { politePlay: polite } });
+      const circles = polite => Render.advCircles(buildView(Engine.createGame(2100, null, Engine.RULES_VERSION, { politePlay: polite }), 0), 1, {});
       check('Polite Play on: trick circles open the tricks won', circles(true).includes('data-action="adv-tricks"'));
       check('Polite Play off: trick circles only count', !circles(false).includes('data-action') && circles(false).includes('tricks won'));
     });
 
     /* --- App logic kept in one place: tested with stand-in apps, so the running game is not touched. --- */
     safeRun('app logic', () => {
-      const A = App, mk = (/** @type {any} */ x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '' } }, x);
+      const A = App, mk = (/** @type {any} */ x) => Object.assign({ mode: null, state: null, wave: { n: null }, houseRules: { mediatorLead: true, jokerFlip: '', politePlay: true } }, x);
       const live = { gameOver: false, mediatorLead: true }, over = { gameOver: true, mediatorLead: true };
+      /* Forced plays: your only legal card in a trick, and never a choice, a bot's turn or a phase without tricks. */
+      const fst = (/** @type {string[]} */ hand, /** @type {string | null} */ lead, /** @type {any} */ x) => /** @type {any} */ (Object.assign({ phase: Engine.PLAY_PHASES[0], currentPlayer: 0, players: [{ human: true }, { human: false }, { human: false }], hands: [hand, [], []], trick: { leadSuit: lead }, trump: 'S' }, x));
+      eq('forced plays: only the one card that follows suit, or your last card', [A.forcedCard(fst(['AH', '7S'], 'H')), A.forcedCard(fst(['9D'], null)), A.forcedCard(fst(['AH', '7S'], 'C')), A.forcedCard(fst(['AH', 'KH'], 'H'))], ['AH', '9D', null, null]);
+      eq('forced plays: never on a bot\'s turn, outside trick play or with no game', [A.forcedCard(fst(['AH'], 'H', { currentPlayer: 1 })), A.forcedCard(fst(['AH'], 'H', { phase: Engine.P.DISCARD })), A.forcedCard(null)], [null, null, null]);
       eq('gameOn: a mode with a game that is not over', [A.gameOn(mk({})), A.gameOn(mk({ mode: 'free', state: live })), A.gameOn(mk({ mode: 'free', state: over })), A.gameOn(mk({ state: live }))], [false, true, false, false]);
-      eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '' }, { setMediatorNow: '', setJokerNow: '' }]);
-      const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S' }, houseRules: { mediatorLead: true, jokerFlip: 'random' } }));
+      eq('house notes: none without a game, or when the settings match', [A.houseNotes(mk({})), A.houseNotes(mk({ mode: 'free', state: live }))], [{ setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }, { setMediatorNow: '', setJokerNow: '', setPoliteNow: '' }]);
+      const notes = A.houseNotes(mk({ mode: 'waves', state: { gameOver: false, jokerFlip: 'S', politeOff: true }, houseRules: { mediatorLead: true, jokerFlip: 'random', politePlay: true } }));
       eq('house notes: each setting that differs from the game names the game\'s value', notes, {
         setMediatorNow: 'This game started with this rule off. Your change applies from your next game.',
-        setJokerNow: 'This game started with Spades. Your change applies from your next game.' });
-      eq('house notes: none once the game is over', A.houseNotes(mk({ mode: 'free', state: { gameOver: true }, houseRules: { mediatorLead: true, jokerFlip: 'H' } })), { setMediatorNow: '', setJokerNow: '' });
+        setJokerNow: 'This game started with Spades. Your change applies from your next game.',
+        setPoliteNow: 'This game started with Polite Play off. Your change applies from your next game.' });
+      eq('house notes: none once the game is over', A.houseNotes(mk({ mode: 'free', state: { gameOver: true }, houseRules: { mediatorLead: true, jokerFlip: 'H', politePlay: false } })), { setMediatorNow: '', setJokerNow: '', setPoliteNow: '' });
       const w = (/** @type {any} */ x) => mk(Object.assign({ mode: 'waves', state: live, wave: { n: 2, wasOpenAtStart: true }, humanSeatWasAutoplayed: false }, x));
       eq('inWaves and waveCounts: a win counts only in an open wave the AI never played your seat in',
         [A.inWaves(mk({ mode: 'free', state: live })), A.inWaves(w({})), A.waveCounts(w({})), A.waveCounts(w({ wave: { n: 2, wasOpenAtStart: false } })), A.waveCounts(w({ humanSeatWasAutoplayed: true })), A.waveCounts(mk({ mode: 'free', state: live }))],
@@ -10265,8 +10720,8 @@ const SelfTest = (() => {
           handStats: { pts: [0, 1, 2].map(() => ({ king: 0, hand: 1, showdown: 0 })) } }, o || {});
       };
       const blank = DY.snapshotOf(null);
-      /* A profile past the hold (no score, calls or slips on record, so the slow path stays at 0). */
-      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS });
+      /* A profile past the hold and the taper (no score, calls or slips on record, so the slow path stays at 0). */
+      const seasoned = Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS });
       let t = DY.tracker(seasoned);
       const es = [weak, weak, strong].map(h => { t.hand(ended(h)); return [Math.round(t.e * 1000) / 1000, t.fast]; });
       eq('fast path: two weak visible hands set the target to 1; e closes half the gap each hand', es, [[0, false], [0.5, true], [0.75, true]]);
@@ -10283,16 +10738,20 @@ const SelfTest = (() => {
       for (let k = 0; k < 6; k++) t.hand(ended(weak, { caller: 2, receiver: 0 }));
       eq('a hand where the player received the turned card or the kitty is not visible either', t.visible.length, 0);
       eq('a marked profile starts the game at full easing', DY.tracker(Object.assign({}, blank, { mark: true })).e, 1);
-      /* The hold: a new profile starts at full easing and keeps it for HOLD_HANDS hands, then tightens as usual. */
+      /* The hold: a new profile starts at full easing and keeps it for HOLD_HANDS hands. Then the taper: the floor falls
+         from 1 to 0 over TAPER_HANDS hands, and the easing follows it at 15% of the gap a hand. */
       t = DY.tracker(blank);
       eq('a blank profile starts at full easing', [t.e0, t.e, DY.startEase(blank)], [1, 1, 1]);
       for (let k = 0; k < DY.HOLD_HANDS - 1; k++) t.hand(ended(strong));
       eq('the easing holds at 1 until the profile has HOLD_HANDS hands', [t.h, t.e], [DY.HOLD_HANDS - 1, 1]);
       t.hand(ended(strong));
-      eq('the hand that brings the profile to HOLD_HANDS hands ends the hold: the target is 0 and the easing closes 15% of the gap', [t.h, t.e, t.target], [DY.HOLD_HANDS, 0.85, 0]);
+      eq('the hand that brings the profile to HOLD_HANDS hands starts the taper at 1', [t.h, t.e, t.target], [DY.HOLD_HANDS, 1, 1]);
       t.hand(ended(strong));
-      check('then the easing keeps tightening', Math.abs(t.e - 0.85 * 0.85) < 1e-9, String(t.e));
-      eq('a profile with HOLD_HANDS hands and an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
+      const step1 = 1 - 1 / DY.TAPER_HANDS;
+      check('the next hand: the target is the taper\'s floor, and the easing closes 15% of the gap', Math.abs(t.target - step1) < 1e-9 && Math.abs(t.e - (1 - 0.15 * (1 - step1))) < 1e-9, JSON.stringify([t.target, t.e]));
+      eq('the floor: 1 through the hold, halfway down mid-taper, 0 after it', [0, DY.HOLD_HANDS - 1, DY.HOLD_HANDS, DY.HOLD_HANDS + DY.TAPER_HANDS / 2, DY.HOLD_HANDS + DY.TAPER_HANDS, 1e6].map(DY.floorEase), [1, 1, 1, 0.5, 0, 0]);
+      eq('a game starts at the taper\'s floor, or higher when the record says so', [DY.startEase(Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS / 2 })), DY.startEase(Object.assign({}, blank, { h: DY.HOLD_HANDS + DY.TAPER_HANDS / 2, share: { me: 0, all: 400 } })) > 0.5], [0.5, true]);
+      eq('a profile past the taper with an even record starts at 0', [DY.startEase(seasoned), DY.tracker(seasoned).e0], [0, 0]);
 
       /* 3. Real games: the read uses only what the table saw, and replaying the moves gives the live easing. */
       const play = (seed, discard) => {
@@ -10340,6 +10799,10 @@ const SelfTest = (() => {
       const dyn = DY.addGame(null, rv1, 'dynamic');
       check('a Dynamic game adds to the score share', dyn.share.all > 0 && dyn.share.me <= dyn.share.all, JSON.stringify(dyn.share));
       eq('Free play and Waves never change the slow path\'s score share', DY.addGame(dyn, rv2, 'free').share.all.toFixed(9), (dyn.share.all * 1).toFixed(9));
+      check('the review rates each seat\'s dealt hand and keeps each seat\'s net points', rv1.hands.every(h => h.weak.length === 3 && h.weak.every(b => typeof b === 'boolean') && h.net.length === 3) && rv1.hands.some(h => h.net.some(x => x !== 0)), JSON.stringify(rv1.hands.map(h => [h.weak, h.net])));
+      const wk = DY.addGame(null, { hands: [{ loss: null, bids: [], called: false, gain: [0, 0, 0], weak: [true, true, false], net: [-1, 2, 3] }, { loss: null, bids: [], called: false, gain: [0, 0, 0], weak: [false, true, true], net: [4, 1, 0] }], marked: false }, 'free').weak;
+      eq('weak hands: yours and the bots\' counts and net points, from any mode', [wk.n, wk.pts, Math.round(wk.bn * 1e6) / 1e6, Math.round(wk.bpts * 1e6) / 1e6], [1, -1, Math.round((0.99 * 0.99 + 0.99 + 1) * 1e6) / 1e6, Math.round((2 * 0.99 * 0.99 + 1 * 0.99 + 0) * 1e6) / 1e6]);
+      eq('an old profile without weak hands reads as none', DY.cleanProfile({ v: 1, hands: 5 }).weak, { n: 0, pts: 0, bn: 0, bpts: 0 });
       eq('a review counts every hand on record', [marked.hands, cleared.hands, marked.games, cleared.games], [rv2.hands.length, rv2.hands.length + rv1.hands.length, 1, 2]);
       const w = h => DY.slowTarget(Object.assign({}, DY.snapshotOf(null), { h, share: { me: 0, all: 40 } }));
       check('the slow path\'s weight grows with the hands on record: w = h / (h + 50)', w(0) === 0 && Math.abs(w(50) - 0.5 * w(1e9)) < 0.01 && w(1e9) > 0.95, [w(0), w(50), w(1e9)].join(' '));
@@ -10405,6 +10868,12 @@ const SelfTest = (() => {
         ['timid', 4, false, own.style.realTable, own.thinking.playoutSkill, own.knowledge.voids, true]);
       const novice = AI.withSkillTier(AI.DEFAULT_CONFIG, 'novice'), full = AI.tunedConfig(vex, AI.tuneOf(novice));
       eq('a full tune plays exactly those settings', [full.thinking, full.knowledge, full.style], [novice.thinking, novice.knowledge, novice.style]);
+      /* The profile card: its dials (Card sense, Nerve, Reads you, Feints) from the settings the bot plays with. */
+      const dials = (/** @type {string} */ html) => Array.from(html.matchAll(/aria-label="(\d) of 4"/g), m => Number(m[1]));
+      eq('a profile card shows the personality', dials(Render.personaHTML(vex)), [4, 4, Math.round(4 * vex.credulity), Math.round(4 * vex.feint)]);
+      const timid = Render.personaHTML(vex, AI.tunedConfig(vex, { worlds: 3, playoutSkill: 0.4, knowledge: novice.knowledge, courage: 'timid', credulity: 1, feint: 0, slack: 0 }), 'This game: 6 changes from Settings.');
+      eq('a tuned card shows the tune', [dials(timid), timid.includes('This game: 6 changes'), timid.includes('p-ways')], [[1, 1, 4, 0], true, false]);
+      eq('custom thinking reads as the tier nearest in hunches', dials(Render.personaHTML(vex, AI.tunedConfig(vex, { worlds: 18 })))[0], 3);
       /* Habits: a pick among the cards within slack of the best; with slack 0 (or no habits), the best card as before. */
       eq('a tune keeps valid habits, slack clamped to 5%', AI.cleanTune({ leadHabit: 'trump', winHabit: 'sneaky', kingHabit: 'late', slack: 0.2 }), { leadHabit: 'trump', kingHabit: 'late', slack: AI.MAX_SLACK });
       eq('each personality\'s habits are valid', PERSONAS.filter(x => { const st = AI.personaConfig(x).style, h = x.habits || {}; return (h.lead || 'none') !== st.leadHabit || (h.win || 'none') !== st.winHabit || (h.void || 'none') !== st.voidHabit || (h.kings || 'none') !== st.kingHabit || (h.slack || 0) !== st.slack; }).map(x => x.id), []);
