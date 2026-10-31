@@ -381,7 +381,7 @@ button.card{cursor:pointer}
   .modal.profile .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
-/* The award (Awards, a dev feature): a heavy stroke in the band's color, neon red (0) to emerald neon green (6), that
+/* The award (Awards, on by default): a heavy stroke in the band's color, neon red (0) to emerald neon green (6), that
    fades in once the grade is worked out. The 7 colors are evenly spaced to the eye (CIEDE2000 steps of 14 to 18). */
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
 /* The stroke comes in like a reveal: a faint hint of its color, then it fades until it is hard to tell, then it snaps
@@ -1384,8 +1384,8 @@ const RNG = (() => {
    Dynamic's profile (kct.profile) to N, after a question, which moves the
    hold and the taper. The record and everything else stay. "!dev easing"
    alone shows a terse readout of the easing (legend: tests/README.md).
-   "!dev awards=on" or "=off" shows or hides the award on the game-over box
-   (Awards), kept on the device until changed.
+   "!dev awards=off" or "=on" hides or shows the award on the game-over box
+   (Awards; on by default), kept on the device until changed.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -4816,9 +4816,9 @@ const Tally = (() => {
 
 /* ---------------------------------------------------------------------
    6f. AWARDS — how well a seat chose, with the cards it was dealt, graded
-   at the end of a game, for performance recognition. A dev feature for now:
-   off until "!dev awards=on" (localStorage 'kct-awards': not a 'kct.' key,
-   so never in a backup), and then shown as the color of the game-over box.
+   at the end of a game, for performance recognition. On by default, shown
+   as the color of the game-over box; "!dev awards=off" hides it (localStorage
+   'kct-awards' = 'off': not a 'kct.' key, so never in a backup).
    The grade is the cost of the seat's choices, never its score, so a loss
    on a poor deal played well grades as high as any win. Each choice costs
    the value of the best option less the value of the one chosen, in
@@ -5004,10 +5004,10 @@ const Awards = (() => {
   }
   const A = {
     EDGES, BANDS, DISCARD_WEIGHT, bandOf, solver, read, start,
-    /** Whether the game-over box shows the award. Off when nothing is saved. */
-    on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
+    /** Whether the game-over box shows the award. On unless '!dev awards=off' saved 'off'. */
+    on() { try { return localStorage.getItem(KEY) !== 'off'; } catch (e) { return true; } },
     /** @param {boolean} v */
-    set(v) { try { if (v) localStorage.setItem(KEY, 'on'); else localStorage.removeItem(KEY); } catch (e) { /* no storage: stays off */ } }
+    set(v) { try { if (v) localStorage.removeItem(KEY); else localStorage.setItem(KEY, 'off'); } catch (e) { /* no storage: stays on */ } }
   };
   return Object.freeze(A);
 })();
@@ -7997,7 +7997,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length || Awards.on() ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).concat(Awards.on() ? ['awards'] : []).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {

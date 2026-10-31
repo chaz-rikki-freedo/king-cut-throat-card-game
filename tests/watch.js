@@ -51,7 +51,9 @@ function expect(name, ok, detail) {
       for (let k = 0; k < 60 && !q('[data-action="watch-next"]').disabled; k++) { click('[data-action="watch-next"]'); await sleep(5); }
       out.endScores = app.state.scores.slice(); out.over = app.state.gameOver; out.endOff = q('[data-action="watch-fwd"]').disabled;
       out.congrats = /Congratulations/.test(q('#gameLog').textContent);
-      out.dialog = overlayOpen();
+      await sleep(100); out.dialog = !!q('#overlay .gameover') && overlayOpen();
+      if (out.dialog) click('#overlay [data-action="close-overlay"]');
+      out.closed = !overlayOpen();
       for (let k = 0; k < 60 && !q('[data-action="watch-prev"]').disabled; k++) { click('[data-action="watch-prev"]'); await sleep(5); }
       out.again = pos() === out.start;
       /* Play: at instant speed, the steps run on their own. */
@@ -72,7 +74,7 @@ function expect(name, ok, detail) {
     expect('Next hand goes to the next deal, one hand at a time', r.dealt === 'cards' && r.hands[1] === 1 && r.hands[2] === 2, r.hands);
     expect('Previous hand goes to this hand\'s start, then the hand before', r.prevToStart && r.prevAgain, r);
     expect('Next hand in the last hand reaches the recorded result', r.over && JSON.stringify(r.endScores) === JSON.stringify(live.scores) && r.endOff, r);
-    expect('the end shows the winner line, and no results dialog', r.congrats && !r.dialog);
+    expect('the end shows the winner line and, with awards on (the default), the results dialog; Back returns to the viewer', r.congrats && r.dialog && r.closed, r);
     expect('Previous hand reaches the start', r.again);
     expect('Play steps on its own and shows Pause', r.played && r.pauseLabel === 'Pause', r);
     expect('watching saves nothing', r.saved === null, r.saved);

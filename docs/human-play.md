@@ -227,7 +227,7 @@ What it says:
 
 ## Awards: how you did with your cards (2026-10-31)
 
-The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades how well your seat chose with the cards it was dealt. With `!dev awards=on` (see [tests/README.md](../tests/README.md#dev-commands)), the game-over box shows the grade as a heavy stroke in one of 7 colors, which fades in once it's worked out. It's a dev feature: off for a new install, and nothing else uses it.
+The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades how well your seat chose with the cards it was dealt. The game-over box shows the grade as a heavy stroke in one of 7 colors, which comes in once it's worked out. It's on by default, and `!dev awards=off` hides it (see [tests/README.md](../tests/README.md#dev-commands)). Nothing else uses the grade yet.
 
 The grade is never your score. Each of your choices costs the value of the best option less the value of the one you chose, in expected tricks plus 0.9 × King points. A choice that was the best option costs 0. The grade is the mean cost per choice:
 

@@ -153,43 +153,43 @@
    "name": "--award0",
    "family": "status",
    "value": "#ff1744",
-   "job": "Award band 0 of 0-6 (neon red: the worst), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 0 of 0-6 (neon red: the worst), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award1",
    "family": "status",
    "value": "#ff5d1f",
-   "job": "Award band 1 of 0-6 (red-orange), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 1 of 0-6 (red-orange), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award2",
    "family": "status",
    "value": "#ff9200",
-   "job": "Award band 2 of 0-6 (orange), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 2 of 0-6 (orange), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award3",
    "family": "status",
    "value": "#ffc600",
-   "job": "Award band 3 of 0-6 (gold: a bot's usual game), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 3 of 0-6 (gold: a bot's usual game), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award4",
    "family": "status",
    "value": "#eaf200",
-   "job": "Award band 4 of 0-6 (lemon), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 4 of 0-6 (lemon), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award5",
    "family": "status",
    "value": "#79ff03",
-   "job": "Award band 5 of 0-6 (green), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 5 of 0-6 (green), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--award6",
    "family": "status",
    "value": "#00e676",
-   "job": "Award band 6 of 0-6 (emerald neon green: the best), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye."
+   "job": "Award band 6 of 0-6 (emerald neon green: the best), the stroke of the game-over box while awards are on (the default). The 7 are evenly spaced to the eye."
   },
   {
    "name": "--name0",
