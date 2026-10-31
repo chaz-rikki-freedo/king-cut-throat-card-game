@@ -236,6 +236,23 @@ The grade is never your score. Each of your choices costs the value of the best 
 
 Bids and Showdown play aren't graded.
 
+Terms:
+
+| Term | Meaning |
+|---|---|
+| Award | The grade of one seat in one finished game: its band, its mean cost per choice, and each part. `Awards.read(code, seat)`. |
+| Band | The award's step, 6 (best) to 0 (worst), and its color on the award stroke. |
+| Choice | A decision that is graded: a card played in a main trick with more than one legal card, a discard, the trump you name, or the cards you give in the exchange. |
+| Best option | Of the options a choice had, the one with the most value. |
+| Cost | The value of the best option less the value of the option chosen. Never below 0. |
+| Mean cost per choice | The costs of a seat's choices added up, over the number of choices. The award's number: lower is better. |
+| Value | Expected tricks plus 0.9 × King points, the unit of Tally and `Dynamic.handEstimate`. |
+| Hindsight solver | `Awards.solver`: the value of a card in a main trick with every hand face up, the seat choosing for the most and both opponents for the least. |
+| Defend together | How the hindsight solver plays the opponents: as one side against the graded seat. |
+| Part | The cost and count of one kind of choice: cards, discards, trump or exchange. The award title lists them. |
+| `EDGES` | The mean costs where bands 5 to 0 start. Fitted by `tests/awards.js`. |
+| Award stroke | The colored border of the game-over dialog while awards are on (see [vocabulary](ui/vocabulary.md#36-game-over-dialog)). |
+
 `EDGES` cut the mean cost into bands 6 (best) to 0. They're fitted on bot games of every tier, so that 5, 12, 20, 26, 20, 12 and 5% of seat-games fall in bands 6 to 0.
 
 | Band | Color token | Mean cost per choice |
