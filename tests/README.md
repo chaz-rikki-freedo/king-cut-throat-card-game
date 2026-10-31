@@ -91,6 +91,7 @@ Ask the player to type `pulse` in **Menu → Load a code**, press Enter, and sen
 ```
 P h214R f00 t12 n12 k2 m0
 S sh31 fc44 be06 sl02 w81
+B p+0.1 b+0.3 n24
 G h3 s12 e09 t00 F0 v0/1
 L W12 L08 L08 A08 W15
 ```
@@ -108,6 +109,9 @@ L W12 L08 L08 A08 W15
 | | `be` | Bid errors, % |
 | | `sl` | Card-play slips, %. The Casual bots slip about 2%. |
 | | `w` | How much the record counts, % (hands / (hands + 50)) |
+| **B** (bad hands) | `p` | Your net points per weak hand: a hand whose best 7 dealt cards are worth less than 2.5 on the fitted scale. Points lost count against it. |
+| | `b` | The same for the bots at your tables, as a yardstick |
+| | `n` | Your weak hands on record. Under about 20, `p` is noise. `B --` means none yet. |
 | **G** (game at the table; only during a Dynamic game) | `h` `s` `e` `t` | Hands played this game, starting easing, easing now, and its target, % |
 | | `F` | The fast path: `1` means it holds (weak kept hands, 2 of the last 3 visible) |
 | | `v` | Weak visible hands / visible hands this game |
@@ -116,6 +120,7 @@ L W12 L08 L08 A08 W15
 The signals are decayed: they follow about the last 100 samples. Reading a complaint:
 
 - **"Too hard"** with `n` low and `sh` near 33: the record says the player is even, and the game plays at strength. `sh` well under 33 with `n` still low means the record is young (`w` low) or the player only just got worse. `!dev easing=0` starts the hold again.
+- **"Too hard" and the B line:** players who play weak hands sensibly (pass, throw low, save Kings) score about +0.3 to +0.4 per weak hand, and so do the bots; a floor-strength bot scores the same. A `p` near or below 0 with `b` positive means the player loses points on bad hands, usually by calling them. That is a teaching problem more than an easing one. Games from every mode count.
 - **"Too easy"** with `n` high: check `m1` (one bad game sets it; it clears after the next game) and the phase (`H` or `T`: the hold or taper sets the floor). `!dev easing=160` ends the hold and taper.
 
 ## Stress sections
