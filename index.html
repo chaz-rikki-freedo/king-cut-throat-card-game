@@ -304,8 +304,13 @@ button.card{cursor:pointer}
 }
 .overlay[hidden]{display:none}
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
-.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in 2s cubic-bezier(.83,0,.17,1)}
-@keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
+.modal.gameover.award{border:0.25rem solid var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in 2.4s linear}
+@keyframes award-in{
+0%{border-color:transparent;box-shadow:0 0 0 transparent,0 0.875rem 2.5rem rgba(0,0,0,.5);animation-timing-function:cubic-bezier(.2,.6,.3,1)}
+22%{border-color:color-mix(in srgb,var(--award) 45%,transparent);box-shadow:0 0 0.5rem color-mix(in srgb,var(--award) 30%,transparent),0 0.875rem 2.5rem rgba(0,0,0,.5);animation-timing-function:ease-in-out}
+72%{border-color:color-mix(in srgb,var(--award) 8%,transparent);box-shadow:0 0 0.25rem color-mix(in srgb,var(--award) 4%,transparent),0 0.875rem 2.5rem rgba(0,0,0,.5);animation-timing-function:cubic-bezier(.8,0,1,1)}
+79%{border-color:var(--award);box-shadow:0 0 1.875rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+100%{border-color:var(--award);box-shadow:0 0 0.8125rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5)}}
 @media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
 .modal h2{margin:0 0 0.625rem}
@@ -1013,7 +1018,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '5f987a7', date: '2026-10-31' });
+const BUILD = Object.freeze({ commit: '424166f', date: '2026-10-31' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
