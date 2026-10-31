@@ -4246,6 +4246,9 @@ const Dynamic = (() => {
     share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
     habits: { calls: 0, made: 0, value: 0 },
+    /* Weak hands (a dealt hand whose best 7 cards are worth less than WEAK): decayed counts and net points, yours (n,
+       pts) and the bots' at the same tables (bn, bpts). Only the readout ('pulse') shows them; no easing reads them. */
+    weak: { n: 0, pts: 0, bn: 0, bpts: 0 },
     /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
     mark: false, at: /** @type {number | null} */ (null)
   });
@@ -4262,6 +4265,8 @@ const Dynamic = (() => {
     p.discards = { n: num(d.n), loss: num(d.loss) };
     p.plays = { n: num(pl.n), slips: Math.min(num(pl.slips), num(pl.n)) };
     p.habits = { calls: Math.floor(num(h.calls)), made: Math.min(Math.floor(num(h.made)), Math.floor(num(h.calls))), value: num(h.value) };
+    const wk = o(x.weak), fin = (/** @type {any} */ y) => (typeof y === 'number' && isFinite(y) ? y : 0);
+    p.weak = { n: num(wk.n), pts: num(wk.n) ? fin(wk.pts) : 0, bn: num(wk.bn), bpts: num(wk.bn) ? fin(wk.bpts) : 0 };
     p.mark = x.mark === true;
     p.at = Number.isFinite(x.at) && x.at > 0 ? x.at : null;
     return p;
@@ -4388,7 +4393,12 @@ const Dynamic = (() => {
         const step = cur.step();
         if (!step) break;
         const a = step.action, st = cur.state;
-        if (a.type === 'DEAL') { h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0] }; hands.push(h); }
+        if (a.type === 'DEAL') {
+          /* Which seats were dealt a weak hand: the best 7 of the dealt cards worth less than WEAK. */
+          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < WEAK);
+          h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0], weak, net: [0, 0, 0] };
+          hands.push(h);
+        }
         if (h && a.player === me) {
           if (a.type === 'DISCARD' && phase === P.DISCARD) h.loss = Math.max(0, bestKeep(mine, mine.length - a.cards.length) - bestEstimate(mine.filter(id => !a.cards.includes(id))));
           if (a.type === 'BID') {
@@ -4409,6 +4419,7 @@ const Dynamic = (() => {
           h.called = r.called && !!st.handSummary;
           h.failed = r.failed;
           h.gain = r.gain;
+          if (st.handStats) h.net = st.handStats.pts.map(x => x.king + x.hand + x.showdown);
           if (!h.called) h.callValue = null;
         }
       }
@@ -4442,6 +4453,11 @@ const Dynamic = (() => {
       }
       const all = h.gain[0] + h.gain[1] + h.gain[2];
       if (mode === 'dynamic' && all > 0) p.share = { me: p.share.me * D + h.gain[0], all: p.share.all * D + all };
+      if (h.weak && h.net) {
+        const w = p.weak;
+        if (h.weak[0]) { w.n = w.n * D + 1; w.pts = w.pts * D + h.net[0]; }
+        for (const q of [1, 2]) if (h.weak[q]) { w.bn = w.bn * D + 1; w.bpts = w.bpts * D + h.net[q]; }
+      }
     }
     p.games++;
     p.mark = rv.marked;
@@ -9057,6 +9073,7 @@ const App = (() => {
      reading it over your shoulder learns nothing; the legend is in tests/README.md (Dev commands). Percentages are 0-100.
      P: the profile (hands and phase H hold, T taper, R record; f floor, t slow target, n next game's start, k Sharks
      allowed, m mark). S: the record's signals (score share, failed calls, bid errors, slips; w the record's weight).
+     B: points per weak hand (dealt best 7 worth less than WEAK), yours and the bots' at your tables, and your weak hands.
      G: the Dynamic game at the table, if any (hands, start, now, target, fast path, weak visible hands of visible).
      L: the last 5 Dynamic games, newest first (W won, L lost, A the AI played your seat; then its start easing). */
   function easingReadout() {
@@ -9068,6 +9085,10 @@ const App = (() => {
       'P h' + h + (h < DY.HOLD_HANDS ? 'H' : h < end ? 'T' : 'R') + ' f' + pc(DY.floorEase(h)) + ' t' + pc(DY.slowTarget(snap)) + ' n' + pc(next) + ' k' + sharkLimit(next) + ' m' + (p.mark ? 1 : 0),
       'S sh' + rate(p.share.me, p.share.all) + ' fc' + rate(p.calls.failed, p.calls.n) + ' be' + rate(p.bids.errors, p.bids.n) + ' sl' + rate(p.plays.slips, p.plays.n) + ' w' + pc(h / (h + DY.PROFILE_HANDS))
     ];
+    /* B: points per weak hand, yours (p) and the bots' at your tables (b), and your weak hands on record (n). */
+    const per = (/** @type {number} */ pts, /** @type {number} */ n) => (pts / n >= 0 ? '+' : '') + (pts / n).toFixed(1);
+    const w = p.weak;
+    lines.push(w.n >= 0.5 && w.bn >= 0.5 ? 'B p' + per(w.pts, w.n) + ' b' + per(w.bpts, w.bn) + ' n' + Math.round(w.n) : 'B --');
     const d = app.dyn;
     if (app.mode === 'dynamic' && d && app.state && !app.state.gameOver) lines.push('G h' + d.hands + ' s' + pc(d.e0) + ' e' + pc(d.e) + ' t' + pc(d.target) + ' F' + (d.fast ? 1 : 0) + ' v' + d.weakSeen + '/' + d.visible.length);
     const games = replays.list().filter(e => e.mode === 'dynamic').slice(0, 5).map(e => {
@@ -10775,6 +10796,10 @@ const SelfTest = (() => {
       const dyn = DY.addGame(null, rv1, 'dynamic');
       check('a Dynamic game adds to the score share', dyn.share.all > 0 && dyn.share.me <= dyn.share.all, JSON.stringify(dyn.share));
       eq('Free play and Waves never change the slow path\'s score share', DY.addGame(dyn, rv2, 'free').share.all.toFixed(9), (dyn.share.all * 1).toFixed(9));
+      check('the review rates each seat\'s dealt hand and keeps each seat\'s net points', rv1.hands.every(h => h.weak.length === 3 && h.weak.every(b => typeof b === 'boolean') && h.net.length === 3) && rv1.hands.some(h => h.net.some(x => x !== 0)), JSON.stringify(rv1.hands.map(h => [h.weak, h.net])));
+      const wk = DY.addGame(null, { hands: [{ loss: null, bids: [], called: false, gain: [0, 0, 0], weak: [true, true, false], net: [-1, 2, 3] }, { loss: null, bids: [], called: false, gain: [0, 0, 0], weak: [false, true, true], net: [4, 1, 0] }], marked: false }, 'free').weak;
+      eq('weak hands: yours and the bots\' counts and net points, from any mode', [wk.n, wk.pts, Math.round(wk.bn * 1e6) / 1e6, Math.round(wk.bpts * 1e6) / 1e6], [1, -1, Math.round((0.99 * 0.99 + 0.99 + 1) * 1e6) / 1e6, Math.round((2 * 0.99 * 0.99 + 1 * 0.99 + 0) * 1e6) / 1e6]);
+      eq('an old profile without weak hands reads as none', DY.cleanProfile({ v: 1, hands: 5 }).weak, { n: 0, pts: 0, bn: 0, bpts: 0 });
       eq('a review counts every hand on record', [marked.hands, cleared.hands, marked.games, cleared.games], [rv2.hands.length, rv2.hands.length + rv1.hands.length, 1, 2]);
       const w = h => DY.slowTarget(Object.assign({}, DY.snapshotOf(null), { h, share: { me: 0, all: 40 } }));
       check('the slow path\'s weight grows with the hands on record: w = h / (h + 50)', w(0) === 0 && Math.abs(w(50) - 0.5 * w(1e9)) < 0.01 && w(1e9) > 0.95, [w(0), w(50), w(1e9)].join(' '));

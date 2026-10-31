@@ -159,8 +159,8 @@ async function checks() {
       out.note = /easing is set to 0 hands/.test(q('#overlay').textContent);
       return out;`);
     const ro = r.readout, P = /^P h(\d+)([HTR]) f\d\d+ t\d\d+ n\d\d+ k[012] m[01]$/.exec(ro.lines[0] || '');
-    expect('!dev easing shows the readout in codes (P, S, then L with the last Dynamic games, newest first), changes nothing', ro.mono && ro.same && P && Number(P[1]) === r.had &&
-      /^S sh\d\d+ fc(\d\d+|--) be(\d\d+|--) sl(\d\d+|--) w\d\d+$/.test(ro.lines[1]) && /^L( [WLA](\d\d+|--)){1,5}$/.test(ro.lines[ro.lines.length - 1]), ro.lines);
+    expect('!dev easing shows the readout in codes (P, S, B, then L with the last Dynamic games, newest first), changes nothing', ro.mono && ro.same && P && Number(P[1]) === r.had &&
+      /^S sh\d\d+ fc(\d\d+|--) be(\d\d+|--) sl(\d\d+|--) w\d\d+$/.test(ro.lines[1]) && /^B (--|p[+-]\d+\.\d b[+-]\d+\.\d n\d+)$/.test(ro.lines[2]) && /^L( [WLA](\d\d+|--)){1,5}$/.test(ro.lines[ro.lines.length - 1]), ro.lines);
     expect('the word pulse on Load shows the same readout', ro.pulse, ro);
     expect('!dev easing=0 asks first, and Cancel changes nothing', r.asked && r.cancelSame, r);
     expect('on OK, only the hand count (0) and the mark change, so the next game starts at full easing', r.had > 0 && r.blank && r.start === 1, r);
