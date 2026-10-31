@@ -192,6 +192,20 @@ The taper does what it was built for: the easing falls over about 8 games instea
 
 An earlier measurement of the hold that ends at once had a fault: with `TAPER_HANDS` at 0, the floor divided 0 by 0 at exactly hand 80, and that game's easing was not a number. The build (80) was never affected. The table above is from the guarded code.
 
+## Tally: what each seat was dealt (2026-10-31)
+
+Luck is as large as the margin of most games. A seat's points per hand average about 0.8 with a spread of about 0.8, so a 10-hand game carries about ±2.5 to 3 points of luck. `KCT.Tally.read(code)` (section 6e of `index.html`) is level 0 of a luck readout. Nothing in the app calls it yet, and it is not in the README on purpose.
+
+It replays a code or record and returns, for each deal, the fitted value of what each seat held: `dealt` (the best 7 of its 10 cards) and `kept` (the 7 it kept), by seat (0 is you). The value is `Dynamic.bestEstimate`: expected tricks plus 0.9 × expected King points, in the seat's best suit. It also returns `totals` and each seat's `share` of the table's total, over the scored hands only. A Joker redeal and an abandoned hand are listed and not counted. A game that ended inside a hand counts that hand.
+
+Limits:
+
+- **It says how strong a hand was, not how many points it was worth.** It leaves out the kitty, the trump that was named and the other seats' play.
+- **The fit is rough.** The hand estimate has not been checked against the points a hand scored. Do that before reading a share as luck.
+- **A share is not points.** A seat's share times the points scored in the game would split them in proportion. That is not calibrated, so it is not computed.
+
+First reading, Shark 11 (seed 437250166 for the AI game, the same deals in your game): you were dealt 31% of the table's strength and Lou 36%, in a game you lost 8–10 to Lou. The AI that played your seat on the same deals got 29% and won 10–8. Both games dealt your seat the weakest hands, so the loss was partly the deal.
+
 ## Habit report (2026-10-20)
 
 The ten personalities are meant to feel like ten different people at the table. This report is step 1 of a plan to make them feel that way without making them stronger: measure how each seat plays first, then change it.
