@@ -1008,7 +1008,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '7caa205', date: '2026-10-30' });
+const BUILD = Object.freeze({ commit: '37b75cc', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3308,6 +3308,7 @@ const Dynamic = (() => {
   const FLOOR = LADDER.length - 1, KNOW_ROW = 4, FARTS_ROW = 6, FLOOR_SKILL = 0.4;
   const START_ROW = Object.freeze({ shark: 0, club: 1, casual: 4, novice: 6 });
   const KNOWLEDGE_OFF = Object.freeze({ bids: false, turnedCard: false, ownDiscards: false, voids: false, scoreAware: false, showdownPlans: false });
+  const BAD_HAND = 3.0;
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
   const HOLD_HANDS = 80;
   const TAPER_HANDS = 80;
@@ -3498,7 +3499,7 @@ const Dynamic = (() => {
         if (!step) break;
         const a = step.action, st = cur.state;
         if (a.type === 'DEAL') {
-          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < WEAK);
+          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < BAD_HAND);
           h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0], weak, net: [0, 0, 0] };
           hands.push(h);
         }
