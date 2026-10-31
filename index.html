@@ -8968,7 +8968,9 @@ const App = (() => {
      ?seed= link (a link's wave comes too). A backup is named, so the dialog can say where it goes. Spaces and line
      breaks are dropped: a chat app may wrap a long code. kind: 'empty', 'replay', 'seed', 'backup', 'dev' or 'bad'
      (with why). Input that starts with '!' is never a code: only a '!dev' command with submit is read as one, and any
-     other '!' text reads as text that is not a code, so nothing hints at it. */
+     other '!' text reads as text that is not a code, so nothing hints at it. The one word 'pulse' with submit is kind
+     'readout' (the same as '!dev easing'), so a player can be asked for it without a dev command; typed, it reads as
+     text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
   /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } }} */
@@ -8980,6 +8982,7 @@ const App = (() => {
       const d = Dev.parse(t);
       return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
     }
+    if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
     if (/^https?:\/\/|^\?|[?&](replay|seed)=/i.test(t)) {
@@ -9024,7 +9027,7 @@ const App = (() => {
     if (!input) return;
     const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
     if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
-    if (r.dev && r.dev.look) { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
+    if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -9050,7 +9053,7 @@ const App = (() => {
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
   }
-  /* '!dev easing': a terse readout for someone who says Dynamic is too easy or too hard. Codes, not words, so a player
+  /* '!dev easing' or 'pulse': a terse readout for someone who says Dynamic is too easy or too hard. Codes, not words, so a player
      reading it over your shoulder learns nothing; the legend is in tests/README.md (Dev commands). Percentages are 0-100.
      P: the profile (hands and phase H hold, T taper, R record; f floor, t slow target, n next game's start, k Sharks
      allowed, m mark). S: the record's signals (score share, failed calls, bid errors, slips; w the record's weight).
@@ -9956,6 +9959,7 @@ const SelfTest = (() => {
           { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
       eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
+      eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);
       check('Load a code: a code of newer rules says to update', !newer || /newer rules/.test(rc(newer).why || ''), newer && rc(newer));

@@ -257,7 +257,7 @@ The app also reads `KCT1-` codes (the first release). Layout: `1`, seed (4 bytes
 | A rule change that changes the game for the same decisions | Raise `Engine.RULES_VERSION`. |
 | A change to the layout of section 4 itself | Raise the format version (`KCT4-`). Keep a reader for the old versions. |
 
-Input that starts with `!` is reserved for dev commands in **Load a code** (`!dev`, see [tests/README.md](../tests/README.md#dev-commands)). No code family, link form or backup form may start with `!`. The self-test `replay` checks this.
+Input that starts with `!` is reserved for dev commands in **Load a code** (`!dev`, see [tests/README.md](../tests/README.md#dev-commands)). No code family, link form or backup form may start with `!`. The word `pulse` is reserved too: on **Load**, it shows Dynamic's easing readout. No code family may be that word. The self-test `replay` checks both.
 
 ## 11. Size and limits
 

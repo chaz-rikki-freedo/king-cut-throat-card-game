@@ -80,13 +80,13 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 - A lower cap trims at the next write: older replays or lines are removed for good. There's no preview, so check the value before you press Enter.
 - While an override is set, the About card shows **DEV** and the values after the build.
 - Self-tests always run with the defaults.
-- `!dev easing` shows a readout of Dynamic's easing, for when a player says Dynamic is too easy or too hard. It's written in codes so the player can't read it; the legend is below. It changes nothing.
+- `!dev easing` shows a readout of Dynamic's easing, for when a player says Dynamic is too easy or too hard. It's written in codes so the player can't read it; the legend is below. It changes nothing. A player can type the word `pulse` instead (any case, then Enter or **Load**): it shows the same readout, with no dev command. Typed, it reads as text that is not a code, like `!dev`.
 - `!dev easing=N` (N from 0 to 9999999) asks first, then sets the hand count of Dynamic's profile (`kct.profile`) to N and clears the gross-mistake mark. The hand count places you in the hold and the taper: below 80 (`HOLD_HANDS`), full easing until hand 80; from 80 to 160 (`TAPER_HANDS`), the taper; 160 or more, the record alone. The question says which applies. Everything else stays: the record of your play, the habit counts in **Your profile**, Dynamic's saved game (which keeps the easing it started with), results and replay codes, the other modes and the settings. Unlike the caps, the change is kept after the tab closes, and there's no undo. The menu says **Dynamic's easing is set to N hands.** **Cancel** changes nothing. Write it on its own: `!dev easing=0 saves=40` is refused.
 - Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
 
 ### Dynamic readout (`!dev easing`)
 
-Ask the player to type `!dev easing` in **Menu → Load a code**, press Enter, and send you a screenshot. All numbers marked % are 0 to 100.
+Ask the player to type `pulse` in **Menu → Load a code**, press Enter, and send you a screenshot. (`!dev easing` shows the same.) All numbers marked % are 0 to 100.
 
 ```
 P h214R f00 t12 n12 k2 m0

@@ -5,7 +5,7 @@
      from the moves), the end: results, the replay code (mode 3 and its META), the review and the profile, backups.
    - Replay Seed plays the same game from the old game's snapshot, also after the review changed the profile.
    - A game where the AI played your seat adds nothing to the profile.
-   - '!dev easing' in Load a code shows the readout; '!dev easing=N' asks, then sets only the profile's hand count.
+   - '!dev easing' (or the word 'pulse') in Load a code shows the readout; '!dev easing=N' asks, then sets only the profile's hand count.
    Your seat is played by the fast AI, by clicks.
    Usage: node dynamic.js            the checks above (about 1-2 min)
           node dynamic.js rates [games-per-setting=60] [workers=4]
@@ -142,6 +142,8 @@ async function checks() {
       type('!dev easing'); await enter();
       const look = q('#codeRead'), lines = look.textContent.split('\\n');
       const readout = { lines, mono: look.classList.contains('dev-read'), same: JSON.stringify(A.profile.get()) === JSON.stringify(before) };
+      type('pulse'); await enter();
+      readout.pulse = q('#codeRead').textContent === lines.join('\\n') && q('#codeRead').classList.contains('dev-read');
       type('!dev easing=0'); await enter();
       const out = { readout, asked: askOpen() && /easing/i.test(q('#askLayer').textContent) };
       click('[data-action="ask-cancel"]'); await sleep(50);
@@ -159,6 +161,7 @@ async function checks() {
     const ro = r.readout, P = /^P h(\d+)([HTR]) f\d\d+ t\d\d+ n\d\d+ k[012] m[01]$/.exec(ro.lines[0] || '');
     expect('!dev easing shows the readout in codes (P, S, then L with the last Dynamic games, newest first), changes nothing', ro.mono && ro.same && P && Number(P[1]) === r.had &&
       /^S sh\d\d+ fc(\d\d+|--) be(\d\d+|--) sl(\d\d+|--) w\d\d+$/.test(ro.lines[1]) && /^L( [WLA](\d\d+|--)){1,5}$/.test(ro.lines[ro.lines.length - 1]), ro.lines);
+    expect('the word pulse on Load shows the same readout', ro.pulse, ro);
     expect('!dev easing=0 asks first, and Cancel changes nothing', r.asked && r.cancelSame, r);
     expect('on OK, only the hand count (0) and the mark change, so the next game starts at full easing', r.had > 0 && r.blank && r.start === 1, r);
     expect('results, replay codes, saved games and other modes stay, and the menu says so', r.kept && r.note, r);
