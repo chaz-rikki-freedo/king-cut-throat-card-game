@@ -227,33 +227,54 @@ What it says:
 
 ## Awards: how you did with your cards (2026-10-31)
 
-The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades your seat on what you did with the cards you kept. With `!dev awards=on` (see [tests/README.md](../tests/README.md#dev-commands)), the game-over box shows the grade as a heavy stroke in one of 7 colors. It's a dev feature: off for a new install, and nothing else uses it.
+The first step of performance recognition. At the end of a game, `KCT.Awards.read(code)` (section 6f of `index.html`) grades how well your seat chose with the cards it was dealt. With `!dev awards=on` (see [tests/README.md](../tests/README.md#dev-commands)), the game-over box shows the grade as a heavy stroke in one of 7 colors, which fades in once it's worked out. It's a dev feature: off for a new install, and nothing else uses it.
 
-The grade is the gap between two shares, both from the game alone:
+The grade is never your score. Each of your choices costs the value of the best option less the value of the one you chose, in expected tricks plus 0.9 × King points. A choice that was the best option costs 0. The grade is the mean cost per choice:
 
-- **Your share of the points**: your final score over the table's total.
-- **The share your cards predict**: 1/3 + `SLOPE` × (your share of the kept strength − 1/3). The kept strength is Tally's.
+- **A card in a main trick:** with every hand face up, the most your seat could still take after each card you could have played, your two opponents defending together. The kitty, the trump and how the cards split are the same for every option, so only the choice counts.
+- **A discard, the trump you name, and the cards you give in the exchange:** the fitted hand estimate (`Dynamic.handEstimate`) of the best option against yours.
 
-`EDGES` cut the gap into bands 0 to 6. The constants are fitted on bot games, every seat of three default personalities, so that 5, 12, 20, 26, 20, 12 and 5% of seat-games fall in bands 0 to 6: band 3 (yellow) is a bot's usual game, and each end band is about 1 game in 20.
+Bids and Showdown play aren't graded.
 
-| Band | Color token | Gap from | Bot games (out of sample) |
-|---|---|---|---|
-| 0 | `--award0` neon red | below −0.24 | 4.9% |
-| 1 | `--award1` red-orange | −0.24 | 11.3% |
-| 2 | `--award2` orange | −0.14 | 22.4% |
-| 3 | `--award3` yellow | −0.05 | 24.8% |
-| 4 | `--award4` yellow-green | 0.04 | 20.2% |
-| 5 | `--award5` green | 0.14 | 11.8% |
-| 6 | `--award6` neon green | 0.28 | 4.6% |
+`EDGES` cut the mean cost into bands 6 (best) to 0. They're fitted on bot games of every tier, so that 5, 12, 20, 26, 20, 12 and 5% of seat-games fall in bands 6 to 0.
 
-The fit is 1,200 games (`SLOPE` 1.83). The check is 600 other games (`node tests/awards.js 600 3 5150`): the bands match the targets within 2 points. [tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from that check.
+| Band | Color token | Mean cost per choice |
+|---|---|---|
+| 6 | `--award6` neon green | below 0.071 |
+| 5 | `--award5` green | 0.071 |
+| 4 | `--award4` yellow-green | 0.106 |
+| 3 | `--award3` yellow | 0.144 |
+| 2 | `--award2` orange | 0.201 |
+| 1 | `--award1` red-orange | 0.263 |
+| 0 | `--award0` neon red | 0.334 and up |
+
+### Validation (2026-10-31)
+
+`node tests/awards.js 900 4 9191` fits the edges. `node tests/awards.js 600 4 5150` checks them on 600 other games (1,800 seat-games):
+
+| Measure | Result |
+|---|---|
+| Seat-games in bands 6 to 0 (target 5, 12, 20, 26, 20, 12, 5%) | 6.5, 13.3, 19.4, 23.3, 21.9, 11.7, 3.9% |
+| Mean cost per choice: Shark, Club, Novice, Casual bots | 0.127, 0.153, 0.197, 0.261 |
+| Win rate of the same | 52, 35, 18, 25% |
+| Mean cost of winners, of losers | 0.171, 0.183 (r −0.07 against winning) |
+| Losses in band 6, in band 5 | 77 and 160 of 1,200 |
+| Time to grade a seat | median 214 ms, 95% under 460 ms, most 1.1 s |
+
+[tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from that check. Its band 0 code is a game that seat won.
+
+What it says:
+
+- **The result barely matters.** Winners' and losers' costs differ by about 0.02 per choice, and a loss reaches neon green about as often as any game. A game the deal decided grades on its choices.
+- **It ranks the tiers.** Sharks cost least and Club bots next. Casual bots cost more than Novice bots because of their discards: the fitted estimate scores the discards of Casual personalities as poor. That part of the grade is the least certain.
+- **It's fast.** Grading your seat takes about 0.2 seconds (at most about 2), in slices, so the table never stalls.
 
 Limits:
 
-- **The grade is mostly your score.** Strength explains about 15% of a game's points share (see Tally), so the cards move the grade only a little. A loss on a weak deal can still grade yellow or better.
-- **The slope is loose.** Samples of 300 to 1,200 games give 1.4 to 1.8. The bands hold their targets because the edges are fitted with the slope.
-- **Bands are against default bots.** A game against Sharks grades lower than the same play against an eased Dynamic table.
-- **Adjacent colors are close for color-blind players.** Hold the pointer on the box: its title says the band and the numbers.
+- **Hindsight is face up.** A card that was right on what you could see can cost something when every hand is shown. Every seat pays that, so the bands allow for it.
+- **The two opponents are taken to defend together.** Real bots don't, so the solver is strict.
+- **The estimate grades discards, trump and exchange.** It leaves out the kitty and the play, so it can call a sound discard poor.
+- **Adjacent colors are close for color-blind players.** Hold the pointer on the box: its title says the band, the mean cost and each part.
 
 ## Habit report (2026-10-20)
 

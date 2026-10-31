@@ -381,9 +381,12 @@ button.card{cursor:pointer}
   .modal.profile .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
-/* The award (Awards, a dev feature): a heavy stroke in the band's color, neon red (0) to neon green (6). */
+/* The award (Awards, a dev feature): a heavy stroke in the band's color, neon red (0) to neon green (6), that fades in
+   once the grade is worked out. */
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
-.modal.gameover.award{border:0.375rem solid var(--award);box-shadow:0 0 1.25rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5)}
+.modal.gameover.award{border:0.375rem solid var(--award);box-shadow:0 0 1.25rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s ease-out}
+@keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
+@media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
 .modal h2{margin:0 0 0.625rem}
 .modal .big{font-size:1.75rem;font-weight:900;color:var(--gold)}
@@ -4805,41 +4808,188 @@ const Tally = (() => {
 })();
 
 /* ---------------------------------------------------------------------
-   6f. AWARDS — how well a seat did with the cards it kept, graded at the
-   end of a game, for performance recognition. A dev feature for now: off
-   until "!dev awards=on" (localStorage 'kct-awards': not a 'kct.' key, so
-   never in a backup), and then shown as the color of the game-over box.
-   - read(rec, seat): the seat's share of the points against the share that
-     its share of the kept strength predicts (Tally), and the band of that
-     gap: 0 (worst, neon red) to 6 (best, neon green). Null for a game that
-     did not finish or does not replay.
-   SLOPE and EDGES are fitted on bot games (tests/awards.js): every seat of
-   three default personalities, so the middle band is a bot's usual game,
-   and about 5% of games fall in each end band.
+   6f. AWARDS — how well a seat chose, with the cards it was dealt, graded
+   at the end of a game, for performance recognition. A dev feature for now:
+   off until "!dev awards=on" (localStorage 'kct-awards': not a 'kct.' key,
+   so never in a backup), and then shown as the color of the game-over box.
+   The grade is the cost of the seat's choices, never its score, so a loss
+   on a poor deal played well grades as high as any win. Each choice costs
+   the value of the best option less the value of the one chosen, in
+   expected tricks plus 0.9 x King points:
+   - a card in a main trick: with every hand face up (in hindsight), the
+     most the seat could still take, its two opponents defending together
+     (solver). The kitty, the trump and how the cards split are fixed, so
+     only the choice counts.
+   - a discard, the trump it names, the cards it gives in the exchange: the
+     fitted hand estimate (Dynamic.handEstimate) of the best option.
+   read(rec, seat) gives the mean cost per choice and its band: 6 (best,
+   neon green) to 0 (worst, neon red), or null for a game that did not
+   finish or does not replay. It takes about 0.2 seconds (at most about 2),
+   so the app uses start(), which works in slices and calls back. EDGES are fitted on bot
+   games of every tier (tests/awards.js): about 5% of seat-games fall in
+   each end band.
    --------------------------------------------------------------------- */
-/** @typedef {{ band: number, gap: number, points: number, expected: number, kept: number }} Award */
+/** @typedef {{ cost: number, n: number }} AwardPart */
+/** @typedef {{ band: number, cost: number, choices: number, parts: { play: AwardPart, discard: AwardPart, name: AwardPart, exchange: AwardPart } }} Award */
 const Awards = (() => {
-  const KEY = 'kct-awards';
-  /* Points share = 1/3 + SLOPE x (kept share - 1/3), fitted. EDGES: the gaps where each band above the lowest starts. */
-  const SLOPE = 1.83;
-  const EDGES = Object.freeze([-0.24, -0.14, -0.05, 0.04, 0.14, 0.28]);
-  const BANDS = 7;
-  /** The band of a gap: 0 to 6. @param {number} gap */
-  const bandOf = gap => { let b = 0; while (b < EDGES.length && gap >= EDGES[b]) b++; return b; };
-  /** The award of a finished game for a seat (0 is you), or null.
-      @param {any} recOrCode a replay code or its record @param {number} [seat] @returns {Award | null} */
-  function read(recOrCode, seat = 0) {
+  const KEY = 'kct-awards', P = Engine.P, R = Rules, KW = 0.9, BANDS = 7;
+  /* The mean costs per choice where each band below the best starts: below EDGES[0] is band 6. */
+  const EDGES = Object.freeze([0.071, 0.106, 0.144, 0.201, 0.263, 0.334]);
+  /** The band of a mean cost per choice: 6 (best) to 0. @param {number} cost */
+  const bandOf = cost => BANDS - 1 - EDGES.filter(e => cost >= e).length;
+  const SUIT_NO = Object.freeze({ S: 0, H: 1, D: 2, C: 3 });
+
+  /** The face-up solver of one hand's main tricks for seat me, from the hands at the first trick (3 x 7 cards).
+      value(hands, leader, plays): the tricks plus KW x King tricks me can still take from that point (a trick in progress:
+      its leader and plays so far), me choosing for the most and the other two for the least.
+      @param {string[][]} hands @param {string} trump @param {number} me */
+  function solver(hands, trump, me) {
+    const ids = hands[0].concat(hands[1], hands[2]), n = ids.length;
+    const idx = new Map(ids.map((c, i) => [c, i]));
+    const suit = ids.map(c => SUIT_NO[/** @type {string} */ (R.getEffectiveSuit(c, trump))]);
+    const king = ids.map(c => R.isKing(c));
+    const trumpPow = ids.map(c => R.isTrump(c, trump) ? R.trickPower(c, null, trump) : 0);
+    const facePow = ids.map(c => R.getCardStrength(c, trump));
+    /* Each suit's cards from weakest to strongest, and its mask. */
+    const bySuit = [0, 1, 2, 3].map(s => ids.map((_, i) => i).filter(i => suit[i] === s).sort((a, b) => facePow[a] - facePow[b]));
+    const suitMask = bySuit.map(l => l.reduce((m, i) => m | (1 << i), 0));
+    const power = (/** @type {number} */ i, /** @type {number} */ lead) => trumpPow[i] || (suit[i] === lead ? 100 + facePow[i] : 0);
+    /** @type {Map<number, number>} */
+    const memo = new Map();
+    /* The cards worth trying from mask m: the legal ones, and of two that touch in their suit (no live card between,
+       neither a King) only the first, as they do the same. live: every card still in a hand or in this trick. */
+    function choices(m, lead, live) {
+      const pool = lead >= 0 && (m & suitMask[lead]) ? m & suitMask[lead] : m, out = [];
+      for (let s = 0; s < 4; s++) {
+        if (!(pool & suitMask[s])) continue;
+        let prev = -1;
+        for (const i of bySuit[s]) {
+          if (!(live & (1 << i))) continue;
+          if (pool & (1 << i)) { if (prev < 0 || king[i] || king[prev]) out.push(i); prev = i; } else prev = -1;
+        }
+      }
+      return out;
+    }
+    function board(m0, m1, m2, leader) {
+      const all = m0 | m1 | m2;
+      if (!all) return 0;
+      const key = all * 4 + leader, hit = memo.get(key);
+      if (hit !== undefined) return hit;
+      const v = play(m0, m1, m2, leader, 0, -1, -1);
+      memo.set(key, v);
+      return v;
+    }
+    function resolve(m0, m1, m2, leader, a, b, c) {
+      const lead = suit[a], cards = [a, b, c];
+      let w = 0;
+      for (let k = 1; k < 3; k++) if (power(cards[k], lead) > power(cards[w], lead)) w = k;
+      const winner = (leader + w) % 3;
+      return (winner === me ? 1 + (king[cards[w]] ? KW : 0) : 0) + board(m0, m1, m2, winner);
+    }
+    function play(m0, m1, m2, leader, i, a, b) {
+      const p = (leader + i) % 3, m = p === 0 ? m0 : p === 1 ? m1 : m2, lead = i ? suit[a] : -1;
+      const live = m0 | m1 | m2 | (i > 0 ? 1 << a : 0) | (i > 1 ? 1 << b : 0);
+      let best = p === me ? -1 : 1e9;
+      for (const c of choices(m, lead, live)) {
+        const bit = ~(1 << c), n0 = p === 0 ? m0 & bit : m0, n1 = p === 1 ? m1 & bit : m1, n2 = p === 2 ? m2 & bit : m2;
+        const v = i < 2 ? play(n0, n1, n2, leader, i + 1, i ? a : c, i ? c : -1) : resolve(n0, n1, n2, leader, a, b, c);
+        if (p === me ? v > best : v < best) best = v;
+      }
+      return best;
+    }
+    const maskOf = (/** @type {string[]} */ h) => h.reduce((m, c) => idx.has(c) ? m | (1 << /** @type {number} */ (idx.get(c))) : m, 0);
+    return {
+      n,
+      /** @param {string[][]} now @param {number} leader @param {{ player: number, card: string }[]} plays */
+      value(now, leader, plays) {
+        const [m0, m1, m2] = now.map(maskOf), c = plays.map(x => /** @type {number} */ (idx.get(x.card)));
+        return c.length === 3 ? resolve(m0, m1, m2, leader, c[0], c[1], c[2]) : play(m0, m1, m2, leader, c.length, c.length ? c[0] : -1, c.length > 1 ? c[1] : -1);
+      }
+    };
+  }
+  /** Every way to keep k of the cards. @param {string[]} cards @param {number} k @returns {string[][]} */
+  function keeps(cards, k) {
+    const out = [], pick = /** @type {string[]} */ ([]);
+    const rec = (/** @type {number} */ i) => {
+      if (pick.length === k) { out.push(pick.slice()); return; }
+      for (let j = i; j <= cards.length - (k - pick.length); j++) { pick.push(cards[j]); rec(j + 1); pick.pop(); }
+    };
+    rec(0);
+    return out;
+  }
+  /** The work of grading, one slice per yield (a solver call or one choice). Its return is the award, or null.
+      @param {any} recOrCode @param {number} seat @returns {Generator<void, Award | null>} */
+  function* grade(recOrCode, seat) {
     let rec = null;
     try { rec = typeof recOrCode === 'string' ? Replay.decode(recOrCode) : recOrCode; } catch (e) { return null; }
-    if (!rec || !rec.result || !rec.result.finished || !Array.isArray(rec.result.scores)) return null;
-    const t = Tally.read(rec);
-    if (!t || !t.scored) return null;
-    const sc = rec.result.scores, total = sc[0] + sc[1] + sc[2];
-    const points = total > 0 ? sc[seat] / total : 1 / 3, kept = t.share.kept[seat], expected = 1 / 3 + SLOPE * (kept - 1 / 3), gap = points - expected;
-    return { band: bandOf(gap), gap, points, expected, kept };
+    if (!rec || !rec.result || !rec.result.finished) return null;
+    /** @type {Award['parts']} */
+    const parts = { play: { cost: 0, n: 0 }, discard: { cost: 0, n: 0 }, name: { cost: 0, n: 0 }, exchange: { cost: 0, n: 0 } };
+    const add = (/** @type {AwardPart} */ x, /** @type {number} */ c) => { x.cost += Math.max(0, c); x.n++; };
+    try {
+      const cur = Replay.cursor(rec);
+      /** @type {ReturnType<typeof solver> | null} */
+      let sv = null;
+      for (;;) {
+        const s = cur.state, ph = s.phase, mine = s.hands[seat].slice();
+        const inTricks = ph === P.TRICK_PLAY && !(s.showdown && s.showdown.active);
+        if (ph !== P.TRICK_PLAY && ph !== P.TRICK_DONE) sv = null;
+        /** @type {Map<string, number> | null} */
+        let vals = null;
+        if (inTricks && s.currentPlayer === seat) {
+          const lead = s.trick.plays.length ? R.getEffectiveSuit(s.trick.plays[0].card, s.trump) : null, legal = R.legalCards(mine, lead, s.trump);
+          if (legal.length > 1) {
+            if (!sv) sv = solver(s.hands.map(h => h.slice()), /** @type {string} */ (s.trump), seat);
+            vals = new Map();
+            for (const c of legal) {
+              vals.set(c, sv.value(s.hands.map((h, q) => q === seat ? h.filter(x => x !== c) : h), s.trick.leader, s.trick.plays.concat([{ player: seat, card: c }])));
+              yield;
+            }
+          }
+        } else if (inTricks && !sv) sv = solver(s.hands.map(h => h.slice()), /** @type {string} */ (s.trump), seat);
+        const st = cur.step();
+        if (!st) break;
+        const a = st.action;
+        if (!a || a.player !== seat) continue;
+        if (vals && a.type === 'PLAY' && vals.has(a.card)) add(parts.play, Math.max(...vals.values()) - /** @type {number} */ (vals.get(a.card)));
+        else if (a.type === 'DISCARD' && ph === P.DISCARD) {
+          const kept = mine.filter(c => !a.cards.includes(c));
+          add(parts.discard, Dynamic.bestKeep(mine, kept.length) - Dynamic.bestEstimate(kept)); yield;
+        } else if (a.type === 'NAME' && a.suit) {
+          const ok = R.SUITS.filter(x => x === a.suit || Engine.validate(s, Object.assign({}, a, { suit: x })) === null);
+          add(parts.name, Math.max(...ok.map(x => Dynamic.handEstimate(mine, x))) - Dynamic.handEstimate(mine, a.suit));
+        } else if (a.type === 'EXCHANGE' && s.trump) {
+          const kept = mine.filter(c => !a.cards.includes(c)), t = /** @type {string} */ (s.trump);
+          add(parts.exchange, Math.max(...keeps(mine, kept.length).map(k => Dynamic.handEstimate(k, t))) - Dynamic.handEstimate(kept, t)); yield;
+        }
+      }
+    } catch (e) { return null; }
+    const all = [parts.play, parts.discard, parts.name, parts.exchange], choices = all.reduce((x, p) => x + p.n, 0);
+    const cost = choices ? all.reduce((x, p) => x + p.cost, 0) / choices : 0;
+    return { band: bandOf(cost), cost, choices, parts };
+  }
+  /** The award of a finished game for a seat (0 is you), worked out at once, or null.
+      @param {any} recOrCode a replay code or its record @param {number} [seat] @returns {Award | null} */
+  function read(recOrCode, seat = 0) {
+    const it = grade(recOrCode, seat);
+    for (;;) { const r = it.next(); if (r.done) return r.value; }
+  }
+  /** Works out the award in slices of about 12 ms between pauses, then calls done(award). Returns a function that stops it.
+      @param {any} recOrCode @param {number} seat @param {(a: Award | null) => void} done @returns {() => void} */
+  function start(recOrCode, seat, done) {
+    const it = grade(recOrCode, seat);
+    let stopped = false;
+    const slice = () => {
+      if (stopped) return;
+      const t = performance.now();
+      while (performance.now() - t < 12) { const r = it.next(); if (r.done) { done(r.value); return; } }
+      setTimeout(slice, 0);
+    };
+    setTimeout(slice, 0);
+    return () => { stopped = true; };
   }
   const A = {
-    SLOPE, EDGES, BANDS, bandOf, read,
+    EDGES, BANDS, bandOf, solver, read, start,
     /** Whether the game-over box shows the award. Off when nothing is saved. */
     on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
     /** @param {boolean} v */
@@ -7664,18 +7814,34 @@ const App = (() => {
     return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
 
-  /* The award of the game that ended, while awards are on (Awards): the box's stroke is its band's color, and its title
-     says the numbers. Your seat is graded whoever played it. Worked out once per code. */
-  let awardOf = /** @type {{ code: string, a: Award | null } | null} */ (null);
-  /** @param {string | null} code @returns {string} the box's extra attributes, or '' */
-  function awardAttrs(code) {
-    if (!code || !Awards.on()) return '';
-    if (!awardOf || awardOf.code !== code) awardOf = { code, a: Awards.read(code, HUMAN) };
-    const a = awardOf.a, pc = (/** @type {number} */ x) => Math.round(100 * x) + '%';
-    if (!a) return '';
-    Logger.log('AWARD', { band: a.band, gap: Math.round(1000 * a.gap) / 1000 });
-    return ' data-award="' + a.band + '" title="Award ' + (a.band + 1) + ' of ' + Awards.BANDS +
-      ': your points ' + pc(a.points) + ', expected ' + pc(a.expected) + ' from your cards (' + pc(a.kept) + ' of the strength)"';
+  /* The award of the game that ended, while awards are on (Awards): worked out in slices after the box opens (about
+     0.2 seconds), then the box's stroke fades in, in its band's color, and its title says the numbers. Your seat is graded
+     whoever played it. Worked out once per code; a new box stops the work for the last one. */
+  let awardOf = /** @type {{ code: string, a: Award | null | undefined, stop: () => void } | null} */ (null);
+  /** @param {Element} box @param {Award} a */
+  function showAward(box, a) {
+    const f = (/** @type {AwardPart} */ x) => x.n ? (x.cost / x.n).toFixed(2) : '-';
+    box.classList.add('award');
+    box.setAttribute('data-award', String(a.band));
+    box.setAttribute('title', 'Award ' + (a.band + 1) + ' of ' + Awards.BANDS + ': your choices cost ' + a.cost.toFixed(3) + ' each over ' + a.choices +
+      ' (cards ' + f(a.parts.play) + ', discards ' + f(a.parts.discard) + ', trump ' + f(a.parts.name) + ', exchange ' + f(a.parts.exchange) + ')');
+  }
+  /** @param {Element} box @param {string | null} code */
+  function awardBox(box, code) {
+    if (!code || !Awards.on()) return;
+    if (awardOf && awardOf.code === code) {
+      if (awardOf.a) showAward(box, awardOf.a);
+      if (awardOf.a !== undefined) return;
+    }
+    if (awardOf) awardOf.stop();
+    const job = { code, a: /** @type {Award | null | undefined} */ (undefined), stop: () => {} };
+    awardOf = job;
+    job.stop = Awards.start(code, HUMAN, a => {
+      job.a = a;
+      if (a) Logger.log('AWARD', { band: a.band, cost: Math.round(1000 * a.cost) / 1000, choices: a.choices });
+      const now = $('overlay').firstElementChild;
+      if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
+    });
   }
   /* The game-over box. From the replay viewer (code: the code watched), at the end of a finished game while awards are
      on: no end buttons, wave note, update offer or review. */
@@ -7686,12 +7852,13 @@ const App = (() => {
     const n = p => Render.nameOf(v, p);
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
     const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
-    const ov = $('overlay'), award = awardAttrs(viewer ? code : endCode);
-    ov.innerHTML = '<div class="modal gameover' + (award ? ' award' : '') + '" role="dialog" aria-label="Game over"' + award + '><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
+    const ov = $('overlay');
+    ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
       (viewer ? '' : waveEndHTML()) +
       '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;
+    if (ov.firstElementChild) awardBox(ov.firstElementChild, viewer ? /** @type {string} */ (code) : endCode);
     if (viewer) return;
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
@@ -11026,25 +11193,20 @@ const SelfTest = (() => {
       check('a game still running has a tally, and its last hand is not scored', !!part && part.deals.length > 0 && !part.deals[part.deals.length - 1].scored, JSON.stringify(part && part.deals.length));
       eq('a code that is not a code has no tally', [Tally.read('nope'), Tally.read(null)], [null, null]);
     });
-    /* --- Awards: how well a seat did with the cards it kept, a band from 0 (neon red) to 6 (neon green). --- */
+    /* --- Awards: the cost of a seat's choices, a band from 6 (neon green, best) to 0 (neon red). tests/awards.js checks
+       the grade on whole games; here, its parts. --- */
     safeRun('awards', () => {
       eq('7 bands, 6 edges in rising order', [Awards.BANDS, Awards.EDGES.length, Awards.EDGES.every((x, i) => !i || x > Awards.EDGES[i - 1])], [7, 6, true]);
-      eq('a gap below every edge is band 0, on an edge the band it starts, above every edge band 6', [Awards.bandOf(-9), Awards.bandOf(Awards.EDGES[0]), Awards.bandOf(Awards.EDGES[3]), Awards.bandOf(9)], [0, 1, 4, 6]);
-      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
-      const g = Engine.createGame(4242, ['A', 'B', 'C']);
-      for (let n = 0; !g.gameOver && n < 5000; n++) {
-        const act = Engine.actors(g);
-        const a = act.length ? AI.decide(buildView(g, act[0]), cfgs[act[0]]) : Engine.systemAction(g);
-        if (!a || !Engine.dispatch(g, a).ok) break;
-      }
-      const rec = Replay.fromState(g), code = Replay.encode(rec), t = Tally.read(rec), aw = [0, 1, 2].map(p => Awards.read(rec, p));
-      check('a finished game has an award for every seat', g.gameOver && aw.every(a => !!a && a.band >= 0 && a.band <= 6), JSON.stringify(aw));
-      if (!t || aw.some(a => !a)) return;
-      const total = g.scores[0] + g.scores[1] + g.scores[2];
-      check('the gap is the points share less the share the kept strength predicts', aw.every((a, p) => Math.abs(a.points - g.scores[p] / total) < 1e-9 && Math.abs(a.kept - t.share.kept[p]) < 1e-9 &&
-        Math.abs(a.gap - (a.points - (1 / 3 + Awards.SLOPE * (a.kept - 1 / 3)))) < 1e-9 && a.band === Awards.bandOf(a.gap)), JSON.stringify(aw));
-      eq('a replay code and its record give the same award; your seat is the default', [Awards.read(code), Awards.read(code, 2)], [aw[0], aw[2]]);
-      eq('a game that did not finish, or a code that is not a code, has none', [Awards.read(Object.assign({}, rec, { result: null })), Awards.read(Object.assign({}, rec, { result: Object.assign({}, rec.result, { finished: false }) })), Awards.read('nope'), Awards.read(null)], [null, null, null, null]);
+      eq('no cost is band 6, a cost on an edge is the band it starts, a cost above every edge band 0', [Awards.bandOf(0), Awards.bandOf(Awards.EDGES[0]), Awards.bandOf(Awards.EDGES[3]), Awards.bandOf(9)], [6, 5, 2, 0]);
+      /* The solver is built from the hands at the first trick; a value is asked with the cards played out of the hands. */
+      const val = (/** @type {string[][]} */ h, /** @type {number} */ me, /** @type {number} */ leader, /** @type {{ player: number, card: string }[]} */ plays) =>
+        Awards.solver(h, 'S', me).value(h.map((x, p) => x.filter(c => !plays.some(y => y.player === p && y.card === c))), leader, plays);
+      eq('a King that wins its trick is worth 1.9, a trick 1, a trick lost 0', [val([['KH'], ['7H'], ['8H']], 0, 0, []), val([['AH'], ['7H'], ['8H']], 0, 0, []), val([['KH'], ['AH'], ['8H']], 0, 0, [])], [1.9, 1, 0]);
+      eq('a trump wins an off-suit lead; with no card of the suit led, any card may be played', [val([['7H'], ['8S'], ['AH']], 1, 0, []), val([['7H'], ['8C'], ['AH']], 1, 0, [])], [1, 0]);
+      const h2 = [['KH', 'AC'], ['AH', '7C'], ['8H', '8C']];
+      eq('the others defend together: either lead takes 1 of the 2 tricks', [val(h2, 0, 0, [{ player: 0, card: 'AC' }]), val(h2, 0, 0, [{ player: 0, card: 'KH' }]), val(h2, 0, 0, [])], [1, 1, 1]);
+      eq('a trick in progress counts its plays so far', [val([['KH'], ['7H'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }]), val([['KH'], ['AH'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }, { player: 1, card: 'AH' }])], [1.9, 0]);
+      eq('a game that did not finish, or a code that is not a code, has no award', [Awards.read({ result: null }), Awards.read({ result: { finished: false } }), Awards.read('nope'), Awards.read(null)], [null, null, null, null]);
     });
     safeRun('seats', () => {
       const vex = PERSONA_BY_ID.vex;
