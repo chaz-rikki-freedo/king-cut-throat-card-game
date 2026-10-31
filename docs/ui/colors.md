@@ -135,13 +135,13 @@ Generated from `palette.json`.
 | `--red` | card | `#c62828` | Red suits on a card face. |
 | `--black` | card | `#1c1c1e` | Black suits on a card face, and text on light surfaces. |
 | `--pip-red` | card | `#ff6b6b` | Red suits on dark surfaces: the trump chip, the log, the Advanced panels. |
-| `--award0` | status | `#ff1744` | Award band 0 of 0-6 (neon red: the worst), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award1` | status | `#ff5722` | Award band 1 of 0-6 (red-orange), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award2` | status | `#ff9100` | Award band 2 of 0-6 (orange), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award3` | status | `#ffea00` | Award band 3 of 0-6 (yellow: a bot's usual game), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award4` | status | `#c6ff00` | Award band 4 of 0-6 (yellow-green), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award5` | status | `#76ff03` | Award band 5 of 0-6 (green), the stroke of the game-over box while awards are on (a dev feature). |
-| `--award6` | status | `#39ff14` | Award band 6 of 0-6 (neon green: the best), the stroke of the game-over box while awards are on (a dev feature). |
+| `--award0` | status | `#ff1744` | Award band 0 of 0-6 (neon red: the worst), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award1` | status | `#ff5d1f` | Award band 1 of 0-6 (red-orange), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award2` | status | `#ff9200` | Award band 2 of 0-6 (orange), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award3` | status | `#ffc600` | Award band 3 of 0-6 (gold: a bot's usual game), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award4` | status | `#eaf200` | Award band 4 of 0-6 (lemon), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award5` | status | `#79ff03` | Award band 5 of 0-6 (green), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
+| `--award6` | status | `#00e676` | Award band 6 of 0-6 (emerald neon green: the best), the stroke of the game-over box while awards are on (a dev feature). The 7 are evenly spaced to the eye. |
 | `--name0` | seat | `#5eead4` | You: your seat, your name, and your wins in the chart. |
 | `--name1` | seat | `#a3e635` | West, with no personality seated. A seated bot replaces it with its own --bot color. |
 | `--name2` | seat | `#a5b4fc` | East, with no personality seated. A seated bot replaces it with its own --bot color. |
