@@ -1013,7 +1013,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'fd70500', date: '2026-10-31' });
+const BUILD = Object.freeze({ commit: '22bb21b', date: '2026-10-31' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -3811,7 +3811,8 @@ const Tally = (() => {
 })();
 const Awards = (() => {
   const KEY = 'kct-awards', P = Engine.P, R = Rules, KW = 0.9, BANDS = 7;
-  const EDGES = Object.freeze([0.071, 0.106, 0.144, 0.201, 0.263, 0.334]);
+  const DISCARD_WEIGHT = 0.1;
+  const EDGES = Object.freeze([0.038, 0.067, 0.097, 0.135, 0.176, 0.228]);
   const bandOf = cost => BANDS - 1 - EDGES.filter(e => cost >= e).length;
   const SUIT_NO = Object.freeze({ S: 0, H: 1, D: 2, C: 3 });
   function solver(hands, trump, me) {
@@ -3925,7 +3926,7 @@ const Awards = (() => {
       }
     } catch (e) { return null; }
     const all = [parts.play, parts.discard, parts.name, parts.exchange], choices = all.reduce((x, p) => x + p.n, 0);
-    const cost = choices ? all.reduce((x, p) => x + p.cost, 0) / choices : 0;
+    const cost = choices ? (parts.play.cost + DISCARD_WEIGHT * parts.discard.cost + parts.name.cost + parts.exchange.cost) / choices : 0;
     return { band: bandOf(cost), cost, choices, parts };
   }
   function read(recOrCode, seat = 0) {
@@ -3945,7 +3946,7 @@ const Awards = (() => {
     return () => { stopped = true; };
   }
   const A = {
-    EDGES, BANDS, bandOf, solver, read, start,
+    EDGES, BANDS, DISCARD_WEIGHT, bandOf, solver, read, start,
     on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
     set(v) { try { if (v) localStorage.setItem(KEY, 'on'); else localStorage.removeItem(KEY); } catch (e) {  } }
   };
