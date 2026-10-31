@@ -234,7 +234,7 @@ The grade is never your score. Each of your choices costs the value of the best 
 - **A card in a main trick:** with every hand face up, the most your seat could still take after each card you could have played, your two opponents defending together. The kitty, the trump and how the cards split are the same for every option, so only the choice counts.
 - **A discard, the trump you name, and the cards you give in the exchange:** the fitted hand estimate (`Dynamic.handEstimate`) of the best option against yours.
 
-Bids and Showdown play aren't graded.
+A discard's cost counts at `DISCARD_WEIGHT` (0.1): the estimate often disagrees with sound discards, and at full weight it ranks Casual bots below Novice ones, which win less (see Validation). Bids and Showdown play aren't graded.
 
 Terms:
 
@@ -245,7 +245,8 @@ Terms:
 | Choice | A decision that is graded: a card played in a main trick with more than one legal card, a discard, the trump you name, or the cards you give in the exchange. |
 | Best option | Of the options a choice had, the one with the most value. |
 | Cost | The value of the best option less the value of the option chosen. Never below 0. |
-| Mean cost per choice | The costs of a seat's choices added up, over the number of choices. The award's number: lower is better. |
+| Mean cost per choice | The costs of a seat's choices added up (a discard's at `DISCARD_WEIGHT`), over the number of choices. The award's number: lower is better. |
+| `DISCARD_WEIGHT` | How much a discard's cost counts in the mean: 0.1. Chosen so that the grade orders the bot tiers as their win rates do. |
 | Value | Expected tricks plus 0.9 × King points, the unit of Tally and `Dynamic.handEstimate`. |
 | Hindsight solver | `Awards.solver`: the value of a card in a main trick with every hand face up, the seat choosing for the most and both opponents for the least. |
 | Defend together | How the hindsight solver plays the opponents: as one side against the graded seat. |
@@ -257,33 +258,43 @@ Terms:
 
 | Band | Color token | Mean cost per choice |
 |---|---|---|
-| 6 | `--award6` neon green | below 0.071 |
-| 5 | `--award5` green | 0.071 |
-| 4 | `--award4` yellow-green | 0.106 |
-| 3 | `--award3` yellow | 0.144 |
-| 2 | `--award2` orange | 0.201 |
-| 1 | `--award1` red-orange | 0.263 |
-| 0 | `--award0` neon red | 0.334 and up |
+| 6 | `--award6` neon green | below 0.038 |
+| 5 | `--award5` green | 0.038 |
+| 4 | `--award4` yellow-green | 0.067 |
+| 3 | `--award3` yellow | 0.097 |
+| 2 | `--award2` orange | 0.135 |
+| 1 | `--award1` red-orange | 0.176 |
+| 0 | `--award0` neon red | 0.228 and up |
 
 ### Validation (2026-10-31)
 
-`node tests/awards.js 900 4 9191` fits the edges. `node tests/awards.js 600 4 5150` checks them on 600 other games (1,800 seat-games):
+`node tests/awards.js 1300 4 9191 fit.json` fits the edges on 1,300 games. `node tests/awards.js 600 4 5150 check.json` checks them on 600 other games (1,800 seat-games). The test for `DISCARD_WEIGHT` is that the bot tiers come out in the order of their win rates, in both samples:
+
+| Discard weight | Novice | Casual | Club | Shark | Order (fit, check) |
+|---|---|---|---|---|---|
+| 0 | 0.127 | 0.115 | 0.115 | 0.092 | wrong, wrong |
+| **0.1** | **0.134** | **0.129** | **0.119** | **0.095** | **right, right** |
+| 0.15 | 0.138 | 0.137 | 0.121 | 0.097 | right, right by 0.001 |
+| 0.25 | 0.145 | 0.151 | 0.124 | 0.100 | right by 0.000, wrong |
+| 1 | 0.197 | 0.261 | 0.153 | 0.127 | wrong, wrong |
+
+The costs are the check's mean cost per choice. The win rates are 18, 25, 35 and 52%.
+
+With `DISCARD_WEIGHT` 0.1, on the check:
 
 | Measure | Result |
 |---|---|
-| Seat-games in bands 6 to 0 (target 5, 12, 20, 26, 20, 12, 5%) | 6.5, 13.3, 19.4, 23.3, 21.9, 11.7, 3.9% |
-| Mean cost per choice: Shark, Club, Novice, Casual bots | 0.127, 0.153, 0.197, 0.261 |
-| Win rate of the same | 52, 35, 18, 25% |
-| Mean cost of winners, of losers | 0.171, 0.183 (r −0.07 against winning) |
-| Losses in band 6, in band 5 | 77 and 160 of 1,200 |
-| Time to grade a seat | median 214 ms, 95% under 460 ms, most 1.1 s |
+| Seat-games in bands 6 to 0 (target 5, 12, 20, 26, 20, 12, 5%) | 6.0, 11.6, 21.4, 26.4, 18.7, 12.7, 3.2% |
+| Cost against winning | r 0.02 |
+| Losses in band 6 | 73 of 1,200 |
+| Time to grade a seat | median 223 ms, 95% under 490 ms, most 0.8 s |
 
-[tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from that check. Its band 0 code is a game that seat won.
+A third sample, 240 games from seed 7070, gives 4.3, 14.6, 18.6, 26.5, 20.4, 10.3 and 5.3%. [tests/data/award-codes.txt](../tests/data/award-codes.txt) holds one code per band from it. Its band 1 code is a game that seat won.
 
 What it says:
 
-- **The result barely matters.** Winners' and losers' costs differ by about 0.02 per choice, and a loss reaches neon green about as often as any game. A game the deal decided grades on its choices.
-- **It ranks the tiers.** Sharks cost least and Club bots next. Casual bots cost more than Novice bots because of their discards: the fitted estimate scores the discards of Casual personalities as poor. That part of the grade is the least certain.
+- **The result doesn't matter.** Winners' and losers' costs are the same, and a loss reaches neon green as often as any game. A game the deal decided grades on its choices.
+- **It ranks the tiers.** Sharks cost least, then Club, Casual and Novice bots, the order of their win rates. Discards carry skill too, but at more weight the estimate's view of Casual discards turns the order over, so they count little.
 - **It's fast.** Grading your seat takes about 0.2 seconds (at most about 2), in slices, so the table never stalls.
 
 Limits:

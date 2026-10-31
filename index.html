@@ -4824,9 +4824,9 @@ const Tally = (() => {
      fitted hand estimate (Dynamic.handEstimate) of the best option.
    A discard's cost counts at DISCARD_WEIGHT: the estimate disagrees with
    sound discards often, and at full weight it ranks Casual bots below
-   Novice ones, which win less. At 0.15 the grade orders the tiers as their
-   win rates do, with a margin (tests/awards.js; at 0.25 Casual and Novice
-   tie).
+   Novice ones, which win less. At 0.1 the grade orders the tiers as their
+   win rates do, with a margin on fresh games too (tests/awards.js; at 0.15
+   Casual and Novice all but tie, and at 0.25 they swap).
    read(rec, seat) gives the mean cost per choice and its band: 6 (best,
    neon green) to 0 (worst, neon red), or null for a game that did not
    finish or does not replay. It takes about 0.2 seconds (at most about 2),
@@ -4839,9 +4839,9 @@ const Tally = (() => {
 const Awards = (() => {
   const KEY = 'kct-awards', P = Engine.P, R = Rules, KW = 0.9, BANDS = 7;
   /* The weight of a discard's cost in the mean (the other choices count in full). */
-  const DISCARD_WEIGHT = 0.15;
+  const DISCARD_WEIGHT = 0.1;
   /* The mean costs per choice where each band below the best starts: below EDGES[0] is band 6. */
-  const EDGES = Object.freeze([0.071, 0.106, 0.144, 0.201, 0.263, 0.334]);
+  const EDGES = Object.freeze([0.038, 0.067, 0.097, 0.135, 0.176, 0.228]);
   /** The band of a mean cost per choice: 6 (best) to 0. @param {number} cost */
   const bandOf = cost => BANDS - 1 - EDGES.filter(e => cost >= e).length;
   const SUIT_NO = Object.freeze({ S: 0, H: 1, D: 2, C: 3 });
