@@ -21,6 +21,7 @@
   --card:#fffdf6; --card-edge:#d6cfbd; --red:#c62828; --black:#1c1c1e;
   --name0:#5eead4; --name1:#a3e635; --name2:#a5b4fc;
   --sheet:#123f28; --pip-red:#ff6b6b;
+  --award0:#ff1744; --award1:#ff5722; --award2:#ff9100; --award3:#ffea00; --award4:#c6ff00; --award5:#76ff03; --award6:#39ff14;
   --set-bg:#0b0f0c; --set-card:#111b15; --set-line:#24382c; --set-field:#16261d; --set-hint:#8fb89a; --set-switch:#2f4337; --set-switch-edge:#3d5747;
   --mode-free:#7cc4ff; --mode-free-ink:#07233a; --mode-dynamic:#b9a3ff; --mode-dynamic-ink:#1c1240; --mode-waves:#0e7490; --mode-waves-ink:#ecfeff;
   --bot-vex:#ff7a7a; --bot-doc:#9db0ff; --bot-ace:#5fdc8f; --bot-mei:#ff9fd0; --bot-gus:#5cb8ff;
@@ -302,6 +303,10 @@ button.card{cursor:pointer}
   .modal.profile .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
+.modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
+.modal.gameover.award{border:0.375rem solid var(--award);box-shadow:0 0 1.25rem var(--award),0 0.875rem 2.5rem rgba(0,0,0,.5);animation:award-in .8s ease-out}
+@keyframes award-in{from{border-color:transparent;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}}
+@media (prefers-reduced-motion:reduce){.modal.gameover.award{animation:none}}
 .modal{background:var(--sheet);border:1px solid rgba(255,255,255,.18);border-radius:1rem;padding:1.25rem;max-width:40rem;width:100%;max-height:88vh;overflow:auto;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5)}
 .modal h2{margin:0 0 0.625rem}
 .modal .big{font-size:1.75rem;font-weight:900;color:var(--gold)}
@@ -1008,7 +1013,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '37b75cc', date: '2026-10-30' });
+const BUILD = Object.freeze({ commit: 'ed8963a', date: '2026-10-30' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1192,11 +1197,15 @@ const Dev = (() => {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, ops: {} };
-      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, awards: null, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, awards: null, ops: {} };
       if (rest.some(w => /^easing(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, awards: null, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+      }
+      if (rest.some(w => /^awards(=|$)/i.test(w))) {
+        const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
+        return m ? { ok: true, reset: false, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
       }
       const ops = {};
       for (const w of rest) {
@@ -1207,7 +1216,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: null, look: false, ops };
+      return { ok: true, reset: false, easing: null, look: false, awards: null, ops };
     }
   };
   return D;
@@ -3775,6 +3784,173 @@ const Habits = (() => {
   }
   return Object.freeze({ KEYS, LABELS, blank, add, count, rates, explain });
 })();
+const Tally = (() => {
+  const P = Engine.P, KEEP = Engine.C.MAIN_TRICKS;
+  const shareOf = v => { const t = v[0] + v[1] + v[2]; return t > 0 ? v.map(x => x / t) : [1 / 3, 1 / 3, 1 / 3]; };
+  function read(recOrCode) {
+    const deals = [];
+    try {
+      const cur = Replay.cursor(recOrCode);
+      let open = null;
+      for (let step; (step = cur.step());) {
+        const s = cur.state;
+        if (s.phase === P.DISCARD) {
+          if (open && open.kept) open = null;
+          if (!open) { open = { hand: s.handNumber, dealer: s.dealer, dealt: s.hands.map(h => Dynamic.bestKeep(h, KEEP)), kept: null, scored: false }; deals.push(open); }
+        } else if (open && !open.kept) open.kept = s.hands.map(h => Dynamic.bestEstimate(h));
+        if (open && Dynamic.handEnded(step.events, s)) { open.scored = !step.events.some(e => e.type === 'HAND_ABANDONED'); open = null; }
+      }
+      if (open && open.kept && cur.state.gameOver) open.scored = true;
+    } catch (e) { return null; }
+    const totals = { dealt: [0, 0, 0], kept: [0, 0, 0] };
+    let scored = 0;
+    for (const d of deals) if (d.scored && d.kept) { scored++; for (let i = 0; i < 3; i++) { totals.dealt[i] += d.dealt[i]; totals.kept[i] += d.kept[i]; } }
+    return { deals, scored, totals, share: { dealt: shareOf(totals.dealt), kept: shareOf(totals.kept) } };
+  }
+  return Object.freeze({ read });
+})();
+const Awards = (() => {
+  const KEY = 'kct-awards', P = Engine.P, R = Rules, KW = 0.9, BANDS = 7;
+  const EDGES = Object.freeze([0.071, 0.106, 0.144, 0.201, 0.263, 0.334]);
+  const bandOf = cost => BANDS - 1 - EDGES.filter(e => cost >= e).length;
+  const SUIT_NO = Object.freeze({ S: 0, H: 1, D: 2, C: 3 });
+  function solver(hands, trump, me) {
+    const ids = hands[0].concat(hands[1], hands[2]), n = ids.length;
+    const idx = new Map(ids.map((c, i) => [c, i]));
+    const suit = ids.map(c => SUIT_NO[ (R.getEffectiveSuit(c, trump))]);
+    const king = ids.map(c => R.isKing(c));
+    const trumpPow = ids.map(c => R.isTrump(c, trump) ? R.trickPower(c, null, trump) : 0);
+    const facePow = ids.map(c => R.getCardStrength(c, trump));
+    const bySuit = [0, 1, 2, 3].map(s => ids.map((_, i) => i).filter(i => suit[i] === s).sort((a, b) => facePow[a] - facePow[b]));
+    const suitMask = bySuit.map(l => l.reduce((m, i) => m | (1 << i), 0));
+    const power = ( i,  lead) => trumpPow[i] || (suit[i] === lead ? 100 + facePow[i] : 0);
+    const memo = new Map();
+    function choices(m, lead, live) {
+      const pool = lead >= 0 && (m & suitMask[lead]) ? m & suitMask[lead] : m, out = [];
+      for (let s = 0; s < 4; s++) {
+        if (!(pool & suitMask[s])) continue;
+        let prev = -1;
+        for (const i of bySuit[s]) {
+          if (!(live & (1 << i))) continue;
+          if (pool & (1 << i)) { if (prev < 0 || king[i] || king[prev]) out.push(i); prev = i; } else prev = -1;
+        }
+      }
+      return out;
+    }
+    function board(m0, m1, m2, leader) {
+      const all = m0 | m1 | m2;
+      if (!all) return 0;
+      const key = all * 4 + leader, hit = memo.get(key);
+      if (hit !== undefined) return hit;
+      const v = play(m0, m1, m2, leader, 0, -1, -1);
+      memo.set(key, v);
+      return v;
+    }
+    function resolve(m0, m1, m2, leader, a, b, c) {
+      const lead = suit[a], cards = [a, b, c];
+      let w = 0;
+      for (let k = 1; k < 3; k++) if (power(cards[k], lead) > power(cards[w], lead)) w = k;
+      const winner = (leader + w) % 3;
+      return (winner === me ? 1 + (king[cards[w]] ? KW : 0) : 0) + board(m0, m1, m2, winner);
+    }
+    function play(m0, m1, m2, leader, i, a, b) {
+      const p = (leader + i) % 3, m = p === 0 ? m0 : p === 1 ? m1 : m2, lead = i ? suit[a] : -1;
+      const live = m0 | m1 | m2 | (i > 0 ? 1 << a : 0) | (i > 1 ? 1 << b : 0);
+      let best = p === me ? -1 : 1e9;
+      for (const c of choices(m, lead, live)) {
+        const bit = ~(1 << c), n0 = p === 0 ? m0 & bit : m0, n1 = p === 1 ? m1 & bit : m1, n2 = p === 2 ? m2 & bit : m2;
+        const v = i < 2 ? play(n0, n1, n2, leader, i + 1, i ? a : c, i ? c : -1) : resolve(n0, n1, n2, leader, a, b, c);
+        if (p === me ? v > best : v < best) best = v;
+      }
+      return best;
+    }
+    const maskOf = ( h) => h.reduce((m, c) => idx.has(c) ? m | (1 <<  (idx.get(c))) : m, 0);
+    return {
+      n,
+      value(now, leader, plays) {
+        const [m0, m1, m2] = now.map(maskOf), c = plays.map(x =>  (idx.get(x.card)));
+        return c.length === 3 ? resolve(m0, m1, m2, leader, c[0], c[1], c[2]) : play(m0, m1, m2, leader, c.length, c.length ? c[0] : -1, c.length > 1 ? c[1] : -1);
+      }
+    };
+  }
+  function keeps(cards, k) {
+    const out = [], pick =  ([]);
+    const rec = ( i) => {
+      if (pick.length === k) { out.push(pick.slice()); return; }
+      for (let j = i; j <= cards.length - (k - pick.length); j++) { pick.push(cards[j]); rec(j + 1); pick.pop(); }
+    };
+    rec(0);
+    return out;
+  }
+  function* grade(recOrCode, seat) {
+    let rec = null;
+    try { rec = typeof recOrCode === 'string' ? Replay.decode(recOrCode) : recOrCode; } catch (e) { return null; }
+    if (!rec || !rec.result || !rec.result.finished) return null;
+    const parts = { play: { cost: 0, n: 0 }, discard: { cost: 0, n: 0 }, name: { cost: 0, n: 0 }, exchange: { cost: 0, n: 0 } };
+    const add = ( x,  c) => { x.cost += Math.max(0, c); x.n++; };
+    try {
+      const cur = Replay.cursor(rec);
+      let sv = null;
+      for (;;) {
+        const s = cur.state, ph = s.phase, mine = s.hands[seat].slice();
+        const inTricks = ph === P.TRICK_PLAY && !(s.showdown && s.showdown.active);
+        if (ph !== P.TRICK_PLAY && ph !== P.TRICK_DONE) sv = null;
+        let vals = null;
+        if (inTricks && s.currentPlayer === seat) {
+          const lead = s.trick.plays.length ? R.getEffectiveSuit(s.trick.plays[0].card, s.trump) : null, legal = R.legalCards(mine, lead, s.trump);
+          if (legal.length > 1) {
+            if (!sv) sv = solver(s.hands.map(h => h.slice()),  (s.trump), seat);
+            vals = new Map();
+            for (const c of legal) {
+              vals.set(c, sv.value(s.hands.map((h, q) => q === seat ? h.filter(x => x !== c) : h), s.trick.leader, s.trick.plays.concat([{ player: seat, card: c }])));
+              yield;
+            }
+          }
+        } else if (inTricks && !sv) sv = solver(s.hands.map(h => h.slice()),  (s.trump), seat);
+        const st = cur.step();
+        if (!st) break;
+        const a = st.action;
+        if (!a || a.player !== seat) continue;
+        if (vals && a.type === 'PLAY' && vals.has(a.card)) add(parts.play, Math.max(...vals.values()) -  (vals.get(a.card)));
+        else if (a.type === 'DISCARD' && ph === P.DISCARD) {
+          const kept = mine.filter(c => !a.cards.includes(c));
+          add(parts.discard, Dynamic.bestKeep(mine, kept.length) - Dynamic.bestEstimate(kept)); yield;
+        } else if (a.type === 'NAME' && a.suit) {
+          const ok = R.SUITS.filter(x => x === a.suit || Engine.validate(s, Object.assign({}, a, { suit: x })) === null);
+          add(parts.name, Math.max(...ok.map(x => Dynamic.handEstimate(mine, x))) - Dynamic.handEstimate(mine, a.suit));
+        } else if (a.type === 'EXCHANGE' && s.trump) {
+          const kept = mine.filter(c => !a.cards.includes(c)), t =  (s.trump);
+          add(parts.exchange, Math.max(...keeps(mine, kept.length).map(k => Dynamic.handEstimate(k, t))) - Dynamic.handEstimate(kept, t)); yield;
+        }
+      }
+    } catch (e) { return null; }
+    const all = [parts.play, parts.discard, parts.name, parts.exchange], choices = all.reduce((x, p) => x + p.n, 0);
+    const cost = choices ? all.reduce((x, p) => x + p.cost, 0) / choices : 0;
+    return { band: bandOf(cost), cost, choices, parts };
+  }
+  function read(recOrCode, seat = 0) {
+    const it = grade(recOrCode, seat);
+    for (;;) { const r = it.next(); if (r.done) return r.value; }
+  }
+  function start(recOrCode, seat, done) {
+    const it = grade(recOrCode, seat);
+    let stopped = false;
+    const slice = () => {
+      if (stopped) return;
+      const t = performance.now();
+      while (performance.now() - t < 12) { const r = it.next(); if (r.done) { done(r.value); return; } }
+      setTimeout(slice, 0);
+    };
+    setTimeout(slice, 0);
+    return () => { stopped = true; };
+  }
+  const A = {
+    EDGES, BANDS, bandOf, solver, read, start,
+    on() { try { return localStorage.getItem(KEY) === 'on'; } catch (e) { return false; } },
+    set(v) { try { if (v) localStorage.setItem(KEY, 'on'); else localStorage.removeItem(KEY); } catch (e) {  } }
+  };
+  return Object.freeze(A);
+})();
 const Render = (() => {
   const R = Rules, P = Engine.P;
   const $ = id => document.getElementById(id);
@@ -5978,8 +6154,32 @@ const App = (() => {
     }).join('');
     return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
   }
-  function showGameOver() {
-    const st = app.state;
+  let awardOf =  (null);
+  function showAward(box, a) {
+    const f = ( x) => x.n ? (x.cost / x.n).toFixed(2) : '-';
+    box.classList.add('award');
+    box.setAttribute('data-award', String(a.band));
+    box.setAttribute('title', 'Award ' + (a.band + 1) + ' of ' + Awards.BANDS + ': your choices cost ' + a.cost.toFixed(3) + ' each over ' + a.choices +
+      ' (cards ' + f(a.parts.play) + ', discards ' + f(a.parts.discard) + ', trump ' + f(a.parts.name) + ', exchange ' + f(a.parts.exchange) + ')');
+  }
+  function awardBox(box, code) {
+    if (!code || !Awards.on()) return;
+    if (awardOf && awardOf.code === code) {
+      if (awardOf.a) showAward(box, awardOf.a);
+      if (awardOf.a !== undefined) return;
+    }
+    if (awardOf) awardOf.stop();
+    const job = { code, a:  (undefined), stop: () => {} };
+    awardOf = job;
+    job.stop = Awards.start(code, HUMAN, a => {
+      job.a = a;
+      if (a) Logger.log('AWARD', { band: a.band, cost: Math.round(1000 * a.cost) / 1000, choices: a.choices });
+      const now = $('overlay').firstElementChild;
+      if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
+    });
+  }
+  function showGameOver(code) {
+    const st = app.state, viewer = code !== undefined;
     const v = buildView(st, HUMAN);
     const n = p => Render.nameOf(v, p);
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
@@ -5987,9 +6187,11 @@ const App = (() => {
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
       '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
-      waveEndHTML() +
-      '<div class="row">' + app.ui.endButtons + '</div></div>';
+      (viewer ? '' : waveEndHTML()) +
+      '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;
+    if (ov.firstElementChild) awardBox(ov.firstElementChild, viewer ?  (code) : endCode);
+    if (viewer) return;
     maybeOfferUpdate();
     if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
   }
@@ -6081,7 +6283,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length || Awards.on() ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).concat(Awards.on() ? ['awards'] : []).join(' ')) + '</b>' : '') + '</p>');
   }
   function menuNewHTML() {
     const playing = gameOn();
@@ -6221,7 +6423,7 @@ const App = (() => {
     clearTimer();
     const ov = $('overlay');
     watch = {
-      cur: Replay.cursor(rec, names), from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
+      cur: Replay.cursor(rec, names), code, from, total: run.steps, min: 0, marks: [], hands: dealSteps(rec), seat: HUMAN, preview: null, playing: false, timer: 0,
       assisted: !!rec.assisted, personas: [seat(0), west, east],
       back: { state: app.state, mode: app.mode, wave: app.wave, dyn: app.dyn, personas: app.ui.personas.slice(), autoplay: app.ui.autoplay, log: logLines, menuOpen: app.menuOpen, dialog: ov.hidden ? null : ov.firstElementChild }
     };
@@ -6273,6 +6475,7 @@ const App = (() => {
       w.preview = cards;
       app.ui.selected = new Set(cards || []);
       draw(cards ? [] : watchStep() || []);
+      watchEnd();
       return;
     }
     w.preview = null;
@@ -6289,6 +6492,12 @@ const App = (() => {
     }
     resetDraw();
     draw([]);
+    watchEnd();
+  }
+  function watchEnd() {
+    const w = watch;
+    if (!w || w.cur.steps < w.total || !app.state.gameOver || !Awards.on()) return;
+    setTimeout(() => { if (watch === w && w.cur.steps >= w.total && $('overlay').hidden) showGameOver(w.code); }, DELAYS[app.ui.speed].trick);
   }
   function watchPeek() {
     const c = watch.cur, d = c.record.decisions;
@@ -7224,7 +7433,7 @@ const App = (() => {
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -7250,7 +7459,8 @@ const App = (() => {
   function devText() {
     const keys =  (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
-      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
+      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
+      'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device.';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
@@ -7264,6 +7474,14 @@ const App = (() => {
     if (!input) return;
     const r = readCode(input.value, true), say = ( t) => { $('codeRead').textContent = t; };
     if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
+    if (r.dev && r.dev.awards !== null) {
+      Awards.set(r.dev.awards);
+      Logger.log('DEV', { awards: r.dev.awards });
+      linkNote = 'Awards are ' + (r.dev.awards ? 'on: the game-over box shows how you did with your cards.' : 'off.');
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
@@ -7327,7 +7545,7 @@ const App = (() => {
     scoring: 'Scoring', showdown: 'Showdown', restart: 'Restart',
     'ai knowledge': 'AI knowledge', planner: 'AI planner', 'hand stats': 'Hand stats', habits: 'Habits',
     'random games': 'Random games', simulation: 'Simulations',
-    waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats',
+    waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats', tally: 'Tally', awards: 'Awards',
     memory: 'Saves', replay: 'Replays', backup: 'Backup',
     interface: 'Interface', 'app logic': 'App logic',
     'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
@@ -8083,10 +8301,11 @@ const SelfTest = (() => {
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, ops: {} }, { reset: true, easing: null, look: false, ops: {} },
-          { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, awards: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, awards: null, ops: {} }, { reset: true, easing: null, look: false, awards: null, ops: {} },
+          { reset: false, easing: 120, look: false, awards: null, ops: {} }, { reset: false, easing: 0, look: false, awards: null, ops: {} }, { reset: false, easing: null, look: true, awards: null, ops: {} },
+          { reset: false, easing: null, look: false, awards: true, ops: {} }, { reset: false, easing: null, look: false, awards: false, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(18).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
@@ -8877,6 +9096,43 @@ const SelfTest = (() => {
       const pg = DY.addGame(DY.blankProfile(), { hands: [], marked: false, plays: { n: 50, slips: 5 } }, 'free');
       check('a game adds its plays as decayed samples, its slips in proportion', pg.plays.n > 39 && pg.plays.n < 50 && Math.abs(pg.plays.slips / pg.plays.n - 0.1) < 1e-9, JSON.stringify(pg.plays));
     });
+    safeRun('tally', () => {
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const g = Engine.createGame(4242, ['A', 'B', 'C']);
+      for (let n = 0; !g.gameOver && n < 5000; n++) {
+        const act = Engine.actors(g);
+        const a = act.length ? AI.decide(buildView(g, act[0]), cfgs[act[0]]) : Engine.systemAction(g);
+        if (!a || !Engine.dispatch(g, a).ok) break;
+      }
+      const rec = Replay.fromState(g), code = Replay.encode(rec), t = Tally.read(rec);
+      check('a finished game has a tally', !!t && g.gameOver && t.deals.length >= g.handNumber, JSON.stringify(t && t.deals.length));
+      if (!t) return;
+      eq('a replay code and its record give the same tally', Tally.read(code), t);
+      eq('the same game gives the same tally twice', Tally.read(rec), t);
+      check('every scored hand has its seats\' dealt and kept values, and a hand scores or does not', t.deals.every(d => d.dealt.length === 3 && (!d.scored || (d.kept && d.kept.length === 3))));
+      check('a seat never keeps more than its best 7 of the 10 dealt', t.deals.every(d => !d.kept || d.kept.every((v, i) => v <= d.dealt[i] + 1e-9)), JSON.stringify(t.deals.find(d => d.kept && d.kept.some((v, i) => v > d.dealt[i] + 1e-9))));
+      const sum = ( v) => v.reduce((x, y) => x + y, 0);
+      check('the shares add to 1 and follow the totals', Math.abs(sum(t.share.dealt) - 1) < 1e-9 && Math.abs(sum(t.share.kept) - 1) < 1e-9 && t.totals.kept.every((v, i) => Math.abs(t.share.kept[i] - v / sum(t.totals.kept)) < 1e-9), JSON.stringify(t.share));
+      check('the totals count the scored hands, and no more hands than were played', t.scored === t.deals.filter(d => d.scored).length && t.scored <= g.handNumber, t.scored + ' of ' + t.deals.length);
+      const cur = Replay.cursor(rec);
+      while (cur.state.phase !== Engine.P.DISCARD && cur.step());
+      eq('the first deal is hand 1, and its dealt values are the best 7 of each 10-card hand', [t.deals[0].hand, t.deals[0].dealt], [1, cur.state.hands.map(h => Dynamic.bestKeep(h, 7))]);
+      const part = Tally.read(Object.assign({}, rec, { result: null, decisions: rec.decisions.slice(0, 12) }));
+      check('a game still running has a tally, and its last hand is not scored', !!part && part.deals.length > 0 && !part.deals[part.deals.length - 1].scored, JSON.stringify(part && part.deals.length));
+      eq('a code that is not a code has no tally', [Tally.read('nope'), Tally.read(null)], [null, null]);
+    });
+    safeRun('awards', () => {
+      eq('7 bands, 6 edges in rising order', [Awards.BANDS, Awards.EDGES.length, Awards.EDGES.every((x, i) => !i || x > Awards.EDGES[i - 1])], [7, 6, true]);
+      eq('no cost is band 6, a cost on an edge is the band it starts, a cost above every edge band 0', [Awards.bandOf(0), Awards.bandOf(Awards.EDGES[0]), Awards.bandOf(Awards.EDGES[3]), Awards.bandOf(9)], [6, 5, 2, 0]);
+      const val = ( h,  me,  leader,  plays) =>
+        Awards.solver(h, 'S', me).value(h.map((x, p) => x.filter(c => !plays.some(y => y.player === p && y.card === c))), leader, plays);
+      eq('a King that wins its trick is worth 1.9, a trick 1, a trick lost 0', [val([['KH'], ['7H'], ['8H']], 0, 0, []), val([['AH'], ['7H'], ['8H']], 0, 0, []), val([['KH'], ['AH'], ['8H']], 0, 0, [])], [1.9, 1, 0]);
+      eq('a trump wins an off-suit lead; with no card of the suit led, any card may be played', [val([['7H'], ['8S'], ['AH']], 1, 0, []), val([['7H'], ['8C'], ['AH']], 1, 0, [])], [1, 0]);
+      const h2 = [['KH', 'AC'], ['AH', '7C'], ['8H', '8C']];
+      eq('the others defend together: either lead takes 1 of the 2 tricks', [val(h2, 0, 0, [{ player: 0, card: 'AC' }]), val(h2, 0, 0, [{ player: 0, card: 'KH' }]), val(h2, 0, 0, [])], [1, 1, 1]);
+      eq('a trick in progress counts its plays so far', [val([['KH'], ['7H'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }]), val([['KH'], ['AH'], ['8H']], 0, 0, [{ player: 0, card: 'KH' }, { player: 1, card: 'AH' }])], [1.9, 0]);
+      eq('a game that did not finish, or a code that is not a code, has no award', [Awards.read({ result: null }), Awards.read({ result: { finished: false } }), Awards.read('nope'), Awards.read(null)], [null, null, null, null]);
+    });
     safeRun('seats', () => {
       const vex = PERSONA_BY_ID.vex;
       eq('a tune keeps only valid fields, clamped', AI.cleanTune({ courage: 'reckless', realTable: 1, leadPick: 'shrewd', worlds: 999.4, playoutSkill: -2, knowledge: { bids: false, voids: 'yes', x: true }, extra: 1 }),
@@ -9137,7 +9393,7 @@ const PERSONA_ART = Object.freeze({
   zen: 'data:image/webp;base64,UklGRmQYAABXRUJQVlA4WAoAAAAQAAAAnwAAnwAAQUxQSBAIAAAB8IZtm6lH+v+dVVetJG3Mg7Ft27Zt2zYytm3btm17pt3pcbuzquo6XyTTW+57XatfR8QEoPpOALR17QU4hwBMf8abjBe3zwjBNGAAZjjshY5RHR0do0/bGAjof/rv7PavvVDUX8B/zvyTU/nGDNjobTJmMpbkPijqTrDBR2SZtNuY+ftNZKnsNifug1BvBQ4mS+VUZlIz/10j94KvswIHM2ZOvSbl1KY8amDwteUKHMyobGzk0XDB15HzAhzMqGyw6tCV+gNSL16KUAAYeDijsvHKbx9cEr4+nC/Q9b+LHPYjE5sykTwIRV14ANOvcfc9dw8hmdikOUYeDKmHAlj/xjHsqjmzebXkdgg1IB5rPU9SY4yZzZ3028I78wQ4fTJzVFYxcy8E6wLWeZaaWNEy34AW4wQbZpasbOY7A8WZJlgz58hKzwNvmQu932dipfMcthW4kJEVn9M052Yal3VapsD5TJyGcX6mf1QrN7dlAeczsvIzebu8m/2vrFVLPAYtZgk2ZmbVs3YsAG9VwIuaKsfMUYuIN+sZGsCSr6GwqnjZBMZ8LoJJghVzoomJp0FsWoVG5PjnXN6ZtLIVjNwCMk2T9FV4k1a1g5/Z5Jc25COTWrCnIR9bVGC7mNSMT8SeAtvmrDTjAxTOGMG2mpVWahq7FZyY4rGtJqWdyrhTC8QQJy1/aaKlqvxoe4gdHs9oorGJXAPBCo9NNdHcUt8d4J0Nzg2eQLWHJc91hQ0FDs2dNFjz2IFwJkjr00wmcdIgGxwGRKpNE83o//c0z3irxhuB4K9laVMabAW2ZbQo84u+zgZ4fM5sUCdPQwtsDG6rzmhQTAcgGAG4kVRzlH8XcFY4jDDpn75mBKw2KdKiPlb40Po2k0n9rCjwMhMt+tsbIdiakRanKet7sUD8VkxqUslL0GqAx2BSabKmv9dHUTkn4VlmGq1M66OoWnBbMtPsrHl9SLU8po9R7WLWuL6TKjnf+ggzLc8sZ/O+QuK2Z6LtkZcjVCjgmRyNS/peX3GV8W7BjqzGMXM5SGUEyzHRPF2qUhtqDXDZSr3OGhi/aKUetS/m5xFQoZXsSzwIUqVlUjQu54/6eFcdBHmO0TTNnBuCCns3z4iUDcuRh0pApQMOZzQrJfJQCCpe4Axmq8iv90OByrfgDkaT8uQH9+0DQeWd4AkmiybzdACC6hfFrcy0Nye+N6gIDtUXrMlIazWX1McGwMFAj+X/KNUWzZHkr7sBDhaG4l1Gmpu/OqI/goOFgg0Yaaqy86dDVwbgYaP0ekuTLSmuD8CJg42CZTTR1sw3pQgwU3AOrWHmvt6Uj+zRzFnhp2WY9a02cXZcbBAT93LBjmUs0si50OKsWNsiZn2pHyDiDHC+z8ea7aHy18MHAhCpHARbMxrETP7y5Hr/AUR8xVxo/YzRIOZIcshxKwIQXykI1pmiySAyp0jy2VWnB7wAznvvKwHBOp2MahDJnDI58tTFAF+gaxBfARRY+1cyqRpEMiWSz60B/HfeeeadE4AU3jUbBK33RpJqEplTJp+7dRTJ8o49ZwMAX3jXVPAOy90zcgztTkpSqST1tqsXnh4ACu+aCPBAK25jtIpMUUkyZpI53nnRsn0BBGkiFMCxQ6h2TW2MJKlDzlypN+CaR7DKY6zRGEnqiJNXB1xziMOaU1hqfZCqJUk+2tc3haDXQ0kj61a1TDwPRePEY4PhpLKOy3RVEwS0PlgyKms58oaGuYCln2LOrOmUDkVojHPYIjMqa1qpA+Ea4tHrrlITazvykbaARnq0vsisrG3NaRH4Rni0vMhO1njmyFbnGuARXmLJOo/lIa5Az3sUL7FknSun9IHrOYeWl1iy1hMfKgQ97kL/l1my3su4L4qeK3A+p7DelRP6w/WYYN1JUWsu8THv0dNO+n7IxJov814IPeYxG5U1n/Wvgeh5j5kj6z7xKbhGzMraL7mbCz2H0PKopnpT7fg/XAM8lqDWW8mTIGhkcI/mWGtxwuquMYLFmLXGMn+EQ2MFVzPWWOLpThrkPMYw11csV0NoEESW6ohaV4nvwaPhAfsw1pXmjrnENwwh3JxjTTHxOkjjHDCEqaY0jpvD+4bB+5XHMtcTI6+DNA6CFccy1ZOm8bPBNw4BK41lriVG3uikCVBgpbHMtZQ5Bs1ZYKVxzHXEOHkrSDOgwIrjGOso88vCuWZAwIoTGGtI+UcLmgMFVvyKUetH/24aCHArmeumkzd7QbOKw27/MGqtRA6fDb5pAMGS35O5RhKHzQWPZg5w13Qy1UbisLkhaG7vsPhPZKyHTg6bBwFN79FySSZjDUQOmxeCCgqw5J2ZjMZl5R3zIqCaHlj8blKjZZlsBzyq6gVY/D5SYzYqJv68BMSjwl6Axe8nmZLakzN50gAIKu4FWOLer0mmpKbkRD62DOBRfS9A3/2eSSRTUiM0RfLnwwHvYKIPABbb89UpJGPOldMclfzpyOlQeJjpJABYbNd3J5KMMefqaI4k+cjagwGBrSICYOGdPvmKJHOZszZfzpFk+vTgFQGIg71eBAC22O7D70hSy6iq2iSqsYwky28OWB6AiIPRXrwDgC12e+tXdl+WWVW1p7RrLEt2HfLdfssA8CKwPQTnAGDj/U8YNXqUsvvY7b9p7J7/OnbU1fvv4QA4EdSiBHSVQlY8/NAfOzo6xrOHc8eY0R3nHHrEnIKuwaNOpQjotmjr3TZ/++nt7e0XpW6UQ9rPbG9vP619/bY+bW3o6ouA5gZWUDggLhAAANBBAJ0BKqAAoAA+USCORKOiIRYajiA4BQSygGq6U2qxwZqLIctpei3b+c7V6Wd459ADpWf7jgvX9Z7XP75+VX7b9v95/9q+YF0t4p/t/+V/LL2j/z/grwCPxv+Vf4T8tfyu9wHYxWX9Av2S+jf5/+3/uj/jvSm1L/A3sAfy/+o/7j14/yngffe/9l7AH8m/rH/S/w35efHd/v/6P8xPa5+e/5P/o/5P4Bv5Z/TP+D/evap9iP7S//P3Rf1e/7iTOSEz5o+b3OA+FZSjBuTElQZdnfQuU4KcIquAGwCT1EJbf7/9NenEFl7mK/6lSRN7f9WKFC5KJydk3O+d9QYRkR9snMeP2rD2StiQ/txrTFv8BnHBnZN2v/XqfqinbF/ICfYufi7OxhGV1Pv5TuuspbNHDspwXznFJ4qAxqoTDyS2X1p47MytCkmgs3HxbpxxYZ3YlMAl6fsejpuqLDkxDft8LSkpWX/4+FEmAzQBMeiYncNwF/hLkH7JPDn3+mAO77stZhWeeo5LIaZqfqiKPoCdkHZVD6bkjBtIWT1fzossLwUIUPzMud4hZONNR/9jZAceG15drTntvtss3W4aB5rn4GuRdDz9GrRB5JU+lsaRXc2Nz7dKWfG9/M1SLcL+vS3uMq7oLrSKBwvEdOH4cF7Ns4i8yhCxqahuO8WlU/IzgC9Qm9kZ10dtdHobDsTKGGvPOr8uxeAA/v4G0jqIHPaRlXh0v/NzQryhJF0pJkgXP5wrKwWYcoVDN70P47+44rwQXNpolEQyP4q9z7RChKG1UtrgbETlkehiDirHQggTh8DUHn/mvfBWIl4+nW4/3y2zT9lugw+hqnqlykVjledV1FrPEWcT6NRGUgUAV4onEWwjqx9eYgPLdddxNPHwqVWTPikA13YZVqlb50mcHFVQ/lCAs53C2uCVII5+2cRBmmsQpXqaKvlGjf7Db+hh2l+25DSLVOz9wSgFN/6o0mlry6O5FECHKsxsTpUiIH/ehBST5hKMHPI9IFjv0a8CsKQaA14YJ4fEgVO2O4sJGticrJRTspiWr9KZo1bwImDRARBXCmKEohHWxL0ezv8v5cM903j/mfrH7fCNrPemVIAI48ja5gNw1SNrg1svyaguCw6VdxCZC9GUsWIU20xpOfTCMuu4uw+SPx08PV6JXViKkpkeB/dnI6/OtHmGkHNsWHInYQhSgvVQuIG8alUDIkz+kz96oDpA0nyCQmo00SleJ54xuLCDDYFlHiEkdehuQDW4xvcx3MQo7iLWUbomgMk7h6cvwTvAY7Qj6xTKQ655sF2g4sUKqwrglcWOf0BgPF1h9jXSVN8NOLki0PklM3ixNKTUCps15OfizaQ1tiWbWMZrCG4meyRkmiogIunP/gcpdQaiNa8YBgkxh02iKPMCj9GdnMFxA4uO6JF53ozMAK+x4vfPgOzpem/HEs5MglEsRo1zj5pi+eOelipcOK3jpZjvcLUP14Q8F/CwHANesrLIw2/3AusqOv1UvZpp3O7ekSSL9OCxdVDCO5EvBsCMR+N1tuyQ0aqX2ImlBzVbGULN7DaZ6Ar5y09tb3unwXkVvBBnMmurZk8FeM4UyoqAzQaLwvknYwCPRWJsPpcECU9iZbPdSMHlifViuwqRrUWcWsCo71z6Sp1s54Mv6x91d4SLW0JFeKZznfRuOEunRcZSn5yW/g5GspN7+mXh+ujOZ8hle2XG4Sm6roiW3JgozoSR4V74TaimoPJ84POExwoeTDhplABdU7OSoLIKv8nqmL+kTtugTAiXRVudkN2ed5Ux68ur51duAEzPp/VuQOSYi9OFiL6Lc3lSkmm+W7U8evTHRLLAKMcGESG+RJebGtomOce7qD3gfH/th1+nm+9J5ZemFTGmcRsZ4xXrSrc651WIUCbd0ZCMiebGHvWrtliicvLGuyuyu4auD3/4f6zdT8GRkxX0FHqEInkijRecGY22tUXzbgO4kyuthIPuNRA/io7kw4KGGufLgMfmbcTNPYJtsT4an5tKwiUWYAT6as75fwos8zwrSPIL8ogP1xDsgrH7FU+GUcGXgbvLbGslEX1pxmHvAJO8492rMJPsZjIeX1IO8qPC/vI/HQ/j8d/wQoMYIUNMcy+iXN+0ohvdEL/MErTfLa3444aUnCJ7cg1L7t+0MkX/3s5yptOtv8HA3Boosb2t7rh2D2WNIG4Pd7weeFqKk0okh8Kin95QETx1IZPrTt7Jj/84q4b4EajD53WK95WbtKCPWT5BchShiNXfe0jtKXbDmHsZPbQ/EWJxUVawmudKuofUAW8tq6kS509zgdXj6l6e5b84AA5WwCjoG6qu0kBHPBN71GCdttVBXARdL54h7foykmPfZ7YZJm4mrkd+IPR9nJKhS/WghZzWyO2ZEqtPo1qToMgqJdHitf/6n3y+upPxH8o2TD17KNkebGI9XhVubcnBERes5kMYdztNKcCrn1qHH8lWezRl2Kw76x8JwSsBG2/vKK2Lz0W35JJqrtcX+e6lWfUoiyyFdcubO5e6kIveJVFeAkwsVg0bz8+bKNsbN3FN0wNXG0wTqCaWyK31WjT/z1pGpCfJS5qNWRqKs11+bwtR586dzQCFTmdNEHZMVToLdvM5/6UDH3AupEs5zGB8z1l8LJ12Eh/FDp3/hYz7qBVk4uGBzUBHUmSjlY+keXVCFe/D/GfWNlr0NG10vZsiBTplR8NIqSre212ILVffo646VdLcqRYC5CEhqinDR0FrTi/pIET72ONqyJA2gQyZUMkVUAkDrgzUthnysVIiK4Y4QnOWm5F7pNgg99z/rxn7Odddr80gHnEU2XdfeNJsWegdR6SVlHCwBp8dthSMInw9bFNUsd7u0w8gqafi9XE8Lf1dqzEcJ/V4mAX4qfUZYYON1t34eQuycgm1Bc0nwVxLduNGkvu5Ee0gUguFXmfInFrZWBPiDeQlU0zh0HFVgAtmcP/9CRcmu1zNJ8VFdS27qP5PS0y+bLvCS8OphJ9woAWEe7PfqnsuJd1K6dj6HaF4mz1hWAlBSWYO31C6jWQsUCsEhuDrLgTiel/ls5yu+6tqKRdJBadHUPYZQCcK29Xw4JusGjCelEVhSkn7z7PxnBQhRVyMftOZUtna5Mmt/AIS7d1c3b9qhABfV1gjNbTuXaeFaFhmiI82FHUIQY7jrH5QszlWuYmoSx2D0bEevacFFEACY8HND/pTgYP0sQEPGLvNIn5eDqup8UAJzPqAECeqNUgdGH5942S1PUCCPohzSWu12nYtUHlxxd/KOPlkA7QDdC9J0LeDDKgQsHrXaKasn1X45dr6OpRQ7oUUt8QHYpSvY02AKu1VvpjxPbXwXen/SpNrjI7tpkugOyOv2NQjWzX5jv4ElrM6xof10MV0zUXnWa1oDZaffXP4fCaUpjvV2QmS1RiGDQJmrmI600O9BFHxEIxIWWrz1VH8Y4cHWh6ONcid+y3d5DxDMkrvsqI8fcz/hS8yToD3uXirK7tu90dF2hCdqY42b714sVN06jnQsBj400dhwpwHx1SWosrqnnk/yELZAnlSm4avaAMnDQEpFELrzNjlheDzKf0ERgvc4I8s6NXs2SzJ6v5mf/w9FbPdNTbxmOZjaWgdd/7i0xv1cNNDHli5z0sXqpbzpMHiWg8RhDH53bbaPOhC075lGpRy1zNsLJnxAX6Mx2rIe3b1VVGJWyfsKru4fKTMsmlJZTC6IpCE/Mx9BMYcA3j9XJlXMcRdqo4f4Tnu2QsAu/I1cAaaW//AsJQUy5d4kcVfiA2XewALHww6S9r6BEZX5FV8LqIjPvNbgbpY1Jl34TNEzSb/3qYVyT7ft2iL57579j19QgFvN77mlNuYYZdCgcqRlKbs40XdkHp0o443UKYKUd2pJeMBWiKrTR9CFBGl1k1do26rq308AX59GKct0/QAGFDsUe8MrIiwnHjc8q9dq+mTtDQtvgK9vfApbNPydcabueOjySmu21T73AMbFVjc2GT/QZSK/8i9jzNeAYHzViC1DrE87bToNfAmvv/Et8zLiT960eJ/w439wwwqfpxBdjmmcYvEdL0mIEldlwgM1kwW7/PxzNDBjeCQg2575gNRofEN5vnbQ/ma9vn5PYkpJrzNA/B8vrasOoxAs+KkgPAmX38fuWagdc0DsWbVCG+ftzkSTHfbNQLrG4xiQ82+D2PmBf7UYKJQ28gTaW6OURW4wKIUlwdDjnlA8tPBgyr4OB5gmkiADkEI5EMvLgHhgC1/OcZ5vAsJSDoKchhgPcedEJ2BdjucXTOiRLgM2qisUqevk0WLZGuSDfIqeJhyzCF8gakZfudJ6xWCNr3SypDAsneWQH8uXOWdL+SJ+xMzi8RVKGZA7uybsyIQMYdaCwLe0nzwxtXkV3gTtaWoi7I8Bcp/BZpJMi6Yrre3eBe1f2duccBYRw9v9uSsg6TSAjPlnrrY7RjTeRx9GmBtQ4qJHnvpP95/w44REaYuAwhklRy8zy5Q0/HH4YpRoc8tRcZDvxXeIH2jRXXJmrv65UnfRxFiYAbfHVdhH6kKgLtX+l3QesU6KFSt/wFzJHSEA6Gv/KAAXqtnhAeW6CSXpbWReAJlbiZ8MgpgWWXLHMUZzpvT1tZaF2GX1aV3lA8uQ5u4Hg+b1nzXeT8P3Bq9PMTI4RRosAEPCPwmkx2QSkPa7cfjaRuuWrP0qXAf8/FROWcNtqcXwflSnhrantxkgzjy7X1f2udPnXZRUdkdtH6cR/Cc65DGByAhttxamHHevoQUMQwcer3mDq8QOpDTULThw9HyVTj5AP+X8NVSMralTNp/uJZUc4axylls9yGue9e4cf1/9/tgR/SYvavn4xBIKk+LGwqRUfNOCSELYH+tzjdHm5I5+Afm3wcjwFf4tuYTMo4VUplz0e2j2tNWZCM8EWqIPJQg4IgcIRUaPQpeOHYWCn/M/zINcq10sudFREupKx2afXmKX4CaRgLkwr55T5bMZH+Hfq0z15vfvNHAG0Ji/QH7i8CN8ER+ajo8YdpfO6NSS1PyE69G37kGLFOQrJXz1BM7p+G8igGCWkdZ86Ws6JT/DEbsKRiwuJsNKbsInlpMpO8/UibC+21+YopB/pswFtBdv17CuIdzXhxCyzH5vBZzw2HgTgM8WQq0rpqTrv/MJh5xn0DqYIbd4BsbnIhgh+vRAhJtqDZdsaa4JzBD6bl0A/H9z1S/ZxQLJ9O0h/BgblHvTESoZBClU73eg4/x5FxMJs+1X+v10GCtk7CmGy9YWoIxpoK41xOxjft6E0a5NJxugjzf5pBXr9ldlyZ4dquOBhcSgFDx+R4SZh5aGZ15/pv1SNgNuXK7fI/kR9kEy7U89OPx1HrnP4JqARHKSLOWyj7deimaG9QR17YlahG3KQaoMpyQlMYj6bkXrt9wf/bdVy4ABPp+n8I9GyLMgxcZpo1OzETqVt8rtdOp6/dRbP+e2mUU9xK2XwwpkQOsTR2TCi/ld9+yzzbMMcChcHxbSJk4wI/0EoavgAAA'
 });
 const YOU_ART = 'data:image/webp;base64,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';
- (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
