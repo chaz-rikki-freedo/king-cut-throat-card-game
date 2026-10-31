@@ -4124,6 +4124,9 @@ const Dynamic = (() => {
      gap to the target that e closes after a hand. LET_GO: visible hands in a row without a trigger before the fast
      path lets go. LOSS: a discard loss above this is a gross mistake. PROFILE_HANDS: the K in w = h / (h + K). Decision 14 set 100; it is 50 since
      tests/pace.js showed that 100 barely helps a weak player within five games (PR #124). */
+  /* BAD_HAND: the readout's weak hand ('pulse', line B), not the fast path's WEAK. At 3.0 a seat is dealt about 0.9 a
+     game, against 0.4 at 2.5, and a seat that plays like the bots still scores what the bots score on them. */
+  const BAD_HAND = 3.0;
   const WEAK = 2.5, EASE_UP = 0.5, EASE_DOWN = 0.15, LET_GO = 4, LOSS = 1.0, PROFILE_HANDS = 50;
   /* HOLD_HANDS: while a profile holds fewer hands than this (about the first 8 games), the easing stays at 1: the bots at
      the floor and no Shark at the table. A new player is bad for a while, and the slow path needs about 50 hands of record
@@ -4246,7 +4249,7 @@ const Dynamic = (() => {
     share: { me: 0, all: 0 }, calls: { n: 0, failed: 0, value: 0 }, bids: { n: 0, errors: 0 }, discards: { n: 0, loss: 0 }, plays: { n: 0, slips: 0 },
     /* Plain counts for Your profile: every call, the calls made, the sum of their fitted values. */
     habits: { calls: 0, made: 0, value: 0 },
-    /* Weak hands (a dealt hand whose best 7 cards are worth less than WEAK): decayed counts and net points, yours (n,
+    /* Weak hands (a dealt hand whose best 7 cards are worth less than BAD_HAND): decayed counts and net points, yours (n,
        pts) and the bots' at the same tables (bn, bpts). Only the readout ('pulse') shows them; no easing reads them. */
     weak: { n: 0, pts: 0, bn: 0, bpts: 0 },
     /* The gross-mistake mark (decision 19): the latest reviewed game had a discard window. */
@@ -4394,8 +4397,8 @@ const Dynamic = (() => {
         if (!step) break;
         const a = step.action, st = cur.state;
         if (a.type === 'DEAL') {
-          /* Which seats were dealt a weak hand: the best 7 of the dealt cards worth less than WEAK. */
-          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < WEAK);
+          /* Which seats were dealt a weak hand: the best 7 of the dealt cards worth less than BAD_HAND. */
+          const weak = st.hands.map(x => bestKeep(x, C.MAIN_TRICKS) < BAD_HAND);
           h = { loss: null, bids: [], called: false, done: false, failed: false, callValue: null, gain: [0, 0, 0], weak, net: [0, 0, 0] };
           hands.push(h);
         }
@@ -9073,7 +9076,7 @@ const App = (() => {
      reading it over your shoulder learns nothing; the legend is in tests/README.md (Dev commands). Percentages are 0-100.
      P: the profile (hands and phase H hold, T taper, R record; f floor, t slow target, n next game's start, k Sharks
      allowed, m mark). S: the record's signals (score share, failed calls, bid errors, slips; w the record's weight).
-     B: points per weak hand (dealt best 7 worth less than WEAK), yours and the bots' at your tables, and your weak hands.
+     B: points per weak hand (dealt best 7 worth less than BAD_HAND), yours and the bots' at your tables, and your weak hands.
      G: the Dynamic game at the table, if any (hands, start, now, target, fast path, weak visible hands of visible).
      L: the last 5 Dynamic games, newest first (W won, L lost, A the AI played your seat; then its start easing). */
   function easingReadout() {
