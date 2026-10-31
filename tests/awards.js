@@ -8,6 +8,8 @@
      - the bands with the constants in index.html, as % of seat-games (the fit's targets)
      - the mean cost and win rate by tier, and how the cost goes with winning (a grade of choices should rank the tiers
        and stay near 0 with the result)
+     - the same for other weights of a discard's cost (DISCARD_WEIGHT), from each seat's parts: whether the tiers come
+       out in the order of their win rates, and how the cost goes with skill (its tier's win rate) and with winning
      - one replay code per band, graded for seat 0: paste it in Menu -> Load a code with !dev awards=on, and the
        game-over box at its end shows that band's stroke
    Usage: node awards.js [games=300] [workers=4] [first seed=5150] */
@@ -30,9 +32,9 @@ const PAGE = `
     const rec = Replay.fromState(g, { mode: 'free', seats: ids }), ms = [], aw = [];
     for (let p = 0; p < 3; p++) { const t = performance.now(); aw.push(Awards.read(rec, p)); ms.push(performance.now() - t); }
     if (aw.some(a => !a)) continue;
-    out.push({ tiers: ps.map(p => p.tier), winner: g.winner, cost: aw.map(a => a.cost), bands: aw.map(a => a.band), ms, code: Replay.encode(rec) });
+    out.push({ tiers: ps.map(p => p.tier), winner: g.winner, cost: aw.map(a => a.cost), bands: aw.map(a => a.band), parts: aw.map(a => a.parts), choices: aw.map(a => a.choices), ms, code: Replay.encode(rec) });
   }
-  return { out, edges: Awards.EDGES };`;
+  return { out, edges: Awards.EDGES, weight: Awards.DISCARD_WEIGHT };`;
 
 const TARGET = [5, 12, 20, 26, 20, 12, 5];   /* bands 6 down to 0 */
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
@@ -48,8 +50,8 @@ const f = (x, d = 3) => x.toFixed(d);
     await page.context().close(); return r;
   }));
   await browser.close(); srv.close();
-  const G = R.flatMap(r => r.out), EDGES = R[0].edges;
-  const seats = G.flatMap(gm => [0, 1, 2].map(p => ({ cost: gm.cost[p], band: gm.bands[p], tier: gm.tiers[p], won: gm.winner === p, ms: gm.ms[p] })));
+  const G = R.flatMap(r => r.out), EDGES = R[0].edges, WEIGHT = R[0].weight;
+  const seats = G.flatMap(gm => [0, 1, 2].map(p => ({ cost: gm.cost[p], band: gm.bands[p], tier: gm.tiers[p], won: gm.winner === p, ms: gm.ms[p], parts: gm.parts[p], choices: gm.choices[p] })));
   const ms = seats.map(x => x.ms).sort((a, b) => a - b);
   console.log(G.length + ' games, ' + seats.length + ' seat-games (' + Math.round((Date.now() - t0) / 1000) + ' s)');
   console.log('time to grade a seat: median ' + Math.round(ms[ms.length >> 1]) + ' ms, 95% ' + Math.round(ms[Math.floor(ms.length * 0.95)]) + ' ms, most ' + Math.round(ms[ms.length - 1]) + ' ms');
@@ -69,11 +71,24 @@ const f = (x, d = 3) => x.toFixed(d);
     const s = seats.filter(x => x.tier === t);
     if (s.length) console.log('  ' + t.padEnd(7) + ' n ' + String(s.length).padStart(4) + '  cost ' + f(mean(s.map(x => x.cost))) + '  won ' + f(100 * mean(s.map(x => x.won ? 1 : 0)), 0) + '%');
   }
-  const xs = seats.map(x => x.cost), ys = seats.map(x => x.won ? 1 : 0), mx = mean(xs), my = mean(ys);
-  const r = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / Math.sqrt(xs.reduce((a, x) => a + (x - mx) ** 2, 0) * ys.reduce((a, y) => a + (y - my) ** 2, 0));
-  console.log('  cost against winning: r ' + f(r, 2) + '; mean cost of winners ' + f(mean(seats.filter(x => x.won).map(x => x.cost))) + ', of losers ' + f(mean(seats.filter(x => !x.won).map(x => x.cost))));
+  const corr = (xs, ys) => { const mx = mean(xs), my = mean(ys); return xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / Math.sqrt(xs.reduce((a, x) => a + (x - mx) ** 2, 0) * ys.reduce((a, y) => a + (y - my) ** 2, 0)); };
+  const wins = seats.map(x => x.won ? 1 : 0);
+  console.log('  cost against winning: r ' + f(corr(seats.map(x => x.cost), wins), 2) + '; mean cost of winners ' + f(mean(seats.filter(x => x.won).map(x => x.cost))) + ', of losers ' + f(mean(seats.filter(x => !x.won).map(x => x.cost))));
+
   const lost = seats.filter(x => !x.won);
   console.log('  losses in band 6: ' + lost.filter(x => x.band === 6).length + ' of ' + lost.length + ', in band 5: ' + lost.filter(x => x.band === 5).length);
+
+  /* The weight of a discard's cost: the tiers by mean cost should come out in the order of their win rates. */
+  const TIERS = ['novice', 'casual', 'club', 'shark'].filter(t => seats.some(x => x.tier === t));
+  const rate = Object.fromEntries(TIERS.map(t => [t, mean(seats.filter(x => x.tier === t).map(x => x.won ? 1 : 0))]));
+  const skill = seats.map(x => rate[x.tier]), byRate = TIERS.slice().sort((a, b) => rate[b] - rate[a]).join();
+  console.log('\nWeight of a discard (index.html: ' + WEIGHT + '): mean cost by tier, ' + TIERS.join(', '));
+  for (const w of [0, 0.1, 0.25, 0.5, 1]) {
+    const c = seats.map(x => { const p = x.parts; return x.choices ? (p.play.cost + w * p.discard.cost + p.name.cost + p.exchange.cost) / x.choices : 0; });
+    const m = Object.fromEntries(TIERS.map(t => [t, mean(c.filter((_, i) => seats[i].tier === t))]));
+    const ok = TIERS.slice().sort((a, b) => m[a] - m[b]).join() === byRate;
+    console.log('  ' + String(w).padEnd(5) + TIERS.map(t => f(m[t])).join('  ') + '   order ' + (ok ? 'right' : 'WRONG') + ', r with skill ' + f(corr(c, skill), 2) + ', with winning ' + f(corr(c, wins), 2));
+  }
 
   console.log('\nOne replay code per band, graded for seat 0 (Load a code, with !dev awards=on)');
   for (let b = 6; b >= 0; b--) {
