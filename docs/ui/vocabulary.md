@@ -191,7 +191,7 @@ Layer: `#overlay`. One dialog at a time, class `.modal`. The game waits while a 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Code field | `#codeIn` | C | One line. Takes a replay code, a seed, or a `?replay=` or `?seed=` link. Nothing is read while you type; an edit clears the last reading. Enter loads. It also takes dev commands, such as `!dev awards=on` (see [tests/README.md](../../tests/README.md#dev-commands)). |
-| Code reading | `#codeRead`, `readCode()` | S | Empty until **Load** or Enter. Then, for a seed, which one it is; for a backup, to restore it in Settings; else why it cannot load. A replay code opens the viewer. |
+| Code reading | `#codeRead`, `readCode()` | S | Empty until **Load** or Enter. Then, for a seed, which one it is, and while a wave is open, that a wave played from it is practice (no clear, no try); for a backup, to restore it in Settings; else why it cannot load. A replay code opens the viewer. |
 | Play it in | `#codeWhere`, `#codeMode` | C | Shown when a seed is loaded: Free play, Dynamic, or an open wave. A link's wave is picked when it is open. |
 | Load button | `code-load` | C | **Load**, always on. It becomes **Play** once a seed is loaded; **Play** starts the seed in the chosen mode. |
 | Backup hint | `.mnote` | D | "A backup is not a game code: restore it in Settings → Tools → Your data." |
@@ -262,7 +262,7 @@ Opens when a player reaches 10 points. While awards are on (`!dev awards=on`), i
 | End reason | first `p` | R | "The game ended at once, in hand 5, by …". |
 | Final scores | `table` | R | Only when there are no hand stats. |
 | Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
-| Wave note | `.wave-note` | S | Whether the game cleared the wave. |
+| Wave note | `.wave-note` | S | Whether the game cleared the wave, or that it was practice: played from a seed you entered, so no clear and no try. |
 | Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. Closes the dialog. The end buttons stay in the action bar. |
 | Award stroke | `.modal.gameover.award`, `data-award`, `--award0` to `--award6`, `awardBox()` | S | A dev feature, only while awards are on: a heavy stroke around the dialog in the color of your seat's award band, emerald neon green (band 6, the best) through gold (band 3) to neon red (band 0, the worst). It fades in once the grade is worked out (about 0.2 s). The stroke is the whole feature: no words, numbers or hover text explain it to the player. Not your score: see [Awards](../human-play.md#awards-how-you-did-with-your-cards-2026-10-31). |
 | End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
