@@ -4743,6 +4743,57 @@ const Habits = (() => {
 })();
 
 /* ---------------------------------------------------------------------
+   6e. TALLY — how strong the cards were that each seat was dealt, counted
+   from a finished game. It only measures: it changes no decision, never
+   runs during play, and nothing in the app calls it yet. It reads the whole
+   deal, so it is for after the game.
+   - read(rec): for each deal, the fitted value (Dynamic.bestEstimate: the
+     expected tricks plus 0.9 x the expected King points, in the seat's best
+     suit) of the 10 cards each seat was dealt (the best 7 of them) and of the
+     7 it kept, and whether the hand scored. A Joker redeal is its own deal
+     with no score. The totals, and each seat's share of the table's total,
+     count the scored hands only.
+   It leaves out the kitty, the trump that was named and how the others
+   played, so it says how strong a hand was, not how many points it was
+   worth. A seat's share times the points scored in the game would split
+   them in proportion. That figure is not calibrated, so it is left out.
+   --------------------------------------------------------------------- */
+/** @typedef {{ hand: number, dealer: number | null, dealt: number[], kept: number[] | null, scored: boolean }} TallyDeal */
+/** @typedef {{ dealt: number[], kept: number[] }} TallySums */
+const Tally = (() => {
+  const P = Engine.P, KEEP = Engine.C.MAIN_TRICKS;
+  /** @param {number[]} v @returns {number[]} */
+  const shareOf = v => { const t = v[0] + v[1] + v[2]; return t > 0 ? v.map(x => x / t) : [1 / 3, 1 / 3, 1 / 3]; };
+  /** The tally of a finished or running game, or null when the code or record does not replay.
+      @param {any} recOrCode a replay code or its record
+      @returns {{ deals: TallyDeal[], scored: number, totals: TallySums, share: TallySums } | null} */
+  function read(recOrCode) {
+    /** @type {TallyDeal[]} */
+    const deals = [];
+    try {
+      const cur = Replay.cursor(recOrCode);
+      /** @type {TallyDeal | null} */
+      let open = null;
+      for (let step; (step = cur.step());) {
+        const s = cur.state;
+        if (s.phase === P.DISCARD) {
+          if (open && open.kept) open = null;
+          if (!open) { open = { hand: s.handNumber, dealer: s.dealer, dealt: s.hands.map(h => Dynamic.bestKeep(h, KEEP)), kept: null, scored: false }; deals.push(open); }
+        } else if (open && !open.kept) open.kept = s.hands.map(h => Dynamic.bestEstimate(h));
+        if (open && Dynamic.handEnded(step.events, s)) { open.scored = !step.events.some(e => e.type === 'HAND_ABANDONED'); open = null; }
+      }
+      /* The game ended inside a hand (a King gave the tenth point): that hand scored. */
+      if (open && open.kept && cur.state.gameOver) open.scored = true;
+    } catch (e) { return null; }
+    const totals = { dealt: [0, 0, 0], kept: [0, 0, 0] };
+    let scored = 0;
+    for (const d of deals) if (d.scored && d.kept) { scored++; for (let i = 0; i < 3; i++) { totals.dealt[i] += d.dealt[i]; totals.kept[i] += d.kept[i]; } }
+    return { deals, scored, totals, share: { dealt: shareOf(totals.dealt), kept: shareOf(totals.kept) } };
+  }
+  return Object.freeze({ read });
+})();
+
+/* ---------------------------------------------------------------------
    7. RENDER — draws a View for the human seat. Reads nothing hidden.
    --------------------------------------------------------------------- */
 const Render = (() => {
@@ -10857,6 +10908,32 @@ const SelfTest = (() => {
     });
 
     /* --- Seat settings (Settings → Bots): a seat's tune over its personality, and results that skip a tuned bot. --- */
+    /* --- Tally (level 0): how strong the cards were that each seat was dealt. Nothing in the app uses it yet. --- */
+    safeRun('tally', () => {
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const g = Engine.createGame(4242, ['A', 'B', 'C']);
+      for (let n = 0; !g.gameOver && n < 5000; n++) {
+        const act = Engine.actors(g);
+        const a = act.length ? AI.decide(buildView(g, act[0]), cfgs[act[0]]) : Engine.systemAction(g);
+        if (!a || !Engine.dispatch(g, a).ok) break;
+      }
+      const rec = Replay.fromState(g), code = Replay.encode(rec), t = Tally.read(rec);
+      check('a finished game has a tally', !!t && g.gameOver && t.deals.length >= g.handNumber, JSON.stringify(t && t.deals.length));
+      if (!t) return;
+      eq('a replay code and its record give the same tally', Tally.read(code), t);
+      eq('the same game gives the same tally twice', Tally.read(rec), t);
+      check('every scored hand has its seats\' dealt and kept values, and a hand scores or does not', t.deals.every(d => d.dealt.length === 3 && (!d.scored || (d.kept && d.kept.length === 3))));
+      check('a seat never keeps more than its best 7 of the 10 dealt', t.deals.every(d => !d.kept || d.kept.every((v, i) => v <= d.dealt[i] + 1e-9)), JSON.stringify(t.deals.find(d => d.kept && d.kept.some((v, i) => v > d.dealt[i] + 1e-9))));
+      const sum = (/** @type {number[]} */ v) => v.reduce((x, y) => x + y, 0);
+      check('the shares add to 1 and follow the totals', Math.abs(sum(t.share.dealt) - 1) < 1e-9 && Math.abs(sum(t.share.kept) - 1) < 1e-9 && t.totals.kept.every((v, i) => Math.abs(t.share.kept[i] - v / sum(t.totals.kept)) < 1e-9), JSON.stringify(t.share));
+      check('the totals count the scored hands, and no more hands than were played', t.scored === t.deals.filter(d => d.scored).length && t.scored <= g.handNumber, t.scored + ' of ' + t.deals.length);
+      const cur = Replay.cursor(rec);
+      while (cur.state.phase !== Engine.P.DISCARD && cur.step());
+      eq('the first deal is hand 1, and its dealt values are the best 7 of each 10-card hand', [t.deals[0].hand, t.deals[0].dealt], [1, cur.state.hands.map(h => Dynamic.bestKeep(h, 7))]);
+      const part = Tally.read(Object.assign({}, rec, { result: null, decisions: rec.decisions.slice(0, 12) }));
+      check('a game still running has a tally, and its last hand is not scored', !!part && part.deals.length > 0 && !part.deals[part.deals.length - 1].scored, JSON.stringify(part && part.deals.length));
+      eq('a code that is not a code has no tally', [Tally.read('nope'), Tally.read(null)], [null, null]);
+    });
     safeRun('seats', () => {
       const vex = PERSONA_BY_ID.vex;
       eq('a tune keeps only valid fields, clamped', AI.cleanTune({ courage: 'reckless', realTable: 1, leadPick: 'shrewd', worlds: 999.4, playoutSkill: -2, knowledge: { bids: false, voids: 'yes', x: true }, extra: 1 }),
@@ -11144,7 +11221,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 /* ---------------------------------------------------------------------
    10. BOOT
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
