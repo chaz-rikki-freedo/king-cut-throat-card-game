@@ -168,10 +168,29 @@ A new profile held the easing at 0, so a new player's first game met bots at ful
 
 The games after the hold match the build without it, within the margin: the okay player wins 33% to 41% of games 33 to 82. The margin is about ±8 points for 128 games. Two limits stay open:
 
-- **A cliff at game 9.** The easing drops from 1 to about 0.2 in one game, and the weak player's win rate in bad games falls from about 40% to about 23%. A taper over games 6 to 12 would soften it. It has not been measured.
+- **A cliff at game 9.** The easing drops from 1 to about 0.2 in one game, and the weak player's win rate in bad games falls from about 40% to about 23%. A taper over games 6 to 12 would soften it. It has not been measured. (The taper below addresses it.)
 - **Gross mistakes still lose.** A player who throws away good cards wins 14% of the first 8 games even at the floor. Only help with the discard (feedback or a suggestion) addresses that.
 
 The players are bots. Real beginners need playtests.
+
+### The taper (2026-10-31)
+
+The build now tapers the end of the hold. From hand 80 to hand 160 (`TAPER_HANDS` = 80), the easing can't fall below a floor that runs from 1 down to 0, at the start of a game and after each hand. No Shark sits at the table while the floor is above 0.5, until about hand 120.
+
+`node tests/career.js 16 4 80:0,80:80` compares the hold that ends at once (`80:0`) with the build (`80:80`), with the same careers as above. 16 careers each:
+
+| Games | Setting | Starting easing | Sharks at the table | Win, all games | Win, bad games | Win, okay games |
+|---|---|---|---|---|---|---|
+| 9-16 | Hold ends at once | 0.19 | 0.58 | 32.0% | 27.9% | 35.8% |
+| 9-16 | Taper | 0.56 | 0.27 | 32.0% | 21.3% | 41.8% |
+| 17-32 | Hold ends at once | 0.20 | 0.57 | 28.9% | 19.0% | 37.8% |
+| 17-32 | Taper | 0.20 | 0.57 | 26.6% | 16.5% | 35.6% |
+| 33-82 | Hold ends at once | 0.12 | 0.58 | 37.5% | - | 37.5% |
+| 33-82 | Taper | 0.13 | 0.58 | 35.9% | - | 35.9% |
+
+The taper does what it was built for: the easing falls over about 8 games instead of in one, and half as many Sharks sit at the table in games 9 to 16. It did not raise the win rate: the differences are within the margin (about ±11 points for the 60 to 70 bad games in games 9 to 16). Between easing 0.2 and 0.6 the bots stay well above a floor-strength player, so only the hold at full easing changes who wins. The games after the taper match the build without it.
+
+An earlier measurement of the hold that ends at once had a fault: with `TAPER_HANDS` at 0, the floor divided 0 by 0 at exactly hand 80, and that game's easing was not a number. The build (80) was never affected. The table above is from the guarded code.
 
 ## Habit report (2026-10-20)
 
