@@ -607,6 +607,7 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
 .mlore{margin:0;text-align:left;line-height:1.65;font-style:italic}
 .mnote{margin:0;align-self:stretch;text-align:left;font-size:0.8125rem;color:var(--muted)}
 .mnote:empty{display:none}
+.mnote.dev-read{white-space:pre-line;font-family:ui-monospace,Menlo,Consolas,monospace;user-select:text}
 .mlabel{align-self:stretch;text-align:left;font-size:0.875rem;color:var(--muted)}
 .code-in{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:0.875rem!important}
 .mload{align-self:flex-end;min-width:7rem;min-height:3rem;margin:0}
@@ -1365,9 +1366,10 @@ const RNG = (() => {
    "!dev key=value ...", "!dev" (list) or "!dev reset". Only caps that do
    not change a game: no rule, deal, bot or progress. They last for the tab
    (sessionStorage 'kct-dev': not a 'kct.' key, so never in a backup).
-   One command is not a cap: "!dev easing=N" sets the hand count of
+   Two commands are not caps: "!dev easing=N" sets the hand count of
    Dynamic's profile (kct.profile) to N, after a question, which moves the
-   hold and the taper. The record and everything else stay.
+   hold and the taper. The record and everything else stay. "!dev easing"
+   alone shows a terse readout of the easing (legend: tests/README.md).
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1406,17 +1408,18 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
     reset() { vals = {}; D.set({}); },
-    /** Reads a dev command: '!dev', '!dev reset', '!dev easing=N' or '!dev key=value ...'. Never changes anything.
-        easing: the hand count N, or null. @param {string} text
-        @returns {{ ok: true, reset: boolean, easing: number | null, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+    /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N' or '!dev key=value ...'. Never changes
+        anything. easing: the hand count N, or null. look: '!dev easing', the readout. @param {string} text
+        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, ops: {} };
       if (rest.some(w => /^easing(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: Number(m[1]), ops: {} } : { ok: false, why: 'Write it on its own as easing=hands, for example !dev easing=0.' };
+        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
       }
       /** @type {Partial<Record<DevKey, number>>} */
       const ops = {};
@@ -1428,7 +1431,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: null, ops };
+      return { ok: true, reset: false, easing: null, look: false, ops };
     }
   };
   return D;
@@ -4459,7 +4462,7 @@ const Dynamic = (() => {
     });
   }
 
-  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
+  return Object.freeze({ PROFILE_VERSION, FIT, LADDER, START_ROW, TUNE, WEAK, LOSS, HOLD_HANDS, TAPER_HANDS, PROFILE_HANDS, floorEase, handEstimate, bestEstimate, bestKeep, ease, blankProfile, cleanProfile, snapshotOf, cleanSnapshot, slowTarget, startEase, handEnded, readHand, tracker, trace, review, addGame, profileStore });
 })();
 
 /* ---------------------------------------------------------------------
@@ -8968,14 +8971,14 @@ const App = (() => {
      other '!' text reads as text that is not a code, so nothing hints at it. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, ops: d.ops } };
     }
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
     let wave;
@@ -9001,12 +9004,13 @@ const App = (() => {
   function devText() {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
-      '. !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
+      '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question.';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
     $('codeRead').textContent = '';
+    $('codeRead').classList.remove('dev-read');
     $('codeWhere').hidden = true;
     $('menuCode').querySelector('[data-action="code-load"]').textContent = 'Load';
   }
@@ -9020,6 +9024,7 @@ const App = (() => {
     if (!input) return;
     const r = readCode(input.value, true), say = (/** @type {string} */ t) => { $('codeRead').textContent = t; };
     if (r.dev && r.dev.easing !== null) { setEasing(r.dev.easing); return; }
+    if (r.dev && r.dev.look) { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
       if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
@@ -9044,6 +9049,30 @@ const App = (() => {
     const where = sel.value, n = where.startsWith('w') ? Number(where.slice(1)) : 0, mode = n ? 'waves' : where;
     if (n && !Waves.isUnlocked(n)) return;
     confirmReplace(mode).then(yes => yes ? startMode(mode, r.seed, n || undefined) : showMenu(app.menuLaunch));
+  }
+  /* '!dev easing': a terse readout for someone who says Dynamic is too easy or too hard. Codes, not words, so a player
+     reading it over your shoulder learns nothing; the legend is in tests/README.md (Dev commands). Percentages are 0-100.
+     P: the profile (hands and phase H hold, T taper, R record; f floor, t slow target, n next game's start, k Sharks
+     allowed, m mark). S: the record's signals (score share, failed calls, bid errors, slips; w the record's weight).
+     G: the Dynamic game at the table, if any (hands, start, now, target, fast path, weak visible hands of visible).
+     L: the last 5 Dynamic games, newest first (W won, L lost, A the AI played your seat; then its start easing). */
+  function easingReadout() {
+    const DY = Dynamic, p = profile.get(), snap = DY.snapshotOf(p), h = p.hands, end = DY.HOLD_HANDS + DY.TAPER_HANDS;
+    const pc = (/** @type {number} */ x) => String(Math.round(100 * x)).padStart(2, '0');
+    const rate = (/** @type {number} */ a, /** @type {number} */ b) => (b > 0 ? pc(a / b) : '--');
+    const next = DY.startEase(snap);
+    const lines = [
+      'P h' + h + (h < DY.HOLD_HANDS ? 'H' : h < end ? 'T' : 'R') + ' f' + pc(DY.floorEase(h)) + ' t' + pc(DY.slowTarget(snap)) + ' n' + pc(next) + ' k' + sharkLimit(next) + ' m' + (p.mark ? 1 : 0),
+      'S sh' + rate(p.share.me, p.share.all) + ' fc' + rate(p.calls.failed, p.calls.n) + ' be' + rate(p.bids.errors, p.bids.n) + ' sl' + rate(p.plays.slips, p.plays.n) + ' w' + pc(h / (h + DY.PROFILE_HANDS))
+    ];
+    const d = app.dyn;
+    if (app.mode === 'dynamic' && d && app.state && !app.state.gameOver) lines.push('G h' + d.hands + ' s' + pc(d.e0) + ' e' + pc(d.e) + ' t' + pc(d.target) + ' F' + (d.fast ? 1 : 0) + ' v' + d.weakSeen + '/' + d.visible.length);
+    const games = replays.list().filter(e => e.mode === 'dynamic').slice(0, 5).map(e => {
+      const rec = safe(() => Replay.decode(e.code)), sn = rec && rec.meta ? DY.cleanSnapshot(safe(() => JSON.parse(rec.meta['dyn.snap']))) : null;
+      return (e.assisted ? 'A' : e.winner === 0 ? 'W' : 'L') + (sn ? pc(DY.startEase(sn)) : '--');
+    });
+    lines.push('L ' + (games.join(' ') || '-'));
+    return lines.join('\n');
   }
   /* '!dev easing=N': only the hand count of kct.profile changes (and the gross-mistake mark clears). The record of your
      play, the habit counts, Dynamic's saved game (it keeps the snapshot it started from), results, replay codes, the
@@ -9921,10 +9950,11 @@ const SelfTest = (() => {
       /* Dev commands: '!' is never a code. While you type it reads as any text that is not a code; only a submitted
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
-      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(7).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, ops: {} }, { reset: true, easing: null, ops: {} }, { reset: false, easing: 120, ops: {} }, { reset: false, easing: 0, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
+      eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, ops: {} }, { reset: true, easing: null, look: false, ops: {} },
+          { reset: false, easing: 120, look: false, ops: {} }, { reset: false, easing: 0, look: false, ops: {} }, { reset: false, easing: null, look: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(15).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
       eq('self-tests see the default caps', [REPLAYS_MAX(), LOG_SAVE_MAX(), LOGGER_MAX()], [DEV_KEYS.saves.def, DEV_KEYS.log.def, DEV_KEYS.logger.def]);

@@ -57,7 +57,7 @@ GitHub Actions has two workflows:
 
 ## Dev commands
 
-For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress. The one exception is `!dev easing=N` (see below).
+For manual testing, type a dev command in **Menu → Load a code** and press Enter. A dev command changes a cap that doesn't affect a game: no rule, deal, bot or progress. The exceptions are `!dev easing` and `!dev easing=N` (see below).
 
 The field gives no hint of dev commands: it reads nothing while you type, and other text that starts with `!` reads as not a code. Only Enter (or **Load**) on a `!dev` command runs it: a valid command applies at once and returns to the home card, `!dev` alone shows the keys, and a bad key or value shows the reason.
 
@@ -65,6 +65,7 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 !dev saves=40 log=300     set one or more caps
 !dev                      list the caps in use and their defaults
 !dev reset                go back to the defaults
+!dev easing               Dynamic's easing readout (legend below)
 !dev easing=0             set Dynamic's profile to 0 hands (asks first)
 ```
 
@@ -79,8 +80,43 @@ The field gives no hint of dev commands: it reads nothing while you type, and ot
 - A lower cap trims at the next write: older replays or lines are removed for good. There's no preview, so check the value before you press Enter.
 - While an override is set, the About card shows **DEV** and the values after the build.
 - Self-tests always run with the defaults.
+- `!dev easing` shows a readout of Dynamic's easing, for when a player says Dynamic is too easy or too hard. It's written in codes so the player can't read it; the legend is below. It changes nothing.
 - `!dev easing=N` (N from 0 to 9999999) asks first, then sets the hand count of Dynamic's profile (`kct.profile`) to N and clears the gross-mistake mark. The hand count places you in the hold and the taper: below 80 (`HOLD_HANDS`), full easing until hand 80; from 80 to 160 (`TAPER_HANDS`), the taper; 160 or more, the record alone. The question says which applies. Everything else stays: the record of your play, the habit counts in **Your profile**, Dynamic's saved game (which keeps the easing it started with), results and replay codes, the other modes and the settings. Unlike the caps, the change is kept after the tab closes, and there's no undo. The menu says **Dynamic's easing is set to N hands.** **Cancel** changes nothing. Write it on its own: `!dev easing=0 saves=40` is refused.
 - Input that starts with `!` is reserved for dev commands, so it never collides with a code (see [replay-code.md](../docs/replay-code.md)). To add a key, add it to `DEV_KEYS` in `index.html` and read it with `Dev.num()`.
+
+### Dynamic readout (`!dev easing`)
+
+Ask the player to type `!dev easing` in **Menu → Load a code**, press Enter, and send you a screenshot. All numbers marked % are 0 to 100.
+
+```
+P h214R f00 t12 n12 k2 m0
+S sh31 fc44 be06 sl02 w81
+G h3 s12 e09 t00 F0 v0/1
+L W12 L08 L08 A08 W15
+```
+
+| Line | Code | Meaning |
+|---|---|---|
+| **P** (profile) | `h214R` | Hands on record, then the phase: `H` hold (under 80), `T` taper (80 to 159), `R` the record alone (160 or more). |
+| | `f` | The floor that the hold and taper set, % |
+| | `t` | The slow path's target from the record, % |
+| | `n` | The next new game's starting easing, % (the larger of `f` and `t`, or 100 when `m1`) |
+| | `k` | Sharks allowed at the next new table: 0, 1 or 2 |
+| | `m` | The gross-mistake mark: `1` means the last reviewed game had a discard window, so the next game starts at 100 |
+| **S** (signals) | `sh` | Score share in Dynamic, %. An even share is 33; the easing grows below 33 and is full at 20. |
+| | `fc` | Failed calls, %. Normal is about 45. `--` means no calls yet. |
+| | `be` | Bid errors, % |
+| | `sl` | Card-play slips, %. The Casual bots slip about 2%. |
+| | `w` | How much the record counts, % (hands / (hands + 50)) |
+| **G** (game at the table; only during a Dynamic game) | `h` `s` `e` `t` | Hands played this game, starting easing, easing now, and its target, % |
+| | `F` | The fast path: `1` means it holds (weak kept hands, 2 of the last 3 visible) |
+| | `v` | Weak visible hands / visible hands this game |
+| **L** (last 5 Dynamic games, newest first) | `W` `L` `A` | Won, lost, or the AI played the player's seat. The digits are that game's starting easing, % (`--` when unreadable). |
+
+The signals are decayed: they follow about the last 100 samples. Reading a complaint:
+
+- **"Too hard"** with `n` low and `sh` near 33: the record says the player is even, and the game plays at strength. `sh` well under 33 with `n` still low means the record is young (`w` low) or the player only just got worse. `!dev easing=0` starts the hold again.
+- **"Too easy"** with `n` high: check `m1` (one bad game sets it; it clears after the next game) and the phase (`H` or `T`: the hold or taper sets the floor). `!dev easing=160` ends the hold and taper.
 
 ## Stress sections
 
