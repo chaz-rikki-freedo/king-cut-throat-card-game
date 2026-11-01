@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Service worker: a page that loads but is not the game (a network sign-in page) is never offered as an update,
    and a real new version is, both when the page opens and when the app comes back to the screen, also one that changes
-   only the theme packs. A page that an
+   only the theme packs. A changed sw.js takes over an app that stays open, with no restart. A page that an
    ad blocker filled with scripts from another site still opens offline, while those scripts' requests hang, and the
    in-app self-tests for the service worker and airplane mode pass. Inside another app's browser, the menu and Settings
    say to open the game in a real browser, and the Install checklist gives up on a request that hangs. Serves the repository with a switchable index.html. Exit code 1 on a failed check. */
@@ -11,6 +11,8 @@ const { launch, ROOT } = require('./lib/browser');
 
 const TYPES = { '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp' };
 let serve = 'game';
+/* swVersion: a comment added to sw.js, so the browser sees a changed worker. */
+let swVersion = 0;
 /* The query of the last index.html request: every check asks past the CDN with ?fresh=. */
 let lastQuery = '';
 const ADBLOCK = '<script src="https://local.adguard.org/?type=content-script"></script><link type="text/css" rel="stylesheet" href="https://local.adguard.org/?type=css">';
@@ -41,7 +43,7 @@ const srv = http.createServer((req, res) => {
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
-    res.end(data);
+    res.end(u === '/sw.js' && swVersion ? data + '\n/* worker ' + swVersion + ' */\n' : data);
   });
 });
 
@@ -153,6 +155,25 @@ srv.listen(0, '127.0.0.1', async () => {
     await page.waitForTimeout(1500);
     r = await state();
     expect('Update now loads it: nothing waits', r.game && !r.pending && !r.note, r);
+    /* A changed sw.js reaches an app that stays open: back on the screen, the browser fetches the worker again, the new
+       worker takes over the page, and it looks for a new page at once. Nothing needs the app closed. */
+    swVersion = 1;
+    serve = 'new';
+    const swap = await page.evaluate(async () => {
+      const took = new Promise(res => { navigator.serviceWorker.addEventListener('controllerchange', () => res(true), { once: true }); setTimeout(() => res(false), 10000); });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      return took;
+    });
+    expect('a changed sw.js: back on the screen, the new worker takes over the open page', swap === true, swap);
+    await page.waitForFunction(() => !document.querySelector('#updateNote').hidden, null, { timeout: 8000 }).catch(() => {});
+    /* The new worker's own check runs after it takes over: the new page must still wait as an update after it. */
+    await page.waitForTimeout(2000);
+    r = await state();
+    expect('the new worker looks for a new page at once, and offers it', r.game && r.controlled && r.pending && r.note, r);
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    serve = 'game';
     /* The ad blocker answers its own scripts while there is a network. Offline its VPN cannot, and the request hangs. */
     serve = 'adblock';
     const ctx = await browser.newContext();

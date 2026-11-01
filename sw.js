@@ -9,6 +9,8 @@
    "apply-update": the waiting page becomes the cached page and the app reloads.
    A new version therefore needs no version number here: publishing a changed
    index.html is enough. Change this file only to change how caching works.
+   A changed sw.js reaches an app that stays open: the app asks the browser for it each time it comes back to
+   the screen, and the new worker takes over the open page (see install).
    The manifest and icons are served from the cache too, and each request also
    fetches them in the background, so a changed icon arrives on the next load.
    Each page open and "check-update" also saves again any of them missing from the cache: Android never
@@ -20,8 +22,16 @@ const ROOT = new URL('./', self.registration.scope).href;
 const ASSETS = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png']
   .map(u => new URL(u, self.registration.scope).href);
 
+/* A new worker keeps the cached page: it takes over pages that are already open (skipWaiting, then clients.claim),
+   and its first check (the app asks on controllerchange) offers the newer page as an update, as usual. Saving the
+   newest page here instead would make that check find nothing new, and an open app would stay on its old page. */
 self.addEventListener('install', ev => {
-  ev.waitUntil(caches.open(SHELL).then(c => c.addAll([PAGE, ...ASSETS].map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  ev.waitUntil((async () => {
+    const shell = await caches.open(SHELL);
+    const urls = (await shell.match(PAGE)) ? ASSETS : [PAGE, ...ASSETS];
+    await shell.addAll(urls.map(u => new Request(u, { cache: 'reload' })));
+    await self.skipWaiting();
+  })());
 });
 /* Removes files that this version no longer caches, such as an icon taken off the ASSETS list.
    Only this app's own cache is cleaned: other project pages on the same github.io origin share the cache storage. */
