@@ -1019,7 +1019,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'e7317b4', date: '2026-11-01' });
+const BUILD = Object.freeze({ commit: 'eb75749', date: '2026-11-01' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6608,6 +6608,7 @@ const App = (() => {
     const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
     const sw = navigator.serviceWorker.controller || (reg && reg.active);
     if (!sw) return null;
+    updateWorker();
     return new Promise(resolve => {
       const done = ( r) => { clearTimeout(t); navigator.serviceWorker.removeEventListener('message', on); resolve(r); };
       const on = ( ev) => { if (ev.data && ev.data.type === 'update-checked') done(String(ev.data.result)); };
@@ -6615,6 +6616,9 @@ const App = (() => {
       navigator.serviceWorker.addEventListener('message', on);
       sw.postMessage({ type: 'check-update', reply: true });
     });
+  }
+  function updateWorker() {
+    navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {  });
   }
   function hideUpdateNote() { const n = $('updateNote'); if (n) n.hidden = true; }
   function applyUpdate() {
@@ -6739,11 +6743,16 @@ const App = (() => {
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
       if (reg.active) reg.active.postMessage({ type: 'update-status' });
     }).catch(() => {  });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      const sw = navigator.serviceWorker.controller;
+      if (sw) sw.postMessage({ type: 'check-update' });
+    });
     let checked = 0;
     document.addEventListener('visibilitychange', () => {
       const sw = navigator.serviceWorker.controller;
-      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 60000) return;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 30 * 60000) return;
       checked = Date.now();
+      updateWorker();
       sw.postMessage({ type: 'check-update' });
     });
     requestPersist();
