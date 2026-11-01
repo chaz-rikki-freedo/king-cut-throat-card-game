@@ -11,7 +11,7 @@ const { launch, ROOT } = require('./lib/browser');
 
 const TYPES = { '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webp': 'image/webp' };
 let serve = 'game';
-/* The query of the last index.html request: Check again asks past the CDN with ?fresh=. */
+/* The query of the last index.html request: every check asks past the CDN with ?fresh=. */
 let lastQuery = '';
 const ADBLOCK = '<script src="https://local.adguard.org/?type=content-script"></script><link type="text/css" rel="stylesheet" href="https://local.adguard.org/?type=css">';
 let failed = 0;
@@ -103,6 +103,7 @@ srv.listen(0, '127.0.0.1', async () => {
     await page.waitForTimeout(1500);
     r = await state();
     expect('back on the screen: a new version is offered without a reload', r.game && r.pending && r.note, r);
+    expect('back on the screen: the check asks past the CDN', /^fresh=\d+$/.test(lastQuery), lastQuery);
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
     await page.waitForTimeout(1500);
     r = await state();
@@ -111,6 +112,7 @@ srv.listen(0, '127.0.0.1', async () => {
     await reload();
     r = await state();
     expect('a real new version is offered', r.game && r.pending && r.note, r);
+    expect('on open: the check asks past the CDN', /^fresh=\d+$/.test(lastQuery), lastQuery);
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
     await page.waitForTimeout(1500);
     serve = 'theme';
