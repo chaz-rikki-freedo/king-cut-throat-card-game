@@ -105,6 +105,8 @@ The settings are kept after a reload.
 
 ### Table: House rules
 
+The House rules card starts with a short note: changes apply from your next game, and a game in progress and **Try again** keep the game's own rules.
+
 | Setting | What it does |
 |---|---|
 | **Mediator picks the Showdown lead** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
