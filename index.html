@@ -8537,12 +8537,12 @@ const App = (() => {
       if (sw) sw.postMessage({ type: 'check-update' });
     });
     /* An installed app comes back from the background without opening the page again, so neither the browser nor
-       the worker would look for a new version: each time the app is back on the screen, at most once a minute,
+       the worker would look for a new version: each time the app is back on the screen, at most once every 30 minutes,
        the browser looks for a changed sw.js (updateWorker) and the worker for a changed page. */
     let checked = 0;
     document.addEventListener('visibilitychange', () => {
       const sw = navigator.serviceWorker.controller;
-      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 60000) return;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 30 * 60000) return;
       checked = Date.now();
       updateWorker();
       sw.postMessage({ type: 'check-update' });
