@@ -105,7 +105,7 @@ The settings are kept after a reload.
 
 ### Table: House rules
 
-The House rules card starts with a short explainer: a change applies from your next game, a running game keeps the rules it started with, and **Try again** keeps the rules of the game it plays again.
+The House rules card starts with a short note: changes apply from your next game, and a game in progress and **Try again** keep the game's own rules.
 
 | Setting | What it does |
 |---|---|
