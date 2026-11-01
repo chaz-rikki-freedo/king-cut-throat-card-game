@@ -3,7 +3,7 @@
    changes in the middle of a session. Each time the page opens, and each time
    the app asks ("check-update": it comes back to the screen, which an installed
    app does without opening the page again), the worker fetches the page from
-   the network in the background. If it differs from the
+   the network in the background, past the host's CDN copy (see checkPage). If it differs from the
    cached page, the new page waits in a separate cache and the app is told
    ("update-ready"). The app asks you, between games, and then sends
    "apply-update": the waiting page becomes the cached page and the app reloads.
@@ -74,13 +74,14 @@ async function cachedPage(req) {
   return res;
 }
 
-/* Fetches the page from the network. A changed page waits in PENDING and the app is told. fresh (Settings → Install,
-   Check again) adds a query to the address, so a CDN in front of the host (GitHub Pages keeps a page for minutes)
-   fetches the page again. Returns what it found: 'offline', 'not-game' (an error or a page that is not the game),
+/* Fetches the page from the network. A changed page waits in PENDING and the app is told. Every check adds a query
+   to the address, so a CDN in front of the host (GitHub Pages keeps a page for minutes) fetches the page again:
+   without it, an app opened just after a publish would get the old page, see nothing new, and offer the update
+   only one start later. Returns what it found: 'offline', 'not-game' (an error or a page that is not the game),
    'same', 'new' or 'first' (nothing was cached yet). */
-async function checkPage(fresh) {
+async function checkPage() {
   let res;
-  try { res = await fetch(fresh ? PAGE + '?fresh=' + Date.now() : PAGE, { cache: 'no-store' }); } catch (e) { return 'offline'; }
+  try { res = await fetch(PAGE + '?fresh=' + Date.now(), { cache: 'no-store' }); } catch (e) { return 'offline'; }
   if (!res.ok) return 'not-game';
   const text = await res.clone().text();
   if (!isGame(text)) return 'not-game';
@@ -151,7 +152,7 @@ self.addEventListener('message', ev => {
     if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
   })());
   /* reply: the app waits for the result (Settings → Install, Check again). */
-  if (type === 'check-update') ev.waitUntil(Promise.all([checkPage(!!ev.data.reply), refill()]).then(([result]) => {
+  if (type === 'check-update') ev.waitUntil(Promise.all([checkPage(), refill()]).then(([result]) => {
     if (ev.data.reply) return tell({ type: 'update-checked', result }, ev.source);
   }));
   if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));
