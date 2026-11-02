@@ -204,7 +204,7 @@ function playGame(seed, policy, rnd, opts) {
       if (e.type === 'DEALER_ROTATED' && e.dealer !== (pre.dealer + 1) % 3) fail('dealer-rotate', { seed });
       if (e.type === 'REDEAL' && e.dealer !== pre.dealer) fail('redeal-dealer', { seed });
     }
-    // The game ends at once at 10, also mid-trick.
+    // The game ends at once at 10, also mid-hand.
     if (s.gameOver && r.events[r.events.length - 1].type !== 'GAME_ENDED') fail('end-not-last', { seed });
     invariants(s, { seed, v: s.version });
     if (s.version !== st.steps) fail('version', { seed });

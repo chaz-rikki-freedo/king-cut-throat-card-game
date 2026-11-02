@@ -7240,7 +7240,7 @@ const App = (() => {
     /* The game waits while the menu or a question is open. It stops when another tab is more current. */
     if (app.menuOpen || askDone || TabLock.stale) return;
     if (!app.mode) { draw(ev); return; }
-    /* A game can end mid-trick (a King point reaches 10). The table shows the final play first, for the trick-end
+    /* A game can end mid-hand, on the last card of a trick (a King point reaches 10). The table shows the final play first, for the trick-end
        wait (at least Normal's, Instant aside), before the game-over dialog covers it. A click on the table opens it
        at once. */
     if (st.gameOver) {
@@ -8646,7 +8646,7 @@ const App = (() => {
     'Should they have supported their Kings? Or should they have persuaded the farmers to join their march? It seems the Joker knew the conflict was intentional all along...';
   /* The quick rules, in the menu's How to play view: a name, then the rule. */
   const QUICK_RULES = [
-    ['The game', '3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-trick.'],
+    ['The game', '3 players, every player for themselves. First to <b>10 points</b> wins at once, even mid-hand.'],
     ['Deck and deal', '33 cards: 7 to Ace in four suits, plus the Joker. Deal 3 each, 3 to the kitty, 4 each, then 3 each.'],
     ['Trump order', '<b>Joker, Right Bower, Left Bower, A, K, Q, 10, 9, 8, 7.</b> The Right Bower is the Jack of trump. The Left Bower is the other Jack of the same color, and counts as trump. ' +
       '<i>Bower</i> comes from the German <i>Bauer</i>, “farmer”: the Jacks are the farmers.'],
