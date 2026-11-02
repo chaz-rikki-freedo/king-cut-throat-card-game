@@ -1019,7 +1019,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'eb75749', date: '2026-11-01' });
+const BUILD = Object.freeze({ commit: '8611d02', date: '2026-11-02' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6167,10 +6167,14 @@ const App = (() => {
     box.classList.add('award');
     box.setAttribute('data-award', String(a.band));
   }
+  function logAward(a) {
+    const r = ( x) => Math.round(1000 * x) / 1000, part = ( x) => x.n ? r(x.cost / x.n) : null;
+    Logger.log('AWARD', { band: a.band, cost: r(a.cost), choices: a.choices, cards: part(a.parts.play), discards: part(a.parts.discard), trump: part(a.parts.name), exchange: part(a.parts.exchange) });
+  }
   function awardBox(box, code) {
     if (!code || !Awards.on()) return;
     if (awardOf && awardOf.code === code) {
-      if (awardOf.a) showAward(box, awardOf.a);
+      if (awardOf.a) { showAward(box, awardOf.a); logAward(awardOf.a); }
       if (awardOf.a !== undefined) return;
     }
     if (awardOf) awardOf.stop();
@@ -6178,8 +6182,7 @@ const App = (() => {
     awardOf = job;
     job.stop = Awards.start(code, HUMAN, a => {
       job.a = a;
-      const r = ( x) => Math.round(1000 * x) / 1000, part = ( x) => x.n ? r(x.cost / x.n) : null;
-      if (a) Logger.log('AWARD', { band: a.band, cost: r(a.cost), choices: a.choices, cards: part(a.parts.play), discards: part(a.parts.discard), trump: part(a.parts.name), exchange: part(a.parts.exchange) });
+      if (a) logAward(a);
       const now = $('overlay').firstElementChild;
       if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
     });
