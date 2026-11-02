@@ -7841,11 +7841,17 @@ const App = (() => {
     box.classList.add('award');
     box.setAttribute('data-award', String(a.band));
   }
+  /** @param {Award} a */
+  function logAward(a) {
+    const r = (/** @type {number} */ x) => Math.round(1000 * x) / 1000, part = (/** @type {AwardPart} */ x) => x.n ? r(x.cost / x.n) : null;
+    Logger.log('AWARD', { band: a.band, cost: r(a.cost), choices: a.choices, cards: part(a.parts.play), discards: part(a.parts.discard), trump: part(a.parts.name), exchange: part(a.parts.exchange) });
+  }
   /** @param {Element} box @param {string | null} code */
   function awardBox(box, code) {
     if (!code || !Awards.on()) return;
+    /* Every box that shows an award writes its AWARD line, a saved grade too: a replay's events end with its own. */
     if (awardOf && awardOf.code === code) {
-      if (awardOf.a) showAward(box, awardOf.a);
+      if (awardOf.a) { showAward(box, awardOf.a); logAward(awardOf.a); }
       if (awardOf.a !== undefined) return;
     }
     if (awardOf) awardOf.stop();
@@ -7853,8 +7859,7 @@ const App = (() => {
     awardOf = job;
     job.stop = Awards.start(code, HUMAN, a => {
       job.a = a;
-      const r = (/** @type {number} */ x) => Math.round(1000 * x) / 1000, part = (/** @type {AwardPart} */ x) => x.n ? r(x.cost / x.n) : null;
-      if (a) Logger.log('AWARD', { band: a.band, cost: r(a.cost), choices: a.choices, cards: part(a.parts.play), discards: part(a.parts.discard), trump: part(a.parts.name), exchange: part(a.parts.exchange) });
+      if (a) logAward(a);
       const now = $('overlay').firstElementChild;
       if (a && now && now.classList.contains('gameover') && awardOf === job) showAward(now, a);
     });
