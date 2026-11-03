@@ -17,7 +17,7 @@ These principles decide every rule below, and any case the rules do not cover.
 
 ### Principles from Masahiro Sakurai's menu advice
 
-These come from Sakurai's *Masahiro Sakurai on Creating Games* UI episodes and his Famitsu column "Rethinking Your Menus" (Vol. 138). The **Source** column says where each point comes from.
+These come from Sakurai's *Masahiro Sakurai on Creating Games* series and his Famitsu column "Rethinking Your Menus" (Vol. 138). The **Source** column says where each point comes from. Readability over flair, from the owner's summary, is P5.
 
 | # | Principle | What it means for a result panel | Source |
 |---|---|---|---|
@@ -26,6 +26,11 @@ These come from Sakurai's *Masahiro Sakurai on Creating Games* UI episodes and h
 | P7 | **Every element explains itself.** In his menus, each choice shows a line of help text. | Headings are plain words, not abbreviations, so the table needs no footnote or key. | Famitsu Vol. 138 |
 | P8 | **Pressing confirm keeps the player moving.** Repeated confirm presses lead to the main mode. | The panel's main button (Next hand, or New deal at game over) has the focus, so Enter or Space moves on. The panel never asks a question first. | Famitsu Vol. 138 |
 | P9 | **Fonts and colors carry quality; colors keep one meaning.** | Points use the status colors only (`--good`, `--danger`); names use only seat colors. No other color appears in the table. | UI episodes on fonts and on color-coding |
+| P10 | **Minimize button presses.** Reach play or the key choice in as few presses as possible. | One press leaves a result panel. No step sits between the panel and the next hand or game. | Owner's summary of the series |
+| P11 | **Smart defaults.** Pre-select the choice that 80–90% of players want. | The main button is pre-selected (has the focus) when the panel opens: **Next hand** on the table; at game over, **Next wave** after a win that opens one, else **New deal**. | Owner's summary of the series |
+| P12 | **Position continuity.** Returning to a menu keeps the selection on the option just used. | When the game-over dialog opens again (after **‹ Back**, or on leaving the replay viewer with **Watch**), the focus returns to the button the player last pressed, not to the default. | Owner's summary of the series |
+| P13 | **Asymmetry for priority.** Bold color and larger size draw the eye to the main choice; secondary choices are smaller. | The main button is gold and spans the full width of the button area. The secondary buttons (**Watch**, **Try again**, **Export**) share one smaller row below it. | Owner's summary of the series |
+| P14 | **Snappy responsiveness.** Menus respond at once; no transition holds up the player. | The panel's buttons accept input on the frame the panel appears. The award stroke and the score flash play alongside; they never delay or block a press. | Owner's summary of the series |
 
 ## Terms
 
@@ -110,7 +115,7 @@ The call line (trump, namer, dealer) is left out: the trump chip and the seat ta
 | 2 | End reason | "The game ended in hand 10 by winning the Showdown." |
 | 3 | Final table | Section 4: final score, and the last hand's points. |
 | 4 | Wave note | As today. |
-| 5 | End buttons | As today. |
+| 5 | End buttons | The main button on its own full-width row, gold and focused (P11, P13); **Watch**, **Try again** and **Export** in one smaller row below. |
 
 The trophy is left out: the headline already names the winner. The call line is left out: trump and dealer of the last hand do not explain the result.
 
@@ -205,8 +210,10 @@ An automated check in `tests/scenarios.js` opens each panel at 320 px, 360 px, 4
 5. No cell's content is clipped.
 6. Padding is never below its floor.
 7. Every stats table comes from the one builder.
-8. The panel's main button has the focus when the panel opens (P8).
+8. The panel's main button has the focus when the panel opens (P8, P11), or the button last pressed when the dialog opens again (P12).
 9. No element is larger than one ranked above it in section 5.1 (P6).
+10. A press on the main button is acted on with no wait, while the award stroke or score flash is still playing (P14).
+11. The main button is wider than each secondary button (P13).
 
 ## 7. What changes from today
 
@@ -217,6 +224,7 @@ An automated check in `tests/scenarios.js` opens each panel at 320 px, 360 px, 4
 | "SD" abbreviation and footnote | Headings written out; no footnote |
 | Columns sized by content, uneven pitch | Equal columns, equal pitch |
 | Padding cut at phone width (PR #279) | Padding floor; content reduced instead |
+| Four end buttons of equal size, focus not set | One full-width main button, focused; three smaller buttons below |
 
 ## 8. Open decisions
 
