@@ -6,7 +6,7 @@ This page is the standard for every panel that reports a hand or a game result: 
 
 ## Principles
 
-These four principles decide every rule below, and any case the rules do not cover.
+These principles decide every rule below, and any case the rules do not cover.
 
 | # | Principle | What it means for a result panel |
 |---|---|---|
@@ -14,6 +14,18 @@ These four principles decide every rule below, and any case the rules do not cov
 | P2 | **Simpler is better.** | Fewer parts, fewer columns, fewer words. When a part can go, it goes. |
 | P3 | **Size adaptive.** | The layout follows the space it has. It never relies on one tuned width, and it never scrolls sideways. |
 | P4 | **White space is welcome; alignment is important.** | Room comes from showing less, not from squeezing padding. Everything in the panel sits on shared lines: shared left edges, shared column centers, shared baselines. |
+
+### Principles from Masahiro Sakurai's menu advice
+
+These come from Sakurai's *Masahiro Sakurai on Creating Games* UI episodes and his Famitsu column "Rethinking Your Menus" (Vol. 138). The **Source** column says where each point comes from.
+
+| # | Principle | What it means for a result panel | Source |
+|---|---|---|---|
+| P5 | **Clarity before style.** A UI is judged by how fast the player finds what they need. | The panel is read at a glance: the outcome comes first, then the numbers. No decoration competes with them. | UI episode "Clarity versus Style" |
+| P6 | **Size shows importance.** The most important element is the biggest; rarely needed ones are small. | One visual order in every panel: outcome, then points, then names, then headings. See section 5.1. | UI episode on icon sizes |
+| P7 | **Every element explains itself.** In his menus, each choice shows a line of help text. | Headings are plain words, not abbreviations, so the table needs no footnote or key. | Famitsu Vol. 138 |
+| P8 | **Pressing confirm keeps the player moving.** Repeated confirm presses lead to the main mode. | The panel's main button (Next hand, or New deal at game over) has the focus, so Enter or Space moves on. The panel never asks a question first. | Famitsu Vol. 138 |
+| P9 | **Fonts and colors carry quality; colors keep one meaning.** | Points use the status colors only (`--good`, `--danger`); names use only seat colors. No other color appears in the table. | UI episodes on fonts and on color-coding |
 
 ## Terms
 
@@ -154,13 +166,26 @@ With trick columns gone, "—" means only "no points", so the old clash between 
 
 ## 5. Size and space
 
-**Rule 5.1.** Type, padding and column width scale with the space the panel has (CSS `clamp()` against the container width), not with fixed breakpoints.
+### 5.1 Visual order (P6)
 
-**Rule 5.2.** Padding has a floor that is never cut to make content fit. When content does not fit, the table shows less (section 4), never less space.
+| Rank | On-table panel | Game-over dialog |
+|---|---|---|
+| 1 (largest) | Outcome line | Headline ("Doc wins!") |
+| 2 | Points | Final scores |
+| 3 | Names | Names and last-hand points |
+| 4 (smallest) | Headings, footnote | Headings, end reason |
 
-**Rule 5.3.** The panel fits every viewport from 320 px wide up, with no sideways scroll. The `.stats-wrap` scroll container is removed.
+**Rule 5.1.** No element is larger than an element ranked above it.
 
-**Rule 5.4.** On a wide screen the table stops growing at a width where its numbers still read as one row, and stays centered in the panel.
+### 5.2 Adaptive sizing
+
+**Rule 5.2.** Type, padding and column width scale with the space the panel has (CSS `clamp()` against the container width), not with fixed breakpoints.
+
+**Rule 5.3.** Padding has a floor that is never cut to make content fit. When content does not fit, the table shows less (section 4), never less space.
+
+**Rule 5.4.** The panel fits every viewport from 320 px wide up, with no sideways scroll. The `.stats-wrap` scroll container is removed.
+
+**Rule 5.5.** On a wide screen the table stops growing at a width where its numbers still read as one row, and stays centered in the panel.
 
 | Role | Small | Large | Weight |
 |---|---|---|---|
@@ -180,6 +205,8 @@ An automated check in `tests/scenarios.js` opens each panel at 320 px, 360 px, 4
 5. No cell's content is clipped.
 6. Padding is never below its floor.
 7. Every stats table comes from the one builder.
+8. The panel's main button has the focus when the panel opens (P8).
+9. No element is larger than one ranked above it in section 5.1 (P6).
 
 ## 7. What changes from today
 
