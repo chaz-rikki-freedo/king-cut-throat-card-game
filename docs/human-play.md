@@ -132,7 +132,7 @@ The measurements don't close this gap. The hand-value results show how the thres
 Dynamic is a third mode, next to Free play and Waves, in the app since 2026-10-14. The bots ease off for players who are clearly new, and tighten back to normal as the players improve. It grew out of this note. The decisions, and the measurements behind them, are in the decision record on [issue #117](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/117). In short:
 
 - **It only ever makes the game easier.** The bots never play harder than normal, and never punish a new player.
-- **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game.
+- **The bots never see hidden cards during play.** A review after the game may use the whole deal, only to set the starting easing for the next Dynamic game (see [Who sees what](../README.md#who-sees-what)).
 - **It eases mainly by lowering hunches,** following an easing ladder that was measured row by row, down to a floor at about Novice strength with 1 hunch. Style never changes (only feints and wariness fade, since 2026-10-20), so each personality still plays like itself.
 - **It spots gross mistakes within a game,** using the fast signals above. It judges finer skill with the slow ones, from the player's record across games plus the hands of the current game.
 - **Bluffing stays a real tactic.** The bots never adapt to a player's bluffing, because adapting would make them harder than normal.
@@ -299,7 +299,7 @@ What it says:
 
 Limits:
 
-- **Hindsight is face up.** A card that was right on what you could see can cost something when every hand is shown. Every seat pays that, so the bands allow for it.
+- **Hindsight is face up.** Awards is a judge, not a player: like the Engine and the replay viewer, it reads every hand, but only after the game, and nothing it finds reaches a bot (see [Who sees what](../README.md#who-sees-what)). The players, you and the bots, chose without seeing the other hands, so a card that was right on what you could see can cost something when every hand is shown. Read a cost, the card cost above all, as a little harsh. Every seat pays the same, so the bands allow for it.
 - **The two opponents are taken to defend together.** Real bots don't, so the solver is strict.
 - **The estimate grades discards, trump and exchange.** It leaves out the kitty and the play, so it can call a sound discard poor.
 - **The player sees only the color.** No words, numbers or hover text explain the stroke. For development, the event log's `AWARD` line has the band, the mean cost and each part, and `KCT.Awards.read(code)` gives them for any replay code.

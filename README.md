@@ -304,6 +304,26 @@ A player who plays against type can fool a bot that reads: the more it believes,
 
 - **Auto** (Settings → Bots only): Shrewd when the bot's **Watches score** is on, Fair when it is off.
 
+## Who sees what
+
+No bot and no player ever sees a hidden card. Each bot decides from a **View**: what its own seat could see at the table (section 5 of `index.html`, the information boundary). The table draws your seat from the same kind of View, and the event log records public information only.
+
+Some parts of the app read the whole deal, every hand face up. Each is a referee or works after the game, so none of them can change a choice in the game being played:
+
+| Part | When it sees every hand | What it can affect |
+|---|---|---|
+| **Engine** | Always: it holds the true state and enforces the rules. | It never makes a choice. |
+| **Replay** | After the game: it rebuilds the game from its seed and choices. | Nothing. |
+| **Replay viewer** | After the game, when you watch. | Nothing. It shows you every hand by design. |
+| **Habits** | After the game: it counts how each seat played. | Nothing. No bot reads it. |
+| **Tally** | After the game: it measures how strong each hand dealt was. | Nothing. Nothing in the app uses it yet. |
+| **Awards** | After the game: it grades your choices. | Nothing but the color of the game-over box. |
+| **Dynamic's review** | After a Dynamic game: it updates your profile (`kct.profile`). | How much the bots ease off in your next Dynamic games. It only ever makes them easier, never stronger, and never shows them a card. |
+
+The browser console can read the whole state too (`KCT.App.app.state`), for testing only (see **Console**).
+
+The parts that judge after the game, Awards and Dynamic's review, judge choices made without seeing every hand, with knowledge of every hand. A play that was sound on what you could see can still count as a cost, so read an award as a little harsh. Every seat is judged the same way, so the bands stay fair between players (see [Awards](docs/human-play.md#awards-how-you-did-with-your-cards-2026-10-31)).
+
 ## Waves
 
 Eighteen fixed tables, easiest first. Each wave seats two personalities, West and East. Start a wave from the menu, the URL or the console.
