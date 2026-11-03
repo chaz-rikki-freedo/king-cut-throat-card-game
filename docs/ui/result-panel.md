@@ -2,7 +2,7 @@
 
 **Status: built, in review.** The owner chose to cover the table with the game-over dialog. One decision is still open: whether panel text is left-aligned or centered (section 8).
 
-This page is the standard for every panel that reports a hand or a game result: what it holds, what it leaves to the table behind it, and how its stats table is laid out. Each such panel follows this page. A change to one panel that this page does not allow starts with a change to this page.
+This page applies the [UI and UX standard](ux-standard.md) to result panels; where the two disagree, that page wins. It is the standard for every panel that reports a hand or a game result: what it holds, what it leaves to the table behind it, and how its stats table is laid out. Each such panel follows this page. A change to one panel that this page does not allow starts with a change to this page.
 
 ## Principles
 
