@@ -1,6 +1,6 @@
 # Result panel standard
 
-**Status: draft for review.** Nothing in this page is built yet. Items marked **Decision needed** wait for the owner's call.
+**Status: built, in review.** The owner chose to cover the table with the game-over dialog. One decision is still open: whether panel text is left-aligned or centered (section 8).
 
 This page is the standard for every panel that reports a hand or a game result: what it holds, what it leaves to the table behind it, and how its stats table is laid out. Each such panel follows this page. A change to one panel that this page does not allow starts with a change to this page.
 
@@ -86,12 +86,9 @@ Every row of this table breaks P1.
 
 **Rule 2.2.** The game-over dialog **covers** the context completely. Its backdrop is opaque, so the dialog is the only thing in view and is the single place for its facts. The player closes it (**‹ Back**) to see the table again.
 
-> **Decision needed: cover or leave out, for the game-over dialog.** Rule 2.2 is the recommendation. The other way is to keep the see-through backdrop and leave out of the dialog every fact the table shows.
->
-> | Option | Dialog holds | Trade-off |
-> |---|---|---|
-> | Cover (recommended) | Winner, how the game ended, final scores, and the last hand's points. | One complete end screen, the same in a live game and in the replay viewer. The table is hidden until **‹ Back**. |
-> | Leave out | Winner headline, how the game ended, and the buttons only. | The smallest dialog. The scores and tricks are read off the seats behind it, which the dialog partly hides at phone height. |
+**Decided:** cover. The owner chose it over leaving out of the dialog every fact the table shows.
+
+**Rule 2.3.** On a phone (600 px wide or less), the covered dialog fills the screen, its content centered top to bottom, with **‹ Back** on its own line above the headline so the headline stays on one line.
 
 ## 3. Panel anatomy
 
@@ -99,20 +96,19 @@ Every row of this table breaks P1.
 
 | # | Part | Content | Example |
 |---|---|---|---|
-| 1 | Title | The kind of result, with no hand number (the hand chip has it). | "Hand result", "Showdown!", "Showdown result" |
-| 2 | Outcome line | One sentence: who won what. | "Doc wins the Showdown 3–2." |
-| 3 | Points table | Section 4: only the points the hand gave. | |
-| 4 | Body text | Showdown setup only: what happens next. | |
-| 5 | Footnote | Only when the table uses an abbreviation or a score rule needs saying. | "Score cannot fall below 0." |
+| 1 | Outcome line | One sentence: who won what. The largest text in the panel. | "Doc wins the Showdown 3–2." |
+| 2 | Points table | Section 4: only the points the hand gave. | |
+| 3 | Body text | Showdown setup only: what happens next. | |
+| 4 | Footnote | Only when a score rule needs saying. | "Score cannot fall below 0." (only when a −1 met a score of 0) |
 
-The call line (trump, namer, dealer) is left out: the trump chip and the seat tags show all three.
+The panel has no title: the Hand chip in the top bar already names the stage ("Result", "Showdown", "Thrown in", "Redeal"). The call line (trump, namer, dealer) is left out: the trump chip and the seat tags show all three. The Showdown setup's "Trump stays ♣ Clubs" is left out for the same reason.
 
-### 3.2 Game-over dialog (if covered)
+### 3.2 Game-over dialog
 
 | # | Part | Content |
 |---|---|---|
 | 1 | Headline | "You win!" or "*Name* wins!" |
-| 2 | End reason | "The game ended in hand 10 by winning the Showdown." |
+| 2 | End reason | "The game ended at once, in hand 10, by winning the Showdown." Muted, smaller than the names. |
 | 3 | Final table | Section 4: final score, and the last hand's points. |
 | 4 | Wave note | As today. |
 | 5 | End buttons | The main button on its own full-width row, gold and focused (P11, P13); **Watch**, **Try again** and **Export** in one smaller row below. |
@@ -148,9 +144,9 @@ Columns appear in this order. A table leaves out the columns it does not use; it
 
 **Rule 4.7.** Every number and its heading are centered on the column's center line. Numbers use tabular figures, so digits do not shift between rows.
 
-**Rule 4.8.** Names, the title, the outcome line and the body text share one left edge in the on-table panel.
+**Rule 4.8.** Names, the outcome line and the body text share one left edge in the on-table panel.
 
-> **Decision needed: centered or left-aligned text in the panel.** Rule 4.8 left-aligns the text so it lines up with the names. Today the title and lines are centered. Left-aligned text gives one edge for the eye; centered text matches the dialog headline.
+> **Decision needed: centered or left-aligned text in the panel.** Rule 4.8 left-aligns the text so it lines up with the names. Before this standard the panel text was centered. Left-aligned text gives one edge for the eye; centered text matches the dialog headline.
 
 | Content | Horizontal | Vertical |
 |---|---|---|
@@ -230,8 +226,7 @@ An automated check in `tests/scenarios.js` opens each panel at 320 px, 360 px, 4
 
 | # | Question | Section | Recommendation |
 |---|---|---|---|
-| 1 | Game-over dialog: cover the table, or leave out what the table shows. | 2 | Cover |
-| 2 | Panel text: left-aligned with the names, or centered. | 4.2 | Left-aligned |
+| 2 | Panel text: left-aligned with the names (built), or centered. | 4.2 | Left-aligned |
 
 ## Related pages
 

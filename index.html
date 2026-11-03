@@ -59,10 +59,13 @@ button{font:inherit;color:inherit}
 .modal .mtop{margin:0 0 0.625rem}
 .modal .mtop h2,.modal .mtop .big{margin:0;text-align:center}
 .export-copied{min-height:1.25rem;margin:0.5rem 0 0;font-size:0.8125rem;color:var(--muted);text-align:right}
-/* The end buttons, in the results dialog and the action bar: one row, centered (the dialog's at its right); on a
-   phone a 2 x 2 grid of equal buttons, Next wave across the full width under it. */
+/* The end buttons in the action bar: one row, centered; on a phone a 2 x 2 grid of equal buttons, Next wave across
+   the full width under it. In the game-over box (docs/ui/result-panel.md, P13): the main button alone on a full-width
+   row, gold and larger; the others share one smaller row below it. */
 .end-btns{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
-.modal .row .end-btns{justify-content:flex-end}
+.modal .row .end-btns{width:100%}
+.modal .row .end-btns .btn{flex:1 1 auto;font-size:0.875rem;padding:0.5rem 0.75rem}
+.modal .row .end-btns .btn.primary{order:-1;flex-basis:100%;font-size:1.125rem;padding:0.875rem 1rem}
 /* The replay viewer's controls: five filled icons, Play in the middle and in gold, on one dark bar. Exit is the header's Replay chip. */
 .watch-ctl{display:inline-flex;align-items:center;gap:0.5rem;padding:0.25rem 0.75rem;border-radius:0.875rem;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12)}
 .watch-btn{display:grid;place-items:center;width:2.75rem;height:2.75rem;padding:0;border:0;border-radius:0.625rem;background:none;color:var(--accent);cursor:pointer}
@@ -80,8 +83,8 @@ button{font:inherit;color:inherit}
 .seat-sit .seat-face{display:inline-block;flex:none}
 .sit-ico{width:0.875rem;height:0.875rem;flex:none;fill:none;stroke:var(--accent);stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
 @media (max-width:480px){
-  .end-btns,.modal .row .end-btns{display:grid;grid-template-columns:1fr 1fr;width:100%}
-  .end-btns [data-action="next-wave"]{grid-column:1 / -1}
+  .end-btns:not(.modal .end-btns){display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .end-btns:not(.modal .end-btns) [data-action="next-wave"]{grid-column:1 / -1}
 }
 .icon-btn svg,.speed-pick svg{width:1.375rem;height:1.375rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .speed-pick{display:inline-flex;align-items:center;gap:0.25rem;height:2.5rem;padding:0 0.25rem 0 0.5rem;border-radius:0.625rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18)}
@@ -262,19 +265,27 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .slot.win .card{box-shadow:0 0 0 0.25rem var(--gold),0 0.375rem 1rem rgba(0,0,0,.45)}
 
 
-.summary{background:var(--panel-strong);border-radius:0.875rem;padding:0.875rem 1rem;text-align:center}
-.summary h3{margin:0 0 0.5rem;font-size:1.125rem}
-.summary p{margin:0.5rem 0}
-.summary table{margin:0.5rem auto;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.summary td,.summary th{padding:0.1875rem 0.625rem;border-bottom:1px solid rgba(255,255,255,.1)}
-.summary .pos{color:var(--good);font-weight:800}.summary .neg{color:var(--danger);font-weight:800}
-.summary .meta{font-size:0.75rem;color:var(--muted);margin-top:0.125rem}
-.summary .stats-wrap{overflow-x:auto;max-width:100%}
-.summary table.stats{font-size:0.8125rem}
-.summary table.stats td,.summary table.stats th{padding:0.1875rem 0.25rem}
-.summary table.stats tr>:first-child{padding-left:0}.summary table.stats tr>:last-child{padding-right:0}
-.summary table.stats th{font-size:0.6875rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0;line-height:1.2}
-.summary table.stats td:first-child{text-align:left}
+.summary{background:var(--panel-strong);border-radius:0.875rem;padding:clamp(1rem, 3vw, 1.5rem);text-align:left}
+/* Result panels (docs/ui/result-panel.md). No title: the Hand chip already names the stage. Size shows importance:
+   the outcome line, then the points, then the names, then the headings. */
+.summary p{margin:0.75rem 0 0;font-size:0.9375rem}
+.summary .outcome{margin:0;font-size:clamp(1.125rem, 1rem + 0.8vw, 1.375rem);font-weight:800;line-height:1.3}
+.summary .meta{font-size:0.75rem;color:var(--muted);margin-top:0.5rem}
+/* The results table: a grid, so the number columns share the spare width equally and each number and its heading
+   sit on one center line. The name column is as wide as the longest name. */
+.rtable{--hfs:clamp(0.625rem, 0.5rem + 0.6vw, 0.6875rem);display:grid;align-items:stretch;grid-template-columns:max-content repeat(var(--cols), minmax(calc(var(--chars) * var(--hfs) * 0.87 + 0.375rem), 1fr));column-gap:0;width:100%;max-width:26rem;margin:1rem 0 0;font-variant-numeric:tabular-nums}
+.rrow{display:contents}
+/* Every cell of a row is as tall as the row, so the row lines run unbroken; the content is centered inside. */
+.rtable [role]:not(.rrow){display:flex;align-items:center;justify-content:center;padding:0.5rem 0.1875rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.rtable .rname[role]{justify-content:flex-start}
+.rtable .rhead > [role]{align-items:flex-end}
+.rtable .rname{padding-left:0!important;padding-right:0.5rem!important}
+.rtable .rnum{text-align:center;font-size:clamp(1rem, 0.9rem + 0.5vw, 1.125rem);font-weight:800}
+.rtable .rname{text-align:left;font-size:clamp(0.9375rem, 0.85rem + 0.4vw, 1.0625rem);font-weight:800;white-space:nowrap}
+.rtable .rhead > *{padding-top:0;font-size:var(--hfs);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.rtable .rscore{font-size:clamp(1.375rem, 1.2rem + 0.8vw, 1.625rem);line-height:1.1;color:var(--ink)}
+.rtable .pos{color:var(--good)}.rtable .neg{color:var(--danger)}
+.rnote{font-size:0.75rem!important;color:var(--muted)}
 
 
 
@@ -382,6 +393,17 @@ button.card{cursor:pointer}
   .modal.profile .sheet-body{padding:1rem}
 }
 .overlay[hidden]{display:none}
+/* The game-over box covers the table (docs/ui/result-panel.md, rule 2.2): nothing behind it shows the same facts. */
+.overlay:has(> .modal.gameover){background:var(--page)}
+.modal.gameover .end-reason{margin:0.75rem 0 0;font-size:0.9375rem;color:var(--muted);text-align:center}
+.modal.gameover .rtable{margin-inline:auto}
+/* On a phone the covered game-over box fills the screen, as the long panels do, its content centered top to bottom. */
+@media (max-width:600px){
+  .overlay:has(> .modal.gameover){padding:0}
+  .modal.gameover{max-width:none;width:100%;height:100%;max-height:none;border-radius:0;padding:1.25rem 1rem;display:flex;flex-direction:column;justify-content:center}
+  /* ‹ Back on its own line, so the headline has the full width and stays on one line. */
+  .modal.gameover .mtop{grid-template-columns:1fr;row-gap:0.5rem}
+}
 /* The award (Awards, on by default): a heavy stroke in the band's color, neon red (0) to emerald neon green (6), that
    fades in once the grade is worked out. The 7 colors are evenly spaced to the eye (CIEDE2000 steps of 14 to 18). */
 .modal.gameover[data-award="0"]{--award:var(--award0)}.modal.gameover[data-award="1"]{--award:var(--award1)}.modal.gameover[data-award="2"]{--award:var(--award2)}.modal.gameover[data-award="3"]{--award:var(--award3)}.modal.gameover[data-award="4"]{--award:var(--award4)}.modal.gameover[data-award="5"]{--award:var(--award5)}.modal.gameover[data-award="6"]{--award:var(--award6)}
@@ -773,10 +795,6 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
 .center{position:relative}
 .center{position:relative;padding-top:3.625rem!important;padding-bottom:0.375rem;min-height:calc(var(--cw)*2.85 + 5.25rem)}
 .trick{padding-bottom:3.25rem!important}
-.summary table.stats td:first-child{white-space:nowrap;font-size:1.0625rem;font-weight:800;text-align:left}
-.summary table.stats td:last-child{font-size:1.625rem;font-weight:800;line-height:1.1}
-/* Phone width: smaller names and scores keep the six-column Showdown table inside the panel. */
-@media (max-width:26rem){.summary table.stats td:first-child{font-size:0.9375rem}.summary table.stats td:last-child{font-size:1.375rem}.summary table.stats{font-size:0.75rem}.modal.gameover{padding-inline:0.875rem}.modal.gameover .summary{padding-inline:0.625rem}}
 /* The side cards sit at the top of the trick and yours sits lower, with no empty band above them. */
 .trick .slot-1,.trick .slot-2{align-self:start}
 .trick .slot-0{margin-top:calc(var(--cw)*.75 - 0.375rem)}
@@ -855,7 +873,6 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .tpips i.on{background:var(--ink);border-color:var(--ink)}
 .me > .tpips{order:9;align-self:center}
 .sscore{font-size:1.625rem!important;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)!important}
-.summary table.stats td:last-child{color:var(--ink)!important}
 .center{padding-top:0.625rem!important}
 .table.showdown .not-sd{background:var(--panel)!important}
 .tag.receiver{background:#e07b28!important;color:#1b1b1b!important}
@@ -5159,33 +5176,30 @@ const Render = (() => {
   /* +2 green, −1 red, 0 as a dash. */
   const signedPointsHTML = d => d > 0 ? '<span class="pos">+' + d + '</span>' : d < 0 ? '<span class="neg">−' + (-d) + '</span>' : '—';
 
-  function trumpCallAndDealerHTML(v) {
-    const n = p => nameOf(v, p);
-    const call = Engine.trumpCall(v.bidLog);
-    const parts = [];
-    if (v.trump) parts.push('Trump ' + suitLabel(v.trump) + (call ? ' · ' + (call.action === 'accept' ? 'accepted' : 'named') + ' by ' + n(call.player) + ' (round ' + call.round + ')' : ''));
-    if (v.dealer !== null) parts.push('Dealer ' + n(v.dealer));
-    return parts.length ? '<div class="meta">' + parts.join(' · ') + '</div>' : '';
-  }
 
-  /* Full per-player table for the hand. Rows are sorted by score. */
-  function statsTableHTML(v, opts) {
-    const n = p => nameOf(v, p);
-    const st = v.handStats, hs = v.handSummary;
-    const sd = opts.showdown ? hs.showdown : null;
-    const head = ['Player', 'Tricks'];
-    if (sd) head.push('SD tricks');
-    if (!opts.preShowdown) head.push(sd ? 'SD pts' : 'Hand pts');
-    head.push('King pts', 'Score');
-    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
-      /* Each player is named in their color; the tags already show the roles. */
-      const c = ['<span style="color:var(--name' + p + ')">' + n(p) + '</span>' + (v.gameOver && p === v.winner ? ' 🏆' : ''), hs.tricks[p]];
-      if (sd) c.push(hs.participants.includes(p) ? sd.tricks[p] : '—');
-      if (!opts.preShowdown) c.push(signedPointsHTML(sd ? st.pts[p].showdown : st.pts[p].hand));
-      c.push(signedPointsHTML(st.pts[p].king), scoreText(v.scores[p]));
-      return '<tr><td>' + c.join('</td><td>') + '</td></tr>';
-    }).join('');
-    return '<div class="stats-wrap"><table class="stats"><tr><th>' + head.join('</th><th>') + '</th></tr>' + rows + '</table></div>';
+  /* The one results table (docs/ui/result-panel.md). The name column has no heading; each number column has one word.
+     The number columns share the spare width equally, so every number sits on its column's center line.
+     opts.points: 'hand' or 'showdown' for that column, or none; opts.kings: the Kings column; opts.score: the Score column.
+     Rows are sorted by score. */
+  /** @param {any} v @param {{ points?: 'hand' | 'showdown', kings?: boolean, score?: boolean }} opts */
+  function resultTableHTML(v, opts) {
+    const n = (/** @type {number} */ p) => nameOf(v, p);
+    const st = v.handStats;
+    /** @type {[string, (p: number) => string, string][]} */
+    const cols = [];
+    if (opts.points) cols.push([opts.points === 'showdown' ? 'Showdown' : 'Hand', p => signedPointsHTML(st.pts[p][opts.points === 'showdown' ? 'showdown' : 'hand']), '']);
+    if (opts.kings) cols.push(['Kings', p => signedPointsHTML(st.pts[p].king), '']);
+    if (opts.score) cols.push(['Score', p => scoreText(v.scores[p]), ' rscore']);
+    const cell = (/** @type {string} */ role, /** @type {string} */ cls, /** @type {string} */ html, extra = '') => '<span role="' + role + '" class="' + cls + '"' + extra + '>' + html + '</span>';
+    const head = '<div class="rrow rhead" role="row">' + cell('columnheader', 'rname', '', ' aria-label="Player"') + cols.map(c => cell('columnheader', 'rnum', c[0])).join('') + '</div>';
+    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p =>
+      '<div class="rrow" role="row">' + cell('rowheader', 'rname', n(p), ' style="color:var(--name' + p + ')"') + cols.map(c => cell('cell', 'rnum' + c[2], c[1](p))).join('') + '</div>').join('');
+    /* Every number column starts as wide as the longest heading needs (--chars), so spare width shared equally keeps them equal. */
+    return '<div class="rtable" role="table" style="--cols:' + cols.length + ';--chars:' + Math.max(...cols.map(c => c[0].length)) + '">' + head + rows + '</div>';
+  }
+  /* A Showdown loss of −1 cannot take a score below 0: say so only when it happened. */
+  function floorNoteHTML(v, /** @type {'hand' | 'showdown'} */ key) {
+    return [0, 1, 2].some(p => v.handStats.pts[p][key] < 0 && v.scores[p] === 0) ? '<p class="rnote">Score cannot fall below 0.</p>' : '';
   }
 
   /* ui (optional): the app's ui, whose houseRules say when the running game plays a different Showdown lead rule. */
@@ -5196,22 +5210,22 @@ const Render = (() => {
     if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }), ui);
     switch (v.phase) {
       case P.ABANDONED:
-        return '<div class="summary"><h3>' + handLabel(v) + ' abandoned</h3><p>All three players passed in both rounds. No points. The deal passes to the left.</p></div>';
+        return '<div class="summary"><p class="outcome">All three players passed in both rounds.</p><p>No points. The deal passes to the left.</p></div>';
       case P.JOKER_VOID:
-        return '<div class="summary"><h3>The Joker was turned up</h3><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
+        return '<div class="summary"><p class="outcome">The Joker was turned up.</p><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
       case P.HAND_SCORE:
-        return '<div class="summary"><h3>' + handLabel(v) + ' result</h3><div>' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</div>' + trumpCallAndDealerHTML(v) +
-          statsTableHTML(v, {}) + '</div>';
+        return '<div class="summary"><p class="outcome">' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</p>' +
+          resultTableHTML(v, { points: 'hand', kings: true }) + floorNoteHTML(v, 'hand') + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
-        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown!</h3><p>' + n(a) + ' and ' + n(b) + ' tied 3–3. ' + n(hs.mediator) + ' won 1 trick and mediates.</p>' + trumpCallAndDealerHTML(v) +
-          statsTableHTML(v, { preShowdown: true }) +
-          '<p>' + n(hs.mediator) + ' deals ' + Engine.C.SHOWDOWN_DEAL + ' outside cards to each. Each discards ' + Engine.C.SHOWDOWN_DISCARD + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play ' + Engine.C.SHOWDOWN_TRICKS + ' tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '. Trump stays ' + suitLabel(v.trump) + '.</p><div class="meta">Winner +1 · Loser −1 (min 0) · Winning Kings +1</div>' + leadRuleNote(v, ui) + '</div>';
+        return '<div class="summary"><p class="outcome">' + n(a) + ' and ' + n(b) + ' tied 3–3. ' + n(hs.mediator) + ' won 1 trick and mediates.</p>' +
+          resultTableHTML(v, { kings: true }) +
+          '<p>' + n(hs.mediator) + ' deals ' + Engine.C.SHOWDOWN_DEAL + ' outside cards to each. Each discards ' + Engine.C.SHOWDOWN_DISCARD + (v.mediatorLead ? ', ' + n(hs.mediator) + ' picks who leads,' : ',') + ' then they play ' + Engine.C.SHOWDOWN_TRICKS + ' tricks' + (v.mediatorLead ? '' : sdLeadText(v)) + '.</p><div class="meta">Winner +1 · Loser −1 (min 0) · Winning Kings +1</div>' + leadRuleNote(v, ui) + '</div>';
       }
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
-        return '<div class="summary"><h3>' + handLabel(v) + ': Showdown result</h3><div>' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</div>' + trumpCallAndDealerHTML(v) +
-          statsTableHTML(v, { showdown: true }) + '<div class="discard-note">SD = Showdown. Score cannot fall below 0.</div></div>';
+        return '<div class="summary"><p class="outcome">' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</p>' +
+          resultTableHTML(v, { points: 'showdown', kings: true }) + floorNoteHTML(v, 'showdown') + '</div>';
       }
       default: return '';
     }
@@ -5576,7 +5590,7 @@ const Render = (() => {
     return true;
   }
 
-  return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
+  return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, resultTableHTML, scoreText, advCircles, advTags });
 })();
 
 /* ---------------------------------------------------------------------
@@ -7818,21 +7832,13 @@ const App = (() => {
     }
   }
 
-  /* This hand's stats in the game-over box. Mid-hand (no hand result yet) shows tricks and Kings so far. */
-  function gameOverHandHTML(v) {
-    if (!v.handStats) return '';
-    const n = p => Render.nameOf(v, p);
+  /* The game-over box's one table (docs/ui/result-panel.md): the final scores, with the last hand's points beside them.
+     A game that ended mid-hand (a King point) has no hand or Showdown points yet: Kings and Score only. */
+  function finalTableHTML(v) {
+    if (!v.handStats) return Render.resultTableHTML(v, { score: true });
     const hs = v.handSummary;
-    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return '<div class="summary"><h3>' + handLabel(v) + ' stats</h3>' + Render.trumpCallAndDealerHTML(v) + Render.youText(Render.statsTableHTML(v, { showdown: !!hs.showdown })) + '</div>';
-    const st = v.handStats;
-    const sd = v.showdown && v.showdown.active;
-    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a] || a - b).map(p => {
-      const k = st.pts[p].king;
-      /* Each player is named in their color, as the hand result does. */
-      const name = '<span style="color:var(--name' + p + ')">' + n(p) + '</span>';
-      return '<tr><td>' + name + (p === v.winner ? ' 🏆' : '') + '</td><td>' + v.tricksWon[p] + (sd ? ' + ' + v.showdown.tricksWon[p] + ' SD' : '') + '</td><td>' + (k > 0 ? '+' + k : '—') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>';
-    }).join('');
-    return '<div class="summary"><h3>' + handLabel(v) + ' so far</h3>' + Render.trumpCallAndDealerHTML(v) + '<table class="stats"><tr><th>Player</th><th>Tricks</th><th>King pts</th><th>Score</th></tr>' + Render.youText(rows) + '</table></div>';
+    if (hs && (hs.outcome !== 'SHOWDOWN' || hs.showdown)) return Render.resultTableHTML(v, { points: hs.showdown ? 'showdown' : 'hand', kings: true, score: true });
+    return Render.resultTableHTML(v, { kings: true, score: true });
   }
 
   /* The award of the game that ended, while awards are on (Awards): worked out in slices after the box opens (about
@@ -7870,6 +7876,8 @@ const App = (() => {
   /* The game-over box. From the replay viewer (code: the code watched), at the end of a finished game while awards are
      on: no end buttons, wave note, update offer or review. */
   let backdropPressed = false;
+  /* The end button pressed last, so the game-over box opens on it again. */
+  let lastEndAction = '';
   const gameOverOpen = () => !$('overlay').hidden && !!$('overlay').querySelector(':scope > .modal.gameover');
   /** @param {string} [code] */
   function showGameOver(code) {
@@ -7877,15 +7885,20 @@ const App = (() => {
     const v = buildView(st, HUMAN);
     const n = p => Render.nameOf(v, p);
     const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
-    const rows = [0, 1, 2].slice().sort((a, b) => v.scores[b] - v.scores[a]).map(p => '<tr><td>' + n(p) + (p === v.winner ? ' 🏆' : '') + '</td><td>' + Render.scoreText(v.scores[p]) + '</td></tr>').join('');
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
-      '<p>' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + (v.handStats ? '' : '<table><tr><th>Player</th><th>Score</th></tr>' + rows + '</table>') + gameOverHandHTML(v) +
+      '<p class="end-reason">' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + Render.youText(finalTableHTML(v)) +
       (viewer ? '' : waveEndHTML()) +
       '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;
     if (ov.firstElementChild) awardBox(ov.firstElementChild, viewer ? /** @type {string} */ (code) : endCode);
     if (viewer) return;
+    /* The focus starts on the button you pressed last time (position continuity), else on the main button (the likely
+       choice), so Enter or Space goes on at once. */
+    const btns = ov.querySelector('.end-btns');
+    const focusBtn = /** @type {HTMLElement | null} */ (btns && (btns.querySelector('[data-action="' + lastEndAction + '"]:not([disabled])') || btns.querySelector('.btn.primary')));
+    if (focusBtn) focusBtn.focus();
+    if (btns) btns.addEventListener('click', ev => { const b = ev.target instanceof Element && ev.target.closest('button[data-action]'); if (b) lastEndAction = b.getAttribute('data-action') || ''; });
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
     if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
@@ -10702,8 +10715,8 @@ const SelfTest = (() => {
       D(s, { type: 'ADVANCE' });
       eq('hand point logged apart from King point', [s.handStats.pts[0], s.scores[0]], [{ king: 1, hand: 1, showdown: 0 }, 2]);
       const v = buildView(s, 0);
-      const html = Render.statsTableHTML(v, {});
-      check('summary table shows King pts and Hand pts', /King pts/.test(html) && /Hand pts/.test(html) && !/\/ 10/.test(html));
+      const html = Render.resultTableHTML(v, { points: 'hand', kings: true });
+      check('results table shows Hand and Kings columns, one word each', />Hand</.test(html) && />Kings</.test(html) && !/pts|SD/.test(html) && !/\/ 10/.test(html));
       D(s, { type: 'ADVANCE' });
       eq('stats reset for the next hand', s.handStats.pts[0], { king: 0, hand: 0, showdown: 0 });
       eq('You-grammar: "You wins." reads "You win."', Render.youText('Game over — You wins.'), 'Game over — You win.');
@@ -10716,7 +10729,7 @@ const SelfTest = (() => {
         g.phase = P.TRICK_DONE; g.trickNumber = 7; g.totalTricks = 7; g.tricksWon = [5, 1, 1]; g.caller = 1; g.trump = 'S'; g.scores = [9, 0, 0];
         D(g, { type: 'ADVANCE' });
         const sv = buildView(g, 0);
-        check('game ended by hand points still shows the hand result', g.phase === P.GAME_OVER && /result/.test(Render.summaryText(sv)));
+        check('game ended by hand points still shows the hand result', g.phase === P.GAME_OVER && /wins? the hand/.test(Render.summaryText(sv)));
       }
       eq('score over 10 shows a star; 10 and below show the number', [Render.scoreText(11), Render.scoreText(10), Render.scoreText(0)], ['⭐', '10', '0']);
 
