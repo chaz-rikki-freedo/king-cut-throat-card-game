@@ -2,7 +2,7 @@
 
 A practical standard for clarity, simplicity, responsiveness and game feel.
 
-This is the governing standard for the King Cut-Throat interface. Narrower standards, such as the [Result panel standard](result-panel.md), apply it to one part of the interface; where they disagree, this page wins.
+This is the governing standard for the King Cut-Throat interface. A narrower standard for one part of the interface applies this page; where they disagree, this page wins.
 
 ## 1. Governing philosophy
 

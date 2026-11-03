@@ -71,9 +71,9 @@ Area: `#center`. The middle of the table.
 | Slot caption | Who | `.who`, `.lead-mark` | L, S | The player's name, "(lead)", "— wins", or "· mediator". |
 | Empty slot | — | `.empty` | — | A spot for a card that has not been played yet. The Advanced UI draws it with no outline. |
 | Move label | Your move | `.yourmove` | I | Advanced UI only: what you do now, in a few words ("Name trump.", "Reduce to 7.", "Reduce to 5.", "Lead a card.", "Play a card."), just above the action buttons. Shown only while it is your move. Every discard shows its goal, one card per trick to come; its button says how many cards that takes. |
-| Hand summary | Result box | `.summary` | S, R | The box that replaces the trick area at the end of a hand. No title: the Hand chip names the stage. It leads with the outcome line (`.outcome`). Follows the [Result panel standard](result-panel.md). Variants: [2.5](#25-hand-summary-variants). |
-| Outcome line | Result line | `.outcome` | S | The first and largest line of a hand summary: who won what. "Ace wins the hand: Most tricks". |
-| Results table | Stats table, hand table | `.rtable`, `Render.resultTableHTML()` | R | One row for each player: the name, then one-word number columns of equal width (Hand or Showdown, Kings, and Score in the game-over dialog). See the [Result panel standard](result-panel.md). |
+| Hand summary | Result box | `.summary` | S, R | The box that replaces the trick area at the end of a hand. Variants: [2.5](#25-hand-summary-variants). |
+| Call line | Meta line | `.meta` | R | "Trump ♠ Spades · named by West (round 2) · Dealer East". |
+| Stats table | Hand table | `table.stats` in `.stats-wrap` | R | Tricks, SD tricks, hand points, King points and score for each player. |
 | Status line | Status | `.status`, mirrored to `#liveStatus` | S | One sentence about what happens now. Screen readers hear only this line. |
 | Last-trick strip | Last trick | `.lasttrick`, `.win-mini` | R | "Last trick (West won, +1 King):" and its three small cards. |
 
@@ -115,13 +115,13 @@ Class `.tag` in a seat head or your head.
 
 ### 2.5 Hand summary variants
 
-| Term | Outcome line | Continue button |
+| Term | Heading | Continue button |
 |---|---|---|
-| Abandoned summary | "All three players passed in both rounds." | Next deal |
-| Joker-void summary | "The Joker was turned up." | Redeal |
-| Hand result | "*Name* wins the hand: *outcome*" | Next hand |
-| Showdown setup | "*A* and *B* tied 3–3. *C* won 1 trick and mediates." | Deal the Showdown |
-| Showdown result | "*Name* wins the Showdown 3–2." | Next hand |
+| Abandoned summary | "Hand *n* abandoned" | Next deal |
+| Joker-void summary | "The Joker was turned up" | Redeal |
+| Hand result | "Hand *n* result" | Next hand |
+| Showdown setup | "Hand *n*: Showdown!" | Deal the Showdown |
+| Showdown result | "Hand *n*: Showdown result" | Next hand |
 
 ### 2.6 Action bar
 
@@ -259,13 +259,13 @@ Opens when a player reaches 10 points. While awards are on (the default; `!dev a
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | Winner headline | `.big` | S | "You win!" or "*Name* wins!" |
-| End reason | `.end-reason` | R | "The game ended at once, in hand 5, by …". |
-| Final table | `finalTableHTML()`, `.rtable` | R | The results table with the Score column: the last hand's points (Hand or Showdown), Kings, and Score. Kings and Score only when the game ended mid-hand; Score only when there are no hand stats. |
-| Cover | `.overlay:has(> .modal.gameover)` | — | The dialog's opaque backdrop: the table behind it is hidden, so no fact shows twice. On a phone the dialog fills the screen. |
+| End reason | first `p` | R | "The game ended at once, in hand 5, by …". |
+| Final scores | `table` | R | Only when there are no hand stats. |
+| Hand stats | `gameOverHandHTML` | R | "Hand *n* stats", or "Hand *n* so far" when the game ended mid-hand. |
 | Wave note | `.wave-note` | S | Whether the game cleared the wave, or that it was practice: played from a seed you entered, so no clear and no try. |
 | Back button | `.mback`, `close-overlay` | C | **‹ Back** in the top left, beside the centered title. Closes the dialog. **Esc**, or a tap outside the box, does the same. The end buttons stay in the action bar. |
 | Award stroke | `.modal.gameover.award`, `data-award`, `--award0` to `--award6`, `awardBox()` | S | On by default (`!dev awards=off` hides it): a heavy stroke around the dialog in the color of your seat's award band, emerald neon green (band 6, the best) through gold (band 3) to neon red (band 0, the worst). Once the grade is worked out (about 0.2 s), it comes in over 2.4 s: a faint hint of its color, a fade until the color is hard to tell, then a snap to full color with a flare of glow that settles. The stroke is the whole feature: no words, numbers or hover text explain it to the player. Not your score: see [Awards](../human-play.md#awards-how-you-did-with-your-cards-2026-10-31). |
-| End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). In the dialog the main (gold) button has a full-width row of its own and the focus when the dialog opens, or the button pressed last time does; the others share one smaller row below it. |
+| End buttons | `endButtonsHTML()`, `.end-btns` | C | The same in every mode, each a text label: **Watch** (`replay-watch`; dimmed for a game with no replay code), **Try again** (`replay-seed`), **New deal** (`new-deal`) and **Export** (`export`). After a win that opens the next wave, also **Next wave** (`next-wave`). |
 | Export dialog | `#askLayer`, `export-seed`, `export-code`, `.export-copied` | C | **Copy seed** and **Copy replay code**. "Copied." confirms it. **‹ Back**, Escape or a click outside closes it. |
 
 ## 4. Confirm layer
