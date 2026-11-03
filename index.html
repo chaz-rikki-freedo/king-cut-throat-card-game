@@ -266,10 +266,12 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 
 
 .summary{background:var(--panel-strong);border-radius:0.875rem;padding:clamp(1rem, 3vw, 1.5rem);text-align:left}
+/* The panel is as wide as its content (at least 24rem, never wider than the table), centered: no empty box beside the table. */
+.center > .summary{width:fit-content;min-width:min(100%, 24rem);max-width:100%;align-self:center}
 /* Result panels (docs/ui/result-panel.md). No title: the Hand chip already names the stage. Size shows importance:
    the outcome line, then the points, then the names, then the headings. */
 .summary p{margin:0.75rem 0 0;font-size:0.9375rem}
-.summary .outcome{margin:0;font-size:clamp(1.125rem, 1rem + 0.8vw, 1.375rem);font-weight:800;line-height:1.3}
+.summary .outcome{margin:0;text-wrap:balance;font-size:clamp(1.125rem, 1rem + 0.8vw, 1.375rem);font-weight:800;line-height:1.3}
 .summary .meta{font-size:0.75rem;color:var(--muted);margin-top:0.5rem}
 /* The results table: a grid, so the number columns share the spare width equally and each number and its heading
    sit on one center line. The name column is as wide as the longest name. */
@@ -284,7 +286,7 @@ th[aria-sort] .pf-sort{color:var(--ink)}
 .rtable .rname{text-align:left;font-size:clamp(0.9375rem, 0.85rem + 0.4vw, 1.0625rem);font-weight:800;white-space:nowrap}
 .rtable .rhead > *{padding-top:0;font-size:var(--hfs);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .rtable .rscore{font-size:clamp(1.375rem, 1.2rem + 0.8vw, 1.625rem);line-height:1.1;color:var(--ink)}
-.rtable .pos{color:var(--good)}.rtable .neg{color:var(--danger)}
+.rtable .pos{color:var(--good)}.rtable .neg{color:var(--danger)}.rtable .zero-loss{color:var(--muted)}
 .rnote{font-size:0.75rem!important;color:var(--muted)}
 
 
@@ -395,8 +397,10 @@ button.card{cursor:pointer}
 .overlay[hidden]{display:none}
 /* The game-over box covers the table (docs/ui/result-panel.md, rule 2.2): nothing behind it shows the same facts. */
 .overlay:has(> .modal.gameover){background:var(--page)}
-.modal.gameover .end-reason{margin:0.75rem 0 0;font-size:0.9375rem;color:var(--muted);text-align:center}
+.modal.gameover .end-reason{margin:0.75rem 0 0;font-size:0.9375rem;color:var(--muted);text-align:center;text-wrap:balance}
 .modal.gameover .rtable{margin-inline:auto}
+/* The box is as wide as its table plus padding, so the table and the button rows share both edges. */
+.modal.gameover{max-width:28.5rem}
 /* On a phone the covered game-over box fills the screen, as the long panels do, its content centered top to bottom. */
 @media (max-width:600px){
   .overlay:has(> .modal.gameover){padding:0}
@@ -5187,7 +5191,10 @@ const Render = (() => {
     const st = v.handStats;
     /** @type {[string, (p: number) => string, string][]} */
     const cols = [];
-    if (opts.points) cols.push([opts.points === 'showdown' ? 'Showdown' : 'Hand', p => signedPointsHTML(st.pts[p][opts.points === 'showdown' ? 'showdown' : 'hand']), '']);
+    /* The Showdown loser already at 0 lost nothing: −0, muted, so the row still says who lost (— would read as "not in it"). */
+    const sdLoser = v.handSummary && v.handSummary.showdown ? v.handSummary.showdown.loser : -1;
+    const ptsHTML = (/** @type {number} */ p, /** @type {'hand' | 'showdown'} */ k) => k === 'showdown' && p === sdLoser && st.pts[p].showdown === 0 ? '<span class="zero-loss">−0</span>' : signedPointsHTML(st.pts[p][k]);
+    if (opts.points) cols.push([opts.points === 'showdown' ? 'Showdown' : 'Hand', p => ptsHTML(p, opts.points === 'showdown' ? 'showdown' : 'hand'), '']);
     if (opts.kings) cols.push(['Kings', p => signedPointsHTML(st.pts[p].king), '']);
     if (opts.score) cols.push(['Score', p => scoreText(v.scores[p]), ' rscore']);
     const cell = (/** @type {string} */ role, /** @type {string} */ cls, /** @type {string} */ html, extra = '') => '<span role="' + role + '" class="' + cls + '"' + extra + '>' + html + '</span>';
@@ -5197,9 +5204,10 @@ const Render = (() => {
     /* Every number column starts as wide as the longest heading needs (--chars), so spare width shared equally keeps them equal. */
     return '<div class="rtable" role="table" style="--cols:' + cols.length + ';--chars:' + Math.max(...cols.map(c => c[0].length)) + '">' + head + rows + '</div>';
   }
-  /* A Showdown loss of −1 cannot take a score below 0: say so only when it happened. */
-  function floorNoteHTML(v, /** @type {'hand' | 'showdown'} */ key) {
-    return [0, 1, 2].some(p => v.handStats.pts[p][key] < 0 && v.scores[p] === 0) ? '<p class="rnote">Score cannot fall below 0.</p>' : '';
+  /* A Showdown loss of −1 cannot take a score below 0: say so only when it happened (the loser shows −0). */
+  function floorNoteHTML(v) {
+    const s = v.handSummary && v.handSummary.showdown;
+    return s && v.handStats.pts[s.loser].showdown === 0 ? '<p class="rnote">Score cannot fall below 0.</p>' : '';
   }
 
   /* ui (optional): the app's ui, whose houseRules say when the running game plays a different Showdown lead rule. */
@@ -5210,12 +5218,12 @@ const Render = (() => {
     if (v.phase === P.GAME_OVER && v.endEvent && (v.endEvent.phase === P.HAND_SCORE || v.endEvent.phase === P.SHOWDOWN_SCORE)) return summaryHTML(Object.assign({}, v, { phase: v.endEvent.phase }), ui);
     switch (v.phase) {
       case P.ABANDONED:
-        return '<div class="summary"><p class="outcome">All three players passed in both rounds.</p><p>No points. The deal passes to the left.</p></div>';
+        return '<div class="summary"><p class="outcome">All three players passed in both rounds.</p><p>No points.</p></div>';
       case P.JOKER_VOID:
         return '<div class="summary"><p class="outcome">The Joker was turned up.</p><p>The hand is void. ' + n(v.dealer) + ' deals again.</p></div>';
       case P.HAND_SCORE:
         return '<div class="summary"><p class="outcome">' + n(hs.winner) + ' wins the hand: ' + OUTCOME_TEXT[hs.outcome] + '</p>' +
-          resultTableHTML(v, { points: 'hand', kings: true }) + floorNoteHTML(v, 'hand') + '</div>';
+          resultTableHTML(v, { points: 'hand', kings: true }) + '</div>';
       case P.SHOWDOWN_SETUP: {
         const [a, b] = hs.participants;
         return '<div class="summary"><p class="outcome">' + n(a) + ' and ' + n(b) + ' tied 3–3. ' + n(hs.mediator) + ' won 1 trick and mediates.</p>' +
@@ -5225,7 +5233,7 @@ const Render = (() => {
       case P.SHOWDOWN_SCORE: {
         const s = hs.showdown;
         return '<div class="summary"><p class="outcome">' + n(s.winner) + ' wins the Showdown ' + s.tricks[s.winner] + '–' + s.tricks[s.loser] + '.</p>' +
-          resultTableHTML(v, { points: 'showdown', kings: true }) + floorNoteHTML(v, 'showdown') + '</div>';
+          resultTableHTML(v, { points: 'showdown', kings: true }) + floorNoteHTML(v) + '</div>';
       }
       default: return '';
     }
@@ -7349,6 +7357,7 @@ const App = (() => {
      waits, holdPhase the trick's phase. The scores change with the result: until then the table shows the scores it
      had (drawnScores), and the score changes wait in holdEvents. */
   const RESULT_PHASES = /** @type {readonly string[]} */ ([P.HAND_SCORE, P.SHOWDOWN_SETUP, P.SHOWDOWN_SCORE, P.GAME_OVER, P.ABANDONED, P.JOKER_VOID]);
+  let panelShown = false;
   let resultHold = -1, holdPhase = '', holdTimer = 0, drawnScores = /** @type {number[]} */ ([]), holdEvents = /** @type {any[]} */ ([]);
   /** @param {GameState} st @param {any} ui @returns {boolean} */
   function holdResult(st, ui) {
@@ -7417,6 +7426,9 @@ const App = (() => {
     }
     syncAbout();
     if (Render.render(v, ui, ctx)) closePanel();
+    /* A result panel came or went: the Latest cell changes owner (resultNext). */
+    const panel = !!document.querySelector('#table .center > .summary');
+    if (panel !== panelShown) { panelShown = panel; showLatest(true); }
     syncModeUI();
     Fit.update();
   }
@@ -7684,8 +7696,19 @@ const App = (() => {
     const short = cut ? shortLine(raw) : raw;
     return short === raw ? li.innerHTML : logHTML(Render.youText(short), li.className);
   }
+  /* While a result panel is open, the panel owns the result (docs/ui/ux-standard.md, section 5): the Latest cell says what
+     comes next instead of repeating it. The full lines stay in the Latest Scroll. '' outside a result. */
+  function resultNext() {
+    const st = app.state;
+    if (!st || st.phase === P.GAME_OVER || !RESULT_PHASES.includes(st.phase) || !document.querySelector('#table .center > .summary')) return '';
+    const v = buildView(st, HUMAN), n = (/** @type {number} */ p) => Render.nameOf(v, p);
+    if (st.phase === P.SHOWDOWN_SETUP) return 'Next: the Showdown.';
+    if (st.phase === P.JOKER_VOID) return 'Next: the redeal.';
+    return 'Next: Hand ' + (handNo(v) + 1) + ', dealt by ' + n(Engine.seatAfter(v.dealer)) + '.';
+  }
   function showLatest(still, note) {
     clearTimeout(nextUp); nextUntil = 0;
+    if (!note) { const next = resultNext(); if (next) note = logHTML(Render.youText(next), ''); }
     let lines = note ? [note] : [];
     if (!note && burstOpen && burst.length) lines = burstLines().map(latestHTML);
     else if (!note) for (let li = $('gameLog').lastElementChild; li; li = li.previousElementSibling) if (!li.classList.contains('trick-head')) { lines = [latestHTML(li)]; break; }
@@ -7771,15 +7794,15 @@ const App = (() => {
     }
     el.animate(frames, { duration: ms, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
   }
-  /* Each score reason: log, the words after a score change in the log; end, how a game ended ("by ..."). */
+  /* Each score reason: log, the words after a score change in the log; end, how a game ended, after "in hand n,". */
   const REASON = {
-    KING: { log: 'King won a trick', end: 'a King won a trick' },
-    SHOWDOWN_KING: { log: 'King won a Showdown trick', end: 'a King won a Showdown trick' },
-    CLEAR_WINNER: { log: 'most tricks', end: 'taking the most tricks' },
-    NAMER_SWEEP: { log: 'namer sweep', end: 'a namer sweep' },
-    NON_NAMER_SWEEP: { log: 'non-namer sweep', end: 'a non-namer sweep' },
-    SHOWDOWN_WIN: { log: 'won the Showdown', end: 'winning the Showdown' },
-    SHOWDOWN_LOSS: { log: 'lost the Showdown', end: 'losing the Showdown' }
+    KING: { log: 'King won a trick', end: 'when a King won a trick' },
+    SHOWDOWN_KING: { log: 'King won a Showdown trick', end: 'when a King won a Showdown trick' },
+    CLEAR_WINNER: { log: 'most tricks', end: 'by taking the most tricks' },
+    NAMER_SWEEP: { log: 'namer sweep', end: 'by a namer sweep' },
+    NON_NAMER_SWEEP: { log: 'non-namer sweep', end: 'by a non-namer sweep' },
+    SHOWDOWN_WIN: { log: 'won the Showdown', end: 'by winning the Showdown' },
+    SHOWDOWN_LOSS: { log: 'lost the Showdown', end: 'by losing the Showdown' }
   };
   function narrate(e) {
     const st = app.state;
@@ -7884,10 +7907,10 @@ const App = (() => {
     const st = app.state, viewer = code !== undefined;
     const v = buildView(st, HUMAN);
     const n = p => Render.nameOf(v, p);
-    const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : v.endEvent.reason;
+    const how = REASON[v.endEvent.reason] ? REASON[v.endEvent.reason].end : 'by ' + v.endEvent.reason;
     const ov = $('overlay');
     ov.innerHTML = '<div class="modal gameover" role="dialog" aria-label="Game over"><div class="mtop"><button class="mback" type="button" data-action="close-overlay">‹ Back</button><div class="big">' + (v.winner === HUMAN ? 'You win!' : n(v.winner) + ' wins!') + '</div></div>' +
-      '<p class="end-reason">' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', by ' + escHTML(how) + '.') + '</p>' + Render.youText(finalTableHTML(v)) +
+      '<p class="end-reason">' + Render.youText('The game ended at once, in hand ' + handNo(v) + ', ' + escHTML(how) + '.') + '</p>' + Render.youText(finalTableHTML(v)) +
       (viewer ? '' : waveEndHTML()) +
       '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;

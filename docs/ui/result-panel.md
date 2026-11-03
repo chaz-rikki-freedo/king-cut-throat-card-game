@@ -1,6 +1,6 @@
 # Result panel standard
 
-**Status: built, in review.** The owner chose to cover the table with the game-over dialog. One decision is still open: whether panel text is left-aligned or centered (section 8).
+**Status: built, in review.** The owner chose to cover the table with the game-over dialog. All decisions are made.
 
 This page applies the [UI and UX standard](ux-standard.md) to result panels; where the two disagree, that page wins. It is the standard for every panel that reports a hand or a game result: what it holds, what it leaves to the table behind it, and how its stats table is laid out. Each such panel follows this page. A change to one panel that this page does not allow starts with a change to this page.
 
@@ -84,11 +84,17 @@ Every row of this table breaks P1.
 
 **Rule 2.1.** The on-table panel **leaves out** every fact in section 1.1. The seats, chips and tags around it stay the single place for those facts. The panel shows only what the context does not: what happened in the hand and what it was worth.
 
+**Rule 2.1a.** While an on-table panel shows, the panel owns the result. The Latest cell under the top bar does not repeat it; it says what comes next ("Next: Hand 2, dealt by Tex.", "Next: the Showdown.", "Next: the redeal."). The full result lines stay in the Latest Scroll.
+
+**Rule 2.1b.** The on-table panel is as wide as its content (at least 24rem, never wider than the table) and centered, so no empty box stretches beside its content.
+
 **Rule 2.2.** The game-over dialog **covers** the context completely. Its backdrop is opaque, so the dialog is the only thing in view and is the single place for its facts. The player closes it (**‹ Back**) to see the table again.
 
 **Decided:** cover. The owner chose it over leaving out of the dialog every fact the table shows.
 
 **Rule 2.3.** On a phone (600 px wide or less), the covered dialog fills the screen, its content centered top to bottom, with **‹ Back** on its own line above the headline so the headline stays on one line.
+
+**Rule 2.4.** The dialog is as wide as its table plus padding (28.5rem), so the table and the button rows share both edges.
 
 ## 3. Panel anatomy
 
@@ -146,7 +152,7 @@ Columns appear in this order. A table leaves out the columns it does not use; it
 
 **Rule 4.8.** Names, the outcome line and the body text share one left edge in the on-table panel.
 
-> **Decision needed: centered or left-aligned text in the panel.** Rule 4.8 left-aligns the text so it lines up with the names. Before this standard the panel text was centered. Left-aligned text gives one edge for the eye; centered text matches the dialog headline.
+**Decided:** left-aligned. Shared left edges follow section 6 of the [UI and UX standard](ux-standard.md).
 
 | Content | Horizontal | Vertical |
 |---|---|---|
@@ -161,9 +167,10 @@ Columns appear in this order. A table leaves out the columns it does not use; it
 | Gain | +1 | `--good`, bold |
 | Loss | −1 (true minus sign) | `--danger`, bold |
 | No points | — | Muted |
+| Showdown loss stopped at 0 | −0, with the footnote "Score cannot fall below 0." | Muted |
 | Score over 10 | ⭐ | Ink |
 
-With trick columns gone, "—" means only "no points", so the old clash between "zero" and "did not take part" no longer arises.
+With trick columns gone, "—" means only "no points". The Showdown loser already at 0 shows −0, not —, so the row still says who lost (correctness comes first: [UI and UX standard](ux-standard.md), section 13).
 
 ## 5. Size and space
 
@@ -224,9 +231,7 @@ An automated check in `tests/scenarios.js` opens each panel at 320 px, 360 px, 4
 
 ## 8. Open decisions
 
-| # | Question | Section | Recommendation |
-|---|---|---|---|
-| 2 | Panel text: left-aligned with the names (built), or centered. | 4.2 | Left-aligned |
+None. All decisions are made.
 
 ## Related pages
 
