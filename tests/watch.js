@@ -210,11 +210,27 @@ function expect(name, ok, detail) {
     await page.waitForFunction(() => window.KCT && KCT.App);
     r = await look();
     expect('the test update applied: the page reloaded, a dot after each build number, no badge', !r.badge && r.dots[0] && r.dots[1] && r.menuDot, r);
+    /* '!dev reset' alone changes nothing and lists the options; each reset:option resets only its own thing. */
+    const said = () => page.evaluate(() => (document.querySelector('#codeRead') || {}).textContent || '');
+    await devCmd('!dev saves=40');
     await devCmd('!dev reset');
+    const list = await said();
     await page.reload();
     await page.waitForFunction(() => window.KCT && KCT.App);
     r = await look();
-    expect('!dev reset clears the build dot', !r.dots[0] && !r.dots[1], r.dots);
+    let caps = await page.evaluate(() => sessionStorage.getItem('kct-dev'));
+    expect('!dev reset alone changes nothing: the dot and the caps stay, and it lists the options', r.dots[0] && caps === '{"saves":40}' && /reset:option/.test(list) && /testupdate/.test(list) && /caps/.test(list), { r, caps, list });
+    await devCmd('!dev reset:testupdate');
+    r = await look();
+    caps = await page.evaluate(() => sessionStorage.getItem('kct-dev'));
+    expect('!dev reset:testupdate clears the build dot at once, and only that', !r.dots[0] && !r.dots[1] && caps === '{"saves":40}' && /Reset a waiting test update/.test(r.said), { r, caps });
+    await devCmd('!dev testupdate');
+    await devCmd('!dev reset:testupdate');
+    r = await look();
+    expect('!dev reset:testupdate takes back a waiting test update: no badge', !r.badge && r.label === 'Settings', r);
+    await devCmd('!dev reset:saves');
+    caps = await page.evaluate(() => sessionStorage.getItem('kct-dev'));
+    expect('!dev reset:saves resets the saves cap', caps === null, caps);
 
     console.log('The controls on the table');
     await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
