@@ -1,6 +1,6 @@
 # Feedback: vibration and sound
 
-> **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). Every decision is made. Nothing is built yet.
+> **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). The game sends moments to an optional, external feedback module (see [Architecture](#architecture)). Items marked **Open** are still to be decided. Nothing is built yet.
 
 *Feedback* is what the game does besides drawing the table: a short vibration or a short sound at a game moment. This page defines the cues, when each one plays, when nothing plays, and what is dropped when cues collide. Vibration and sound read the same cue table, so they never disagree about what happened.
 
@@ -13,17 +13,120 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 3. **Follow the screen.** A cue plays when the player *sees* the moment, not when the Engine applies it.
 4. **Drop, never wait.** A cue that can't play on time is dropped. Nothing is queued for later.
 5. **Instant turns it all off.** At speed Instant, no vibration, sound or parallax plays (parallax: [#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)). No setting overrides this, including **Sound in replays**.
+6. **The module is optional.** The game announces moments whether or not anything listens. Without the feedback module, the game is silent and still, and nothing says so.
+
+## Architecture
+
+The game and the feedback module are separate. The game says **what happened and when the player sees it**. The module decides **what to do about it**.
+
+```
+index.html (the game)                       feedback/ (optional)
+─────────────────────                       ────────────────────
+act(), holdResult(), showGameOver,          feedback.js
+the hand's card handler                       listens for 'kct:moment'
+   │                                          picks one cue per batch
+   └─ a batch of moments ── CustomEvent ──►   applies its gates and dropping
+      at screen time                          vibrates (Android), plays a sound
+                                              from feedback/sounds/*.wav
+
+   No listener: the event goes nowhere. No error, no wait.
+```
+
+### Files
+
+| Path | Holds |
+|---|---|
+| `index.html` | The game. A small `Moments` section builds and sends moments, and loads the module. |
+| `feedback/feedback.js` | The feedback module: cues, moments of interest, gates, dropping, settings rows, sound loading. |
+| `feedback/sounds/*.wav` | The sound files (see [Sound files](#sound-files)). |
+
+### Sending
+
+- The game sends one `CustomEvent` on `document`, named `kct:moment`, for each **batch**: the moments of one action that the player sees at the same time.
+- A batch is sent at its screen time, from the anchor's call site (see [Order of operations](#order-of-operations)). The module never schedules a moment itself.
+- Sending costs microseconds and works the same with or without a listener.
+
+```js
+document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
+  v: 1,                    // the contract version
+  version: 1834,           // the game state version, for stale checks
+  at: performance.now(),   // when the batch was sent
+  anchor: 'sweep',         // 'land', 'sweep', 'result', 'gameOver' or 'tap'
+  replay: false,           // true in the replay viewer
+  moments: [
+    { type: 'trickWon', seat: 0, you: true, card: 'KS', trump: 'S', trickNumber: 4, totalTricks: 7, showdown: false },
+    { type: 'king', seat: 0, you: true, card: 'KS', showdown: false, scoresBefore: [5, 6, 3], scoresAfter: [6, 6, 3] }
+  ]
+} }));
+```
+
+### Control messages
+
+Sent on the same event, with `moments` empty and a `control` field:
+
+| `control` | When the game sends it | What the module does |
+|---|---|---|
+| `cancel` | A new state version, **Next hand**, Exit, a new game, a jump in the replay viewer | Clears armed cues and stops sounds not yet started |
+| `reset` | **Reset this tab** in Settings → Table | Sets its settings back to Off |
+| `speed` | The speed changes, with `speed: 'instant'` or another value | Removes or restores its settings' effect, for principle 5 |
+
+### The moments
+
+The game's side of the contract. Every moment carries `type`, and `seat` and `you` where a seat is involved. **All facts are public**: the game builds them from the View for your seat, never from the full game state.
+
+| `type` | Anchor | Engine source | Facts |
+|---|---|---|---|
+| `deal` | `land` | `DEAL`, `SHOWDOWN_DEAL` | `showdown` |
+| `flip` | `land` | The kitty card turned up | `card` |
+| `discard` | `land` | `DISCARD`, `EXCHANGE_DISCARD`, `SHOWDOWN_DISCARD` | `seat`, `you`, `count` |
+| `trumpNamed` | `land` | An accept or a named suit | `seat`, `you`, `trump`, `round` |
+| `cardPlayed` | `land` | `CARD_PLAYED` | `seat`, `you`, `card`, `showdown` |
+| `trickWon` | `sweep` | `TRICK_WON`, `SHOWDOWN_TRICK_WON` | `seat`, `you`, `card`, `trump`, `trickNumber`, `totalTricks`, `showdown` |
+| `king` | `sweep` | `KING_SCORED` | `seat`, `you`, `card`, `showdown`, `scoresBefore`, `scoresAfter` |
+| `handScored` | `result` | `HAND_SCORED` | `winner`, `you`, `outcome`, `scoresBefore`, `scoresAfter` |
+| `showdownCalled` | `result` | `SHOWDOWN_STARTED` | `players`, `mediator`, `youPlay`, `youMediate` |
+| `showdownScored` | `result` | `SHOWDOWN_SCORED` | `winner`, `loser`, `you`, `youMediate`, `tricks`, `scoresBefore`, `scoresAfter` |
+| `gameEnded` | `gameOver` | `GAME_ENDED` | `winner`, `you`, `scores`, `mode`, `byKing` (derived) |
+| `waveCleared` | `gameOver` | The wave line of the game-over dialog | `wave`, `finalWave` (derived) |
+| `cardPicked` | `tap` | Your tap on a card in your hand, for a discard | `card`, `picked` |
+| `skipPressed` | `tap` | Your tap on **Skip ▶** | `youMediate` |
+
+Derived facts for the [moments of interest](#moments-of-interest), such as `maxDeficit` and `kingsThisGame`, are added to these moments as each one is settled.
+
+### Who owns what
+
+| The game (`index.html`) | The module (`feedback/feedback.js`) |
+|---|---|
+| The moments and their facts | The [cues](#cues), ranks, vibration patterns and sound files |
+| Screen time: when each batch is sent | The [moments of interest](#moments-of-interest) rule table |
+| Not sending at all: at Instant, during a skip, on a resume, during a viewer jump, while the menu or a question is open, and while another tab is more current | Its own [gates](#gates): its settings, device support, the first tap, a hidden tab, `replay` with **Sound in replays** off |
+| `cancel`, `reset` and `speed` messages | [Dropping](#dropping) |
+| An empty, hidden **Sound and touch** card in Settings → Table | The card's rows, its device keys and its sound loading |
+
+### Loading the module
+
+1. When the browser is idle after page load (`requestIdleCallback`, or a short `setTimeout` where it's missing), the game adds `<script src="feedback/feedback.js">`.
+2. It is a classic script, not a module import: a local copy opened from `file://` blocks module imports.
+3. If the file is missing, the script fails to load and nothing else happens. The browser may still list the failed request in its developer tools; the page can't prevent that, and players never see it.
+4. The module announces itself with `kct:feedback-ready`, which carries its contract version (`v`). The game then shows the **Sound and touch** card, and the module fills it in.
+5. If the module's `v` doesn't match the game's, the module ignores every batch and leaves the card hidden. A mismatched pair is silent, never wrong.
+
+### Settings in two files
+
+- The game's Settings markup has an empty card, `#setFeedback`, under the heading **Sound and touch**, hidden by default.
+- The module adds the rows from [Settings](#settings) to it and handles them. It keeps its device keys itself.
+- Without the module, the heading and card stay hidden, so Settings never offers a choice that does nothing.
 
 ## Channels
 
 | Channel | API | Supported on | Default | Notes |
 |---|---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome on Android, including the installed app | Off | A new call replaces the pattern still running. Not supported on iOS. |
-| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `sounds/`, next to `index.html` (see [Sound files](#sound-files)). Each is loaded and decoded once, when the browser is idle after page load. Sound plays only after the first tap. Never use `<audio>` elements. |
+| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `feedback/sounds/` (see [Sound files](#sound-files)). Each is loaded and decoded once, when the browser is idle after page load. Sound plays only after the first tap. Never use `<audio>` elements. |
 
 ## Settings
 
-The rows are in **Settings → Table**, under a new heading, **Sound and touch**.
+The rows are in **Settings → Table**, under a new heading, **Sound and touch**. The module adds them when it loads (see [Settings in two files](#settings-in-two-files)).
 
 | Row | Control | Shown when | Default | Description text (draft) |
 |---|---|---|---|---|
@@ -34,7 +137,7 @@ The rows are in **Settings → Table**, under a new heading, **Sound and touch**
 - Vibration and Sound are separate, so you can have either without the other.
 - The device volume sets the overall level. Half and Full scale it inside the game.
 - All three are kept on the device only: one `localStorage` key each, read inside `try`, the same way as the Awards switch. They are not part of `saveSettings()`, a game save or a backup.
-- **Reset this tab** sets all three back to Off. Its description text changes to include Sound and touch.
+- **Reset this tab** sets all three back to Off, through the `reset` message. Its description text names Sound and touch only while the module is loaded.
 
 ## Timing
 
@@ -83,6 +186,8 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 
 ### Cue rules
 
+The module picks **one cue per batch**: the highest-ranked cue among the batch's moments. A moment of interest outranks the ordinary cue for the same moment.
+
 - **No your-turn cue.** The table already shows whose turn it is.
 - **A game that ends mid-trick** (a King point reaches 10) plays only `gameWin` or `gameLoss`, never `king` and `trickWon` as well.
 - **A Showdown hand.** `showdownCalled` replaces `handResult`, because both come from the same action.
@@ -107,7 +212,7 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 
 A *moment of interest* is a rare situation that gets its own cue: a sound, a vibration pattern, or both. It **replaces** the ordinary cue for that moment, never adds to it. This list is a collection of candidates. Each needs a settled definition before it is built.
 
-This list holds whether `Feedback` stays inside `index.html` or becomes an external module that the game sends moments to (under consideration). Either way, the moments of interest decide which facts the game must provide.
+The rule table lives in the module. Adding a moment of interest changes only `feedback/`, unless it needs a fact the game doesn't send yet.
 
 ### Rules
 
@@ -159,26 +264,27 @@ The leaders are every seat with the top score. Settle these cases before buildin
 
 ## Gates
 
-No cue plays when any of these is true.
+No cue plays when any of these is true. **Game** gates mean the game sends no batch. **Module** gates mean the module drops what it receives.
 
-| Condition | Checked with | Notes |
-|---|---|---|
-| The channel's setting is off | Its `localStorage` key | Sound: the level is Off. |
-| The channel isn't supported | `typeof navigator.vibrate`, `window.AudioContext` | |
-| No tap yet on this page load | `navigator.userActivation.hasBeenActive` | Browsers block both channels until then. If the property is missing, the channel stays quiet. |
-| Speed is **Instant** | `app.ui.speed` | Applies to both channels and to parallax (#185), in live games and the replay viewer. No setting overrides it. |
-| Skip ▶ is running | `skipping()` | `showdownResult` still plays when the skip ends. Skipping isn't speed Instant, so principle 5 doesn't silence it. If the result comes within `GAP_VIBRATE_MS` of the Skip ▶ tap, the result's pattern replaces the tap. |
-| The replay viewer | `watch` | No vibration. Sound plays only with **Sound in replays** on. Jumps and single steps never cue. |
-| A game is resumed or reloaded | `resume` | A restored game never plays a past cue. |
-| The menu or a question is open | `app.menuOpen`, `askDone` | The game waits, so no moments happen. |
-| Another tab is more current | `TabLock.stale` | |
-| The tab is hidden | `document.hidden` | |
+| Condition | Owner | Checked with | Notes |
+|---|---|---|---|
+| Speed is **Instant** | Game | `app.ui.speed` | Applies to both channels and to parallax (#185), in live games and the replay viewer. No setting overrides it. |
+| Skip ▶ is running | Game | `skipping()` | The `showdownScored` batch is still sent when the skip ends. Skipping isn't speed Instant, so principle 5 doesn't silence it. If the result comes within `GAP_VIBRATE_MS` of the Skip ▶ tap, the result's pattern replaces the tap. |
+| A game is resumed or reloaded | Game | `resume` | A restored game never sends a past moment. |
+| A jump or single step in the replay viewer | Game | `watchTick` | |
+| The menu or a question is open | Game | `app.menuOpen`, `askDone` | The game waits, so no moments happen. |
+| Another tab is more current | Game | `TabLock.stale` | |
+| The channel's setting is off | Module | Its `localStorage` key | Sound: the level is Off. |
+| The channel isn't supported | Module | `typeof navigator.vibrate`, `window.AudioContext` | |
+| No tap yet on this page load | Module | `navigator.userActivation.hasBeenActive` | Browsers block both channels until then. If the property is missing, the channel stays quiet. |
+| The replay viewer | Module | The batch's `replay` | No vibration. Sound plays only with **Sound in replays** on. |
+| The tab is hidden | Module | `document.hidden` | |
 
 The system's reduced-motion setting turns off the motion, so screen time is the same as engine time and cues play at once. Reduced motion does not turn feedback off.
 
 ## Dropping
 
-Each cue carries the screen time it belongs to. When it is due, it goes through these checks in order:
+Each cue carries its batch's `at` time. When it is due, it goes through these checks in order:
 
 1. **Stale.** The state version changed, the tab is hidden or another tab is more current. Drop it.
 2. **Not ready.** Its sound is missing, failed to load or isn't decoded yet. Drop the sound. Vibration still plays.
@@ -187,7 +293,7 @@ Each cue carries the screen time it belongs to. When it is due, it goes through 
 5. **Too many sounds.** `MAX_VOICES` sounds are already playing. Drop it.
 6. Otherwise, play it once. Nothing is kept for a retry.
 
-A redraw from a new action, **Next hand**, Exit, a new game or a jump in the replay viewer cancels every scheduled cue.
+The game's `cancel` message (a new action, **Next hand**, Exit, a new game or a jump in the replay viewer) cancels every armed cue.
 
 | Constant | Draft value | Meaning |
 |---|---|---|
@@ -223,24 +329,27 @@ Supply one WAV file for each name below. These 17 files are the full set.
 
 ### File format
 
-- Mono, 16-bit PCM, 22,050 Hz. A sound effect needs nothing more, and it keeps `index.html` small.
+- Mono, 16-bit PCM, 22,050 Hz. A sound effect needs nothing more, and it keeps the download small.
 - No silence at the start, so the sound lines up with the moment. Trim the tail to where it fades out.
 - Peaks at about −3 dBFS. Keep the levels matched, so no sound jumps out at Full.
-- Size: one second at this format is about 44 KB. The 17 required files at the lengths above come to roughly 0.5 to 0.7 MB, outside `index.html`.
+- Size: one second at this format is about 44 KB. The 17 required files at the lengths above come to roughly 0.5 to 0.7 MB.
 
 ### Where the files live
 
-- The files are in `sounds/`, next to `index.html`, and `tools/publish.sh` adds `sounds` to the files it publishes.
-- **Missing files are silent.** A file that is missing or fails to load or decode is dropped: no notice, no toast and no Settings text. The game plays as if that cue had no sound. The Sound row still shows. This covers a local copy opened with only `index.html`, and a set of files that isn't complete yet.
+- The files are in `feedback/sounds/`, and `tools/publish.sh` adds `feedback` to the files it publishes.
+- **Missing files are silent.** A file that is missing or fails to load or decode is dropped: no notice, no toast and no Settings text. The game plays as if that cue had no sound. The Sound row still shows. This covers a set of files that isn't complete yet. A local copy with only `index.html` has no module at all, so it is silent anyway.
 - Nothing is written to the console for a missing file, so a local copy stays clean. The Event log, when on, records one `SOUND_MISSING` line for each file, once a page load.
 - **Offline, in two steps.**
   1. **Until all 17 files exist:** the service worker caches each sound the first time it loads (runtime caching). An installed app that has played a sound once has it offline.
-  2. **Once all 17 required files are in `sounds/`:** the service worker precaches them at install, from a `SOUNDS` list in `sw.js`, so every sound works offline from the start.
-- **A sound never breaks the install.** Precaching fetches each sound on its own, apart from `ASSETS`. A sound that fails to load is skipped and left to runtime caching, so the page, the manifest and the icons still install.
+  2. **Once all 17 required files are in `feedback/sounds/`:** the service worker precaches them at install, from a `SOUNDS` list in `sw.js`, so every sound works offline from the start.
+- `feedback/feedback.js` follows the same two steps: runtime caching first, then precached with the sounds, and never part of `ASSETS`.
+- **Feedback never breaks the install.** Precaching fetches each file in `feedback/` on its own, apart from `ASSETS`. A file that fails to load is skipped and left to runtime caching, so the page, the manifest and the icons still install.
 - A file that changes is picked up by the service worker's update check, the same as the icons.
 
 ## Performance
 
+- Sending a batch costs microseconds. With no module loaded, it costs the same.
+- The module loads when the browser is idle, so it never delays the page or the first table.
 - Vibration costs microseconds on the main thread. The device does the vibrating.
 - Sound plays on the audio thread. A busy main thread can only delay when a sound starts, and `LATE_MS` drops a sound that starts too late.
 - The sounds load only while Sound isn't Off, when the browser is idle, one at a time, never during a game moment. Decoding uses an `OfflineAudioContext`, so it needs no tap.
@@ -251,17 +360,20 @@ Supply one WAV file for each name below. These 17 files are the full set.
 
 ## Order of operations
 
-What `Feedback` does, from page load to a cue playing, in order.
+From page load to a cue playing, in order. Each step names who does it.
 
 ### 1. Page load
 
-1. `Feedback` reads its three device keys: Vibration, Sound and Sound in replays.
-2. Nothing else happens yet. Buttons and the table never wait for feedback.
+1. **Game:** draws the page. The **Sound and touch** card stays hidden.
+2. **Game:** when the browser is idle, adds `<script src="feedback/feedback.js">` (see [Loading the module](#loading-the-module)).
+3. **Module:** reads its three device keys: Vibration, Sound and Sound in replays. It adds `kct:moment` and first-tap listeners, then sends `kct:feedback-ready`.
+4. **Game:** on `kct:feedback-ready` with a matching `v`, shows the card. The module fills in its rows.
+5. Buttons and the table never wait for any of this.
 
 ### 2. Loading the sounds
 
-1. **When the browser is idle** after the page loads (`requestIdleCallback`, or a short `setTimeout` where it's missing), and only if Sound isn't Off, the module starts loading the sounds.
-2. It loads them **one at a time**: download from `sounds/`, then decode with an `OfflineAudioContext`. Decoding needs no tap and logs no warning. A decoded sound plays in any audio context.
+1. **Module:** right after it loads, and only if Sound isn't Off, it starts loading the sounds.
+2. It loads them **one at a time**: download from `feedback/sounds/`, then decode with an `OfflineAudioContext`. Decoding needs no tap and logs no warning. A decoded sound plays in any audio context.
 3. A file that fails to download or decode is marked missing: nothing on screen, nothing in the console, and one `SOUND_MISSING` line in the Event log when it's on. It isn't tried again on that page load.
 4. **When Sound changes from Off to Half or Full,** loading starts then, if it hasn't already.
 5. Vibration needs no loading.
@@ -270,75 +382,93 @@ Once the service worker has cached the files, they load from the device in a few
 
 ### 3. The first tap
 
-1. A one-time `pointerdown` listener runs on the first tap anywhere on the page.
+1. **Module:** a one-time `pointerdown` listener runs on the first tap anywhere on the page.
 2. If Sound isn't Off, it creates or resumes the playing `AudioContext`. A change of the Sound setting is itself a tap, so it does the same.
 
-### 4. Each action, in `act()`
+### 4. Each action, in `act()` (game)
 
 1. `Engine.dispatch` applies the action and returns its events.
 2. The existing work runs: `narrate`, `draw` and `schedule`.
-3. `Feedback.cueFor(events, ctx)` turns the events into cues. It is a pure function:
-   - It ignores the events that never cue.
-   - It applies the seat rules: your seat (including autoplay), a bot's seat, and the Mediator.
-   - It keeps the highest-ranked cue for each channel.
-   - It returns at most one vibration cue and one sound cue. Each carries the state version and its anchor: a card landing, the trick sweep, a result or the game-over dialog.
-4. The [gates](#gates) run. A cue that fails one is dropped at once.
-5. A cue that passes is **armed** at its anchor:
+3. `Moments.build(events, view)` turns the events into moments. It is a pure function: it ignores events that never become moments, reads only the View for your seat, and adds derived facts.
+4. The game's [gates](#gates) run. If one fails, nothing is sent.
+5. The moments are grouped by anchor, and each group is sent as a batch at its screen time:
 
-   | Anchor | Where it fires |
+   | Anchor | Where the batch is sent |
    |---|---|
-   | A card landing | `act()`, one motion step (`Fx.step()`) later |
-   | The trick sweep | Armed at `TRICK_WON`. It fires in the next `act()`, the one that leaves Trick end, when the sweep is drawn. |
-   | A hand or Showdown result | The release in `holdResult()` |
-   | The game-over dialog | `showGameOver` |
+   | `land` | `act()`, one motion step (`Fx.step()`) later |
+   | `sweep` | Held from `TRICK_WON`, and sent in the next `act()`, the one that leaves Trick end, when the sweep is drawn |
+   | `result` | The release in `holdResult()` |
+   | `gameOver` | `showGameOver` |
+   | `tap` | At once, in the tap's handler |
 
-### 5. When an armed cue is due
+### 5. When a batch arrives (module)
 
-1. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
-2. A cue that passes plays once:
+1. The module's [gates](#gates) run. A batch that fails one is dropped.
+2. The rule table picks one cue for the batch: the highest-ranked match, moments of interest first.
+3. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
+4. A cue that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
    - **Sound:** a buffer source, through a gain node (Half or Full), started on `audioContext.currentTime`.
-3. The channel records the time and rank, for the next gap check.
+5. The channel records the time and rank, for the next gap check.
 
 ### 6. Taps
 
-1. **A card picked or unpicked:** `Feedback.tap('pick')` checks the Vibration switch, support, the first tap and Instant, then vibrates `[8]`. No gap check and no sound.
-2. **Skip ▶ while you mediate:** `Feedback.tap('skip')` vibrates `[20]`. A Showdown result within `GAP_VIBRATE_MS` replaces it.
+1. **A card picked or unpicked:** the game sends a `tap` batch with `cardPicked`. The module checks the Vibration switch and support, then vibrates `[8]`. No gap check and no sound.
+2. **Skip ▶ while you mediate:** the game sends a `tap` batch with `skipPressed`. The module vibrates `[20]`. A Showdown result within `GAP_VIBRATE_MS` replaces it.
 
 ### 7. Cancelling
 
-`Feedback.cancel()` clears every armed cue and stops any sound scheduled but not yet started. It runs on a new state version, **Next hand**, Exit, a new game, a jump in the replay viewer, and the tab being hidden. Nothing is kept for later.
+The module clears every armed cue and stops any sound scheduled but not yet started. It does this on the game's `cancel` message (a new state version, **Next hand**, Exit, a new game, a jump in the replay viewer) and when the tab is hidden. Nothing is kept for later.
 
 ### 8. Settings changes
 
 | Change | What happens |
 |---|---|
-| Sound to Off | `cancel()`, then the playing `AudioContext` is suspended. Loaded sounds stay in memory for the page load. |
+| Sound to Off | The module cancels, then the playing `AudioContext` is suspended. Loaded sounds stay in memory for the page load. |
 | Sound from Off to Half or Full | Loading starts if it hasn't, and the playing `AudioContext` is created or resumed. |
 | Vibration off | `navigator.vibrate(0)` stops a pattern that is running. |
-| Reset this tab | All three go to Off, with the effects above. |
+| Reset this tab | The game sends `reset`. The module sets all three to Off, with the effects above. |
+| Speed to Instant, or back | The game sends `speed`. At Instant, the module cancels and stops a running pattern. |
 
 ## Code
 
-- One module, `Feedback`, in a new section of `index.html` after section 7b (`Fx`). The code stays in one file. Only the sound files are outside it, because the game works without them.
-- `Feedback.cueFor(events, ctx)`: a pure function that turns an action's events into at most one cue for each channel. The self-test covers it.
-- `Feedback.play(cue, ctx)`: applies the gates and the dropping rules, then plays the cue on each channel.
-- The vibration patterns, the sound table and the dropping limits are named constants in the module.
-- Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, and the card-pick handler.
-- `sw.js`: runtime caching for `sounds/*.wav`, then a `SOUNDS` precache list once the full set exists. `tools/publish.sh`: `sounds` in its file list.
+### In `index.html`
+
+- A new section, `Moments`, after section 7b (`Fx`), with its own banner and `Tests:` line.
+- `Moments.build(events, view)`: a pure function from an action's events and the View for your seat to moments. The self-test covers it.
+- `Moments.send(anchor, moments)` and `Moments.control(name, data)`: send a batch or a control message.
+- `Moments.load()`: adds the module's script when the browser is idle.
+- Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, the hand's card handler, Skip ▶, the speed picker, **Reset this tab**, and every place that cancels.
+- Settings markup: the hidden **Sound and touch** heading and the empty `#setFeedback` card.
+
+### In `feedback/feedback.js`
+
+- One file, no build step, no dependencies. It reads nothing from the game except batches and control messages.
+- The cue table, the moments-of-interest rule table, the vibration patterns, the sound table and the dropping limits are named constants.
+- `cueFor(batch)`: a pure function from a batch to at most one cue for each channel. Its tests feed it batches.
+- It checks the [gates](#gates) it owns, applies the dropping rules, and plays.
+- It builds and handles the rows in `#setFeedback`, and keeps its own device keys.
+
+### Elsewhere
+
+- `sw.js`: runtime caching for `feedback/`, then a precache list once the full set of sounds exists.
+- `tools/publish.sh`: `feedback` in its file list.
+- `README.md`: describes `feedback/` as an optional add-on to the one-file game.
 
 ## Tests
 
 | Change | Tier | Scripts |
 |---|---|---|
-| The `Feedback` module | T1 | A new `feedback` area in `selftest.js`: cue ranks, seat filters, gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext` |
-| The Settings rows | T1 | `settings.js` |
-| Runtime caching of `sounds/` in `sw.js`, then the `SOUNDS` precache | T1 | `sw.js`, including an install where one sound fails to load |
+| `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the game gates send nothing |
+| `feedback/feedback.js` | T1 | A new `tests/feedback.js` script: cue ranks, moments of interest, seat rules, module gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext`. `typecheck.js` checks the file too. |
+| The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files, and a `v` mismatch keeps the module silent |
+| The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
+| Runtime caching of `feedback/` in `sw.js`, then the precache | T1 | `sw.js`, including an install where one feedback file fails to load |
 | Missing files are silent | T1 | The `feedback` area: a failed fetch and a failed decode drop the cue, show nothing and leave vibration playing |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, and whether sound adds any delay at Fast |
 
-The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md` list the new area.
+The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md` list the new area and script.
 
 ## Decisions
 
@@ -357,8 +487,13 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 11 | Pass, void, refused move, buttons | No sound |
 | 12 | Reset this tab | Sets Sound and touch back to Off |
 | 13 | Sound source | Recorded WAV files, supplied separately |
-| 14 | Where the files live | External files in `sounds/`. The interface is silent when one is missing. |
+| 14 | Where the files live | External files in `feedback/sounds/`. The interface is silent when one is missing. |
 | 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
 | 16 | Offline sounds | Runtime caching until the full set exists, then precached at install |
 | 17 | When sounds load | When the browser is idle after page load, while Sound isn't Off. Nothing waits for them. |
 | 18 | Platforms for vibration | Android only, with full patterns. iPhone gets no vibration: no overlays or other workarounds. The Vibration row is hidden where `navigator.vibrate` doesn't exist. |
+| 19 | Architecture | An optional, external module in `feedback/`. The game sends moments and never depends on a reply. |
+| 20 | Sending | A `kct:moment` `CustomEvent` on `document`, one batch per anchor, at screen time |
+| 21 | Loading | A classic script added when the browser is idle. A missing file is silent. |
+| 22 | Settings | The game keeps an empty, hidden card. The module fills it in once it loads. |
+| 23 | Contract version | `v` on every batch and on `kct:feedback-ready`. A mismatch keeps the module silent. |
