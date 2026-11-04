@@ -12,6 +12,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 2. **Keep it rare.** A cue that plays all the time becomes noise. Vibration is kept for moments that matter to you. Sound can mark more moments, but quietly.
 3. **Follow the screen.** A cue plays when the player *sees* the moment, not when the Engine applies it.
 4. **Drop, never wait.** A cue that can't play on time is dropped. Nothing is queued for later.
+5. **Instant turns it all off.** At speed Instant, no vibration, sound or parallax plays (parallax: [#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)). No setting overrides this, including **Sound in replays**.
 
 ## Channels
 
@@ -106,7 +107,7 @@ No cue plays when any of these is true.
 | The channel's setting is off | Its `localStorage` key | Sound: the level is Off. |
 | The channel isn't supported | `typeof navigator.vibrate`, `window.AudioContext` | |
 | No tap yet on this page load | `navigator.userActivation.hasBeenActive` | Browsers block both channels until then. If the property is missing, the channel stays quiet. |
-| Speed is **Instant** | `app.ui.speed` | |
+| Speed is **Instant** | `app.ui.speed` | Applies to both channels and to parallax (#185), in live games and the replay viewer. No setting overrides it. |
 | Skip ▶ is running | `skipping()` | `showdownResult` still plays when the skip ends. |
 | The replay viewer | `watch` | No vibration. Sound plays only with **Sound in replays** on. Jumps and single steps never cue. |
 | A game is resumed or reloaded | `resume` | A restored game never plays a past cue. |
