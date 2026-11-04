@@ -1383,7 +1383,7 @@ const RNG = (() => {
 
 /* ---------------------------------------------------------------------
    2b. DEV — development overrides of a few caps, typed in Load a code as
-   "!dev key=value ...", "!dev" (list) or "!dev reset". Only caps that do
+   "!dev key=value ...", "!dev" (list) or "!dev reset:<option>". Only caps that do
    not change a game: no rule, deal, bot or progress. They last for the tab
    (sessionStorage 'kct-dev': not a 'kct.' key, so never in a backup).
    Two commands are not caps: "!dev easing=N" sets the hand count of
@@ -1395,7 +1395,9 @@ const RNG = (() => {
    "!dev testupdate" makes a test update: the app shows the update badge and
    asks as for a real one, and applying it reloads the page, after which a small
    dot next to the build number says a test update was applied (for the tab,
-   until a real update or "!dev reset"). Nothing is fetched or cached.
+   until a real update or "!dev reset:testupdate"). Nothing is fetched or cached.
+   "!dev reset:<option>" resets one thing only (RESET_OPTIONS); "!dev reset"
+   alone changes nothing and lists the options.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1406,6 +1408,12 @@ const DEV_KEYS = Object.freeze({
   log: { def: 1500, min: 10, max: 100000, note: 'Latest Scroll lines a save keeps' },
   scroll: { def: 5000, min: 10, max: 100000, note: 'Latest Scroll lines shown' },
   logger: { def: 1500, min: 10, max: 100000, note: 'Logger lines kept' }
+});
+/* '!dev reset:<option>': each resets one thing. 'reset' alone lists them and changes nothing. There is no option for
+   everything, and none for Dynamic's easing, which has no undo. */
+const RESET_OPTIONS = Object.freeze({
+  saves: 'the saves cap', log: 'the log cap', scroll: 'the scroll cap', logger: 'the logger cap',
+  caps: 'all four caps', testupdate: 'a waiting test update and the build dot', awards: 'awards, shown again'
 });
 const Dev = (() => {
   const KEY = 'kct-dev', FAUX_KEY = 'kct-dev-faux';
@@ -1433,7 +1441,14 @@ const Dev = (() => {
       for (const k of /** @type {DevKey[]} */ (Object.keys(ops))) { const v = ops[k]; if (v === null || v === DEV_KEYS[k].def) delete vals[k]; else if (valid(k, v)) vals[k] = v; }
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
-    reset() { vals = {}; D.set({}); try { sessionStorage.removeItem(FAUX_KEY); } catch (e) { /* nothing kept */ } },
+    /** Resets one thing (a RESET_OPTIONS key) of what the Dev module keeps: a cap, the caps or the test update's dot.
+        'awards' is the App's (Awards). @param {string} opt */
+    reset(opt) {
+      if (opt === 'caps') vals = {};
+      else if (Object.prototype.hasOwnProperty.call(DEV_KEYS, opt)) delete vals[/** @type {DevKey} */ (opt)];
+      else if (opt === 'testupdate') D.clearFaux();
+      D.set({});
+    },
     /** True when a test update ('!dev testupdate') was applied in this tab to the version that runs now (ver): the build
         lines show a dot. A real update changes the version, so it clears the dot, also when it arrives by a restart.
         @param {string} ver */
@@ -1442,26 +1457,32 @@ const Dev = (() => {
     markFaux(ver) { try { sessionStorage.setItem(FAUX_KEY, 'applied:' + ver); } catch (e) { /* no dot after the reload */ } },
     /** A real update clears the test update's dot. */
     clearFaux() { try { sessionStorage.removeItem(FAUX_KEY); } catch (e) { /* nothing kept */ } },
-    /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
+    /** Reads a dev command: '!dev', '!dev reset', '!dev reset:<option>', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
         Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
         (false) or not given (null). @param {string} text
         test: '!dev testupdate'.
-        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+        reset: null (not a reset), '' ('reset' alone: list the options) or a RESET_OPTIONS key.
+        @returns {{ ok: true, reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
       const rest = words.slice(1);
-      if (rest.length === 1 && rest[0].toLowerCase() === 'reset') return { ok: true, reset: true, easing: null, look: false, awards: null, ops: {} };
-      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: false, easing: null, look: true, awards: null, ops: {} };
+      if (rest.some(w => /^reset(:|$)/i.test(w))) {
+        const m = rest.length === 1 ? /^reset(?::([a-z]+))?$/i.exec(rest[0]) : null, opt = m && m[1] ? m[1].toLowerCase() : '';
+        if (!m) return { ok: false, why: 'Write it on its own as reset:option, for example !dev reset:caps.' };
+        if (opt && !Object.prototype.hasOwnProperty.call(RESET_OPTIONS, opt)) return { ok: false, why: 'Unknown reset option: ' + opt + '. Options: ' + Object.keys(RESET_OPTIONS).join(', ') + '.' };
+        return { ok: true, reset: opt, easing: null, look: false, awards: null, ops: {} };
+      }
+      if (rest.length === 1 && rest[0].toLowerCase() === 'easing') return { ok: true, reset: null, easing: null, look: true, awards: null, ops: {} };
       if (rest.some(w => /^easing(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, awards: null, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
+        return m ? { ok: true, reset: null, easing: Number(m[1]), look: false, awards: null, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
       }
-      if (rest.length === 1 && rest[0].toLowerCase() === 'testupdate') return { ok: true, reset: false, easing: null, look: false, awards: null, test: true, ops: {} };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'testupdate') return { ok: true, reset: null, easing: null, look: false, awards: null, test: true, ops: {} };
       if (rest.some(w => /^testupdate$/i.test(w))) return { ok: false, why: 'Write it on its own as testupdate.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
-        return m ? { ok: true, reset: false, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
+        return m ? { ok: true, reset: null, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
       }
       /** @type {Partial<Record<DevKey, number>>} */
       const ops = {};
@@ -1473,7 +1494,7 @@ const Dev = (() => {
         if (!valid(dk, v)) return { ok: false, why: dk + ' takes ' + DEV_KEYS[dk].min + ' to ' + DEV_KEYS[dk].max + '.' };
         ops[dk] = v;
       }
-      return { ok: true, reset: false, easing: null, look: false, awards: null, ops };
+      return { ok: true, reset: null, easing: null, look: false, awards: null, ops };
     }
   };
   return D;
@@ -6224,7 +6245,7 @@ const App = (() => {
     houseRules: HOUSE,
     /* Settings → Bots: who sits in each seat and how it plays, [your seat, West, East] (see blankSeats). */
     seats: blankSeats(),
-    updateReady: false, fakeUpdate: false, menuOpen: false, menuLaunch: false,
+    updateReady: false, fakeUpdate: false, realUpdate: false, menuOpen: false, menuLaunch: false,
     /** @type {ReturnType<typeof setTimeout> | null} */
     timer: null,
     /** @type {(() => void) | null} */
@@ -8556,8 +8577,8 @@ const App = (() => {
       row(navigator.serviceWorker.controller ? 'ok' : 'wait', navigator.serviceWorker.controller ? 'Service worker controls this page.' : 'Service worker does not control this page yet (reload once).');
       if (opts && opts.update) {
         const r = await checkUpdate(10000);
-        if (r === 'new') app.updateReady = true;
-        if (r === 'same' && !app.fakeUpdate) app.updateReady = false;
+        if (r === 'new') app.updateReady = app.realUpdate = true;
+        if (r === 'same') { app.realUpdate = false; if (!app.fakeUpdate) app.updateReady = false; }
         if (r === 'new' || app.updateReady) { found = 'Update found'; row('ok', 'Update found: press Update now to load it.'); }
         else if (r === 'same' || r === 'first') { found = '✔ Newest version'; row('ok', 'This is the newest version (' + $('setBuild').textContent + ').'); }
         else if (r === 'offline') { found = 'Could not look for a new version'; row('wait', 'Could not reach the server to look for a new version.'); }
@@ -8581,7 +8602,7 @@ const App = (() => {
     navigator.serviceWorker.addEventListener('message', ev => {
       const t = ev.data && ev.data.type;
       /* Open Settings shows the Install checklist: it is drawn again, so it does not still say this is the newest version. */
-      if (t === 'update-ready') { app.updateReady = true; maybeOfferUpdate(); if (!$('settingsPanel').hidden) checkInstall(); }
+      if (t === 'update-ready') { app.updateReady = app.realUpdate = true; maybeOfferUpdate(); if (!$('settingsPanel').hidden) checkInstall(); }
       if (t === 'update-applied') location.reload();
     });
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
@@ -9391,7 +9412,7 @@ const App = (() => {
      text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, awards: boolean | null, test: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
@@ -9421,13 +9442,16 @@ const App = (() => {
     if (/^\d+$/.test(c)) return c.length <= 10 && Number(c) <= SEED_MAX ? { kind: 'seed', seed: Number(c), wave } : { kind: 'bad', why: 'A seed is a whole number from 0 to ' + SEED_MAX + '.' };
     return { kind: 'bad', why: NOT_A_CODE };
   }
+  /* '!dev reset' alone: the options, and nothing changes. */
+  const resetText = () => '!dev reset changes nothing on its own. Write !dev reset:option to reset one thing: ' +
+    Object.entries(RESET_OPTIONS).map(([k, v]) => k + ' (' + v + ')').join(', ') + '.';
   /* '!dev' submitted alone: the keys, their values for this tab and their defaults. */
   function devText() {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
       'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
-      '!dev testupdate shows the update badge and prompt with a test update.';
+      '!dev testupdate shows the update badge and prompt with a test update. !dev reset:option resets one thing (!dev reset lists them).';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -9468,8 +9492,21 @@ const App = (() => {
     }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
-      if (!r.dev.reset && !Object.keys(r.dev.ops).length) { say(devText()); return; }
-      if (r.dev.reset) Dev.reset(); else Dev.set(r.dev.ops);
+      if (r.dev.reset === '') { say(resetText()); return; }
+      if (r.dev.reset) {
+        const opt = r.dev.reset;
+        Dev.reset(opt);
+        if (opt === 'awards') Awards.set(true);
+        /* The test update goes; a real update found meanwhile keeps its badge. */
+        if (opt === 'testupdate') { app.fakeUpdate = false; app.updateReady = app.realUpdate; syncUpdateBtn(); document.querySelectorAll('.faux-dot').forEach(d => d.remove()); }
+        Logger.log('DEV', { reset: opt, set: Object.fromEntries(Dev.list()) });
+        linkNote = 'Reset ' + RESET_OPTIONS[/** @type {keyof typeof RESET_OPTIONS} */ (opt)] + '.';
+        menuView = 'home';
+        showMenu(app.menuLaunch);
+        return;
+      }
+      if (!Object.keys(r.dev.ops).length) { say(devText()); return; }
+      Dev.set(r.dev.ops);
       Logger.log('DEV', { set: Object.fromEntries(Dev.list()) });
       menuView = 'home';
       showMenu(app.menuLaunch);
@@ -10410,11 +10447,11 @@ const SelfTest = (() => {
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, awards: null, test: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, awards: null, test: false, ops: {} }, { reset: true, easing: null, look: false, awards: null, test: false, ops: {} },
-          { reset: false, easing: 120, look: false, awards: null, test: false, ops: {} }, { reset: false, easing: 0, look: false, awards: null, test: false, ops: {} }, { reset: false, easing: null, look: true, awards: null, test: false, ops: {} },
-          { reset: false, easing: null, look: false, awards: true, test: false, ops: {} }, { reset: false, easing: null, look: false, awards: false, test: false, ops: {} }, { reset: false, easing: null, look: false, awards: null, test: true, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(20).fill('bad'));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev],
+        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, ops: {} },
+          { reset: null, easing: 120, look: false, awards: null, test: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: true, test: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(25).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
