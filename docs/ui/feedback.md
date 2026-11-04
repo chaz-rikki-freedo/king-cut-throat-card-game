@@ -307,3 +307,4 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
 | 16 | Offline sounds | Runtime caching until the full set exists, then precached at install |
 | 17 | When sounds load | When the browser is idle after page load, while Sound isn't Off. Nothing waits for them. |
+| 18 | Platforms for vibration | Android only, with full patterns. iPhone gets no vibration: no overlays or other workarounds. The Vibration row is hidden where `navigator.vibrate` doesn't exist. |
