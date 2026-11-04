@@ -19,7 +19,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 | Channel | API | Supported on | Default | Notes |
 |---|---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome on Android, including the installed app | Off | A new call replaces the pattern still running. Not supported on iOS. |
-| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `sounds/`, next to `index.html` (see [Sound files](#sound-files)). Each is fetched and decoded once, after the first tap. Never use `<audio>` elements. |
+| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `sounds/`, next to `index.html` (see [Sound files](#sound-files)). Each is loaded and decoded once, when the browser is idle after page load. Sound plays only after the first tap. Never use `<audio>` elements. |
 
 ## Settings
 
@@ -189,9 +189,80 @@ Supply one WAV file for each name below. These 17 files are the full set.
 
 - Vibration costs microseconds on the main thread. The device does the vibrating.
 - Sound plays on the audio thread. A busy main thread can only delay when a sound starts, and `LATE_MS` drops a sound that starts too late.
-- The `AudioContext` is created or resumed on the first tap, and only while Sound isn't Off. The sounds are fetched and decoded then, in the background, one at a time, never during a game moment.
+- The sounds load only while Sound isn't Off, when the browser is idle, one at a time, never during a game moment. Decoding uses an `OfflineAudioContext`, so it needs no tap.
+- The playing `AudioContext` is created or resumed on the first tap.
+- Nothing in the interface waits for the sounds. A sound that isn't loaded is dropped.
 - A file that fails to load is not fetched again on that page load.
 - Sounds are scheduled on `audioContext.currentTime`, not on extra `setTimeout`s.
+
+## Order of operations
+
+What `Feedback` does, from page load to a cue playing, in order.
+
+### 1. Page load
+
+1. `Feedback` reads its three device keys: Vibration, Sound and Sound in replays.
+2. Nothing else happens yet. Buttons and the table never wait for feedback.
+
+### 2. Loading the sounds
+
+1. **When the browser is idle** after the page loads (`requestIdleCallback`, or a short `setTimeout` where it's missing), and only if Sound isn't Off, the module starts loading the sounds.
+2. It loads them **one at a time**: download from `sounds/`, then decode with an `OfflineAudioContext`. Decoding needs no tap and logs no warning. A decoded sound plays in any audio context.
+3. A file that fails to download or decode is marked missing: nothing on screen, nothing in the console, and one `SOUND_MISSING` line in the Event log when it's on. It isn't tried again on that page load.
+4. **When Sound changes from Off to Half or Full,** loading starts then, if it hasn't already.
+5. Vibration needs no loading.
+
+Once the service worker has cached the files, they load from the device in a few milliseconds, so they are almost always ready before the first cue. A sound that isn't ready is dropped (see [Dropping](#dropping)).
+
+### 3. The first tap
+
+1. A one-time `pointerdown` listener runs on the first tap anywhere on the page.
+2. If Sound isn't Off, it creates or resumes the playing `AudioContext`. A change of the Sound setting is itself a tap, so it does the same.
+
+### 4. Each action, in `act()`
+
+1. `Engine.dispatch` applies the action and returns its events.
+2. The existing work runs: `narrate`, `draw` and `schedule`.
+3. `Feedback.cueFor(events, ctx)` turns the events into cues. It is a pure function:
+   - It ignores the events that never cue.
+   - It applies the seat rules: your seat (including autoplay), a bot's seat, and the Mediator.
+   - It keeps the highest-ranked cue for each channel.
+   - It returns at most one vibration cue and one sound cue. Each carries the state version and its anchor: a card landing, the trick sweep, a result or the game-over dialog.
+4. The [gates](#gates) run. A cue that fails one is dropped at once.
+5. A cue that passes is **armed** at its anchor:
+
+   | Anchor | Where it fires |
+   |---|---|
+   | A card landing | `act()`, one motion step (`Fx.step()`) later |
+   | The trick sweep | Armed at `TRICK_WON`. It fires in the next `act()`, the one that leaves Trick end, when the sweep is drawn. |
+   | A hand or Showdown result | The release in `holdResult()` |
+   | The game-over dialog | `showGameOver` |
+
+### 5. When an armed cue is due
+
+1. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
+2. A cue that passes plays once:
+   - **Vibration:** `navigator.vibrate(pattern)`.
+   - **Sound:** a buffer source, through a gain node (Half or Full), started on `audioContext.currentTime`.
+3. The channel records the time and rank, for the next gap check.
+
+### 6. Taps
+
+1. **A card picked or unpicked:** `Feedback.tap('pick')` checks the Vibration switch, support, the first tap and Instant, then vibrates `[8]`. No gap check and no sound.
+2. **Skip ▶ while you mediate:** `Feedback.tap('skip')` vibrates `[20]`. A Showdown result within `GAP_VIBRATE_MS` replaces it.
+
+### 7. Cancelling
+
+`Feedback.cancel()` clears every armed cue and stops any sound scheduled but not yet started. It runs on a new state version, **Next hand**, Exit, a new game, a jump in the replay viewer, and the tab being hidden. Nothing is kept for later.
+
+### 8. Settings changes
+
+| Change | What happens |
+|---|---|
+| Sound to Off | `cancel()`, then the playing `AudioContext` is suspended. Loaded sounds stay in memory for the page load. |
+| Sound from Off to Half or Full | Loading starts if it hasn't, and the playing `AudioContext` is created or resumed. |
+| Vibration off | `navigator.vibrate(0)` stops a pattern that is running. |
+| Reset this tab | All three go to Off, with the effects above. |
 
 ## Code
 
@@ -235,3 +306,4 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 14 | Where the files live | External files in `sounds/`. The interface is silent when one is missing. |
 | 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
 | 16 | Offline sounds | Runtime caching until the full set exists, then precached at install |
+| 17 | When sounds load | When the browser is idle after page load, while Sound isn't Off. Nothing waits for them. |
