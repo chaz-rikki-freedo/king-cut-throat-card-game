@@ -662,6 +662,13 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
 .ask table.data-cmp td:first-child{color:var(--muted)}
 .update-note{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem;padding:0.625rem 0.875rem;border-radius:0.75rem;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 0.5rem 1.5rem rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 2rem)}
 .update-note[hidden]{display:none}
+/* The update badge (syncUpdateBtn): a gold dot on the ways into Settings and on its Tools tab. */
+body.update-ready .icon-btn[data-action="toggle-settings"],body.update-ready #setTabTools{position:relative}
+body.update-ready .icon-btn[data-action="toggle-settings"]::after,body.update-ready #setTabTools::after{content:'';position:absolute;top:0.25rem;right:0.25rem;width:0.625rem;height:0.625rem;border-radius:50%;background:var(--gold);pointer-events:none}
+body.update-ready .mfoot [data-action="toggle-settings"]::after{content:'';display:inline-block;width:0.5rem;height:0.5rem;margin-left:0.3125rem;border-radius:50%;background:var(--gold);vertical-align:0.125rem}
+.install-box > summary.upd{color:var(--gold)}
+/* After '!dev testupdate' was applied (FAUX_DOT): a small dot after the build number. */
+.faux-dot{display:inline-block;width:0.375rem;height:0.375rem;margin-left:0.3125rem;border-radius:50%;background:var(--gold);vertical-align:0.125rem}
 /* ---- The table: tags, numbers and circles in the seats, the shared facts in one information strip, every
    action button in the play area, and motion that shows each move. ---- */
 .topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden],.table[hidden],.about[hidden]{display:none!important}
@@ -1093,8 +1100,8 @@ window.kctTheme = (() => {
 <div class="overlay ask-layer" id="askLayer" hidden></div>
 <div class="overlay stale-layer" id="staleLayer" hidden></div>
 <div class="update-note" id="updateNote" role="status" hidden>
-  <span>A new version is ready.</span>
-  <button class="btn primary" type="button" data-action="update-reload">Reload</button>
+  <span>Update found. Update now?</span>
+  <button class="btn primary" type="button" data-action="update-reload">Update</button>
   <button class="btn" type="button" data-action="update-later">Later</button>
 </div>
 
@@ -1167,7 +1174,7 @@ window.kctTheme = (() => {
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for a new version.</span></span>
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for an update.</span></span>
           <details class="install-box" id="setInstallBox"><summary id="setInstallSum">Checking…</summary><ul class="install-check" id="setInstall"><li>Checking…</li></ul></details>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button><button class="btn btn-sm primary" type="button" data-action="update-reload" id="setUpdateBtn" hidden>Update now</button></span></div>
         <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
@@ -1392,6 +1399,10 @@ const RNG = (() => {
    alone shows a terse readout of the easing (legend: tests/README.md).
    "!dev awards=off" or "=on" hides or shows the award on the game-over box
    (Awards; on by default), kept on the device until changed.
+   "!dev testupdate" makes a test update: the app shows the update badge and
+   asks as for a real one, and applying it reloads the page, after which a small
+   dot next to the build number says a test update was applied (for the tab;
+   "!dev reset" clears it). Nothing is fetched or cached.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1404,7 +1415,7 @@ const DEV_KEYS = Object.freeze({
   logger: { def: 1500, min: 10, max: 100000, note: 'Logger lines kept' }
 });
 const Dev = (() => {
-  const KEY = 'kct-dev';
+  const KEY = 'kct-dev', FAUX_KEY = 'kct-dev-faux';
   /** @returns {Partial<Record<DevKey, number>>} the saved overrides that are still valid */
   function read() {
     /** @type {any} */
@@ -1429,11 +1440,16 @@ const Dev = (() => {
       for (const k of /** @type {DevKey[]} */ (Object.keys(ops))) { const v = ops[k]; if (v === null || v === DEV_KEYS[k].def) delete vals[k]; else if (valid(k, v)) vals[k] = v; }
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
-    reset() { vals = {}; D.set({}); },
+    reset() { vals = {}; D.set({}); try { sessionStorage.removeItem(FAUX_KEY); } catch (e) { /* nothing kept */ } },
+    /** True after a test update ('!dev testupdate') was applied in this tab: the build lines show a dot. */
+    fauxApplied() { try { return sessionStorage.getItem(FAUX_KEY) === 'applied'; } catch (e) { return false; } },
+    /** Marks a test update as applied, for the reload that follows. */
+    markFaux() { try { sessionStorage.setItem(FAUX_KEY, 'applied'); } catch (e) { /* no dot after the reload */ } },
     /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
         Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
         (false) or not given (null). @param {string} text
-        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, awards: boolean | null, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+        test: '!dev testupdate'.
+        @returns {{ ok: true, reset: boolean, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
@@ -1444,6 +1460,8 @@ const Dev = (() => {
         const m = rest.length === 1 ? /^easing=(\d{1,7})$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: false, easing: Number(m[1]), look: false, awards: null, ops: {} } : { ok: false, why: 'Write it on its own as easing or easing=hands, for example !dev easing=0.' };
       }
+      if (rest.length === 1 && rest[0].toLowerCase() === 'testupdate') return { ok: true, reset: false, easing: null, look: false, awards: null, test: true, ops: {} };
+      if (rest.some(w => /^testupdate$/i.test(w))) return { ok: false, why: 'Write it on its own as testupdate.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: false, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
@@ -6209,7 +6227,7 @@ const App = (() => {
     houseRules: HOUSE,
     /* Settings → Bots: who sits in each seat and how it plays, [your seat, West, East] (see blankSeats). */
     seats: blankSeats(),
-    updateReady: false, menuOpen: false, menuLaunch: false,
+    updateReady: false, fakeUpdate: false, menuOpen: false, menuLaunch: false,
     /** @type {ReturnType<typeof setTimeout> | null} */
     timer: null,
     /** @type {(() => void) | null} */
@@ -8014,7 +8032,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.fauxApplied() ? FAUX_DOT : '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {
@@ -8390,13 +8408,25 @@ const App = (() => {
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
   function gameRunning() { return !!app.mode && !!app.state && !app.state.gameOver; }
+  /* After a test update ('!dev testupdate') was applied: a small dot after the build number. */
+  const FAUX_DOT = '<span class="faux-dot" role="img" aria-label="test update applied" title="Test update applied"></span>';
+  /* The fingerprint the service worker put on this page as it served it (sw.js, pageId). Each check sends it, so the
+     worker can tell this page is older than its cached one, as when the phone cleared the cache while the app stayed
+     open and the next check saved the new version. */
+  const PAGE_ID = safe(() => /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="kct-page"]'))?.content) || '';
   function maybeOfferUpdate() {
     syncUpdateBtn();
     if (!app.updateReady || gameRunning()) return;
     $('updateNote').hidden = false;
   }
   /* Settings → Install: Update now shows while a new version waits. It reloads at once, also mid-game (each move is saved). */
-  function syncUpdateBtn() { const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady; }
+  /* The badge: while an update waits, a gold dot on each way into Settings (the header button, the menu's link) and on
+     its Tools tab, where the Install row offers Update now. CSS draws it from the body's update-ready class. */
+  function syncUpdateBtn() {
+    const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady;
+    document.body.classList.toggle('update-ready', app.updateReady);
+    for (const el of document.querySelectorAll('.icon-btn[data-action="toggle-settings"]')) el.setAttribute('aria-label', app.updateReady ? 'Settings: update found' : 'Settings');
+  }
   /* Asks the service worker to fetch the page now, past any CDN copy, and waits for what it found (see checkPage in
      sw.js): 'new', 'same', 'first', 'offline', 'not-game', or null with no worker or no answer in ms. */
   /** @param {number} ms @returns {Promise<string | null>} */
@@ -8411,7 +8441,7 @@ const App = (() => {
       const on = (/** @type {MessageEvent} */ ev) => { if (ev.data && ev.data.type === 'update-checked') done(String(ev.data.result)); };
       const t = setTimeout(() => done(null), ms);
       navigator.serviceWorker.addEventListener('message', on);
-      sw.postMessage({ type: 'check-update', reply: true });
+      sw.postMessage({ type: 'check-update', reply: true, page: PAGE_ID });
     });
   }
   /* Asks the browser to fetch sw.js again. A browser does so by itself only when a page opens, so an app that stays
@@ -8422,9 +8452,14 @@ const App = (() => {
   function hideUpdateNote() { const n = $('updateNote'); if (n) n.hidden = true; }
   function applyUpdate() {
     hideUpdateNote();
-    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-    if (sw) sw.postMessage({ type: 'apply-update' });
-    else location.reload();
+    /* A test update ('!dev testupdate'): a plain reload, with the build lines marked after it. */
+    if (app.fakeUpdate) { Dev.markFaux(); location.reload(); return; }
+    if (!('serviceWorker' in navigator)) { location.reload(); return; }
+    /* The active worker answers too when it does not control this page yet; with none, a plain reload. */
+    navigator.serviceWorker.getRegistration().then(reg => {
+      const sw = navigator.serviceWorker.controller || (reg && reg.active);
+      if (sw) sw.postMessage({ type: 'apply-update' }); else location.reload();
+    }).catch(() => location.reload());
   }
   /* ---- Install: the browser's own install offer, and a check that shows why it may be missing. ---- */
   const install = { prompt: null, offered: false, installed: false, linkRestored: false };
@@ -8473,6 +8508,9 @@ const App = (() => {
     const run = ++installRun;
     const rows = [];
     const tally = { ok: 0, bad: 0, wait: 0 };
+    /* What the look for a new version found, at the front of the summary: the list starts collapsed, so a result
+       only in its rows would go unseen. */
+    let found = '';
     if (opts && opts.update) { const sum = $('setInstallSum'); if (sum) { sum.className = ''; sum.textContent = '… Checking, also for a new version'; } }
     const row = (state, text) => { tally[state]++; rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>'); };
     /* A local copy cannot install or play offline, so the checks below do not apply: file://, or content:// when a
@@ -8487,8 +8525,8 @@ const App = (() => {
       /* The summary line of the collapsed checklist: what needs fixing, else how many checks passed. */
       const sum = $('setInstallSum');
       if (sum) {
-        sum.className = tally.bad ? 'bad' : tally.ok ? 'ok' : '';
-        sum.textContent = tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes');
+        sum.className = found === 'Update found' ? 'upd' : tally.bad ? 'bad' : tally.ok ? 'ok' : '';
+        sum.textContent = (found ? found + ' · ' : '') + (tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes'));
       }
       const btn = $('setInstallBtn');
       if (btn) btn.hidden = local || !install.prompt;
@@ -8525,13 +8563,13 @@ const App = (() => {
       if (opts && opts.update) {
         const r = await checkUpdate(10000);
         if (r === 'new') app.updateReady = true;
-        if (r === 'same') { app.updateReady = false; hideUpdateNote(); }
-        if (r === 'new' || app.updateReady) row('ok', 'A new version is ready: press Update now.');
-        else if (r === 'same' || r === 'first') row('ok', 'This is the newest version (' + $('setBuild').textContent + ').');
-        else if (r === 'offline') row('wait', 'Could not reach the server to look for a new version.');
-        else if (r === 'not-game') row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.');
-        else row('wait', 'The update check got no answer in 10 s.');
-      } else if (app.updateReady) row('ok', 'A new version is ready: press Update now.');
+        if (r === 'same' && !app.fakeUpdate) { app.updateReady = false; hideUpdateNote(); }
+        if (r === 'new' || app.updateReady) { found = 'Update found'; row('ok', 'Update found: press Update now to load it.'); }
+        else if (r === 'same' || r === 'first') { found = '✔ Newest version'; row('ok', 'This is the newest version (' + $('setBuild').textContent + ').'); }
+        else if (r === 'offline') { found = 'Could not look for a new version'; row('wait', 'Could not reach the server to look for a new version.'); }
+        else if (r === 'not-game') { found = 'Could not look for a new version'; row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.'); }
+        else { found = 'Could not look for a new version'; row('wait', 'The update check got no answer in 10 s.'); }
+      } else if (app.updateReady) { found = 'Update found'; row('ok', 'Update found: press Update now to load it.'); }
     }
     const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
     if (kept === true) row('ok', 'Storage is persistent: the browser keeps your progress and saves.');
@@ -8553,25 +8591,28 @@ const App = (() => {
       if (t === 'update-applied') location.reload();
     });
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
-      if (reg.active) reg.active.postMessage({ type: 'update-status' });
+      if (reg.active) reg.active.postMessage({ type: 'update-status', page: PAGE_ID });
     }).catch(() => { /* no offline play, the game still works */ });
     /* A new worker (a changed sw.js) takes over the open page at once (skipWaiting, clients.claim). It looks for a
        new page right away, so whatever the new worker changed applies without closing the app. */
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       const sw = navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'check-update' });
+      if (sw) sw.postMessage({ type: 'check-update', page: PAGE_ID });
     });
     /* An installed app comes back from the background without opening the page again, so neither the browser nor
-       the worker would look for a new version: each time the app is back on the screen, at most once every 30 minutes,
+       the worker would look for a new version: each time the app is back on the screen, at most once every 5 minutes,
        the browser looks for a changed sw.js (updateWorker) and the worker for a changed page. */
     let checked = 0;
-    document.addEventListener('visibilitychange', () => {
+    const look = (/** @type {number} */ gap) => {
       const sw = navigator.serviceWorker.controller;
-      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 30 * 60000) return;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < gap) return;
       checked = Date.now();
       updateWorker();
-      sw.postMessage({ type: 'check-update' });
-    });
+      sw.postMessage({ type: 'check-update', page: PAGE_ID });
+    };
+    document.addEventListener('visibilitychange', () => look(5 * 60000));
+    /* An app left on the screen for hours (a long session) looks every hour too, in the background. */
+    setInterval(() => look(60 * 60000), 5 * 60000);
     requestPersist();
   }
   /* Asks the browser to keep this site's storage (progress, results, saves, replay codes)
@@ -9357,14 +9398,14 @@ const App = (() => {
      text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, awards: boolean | null, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: boolean, easing: number | null, look: boolean, awards: boolean | null, test: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -9392,7 +9433,8 @@ const App = (() => {
     const keys = /** @type {DevKey[]} */ (Object.keys(DEV_KEYS));
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
-      'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device.';
+      'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
+      '!dev testupdate shows the update badge and prompt with a test update.';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -9419,6 +9461,16 @@ const App = (() => {
       linkNote = 'Awards are ' + (r.dev.awards ? 'on: the game-over box shows how you did with your cards.' : 'off.');
       menuView = 'home';
       showMenu(app.menuLaunch);
+      return;
+    }
+    if (r.dev && r.dev.test) {
+      app.fakeUpdate = true;
+      app.updateReady = true;
+      Logger.log('DEV', { testupdate: true });
+      linkNote = 'A test update is ready: the badge and the update prompt show as for a real one.';
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      maybeOfferUpdate();
       return;
     }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
@@ -9563,6 +9615,7 @@ const App = (() => {
   function init() {
     SuitText.watch(document.body);
     $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
+    if (Dev.fauxApplied()) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);
     aboutKings();
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
@@ -10364,11 +10417,11 @@ const SelfTest = (() => {
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev],
-        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, awards: null, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, awards: null, ops: {} }, { reset: true, easing: null, look: false, awards: null, ops: {} },
-          { reset: false, easing: 120, look: false, awards: null, ops: {} }, { reset: false, easing: 0, look: false, awards: null, ops: {} }, { reset: false, easing: null, look: true, awards: null, ops: {} },
-          { reset: false, easing: null, look: false, awards: true, ops: {} }, { reset: false, easing: null, look: false, awards: false, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(18).fill('bad'));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev],
+        [{ kind: 'dev', dev: { reset: false, easing: null, look: false, awards: null, test: false, ops: { saves: 40, log: 300 } } }, { reset: false, easing: null, look: false, awards: null, test: false, ops: {} }, { reset: true, easing: null, look: false, awards: null, test: false, ops: {} },
+          { reset: false, easing: 120, look: false, awards: null, test: false, ops: {} }, { reset: false, easing: 0, look: false, awards: null, test: false, ops: {} }, { reset: false, easing: null, look: true, awards: null, test: false, ops: {} },
+          { reset: false, easing: null, look: false, awards: true, test: false, ops: {} }, { reset: false, easing: null, look: false, awards: false, test: false, ops: {} }, { reset: false, easing: null, look: false, awards: null, test: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(20).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));

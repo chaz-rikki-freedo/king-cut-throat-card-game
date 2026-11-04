@@ -183,6 +183,36 @@ function expect(name, ok, detail) {
     expect('Watch opens the viewer, and Exit returns to the menu', r.watching && r.menuAfter, r);
     expect('Enter on a seed starts that game in the chosen mode', r.played.mode === 'free' && r.played.seed === 4242 && !r.played.ask, r.played);
 
+    console.log('!dev testupdate');
+    await page.goto(srv.url);
+    await page.waitForFunction(() => window.KCT && KCT.App);
+    const devCmd = (/** @type {string} */ t) => page.evaluate(async t => {
+      const q = (/** @type {string} */ x) => document.querySelector(x);
+      if (!q('#codeIn')) { const v = q('#overlay .mfoot [data-view="code"]'); if (v) v.click(); await new Promise(r => setTimeout(r, 50)); }
+      const i = q('#codeIn'); i.value = t; i.dispatchEvent(new Event('input', { bubbles: true }));
+      i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await new Promise(r => setTimeout(r, 100));
+    }, t);
+    const look = () => page.evaluate(() => {
+      const gear = document.querySelector('#topbar [data-action="toggle-settings"]');
+      return { badge: document.body.classList.contains('update-ready'), label: gear.getAttribute('aria-label'), note: !document.querySelector('#updateNote').hidden,
+        noteText: document.querySelector('#updateNote span').textContent, said: (document.querySelector('#overlay .wave-note') || {}).textContent || '',
+        dots: ['#setBuild', '#aboutBuild'].map(x => !!document.querySelector(x + ' .faux-dot')), menuDot: !!document.querySelector('#overlay .about-build .faux-dot') };
+    });
+    await devCmd('!dev testupdate');
+    r = await look();
+    expect('!dev testupdate: the badge, the label and the note show, as for a real update', r.badge && r.label === 'Settings: update found' && r.note && r.noteText === 'Update found. Update now?' && /test update/.test(r.said), r);
+    expect('!dev testupdate: no build dot before it is applied', !r.dots[0] && !r.dots[1], r.dots);
+    await Promise.all([page.waitForEvent('load'), page.click('#updateNote [data-action="update-reload"]')]);
+    await page.waitForFunction(() => window.KCT && KCT.App);
+    r = await look();
+    expect('the test update applied: the page reloaded, a dot after each build number, no badge', !r.badge && !r.note && r.dots[0] && r.dots[1] && r.menuDot, r);
+    await devCmd('!dev reset');
+    await page.reload();
+    await page.waitForFunction(() => window.KCT && KCT.App);
+    r = await look();
+    expect('!dev reset clears the build dot', !r.dots[0] && !r.dots[1], r.dots);
+
     console.log('The controls on the table');
     await page.goto(srv.url + '?replay=' + encodeURIComponent(code));
     r = await step(`
