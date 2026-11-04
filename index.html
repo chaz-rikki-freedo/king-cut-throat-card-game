@@ -2975,7 +2975,9 @@ function cleanReplayEntry(e) {
   return {
     code: e.code, mode: MODES.includes(e.mode) ? e.mode : null, wave: Number.isInteger(e.wave) && WAVES[e.wave - 1] ? e.wave : null,
     west: seat(e.west), east: seat(e.east), winner: [0, 1, 2].includes(e.winner) ? e.winner : null, scores,
-    assisted: e.assisted === true, tuned: e.tuned === true, at: Number.isFinite(e.at) ? e.at : null
+    assisted: e.assisted === true, tuned: e.tuned === true, at: Number.isFinite(e.at) ? e.at : null,
+    /* hidden: removed from Your profile's Games list. It still counts in the chart, the streak and the list's counts. */
+    ...(e.hidden === true ? { hidden: true } : {})
   };
 }
 function createReplays(store) {
@@ -2992,9 +2994,9 @@ function createReplays(store) {
     add(entry) { list = trim([entry, ...list]); js.save(list); return entry; },
     list: () => JSON.parse(JSON.stringify(list)),
     clear() { list = []; js.save(list); },
-    /** Removes the first game that ended at at (its data-at text), as a row of Your profile names it. True when one
-        went. @param {string} at */
-    remove(at) { const i = list.findIndex(e => String(e.at) === at); if (i < 0) return false; list.splice(i, 1); js.save(list); return true; },
+    /** Hides the first shown game that ended at at (its data-at text), as a row of Your profile names it. The game
+        stays, so the results built from the list stay true. True when one was hidden. @param {string} at */
+    hide(at) { const e = list.find(x => !x.hidden && String(x.at) === at); if (!e) return false; e.hidden = true; js.save(list); return true; },
     /** Removes the games of mode m. @param {string} m */
     dropMode(m) { list = list.filter(e => e.mode !== m); js.save(list); }
   });
@@ -8157,17 +8159,17 @@ const App = (() => {
     return { mode: rec.mode, seed: rec.seed, wave: rec.wave, snap, rules: { mediatorLead: !!rec.mediatorLead, jokerFlip: rec.jokerFlip || '', politePlay: !rec.politeOff },
       more: seated ? dealtTable([rec.seats[1], rec.seats[2]], tunes, rec.meta['seats.swapped'] === true) : rec.mode === 'waves' && rec.meta['wave.practice'] === true ? { practice: true } : undefined };
   }
-  /* Delete on a Games row: asks first, then removes that game's replay code. Results, wave tries and the Dynamic
-     profile were counted when the game ended, so they stay. */
+  /* Remove on a Games row: asks first, then hides that game's row. The game stays in the list behind it, so the chart,
+     the streak and every count still include it. */
   async function deleteReplayRow(at) {
-    if (!replays.list().some(x => String(x.at) === at)) return;
-    const yes = await ask({ title: 'Delete this game?', text: '<p>Its replay code is removed, so you can no longer watch it, play it again or export it. ' +
-      'It also leaves the chart, the streak and the counts in this list. Your results and wave tries stay. There is no undo.</p>', ok: 'Delete', cancel: 'Cancel', danger: true });
-    if (yes) replays.remove(at);
+    if (!replays.list().some(x => !x.hidden && String(x.at) === at)) return;
+    const yes = await ask({ title: 'Remove this game?', text: '<p>It leaves this list, so you can no longer watch it, play it again or export it from here. ' +
+      'Its result still counts in your chart, streak, totals and wave tries. There is no undo.</p>', ok: 'Remove', cancel: 'Cancel', danger: true });
+    if (yes) replays.hide(at);
     showProfile();
   }
   function replaySeedRow(at) {
-    const e = replays.list().find(x => String(x.at) === at), g = e && againOf(e);
+    const e = replays.list().find(x => !x.hidden && String(x.at) === at), g = e && againOf(e);
     if (!g) return;
     confirmReplace(g.mode).then(yes => { if (yes) startMode(g.mode, g.seed, g.wave, g.snap, g.rules, g.more); else showProfile(); });
   }
@@ -8832,8 +8834,11 @@ const App = (() => {
         const last = runs[runs.length - 1], f = last && last[0];
         if (f && f.mode === e.mode && f.wave === e.wave && f.west === e.west && f.east === e.east) last.push(e); else runs.push([e]);
       }
+      /* A wave's header gives its real tries (Waves.tries), not the rows: rows can be hidden, and the list keeps only
+         the last REPLAYS_MAX games. */
       const runNote = (/** @type {any[]} */ run) => {
-        const wins = run.filter(e => e.winner === 0).length;
+        const wins = run.filter(e => e.winner === 0).length, w = run[0].mode === 'waves' && run[0].wave;
+        if (w && Waves.tries(w)) { const t = Waves.tries(w); return (pr.cleared.includes(w) ? 'Won' : 'Not won') + ' · ' + t + (t === 1 ? ' try' : ' tries'); }
         if (run.length === 1) return wins ? 'Won' : 'Lost';
         if (run[0].mode === 'waves') return (wins ? 'Won' : 'Not won') + ' · ' + run.length + ' tries';
         return wins + ' of ' + run.length + ' won';
@@ -8844,11 +8849,12 @@ const App = (() => {
         '<span class="pf-gm"><span class="num">' + escHTML(pfName(e.west)) + ' ' + e.scores[1] + ' · ' + escHTML(pfName(e.east)) + ' ' + e.scores[2] + (e.tuned ? ' <small class="dim">(tuned)</small>' : '') + '</span>' +
         '<span class="dim pf-when"><span>' + escHTML(pfWhen(e.at)) + '</span>' + handsOf(e) + '</span></span><span class="pf-acts">' + (canWatch(e) ? tinyButton('replay-watch', 'Watch', ICON_WATCH, at(e)) : '') +
         (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, at(e)) : '') + tinyButton('replay-export', 'Export: seed and replay code', ICON_EXPORT, at(e)) +
-        tinyButton('replay-delete', 'Delete from this list', ICON_DELETE, at(e)) + '</span></li>';
-      html += pfListHTML('pf-games', 'Games', 'the last ' + games.length + ', newest first', runs.map(run => {
+        tinyButton('replay-delete', 'Remove from this list', ICON_DELETE, at(e)) + '</span></li>';
+      const shown = games.filter(e => !e.hidden).length;
+      html += pfListHTML('pf-games', 'Games', (shown < games.length ? shown + ' of ' : '') + 'the last ' + games.length + ', newest first', runs.filter(run => run.some(e => !e.hidden)).map(run => {
         const e = run[0], note = runNote(run);
         return '<section class="pf-tg"><div class="pf-tg-h"><span>' + pfModeName(e) + ' · ' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</span><small' + (/^Won/.test(note) ? ' class="won"' : '') + '>' + note + '</small></div>' +
-          '<ol>' + run.map(row).join('') + '</ol></section>';
+          '<ol>' + run.filter(x => !x.hidden).map(row).join('') + '</ol></section>';
       }).join(''));
     }
     const opp = m === 'all' ? st.opponents : st.modeOpponents[m] || {};
@@ -9019,14 +9025,14 @@ const App = (() => {
       case 'export-seed': copyExport(String(exported.seed)); break;
       case 'export-code': if (exported.code) copyExport(exported.code); break;
       case 'replay-export': {
-        const row = replays.list().find(x => String(x.at) === el.getAttribute('data-at')), rec = row && safe(() => Replay.decode(row.code));
+        const row = replays.list().find(x => !x.hidden && String(x.at) === el.getAttribute('data-at')), rec = row && safe(() => Replay.decode(row.code));
         if (row && rec) exportGame({ seed: rec.seed, code: row.code });
         break;
       }
       case 'replay-delete': deleteReplayRow(el.getAttribute('data-at') || ''); break;
       case 'next-wave': startMode('waves', undefined, app.wave.n + 1); break;
       case 'replay-watch': {
-        const row = el.hasAttribute('data-at') ? replays.list().find(x => String(x.at) === el.getAttribute('data-at')) : null;
+        const row = el.hasAttribute('data-at') ? replays.list().find(x => !x.hidden && String(x.at) === el.getAttribute('data-at')) : null;
         const code = el.hasAttribute('data-at') ? row && row.code : endCode;
         if (code && !watchGame(code, row ? 'profile' : 'end')) note('This game cannot be shown.');
         break;
@@ -10319,8 +10325,9 @@ const SelfTest = (() => {
       eq('a mode reset removes its replay codes', rp.list().map(e => e.code), ['KCT3-A']);
       const rd = createReplays(mem());
       rd.add({ code: 'KCT3-A', mode: 'free', at: 1 }); rd.add({ code: 'KCT3-B', mode: 'free', at: 2 }); rd.add({ code: 'KCT3-C', mode: 'free', at: null }); rd.add({ code: 'KCT3-D', mode: 'free', at: null });
-      eq('Delete removes only the game it names', [rd.remove('1'), rd.remove('9'), rd.remove('null')], [true, false, true]);
-      eq('Delete keeps the other games in order', rd.list().map(e => e.code), ['KCT3-C', 'KCT3-B']);
+      eq('Remove hides only the game it names', [rd.hide('1'), rd.hide('9'), rd.hide('null'), rd.hide('1')], [true, false, true, false]);
+      eq('Remove keeps every game, in order, so results stay', rd.list().map(e => e.code + (e.hidden ? '-' : '')), ['KCT3-D-', 'KCT3-C', 'KCT3-B', 'KCT3-A-']);
+      eq('a hidden game stays hidden after a reload', cleanReplayEntry({ code: 'KCT3-A', hidden: true }).hidden, true);
       eq('older results load and start per-mode opponents empty', createStats(oldStats).record({ mode: 'free', west: 'tex', east: 'kit', won: true }).modeOpponents, { free: { tex: { played: 1, won: 1 }, kit: { played: 1, won: 1 } } });
     });
 
