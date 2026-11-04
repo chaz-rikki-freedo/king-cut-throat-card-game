@@ -86,7 +86,11 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 - **No your-turn cue.** The table already shows whose turn it is.
 - **A game that ends mid-trick** (a King point reaches 10) plays only `gameWin` or `gameLoss`, never `king` and `trickWon` as well.
 - **A Showdown hand.** `showdownCalled` replaces `handResult`, because both come from the same action.
-- **The Mediator.** While you mediate, only special events vibrate. Which events count as special is **TBD**. Until then, Showdown cues don't vibrate for the Mediator, and the sounds still play.
+- **The Mediator.** While you mediate, only two things vibrate:
+  - **The Showdown ends:** `showdownResult` with its `[60, 40, 60]` pattern, whether the Showdown played out or you skipped it.
+  - **You press Skip ▶:** a short `[20]` tap.
+
+  `showdownCalled` and the Showdown's trick and King cues don't vibrate for the Mediator. All the sounds still play, except during the skip.
 - **Autoplay.** Your seat's cues play as if you played it yourself, vibration included.
 - **Events that never cue:** `GAME_STARTED`, `TRICK_STARTED`, `BIDDING_ROUND`, `DISCARDS_COMPLETE`, `KITTY_TRANSFER` and `SCORE_CHANGED`. Each comes with another event that already cues.
 - **TBD:** sounds for a pass (`BID_PASS`), Hand void, Hand abandoned, a refused move, and the Next hand, Deal the Showdown and Skip ▶ buttons.
@@ -96,6 +100,7 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 | Tap | Vibration | Sound |
 |---|---|---|
 | A card picked or unpicked | `[8]`, under the Vibration switch | None |
+| Skip ▶, while you mediate | `[20]`, under the Vibration switch | TBD (button sounds) |
 | Buttons, the menu, Settings | None | None (button sounds are TBD) |
 
 ## Gates
@@ -108,7 +113,7 @@ No cue plays when any of these is true.
 | The channel isn't supported | `typeof navigator.vibrate`, `window.AudioContext` | |
 | No tap yet on this page load | `navigator.userActivation.hasBeenActive` | Browsers block both channels until then. If the property is missing, the channel stays quiet. |
 | Speed is **Instant** | `app.ui.speed` | Applies to both channels and to parallax (#185), in live games and the replay viewer. No setting overrides it. |
-| Skip ▶ is running | `skipping()` | `showdownResult` still plays when the skip ends. |
+| Skip ▶ is running | `skipping()` | `showdownResult` still plays when the skip ends. Skipping isn't speed Instant, so principle 5 doesn't silence it. If the result comes within `GAP_VIBRATE_MS` of the Skip ▶ tap, the result's pattern replaces the tap. |
 | The replay viewer | `watch` | No vibration. Sound plays only with **Sound in replays** on. Jumps and single steps never cue. |
 | A game is resumed or reloaded | `resume` | A restored game never plays a past cue. |
 | The menu or a question is open | `app.menuOpen`, `askDone` | The game waits, so no moments happen. |
@@ -222,7 +227,7 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 2 | Volume | Sound is Off, Half or Full, in place of a switch |
 | 3 | Your-turn cue | None |
 | 4 | Vibration for a won hand | None |
-| 5 | Vibration while you mediate | Special events only. Which ones: TBD |
+| 5 | Vibration while you mediate | Only the Showdown's end and pressing Skip ▶ |
 | 6 | A bot's King point | Sound only, distinct from yours |
 | 7 | Sound in the replay viewer | A separate **Sound in replays** switch, off by default |
 | 8 | Your seat under autoplay | The same cues as when you play it |
@@ -237,5 +242,4 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 
 ## Still to decide
 
-1. Which events vibrate while you mediate.
-2. Sounds for a pass, Hand void, Hand abandoned, a refused move and the buttons.
+1. Sounds for a pass, Hand void, Hand abandoned, a refused move and the buttons.
