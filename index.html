@@ -1020,7 +1020,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'eb46a3e', date: '2026-11-04' });
+const BUILD = Object.freeze({ commit: '7a54e0e', date: '2026-11-04' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1200,8 +1200,9 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) {  }
     },
     reset() { vals = {}; D.set({}); try { sessionStorage.removeItem(FAUX_KEY); } catch (e) {  } },
-    fauxApplied() { try { return sessionStorage.getItem(FAUX_KEY) === 'applied'; } catch (e) { return false; } },
-    markFaux() { try { sessionStorage.setItem(FAUX_KEY, 'applied'); } catch (e) {  } },
+    fauxApplied(ver) { try { return sessionStorage.getItem(FAUX_KEY) === 'applied:' + ver; } catch (e) { return false; } },
+    markFaux(ver) { try { sessionStorage.setItem(FAUX_KEY, 'applied:' + ver); } catch (e) {  } },
+    clearFaux() { try { sessionStorage.removeItem(FAUX_KEY); } catch (e) {  } },
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
@@ -6300,7 +6301,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.fauxApplied() ? FAUX_DOT : '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.fauxApplied(PAGE_VERSION) ? FAUX_DOT : '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   function menuNewHTML() {
     const playing = gameOn();
@@ -6614,6 +6615,7 @@ const App = (() => {
   function gameRunning() { return !!app.mode && !!app.state && !app.state.gameOver; }
   const FAUX_DOT = '<span class="faux-dot" role="img" aria-label="test update applied" title="Test update applied"></span>';
   const PAGE_ID = safe(() =>  (document.querySelector('meta[name="kct-page"]'))?.content) || '';
+  const PAGE_VERSION = PAGE_ID || BUILD.commit;
   function maybeOfferUpdate() { syncUpdateBtn(); }
   function syncUpdateBtn() {
     const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady;
@@ -6638,7 +6640,8 @@ const App = (() => {
     navigator.serviceWorker.getRegistration().then(reg => reg && reg.update()).catch(() => {  });
   }
   function applyUpdate() {
-    if (app.fakeUpdate) { Dev.markFaux(); location.reload(); return; }
+    if (app.fakeUpdate) { Dev.markFaux(PAGE_VERSION); location.reload(); return; }
+    Dev.clearFaux();
     if (!('serviceWorker' in navigator)) { location.reload(); return; }
     navigator.serviceWorker.getRegistration().then(reg => {
       const sw = navigator.serviceWorker.controller || (reg && reg.active);
@@ -7652,7 +7655,7 @@ const App = (() => {
   function init() {
     SuitText.watch(document.body);
     $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
-    if (Dev.fauxApplied()) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);
+    if (Dev.fauxApplied(PAGE_VERSION)) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);
     aboutKings();
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
