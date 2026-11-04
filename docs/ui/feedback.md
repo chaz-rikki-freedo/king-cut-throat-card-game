@@ -103,6 +103,60 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 | Skip ▶, while you mediate | `[20]`, under the Vibration switch | None |
 | Other buttons, the menu, Settings | None | None |
 
+## Moments of interest
+
+A *moment of interest* is a rare situation that gets its own cue: a sound, a vibration pattern, or both. It **replaces** the ordinary cue for that moment, never adds to it. This list is a collection of candidates. Each needs a settled definition before it is built.
+
+This list holds whether `Feedback` stays inside `index.html` or becomes an external module that the game sends moments to (under consideration). Either way, the moments of interest decide which facts the game must provide.
+
+### Rules
+
+1. **Public facts only.** A moment carries only what your seat can see, built from the View, never from the full game state. No cue may reveal a card someone holds unseen.
+2. **The game derives what needs game knowledge.** Facts such as "the game ended on a King point" or "a 5–0 Showdown" are worked out by the game and sent with the moment. `Feedback` never tracks the game itself.
+3. **The most specific match wins.** A moment of interest ranks above the ordinary cue for the same moment, and the [dropping](#dropping) rules still apply.
+4. **Keep them rare.** A moment of interest that fires every game stops being special. Measure how often each one fires across many simulated games before giving it a cue.
+5. **Replays match.** Moments come from the Engine's events, so the replay viewer, with **Sound in replays** on, plays the same moments of interest as the live game.
+6. **Speed Instant turns them off** like every other cue (principle 5).
+
+### Scoring facts
+
+Every moment that changes a score carries `scoresBefore` and `scoresAfter`, with all three seats. Then a definition such as "lead change" lives in `Feedback`, and refining it later needs no change to the game.
+
+### Candidates
+
+| Moment | Replaces | Facts needed | Definition | Status |
+|---|---|---|---|---|
+| **A King point changes the lead** | `king` | `seat`, `you`, `showdown`, `scoresBefore`, `scoresAfter` | **Open**, see [Lead change](#lead-change). Two cues: you take the lead, or a bot takes it from you. | Candidate |
+| You win the game on a King point | `gameWin` | `you`, `byKing` (derived) | The King point that takes you to 10 | Candidate |
+| Your Joker wins a trick | `trickWon` or `king` | `you`, `card` | Your winning card is the Joker | Candidate |
+| You take the last trick of the hand | `trickWon` | `you`, `trickNumber`, `totalTricks` | `trickNumber === totalTricks` in the main hand | Candidate |
+| A Showdown won 5–0 | `showdownResult` | `tricks` per Showdown player | One player takes all 5 Showdown tricks | Candidate |
+| A comeback win | `gameWin` | `you`, `maxDeficit` (derived) | You win after trailing the leader by **Open** points or more | Candidate |
+| Your first King point of the game | `king` | `you`, `kingsThisGame` (derived) | Your King point count goes from 0 to 1 | Candidate |
+| You clear the final wave | `waveCleared` | `mode`, `wave`, `finalWave` (derived) | Clearing the last wave of the Waves table | Candidate |
+
+### Lead change
+
+The leaders are every seat with the top score. Settle these cases before building the lead-change cue:
+
+| Case | Example (You, West, East) | Counts? |
+|---|---|---|
+| You go from behind into sole first place | `5, 6, 3` → `7, 6, 3` | Yes |
+| You go from behind to a tie for first | `5, 6, 3` → `6, 6, 3` | **Open** |
+| You go from a tie for first into sole first place | `6, 6, 3` → `7, 6, 3` | **Open** |
+| A bot passes you | `6, 5, 3` → `6, 7, 3` | Yes, as "a bot takes the lead from you" |
+| One bot passes the other while you're behind | `3, 6, 5` → `3, 6, 7` | **Open**, probably no |
+| The King point takes a seat to 10 | `9, 8, 3` → `10, 8, 3` | No: the game-end cue outranks it |
+| A Showdown King point | Any of the above, in a Showdown | **Open** |
+| A hand result changes the lead | Any of the above, at the hand result | **Open**: a separate moment of interest, replacing `handResult` |
+
+### Adding a moment of interest
+
+1. Add a row to **Candidates** with the facts it needs and a precise definition.
+2. If a fact isn't sent yet, add it to the game's moments: public, and derived by the game where it needs game knowledge.
+3. Measure how often it fires.
+4. Give it a cue: a sound file in [Sound files](#sound-files), a vibration pattern, or both.
+
 ## Gates
 
 No cue plays when any of these is true.
