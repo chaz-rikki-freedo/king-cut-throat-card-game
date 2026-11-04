@@ -15,6 +15,8 @@
 <style>
 /* The colors: each token is registered with its family and job in docs/ui/palette.json, and tests/palette.js checks
    them for collisions. See docs/ui/colors.md before adding or changing a color. */
+/* Tests for the CSS: T0 (typecheck.js), and palette.js when a color changes. A layout change that moves a control: T1
+   with the UI script for that screen. The tiers are in CLAUDE.md. */
 :root{
   --felt:#155a36; --felt-edge:#0c3a22; --felt-showdown:#5a1f45; --felt-showdown-edge:#3a1230;
   --page:#0a2a19; --panel:rgba(0,0,0,.26); --panel-strong:rgba(0,0,0,.42);
@@ -1203,6 +1205,8 @@ window.kctTheme = (() => {
    -> View (information boundary) -> AI -> Render -> Controller -> SelfTest.
    The Engine state object is the only source of truth. The DOM is a
    rendering target only.
+   Each section's banner ends with a Tests line: the tier (T0 to T3, see
+   CLAUDE.md) and the scripts in tests/ that cover that section.
    ===================================================================== */
 
 /* The published build. tools/publish.sh writes the main commit and the date here when it copies
@@ -1212,6 +1216,7 @@ const BUILD = Object.freeze({ commit: 'dev', date: '' });
 
 /* ---------------------------------------------------------------------
    1. RULES — immutable card model and authoritative rule functions.
+   Tests: T2. selftest.js rules; stress.js engine (the oracle). A rule change also needs README.md and RULES_VERSION.
    --------------------------------------------------------------------- */
 /** @typedef {'S' | 'H' | 'D' | 'C'} Suit */
 const Rules = (() => {
@@ -1353,6 +1358,7 @@ const Rules = (() => {
 
 /* ---------------------------------------------------------------------
    2. RNG — seedable, deterministic (mulberry32). State lives in game state.
+   Tests: T2. selftest.js rules "random games"; stress.js engine. A changed sequence changes every deal: T3.
    --------------------------------------------------------------------- */
 const RNG = (() => {
   function next(r) {
@@ -1400,6 +1406,7 @@ const RNG = (() => {
    alone changes nothing and lists the options.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
+   Tests: T1. watch.js (testupdate), profile.js and dynamic.js (easing) when that command changes.
    --------------------------------------------------------------------- */
 /** @typedef {'saves' | 'log' | 'scroll' | 'logger'} DevKey */
 /** @type {Readonly<Record<DevKey, { def: number, min: number, max: number, note: string }>>} */
@@ -1502,6 +1509,7 @@ const Dev = (() => {
 
 /* ---------------------------------------------------------------------
    3. LOGGER — one timestamped logger. Off by default. Public info only.
+   Tests: T1. settings.js (Event log, Clear log).
    --------------------------------------------------------------------- */
 /* The Logger keeps the last LOGGER_MAX() lines (Dev key logger). header (set by the App): the first line of each log,
    written before the first line after the log is turned on or cleared. */
@@ -1582,6 +1590,7 @@ const Logger = (() => {
  */
 /* ---------------------------------------------------------------------
    4. ENGINE — authoritative state + explicit, validated transitions.
+   Tests: T2. selftest.js rules; stress.js engine.
    --------------------------------------------------------------------- */
 const Engine = (() => {
   const R = Rules;
@@ -2230,6 +2239,7 @@ const Engine = (() => {
 
 /* ---------------------------------------------------------------------
    4a. TEXT HELPERS — base64url (replay and backup codes) and HTML escape.
+   Tests: T2. stress.js replayFuzz and backup.
    --------------------------------------------------------------------- */
 const Base64url = Object.freeze({
   /** @param {ArrayLike<number>} bytes @returns {string} base64url, without padding */
@@ -2261,6 +2271,7 @@ const sheetHTML = (cls, label, title, action = 'close-overlay') => '<div class="
    and every player decision. A replay code is that record as one short
    text: 'KCT3-' + base64url bytes (the app also reads KCT2 and KCT1). The full spec is docs/replay-code.md.
    No UI: the App keeps the codes.
+   Tests: T2. selftest.js replay; stress.js replayFuzz recordFuzz; watch.js. A change to the code format: T3.
    --------------------------------------------------------------------- */
 const Replay = (() => {
   const R = Rules;
@@ -2612,6 +2623,7 @@ const Replay = (() => {
 /* ---------------------------------------------------------------------
    5. VIEW — the information boundary. Each seat sees only public data
    plus its own hand and its own private memory. AI and Render use this.
+   Tests: T2. selftest.js "ai knowledge"; stress.js ai (a decision must not change with the unseen cards).
    --------------------------------------------------------------------- */
 /* The hand as players count it: a Joker redeal keeps its hand's number. Between hands (HAND_START), the deal about
    to start. @param {{ handNumber: number, phase: string, redeals?: number }} x a state or a view @returns {number} */
@@ -2681,6 +2693,7 @@ function buildView(state, seat) {
    what it read. Sharks notice quickly; Novices barely notice. It sets only
    when the line shows, never the easing. A line is only about what the table
    saw, and never admits that a bot eases off.
+   Tests: T2. selftest.js seats ai; settings.js. Bot strength: measure only on request (levers.js).
    --------------------------------------------------------------------- */
 const PERSONAS = Object.freeze([
   { id: 'vex', name: 'Vex', color: 'var(--bot-vex)', tier: 'shark', courage: 'bold', realTable: false, leadPick: 'impulsive', habits: { lead: 'trump', win: 'big', kings: 'early', slack: 0.01 }, credulity: 0.3, feint: 0.8, wariness: 0.6, quote: "You won't read me.", hint: 'Calls on less than you think.', readPace: 2, readLine: 'Thin hand again. I see it.' },
@@ -2711,6 +2724,7 @@ const PERSONA_LEVEL = Object.freeze({ novice: 1, casual: 2, club: 3, shark: 4, t
    tables in the same order, with both bots at Shark skill and their own courage, habits, reads and feints.
    Nothing shows it before then. sharkWin is its youWin, from 60 bot games per table (tests/waves.js shark,
    2026-10-20; margin about ±13).
+   Tests: T2. selftest.js waves; forfeit.js. A changed table: waves.js only on request.
    --------------------------------------------------------------------- */
 /* Tables in one run. Wave n of the Shark run is wave WAVE_RUN + n. */
 const WAVE_RUN = 18;
@@ -2811,6 +2825,7 @@ function createWaveProgress(store, rand) {
    5d. MEMORY — what the app keeps between visits, in this browser only:
    one unfinished game per mode, settings (not speed) and results. Every
    store is a { get(), set(text) } pair, so tests can use a plain object.
+   Tests: T2. selftest.js memory; restart.js. A change to what a save holds: T3.
    --------------------------------------------------------------------- */
 /* Change SAVE_FORMAT when a saved Engine state from an older version can no longer be resumed. */
 const SAVE_FORMAT = 1;
@@ -3108,6 +3123,7 @@ function createStats(store) {
    Two forms of one envelope: a JSON file, and a text code
    'KCTS1-' + base64url(mode byte + payload), mode 1 = gzip JSON, 0 = plain JSON.
    An import REPLACES all 'kct.' keys. It has no undo, so the restore confirm says so first.
+   Tests: T2. selftest.js backup; stress.js backup; backup-ui.js.
    --------------------------------------------------------------------- */
 /**
  * @typedef {{ readonly length: number, key(i: number): string | null, getItem(k: string): string | null,
@@ -3278,6 +3294,7 @@ const Backup = (() => {
       as a win (1) or a loss (0).
    Score pressure, Showdown steering and the value of the outside pile all
    come from this one objective. There are no separate rules for them.
+   Tests: T2. selftest.js ai; stress.js ai. Bot strength: measure only on request (levers.js, roundrobin.js).
    --------------------------------------------------------------------- */
 /**
  * @typedef {{ worlds: number, playoutSkill: number }} Thinking
@@ -4168,6 +4185,7 @@ const AI = (() => {
      never runs during play, and no bot reads it.
    The bots keep AI.handValue. The reads and the review use the fitted
    estimate (tests/data/handvalue-fit.json), which predicts tricks better.
+   Tests: T2. selftest.js dynamic; dynamic.js.
    --------------------------------------------------------------------- */
 /**
  * @typedef {{ me: number, all: number }} DynShare
@@ -4559,6 +4577,7 @@ const Dynamic = (() => {
    6c. SUIT ART — the four suits as drawn shapes, each 100 units wide (its height from its own shape), so every
    suit shows at the same width wherever it appears. Render draws them on cards; SuitText draws the suit symbols
    in all other text of the page.
+   Tests: T1. selftest.js interface.
    --------------------------------------------------------------------- */
 const SUIT_SVG = Object.freeze({
   S: ['0 0 100 110', '<path d="M50 0C65 25 100 42 100 66C100 82 88 92 74 92C64 92 57 87 53 80C54 92 58 101 66 110H34C42 101 46 92 47 80C43 87 36 92 26 92C12 92 0 82 0 66C0 42 35 25 50 0Z"/>'],
@@ -4626,6 +4645,7 @@ const SuitText = (() => {
      same game gives the same decision; match says that it did.
    It reads finished games, so a trace shows no card that was still hidden
    while the game ran.
+   Tests: T1. selftest.js habits; profile.js.
    --------------------------------------------------------------------- */
 const Habits = (() => {
   const R = Rules, P = Engine.P;
@@ -4828,6 +4848,7 @@ const Habits = (() => {
    played, so it says how strong a hand was, not how many points it was
    worth. A seat's share times the points scored in the game would split
    them in proportion. That figure is not calibrated, so it is left out.
+   Tests: T1. selftest.js tally.
    --------------------------------------------------------------------- */
 /** @typedef {{ hand: number, dealer: number | null, dealt: number[], kept: number[] | null, scored: boolean }} TallyDeal */
 /** @typedef {{ dealt: number[], kept: number[] }} TallySums */
@@ -4890,6 +4911,7 @@ const Tally = (() => {
    so the app uses start(), which works in slices and calls back. EDGES are
    fitted on bot games of every tier (tests/awards.js): about 5% of seat-games fall in
    each end band.
+   Tests: T1. selftest.js awards; watch.js (the AWARD line). New EDGES: awards.js only on request.
    --------------------------------------------------------------------- */
 /** @typedef {{ cost: number, n: number }} AwardPart */
 /** @typedef {{ band: number, cost: number, choices: number, parts: { play: AwardPart, discard: AwardPart, name: AwardPart, exchange: AwardPart } }} Award */
@@ -5064,6 +5086,7 @@ const Awards = (() => {
 
 /* ---------------------------------------------------------------------
    7. RENDER — draws a View for the human seat. Reads nothing hidden.
+   Tests: T1. selftest.js interface; theme.js for the felt and colors (and palette.js). Text alone: T0.
    --------------------------------------------------------------------- */
 const Render = (() => {
   const R = Rules, P = Engine.P;
@@ -5636,6 +5659,7 @@ const Render = (() => {
    Outside cell, a trick circle) changes when its cards arrive. Reads the
    View only, plus what it saw on screen. Speed Instant, or the system's
    reduced-motion setting, turns all of it off.
+   Tests: T1. selftest.js interface; forced.js (plays through the controls once motion draws them).
    --------------------------------------------------------------------- */
 const Fx = (() => {
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
@@ -6193,6 +6217,9 @@ const Fx = (() => {
    8. CONTROLLER — game flow, timing, and human input.
    Timers only pace the display. Each timer checks the state version so a
    stale timer can never act on a newer state.
+   Tests: by part. Text alone: T0. Settings: settings.js. Resets: resets.js. Theme: theme.js. Your data:
+   backup-ui.js. Replay viewer: watch.js. Your profile: profile.js. Install and updates: sw.js. Waves tries: forfeit.js.
+   Game flow, questions and the end of a game: T2 and scenarios.js. See CLAUDE.md.
    --------------------------------------------------------------------- */
 const App = (() => {
   const R = Rules, P = Engine.P;
@@ -9855,6 +9882,7 @@ const App = (() => {
 
 /* ---------------------------------------------------------------------
    9. SELF-TEST — rule and flow verification. Run from the Settings panel.
+   Tests: T1. selftest.js with the areas changed (node selftest.js <area>).
    --------------------------------------------------------------------- */
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -11667,6 +11695,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
 
 /* ---------------------------------------------------------------------
    10. BOOT
+   Tests: T2. Every test script reads window.KCT.
    --------------------------------------------------------------------- */
 /** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());

@@ -3,6 +3,10 @@
   "private": true,
   "description": "Browser tests for index.html: self-tests, UI scenarios, stress and soak.",
   "scripts": {
+    "t0": "node typecheck.js && node palette.js",
+    "t1": "node typecheck.js && node palette.js && node selftest.js",
+    "t2": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node stress.js all 4",
+    "t3": "npm test",
     "typecheck": "node typecheck.js",
     "selftest": "node selftest.js",
     "sw": "node sw.js",
