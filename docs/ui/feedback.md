@@ -66,7 +66,7 @@ Sent on the same event, with `moments` empty and a `control` field:
 
 | `control` | When the game sends it | What the module does |
 |---|---|---|
-| `cancel` | A new state version, **Next hand**, Exit, a new game, a jump in the replay viewer | Clears armed cues and stops sounds not yet started |
+| `cancel` | A new state version, **Next hand**, Exit, a new game, a jump in the replay viewer. `scope: 'game'` for a new game, a resume or a jump; `scope: 'step'` otherwise. | Clears armed cues and stops sounds not yet started. With `scope: 'game'`, also clears its memory. |
 | `reset` | **Reset this tab** in Settings → Table | Sets its settings back to Off |
 | `speed` | The speed changes, with `speed: 'instant'` or another value | Removes or restores its settings' effect, for principle 5 |
 
@@ -92,6 +92,35 @@ The game's side of the contract. Every moment carries `type`, and `seat` and `yo
 | `skipPressed` | `tap` | Your tap on **Skip ▶** | `youMediate` |
 
 Derived facts for the [moments of interest](#moments-of-interest), such as `maxDeficit` and `kingsThisGame`, are added to these moments as each one is settled.
+
+### Open-ended types
+
+The table above is the starting vocabulary, not a closed set.
+
+- **The module ignores any type it doesn't know**, and any field it doesn't use. The game can start sending a new type, or a new fact on an existing type, without breaking an older module.
+- **`v` changes only when an existing moment changes shape:** a field renamed, removed or given a new meaning. Adding a type or a field leaves `v` as it is.
+- Every new type follows the same rules: public facts only, sent at its screen time, and listed in this table.
+
+### Derived events
+
+The module can create its own events from the moments it receives: a *derived event*. It watches the stream for a pattern, such as a streak or a sequence, and when the pattern completes, it adds a derived event to the current batch.
+
+- A derived event goes through the same rule table as any moment. It can have its own cue, and it outranks the ordinary cue for that batch.
+- Derived events use the `derived:` prefix, such as `derived:trickStreak`, so they never collide with a type the game sends.
+- A derived event never spawns another derived event. Only moments from the game are watched, so there are no chains or loops.
+
+**The module's memory.** To see patterns, the module keeps a short memory of the moments it received:
+
+- **Only moments.** It records nothing but the batches the game sent. Every moment is public, so the memory can't reveal a card someone holds unseen.
+- **Short.** It keeps the moments of the current game only, capped at `MEMORY_MAX` moments.
+- **Cleared** on a new game, on a resume or reload (a restored game sends no history), and on a jump in the replay viewer. The game's `cancel` message carries a `scope` of `game` or `step` to say which.
+- **Skips are gaps.** Moments that the game doesn't send (at Instant, during a skip) are simply missing, so a pattern that spans them doesn't complete. That is the safe result.
+
+**Derived events and the moments the game derives.** Facts that need game knowledge, such as `byKing`, still come from the game. A derived event only combines moments the module has already seen: streaks, sequences and combinations over time.
+
+### Other listeners
+
+`kct:moment` isn't only for sound and vibration. Any optional module can listen, and each one ignores what it doesn't use. Parallax ([#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)) can react to the same moments, and to the same derived events if they come from a shared rule table, so a moment of interest can combine a sound, a vibration and a parallax motion. **Open:** whether parallax lives in `feedback/` and shares its rule table, or listens on its own.
 
 ### Who owns what
 
@@ -217,7 +246,7 @@ The rule table lives in the module. Adding a moment of interest changes only `fe
 ### Rules
 
 1. **Public facts only.** A moment carries only what your seat can see, built from the View, never from the full game state. No cue may reveal a card someone holds unseen.
-2. **The game derives what needs game knowledge.** Facts such as "the game ended on a King point" or "a 5–0 Showdown" are worked out by the game and sent with the moment. `Feedback` never tracks the game itself.
+2. **The game derives what needs game knowledge.** Facts such as "the game ended on a King point" or "a 5–0 Showdown" are worked out by the game and sent with the moment. The module never reads the game. It only remembers the moments it received, for [derived events](#derived-events).
 3. **The most specific match wins.** A moment of interest ranks above the ordinary cue for the same moment, and the [dropping](#dropping) rules still apply.
 4. **Keep them rare.** A moment of interest that fires every game stops being special. Measure how often each one fires across many simulated games before giving it a cue.
 5. **Replays match.** Moments come from the Engine's events, so the replay viewer, with **Sound in replays** on, plays the same moments of interest as the live game.
@@ -239,6 +268,11 @@ Every moment that changes a score carries `scoresBefore` and `scoresAfter`, with
 | A comeback win | `gameWin` | `you`, `maxDeficit` (derived) | You win after trailing the leader by **Open** points or more | Candidate |
 | Your first King point of the game | `king` | `you`, `kingsThisGame` (derived) | Your King point count goes from 0 to 1 | Candidate |
 | You clear the final wave | `waveCleared` | `mode`, `wave`, `finalWave` (derived) | Clearing the last wave of the Waves table | Candidate |
+| `derived:trickStreak` | `trickWon` | The module's memory of `trickWon` | You win **Open** (3?) tricks in a row, across hands | Candidate, derived |
+| `derived:perfectHand` | `handResult` | The module's memory of `trickWon` in the hand | You win every main trick of a hand | Candidate, derived |
+| `derived:kingThenLead` | `king` | The `king` moment and the scores before it | A King point that also changes the lead, see [Lead change](#lead-change) | Candidate, derived |
+| `derived:pressure` | `king` or `handResult` | `scoresAfter` over the game | A bot reaches 9 while you're behind, the first time this game | Candidate, derived |
+| `derived:revenge` | `showdownResult` | The module's memory of `showdownScored` | You win a Showdown against the seat that won the previous one | Candidate, derived |
 
 ### Lead change
 
@@ -258,7 +292,10 @@ The leaders are every seat with the top score. Settle these cases before buildin
 ### Adding a moment of interest
 
 1. Add a row to **Candidates** with the facts it needs and a precise definition.
-2. If a fact isn't sent yet, add it to the game's moments: public, and derived by the game where it needs game knowledge.
+2. Decide where it comes from:
+   - **From one moment:** a rule in the module's table.
+   - **From a pattern over time:** a derived event in the module.
+   - **From game knowledge the moments don't carry:** a new fact the game sends. Public only.
 3. Measure how often it fires.
 4. Give it a cue: a sound file in [Sound files](#sound-files), a vibration pattern, or both.
 
@@ -302,6 +339,7 @@ The game's `cancel` message (a new action, **Next hand**, Exit, a new game or a 
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds. |
 | `MAX_VOICES` | 4 | The most sounds that play at once. |
 | `HALF_GAIN` | 0.5 | The volume for Half. |
+| `MEMORY_MAX` | 400 | The most moments the module remembers, for [derived events](#derived-events). A long game sends about 300. |
 
 ## Sound files
 
@@ -404,12 +442,13 @@ Once the service worker has cached the files, they load from the device in a few
 ### 5. When a batch arrives (module)
 
 1. The module's [gates](#gates) run. A batch that fails one is dropped.
-2. The rule table picks one cue for the batch: the highest-ranked match, moments of interest first.
-3. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
-4. A cue that passes plays once:
+2. Unknown types and fields are ignored. The batch is added to the module's memory, and any pattern it completes adds a derived event to the batch.
+3. The rule table picks one cue for the batch: the highest-ranked match, moments of interest and derived events first.
+4. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
+5. A cue that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
    - **Sound:** a buffer source, through a gain node (Half or Full), started on `audioContext.currentTime`.
-5. The channel records the time and rank, for the next gap check.
+6. The channel records the time and rank, for the next gap check.
 
 ### 6. Taps
 
@@ -419,6 +458,8 @@ Once the service worker has cached the files, they load from the device in a few
 ### 7. Cancelling
 
 The module clears every armed cue and stops any sound scheduled but not yet started. It does this on the game's `cancel` message (a new state version, **Next hand**, Exit, a new game, a jump in the replay viewer) and when the tab is hidden. Nothing is kept for later.
+
+A `cancel` with `scope: 'game'` (a new game, a resume, a jump in the replay viewer) also clears the module's memory.
 
 ### 8. Settings changes
 
@@ -444,7 +485,8 @@ The module clears every armed cue and stops any sound scheduled but not yet star
 ### In `feedback/feedback.js`
 
 - One file, no build step, no dependencies. It reads nothing from the game except batches and control messages.
-- The cue table, the moments-of-interest rule table, the vibration patterns, the sound table and the dropping limits are named constants.
+- The cue table, the moments-of-interest rule table, the derived-event patterns, the vibration patterns, the sound table, the dropping limits and `MEMORY_MAX` are named constants.
+- `derive(memory, batch)`: a pure function from the memory and a new batch to the derived events it completes. Its tests feed it sequences of batches.
 - `cueFor(batch)`: a pure function from a batch to at most one cue for each channel. Its tests feed it batches.
 - It checks the [gates](#gates) it owns, applies the dropping rules, and plays.
 - It builds and handles the rows in `#setFeedback`, and keeps its own device keys.
@@ -461,10 +503,11 @@ The module clears every armed cue and stops any sound scheduled but not yet star
 |---|---|---|
 | `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the game gates send nothing |
 | `feedback/feedback.js` | T1 | A new `tests/feedback.js` script: cue ranks, moments of interest, seat rules, module gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext`. `typecheck.js` checks the file too. |
-| The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files, and a `v` mismatch keeps the module silent |
+| The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files, a `v` mismatch keeps the module silent, and an unknown type or field is ignored |
+| Derived events | T1 | `tests/feedback.js`: each pattern completes on the right sequence and not on a near miss; a gap (a skip) breaks it; the memory clears on `cancel` with `scope: 'game'`; a derived event never spawns another |
 | The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
 | Runtime caching of `feedback/` in `sw.js`, then the precache | T1 | `sw.js`, including an install where one feedback file fails to load |
-| Missing files are silent | T1 | The `feedback` area: a failed fetch and a failed decode drop the cue, show nothing and leave vibration playing |
+| Missing files are silent | T1 | `tests/feedback.js`: a failed fetch and a failed decode drop the cue, show nothing and leave vibration playing |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, and whether sound adds any delay at Fast |
 
@@ -497,3 +540,5 @@ The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md`
 | 21 | Loading | A classic script added when the browser is idle. A missing file is silent. |
 | 22 | Settings | The game keeps an empty, hidden card. The module fills it in once it loads. |
 | 23 | Contract version | `v` on every batch and on `kct:feedback-ready`. A mismatch keeps the module silent. |
+| 24 | Open-ended types | The module ignores unknown types and fields. Adding either leaves `v` unchanged. |
+| 25 | Derived events | The module may create `derived:` events from patterns in the moments it received, kept in a short, public-only memory of the current game |
