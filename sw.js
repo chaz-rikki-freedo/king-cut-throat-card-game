@@ -132,8 +132,21 @@ const offSite = tag => {
   try { return new URL(src[1] ?? src[2] ?? src[3], PAGE).origin !== self.location.origin; } catch (e) { return false; }
 };
 const local = html => html.replace(LOADS, tag => offSite(tag) ? '' : tag);
+/* The page's fingerprint: a hash of the part that counts as a new version (core). The served page carries it in a
+   <meta name="kct-page"> tag and sends it with each check, so the worker can tell that the page on the screen is older
+   than the cached page, not only that the network has a newer one. Android can clear the cache of a site whose
+   storage is not persistent while the app stays open: the next check then saves the network's newer page as the first
+   one ('first'). Without the fingerprint, that page saw "newest version" and only a restart showed the new one. */
+const pageId = html => { let h = 0x811c9dc5; const t = core(html); for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0).toString(16); };
+const stamp = (html, id) => html.replace(/<head\b[^>]*>/i, m => m + '<meta name="kct-page" content="' + id + '">');
+/** True when the cached page differs from the page that sent id (its kct-page fingerprint). @param {unknown} id */
+async function behind(id) {
+  if (typeof id !== 'string' || !id) return false;
+  const hit = await (await caches.open(SHELL)).match(PAGE);
+  return !!hit && pageId(await hit.text()) !== id;
+}
 /** The page as served from the cache. @param {Response} hit */
-const fromCache = async hit => new Response(local(await hit.text()), { status: hit.status, statusText: hit.statusText, headers: { 'content-type': hit.headers.get('content-type') || 'text/html' } });
+const fromCache = async hit => { const text = await hit.text(); return new Response(stamp(local(text), pageId(text)), { status: hit.status, statusText: hit.statusText, headers: { 'content-type': hit.headers.get('content-type') || 'text/html' } }); };
 /** @returns {number} the tags in html that load from another site */
 const offSiteTags = html => (html.match(LOADS) || []).filter(offSite).length;
 /* For the self-tests (Settings → Tools → Self-tests): what this worker serves in airplane mode, from the cache
@@ -159,10 +172,13 @@ async function tell(msg, client) {
 self.addEventListener('message', ev => {
   const type = ev.data && ev.data.type;
   if (type === 'update-status') ev.waitUntil((async () => {
-    if (await (await caches.open(PENDING)).match(PAGE)) await tell({ type: 'update-ready' }, ev.source);
+    if (await (await caches.open(PENDING)).match(PAGE) || await behind(ev.data.page)) await tell({ type: 'update-ready' }, ev.source);
   })());
-  /* reply: the app waits for the result (Settings → Install, Check again). */
-  if (type === 'check-update') ev.waitUntil(Promise.all([checkPage(), refill()]).then(([result]) => {
+  /* reply: the app waits for the result (Settings → Install, Check again). page: the fingerprint of the page that asks.
+     A page older than the cached one gets 'new' too: apply-update then reloads it into the cached page. */
+  if (type === 'check-update') ev.waitUntil(Promise.all([checkPage(), refill()]).then(async ([result]) => {
+    /* Offline too: the cached page is already here. */
+    if (result !== 'new' && await behind(ev.data.page)) { result = 'new'; await tell({ type: 'update-ready' }, ev.source); }
     if (ev.data.reply) return tell({ type: 'update-checked', result }, ev.source);
   }));
   if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));

@@ -8390,6 +8390,10 @@ const App = (() => {
 
   /* ---- Updates: the service worker finds a new version; the app reloads only between games, when you agree. ---- */
   function gameRunning() { return !!app.mode && !!app.state && !app.state.gameOver; }
+  /* The fingerprint the service worker put on this page as it served it (sw.js, pageId). Each check sends it, so the
+     worker can tell this page is older than its cached one, as when the phone cleared the cache while the app stayed
+     open and the next check saved the new version. */
+  const PAGE_ID = safe(() => /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="kct-page"]'))?.content) || '';
   function maybeOfferUpdate() {
     syncUpdateBtn();
     if (!app.updateReady || gameRunning()) return;
@@ -8411,7 +8415,7 @@ const App = (() => {
       const on = (/** @type {MessageEvent} */ ev) => { if (ev.data && ev.data.type === 'update-checked') done(String(ev.data.result)); };
       const t = setTimeout(() => done(null), ms);
       navigator.serviceWorker.addEventListener('message', on);
-      sw.postMessage({ type: 'check-update', reply: true });
+      sw.postMessage({ type: 'check-update', reply: true, page: PAGE_ID });
     });
   }
   /* Asks the browser to fetch sw.js again. A browser does so by itself only when a page opens, so an app that stays
@@ -8566,24 +8570,24 @@ const App = (() => {
       if (t === 'update-applied') location.reload();
     });
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
-      if (reg.active) reg.active.postMessage({ type: 'update-status' });
+      if (reg.active) reg.active.postMessage({ type: 'update-status', page: PAGE_ID });
     }).catch(() => { /* no offline play, the game still works */ });
     /* A new worker (a changed sw.js) takes over the open page at once (skipWaiting, clients.claim). It looks for a
        new page right away, so whatever the new worker changed applies without closing the app. */
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       const sw = navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'check-update' });
+      if (sw) sw.postMessage({ type: 'check-update', page: PAGE_ID });
     });
     /* An installed app comes back from the background without opening the page again, so neither the browser nor
-       the worker would look for a new version: each time the app is back on the screen, at most once every 30 minutes,
+       the worker would look for a new version: each time the app is back on the screen, at most once every 5 minutes,
        the browser looks for a changed sw.js (updateWorker) and the worker for a changed page. */
     let checked = 0;
     document.addEventListener('visibilitychange', () => {
       const sw = navigator.serviceWorker.controller;
-      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 30 * 60000) return;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 5 * 60000) return;
       checked = Date.now();
       updateWorker();
-      sw.postMessage({ type: 'check-update' });
+      sw.postMessage({ type: 'check-update', page: PAGE_ID });
     });
     requestPersist();
   }

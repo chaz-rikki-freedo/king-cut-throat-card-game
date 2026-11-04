@@ -30,6 +30,8 @@ const srv = http.createServer((req, res) => {
     if (serve === 'portal') body = '<!doctype html><title>Sign in</title><p>Sign in to the Wi-Fi to continue.</p>';
     if (serve === 'new') body = body.replace('<body>', '<body><!-- a new version -->');
     if (serve === 'newer' || serve === 'theme') body = body.replace('<body>', '<body><!-- a newer version -->');
+    if (serve === 'newest') body = body.replace('<body>', '<body><!-- marker N3 -->');
+    if (serve === 'newest2') body = body.replace('<body>', '<body><!-- marker N4 -->');
     /* The newer version with a change inside the theme packs only: a <script> tag with attributes, but the game's own. */
     if (serve === 'theme') body = body.replace('"classic":{"name":"Classic"', '"classic":{"name":"Classic felt"');
     /* What an ad blocker that filters HTTPS (AdGuard) does to the page as it downloads. */
@@ -164,6 +166,30 @@ srv.listen(0, '127.0.0.1', async () => {
     r = await state();
     const after = await page.evaluate(() => document.documentElement.innerHTML.includes('a newer version'));
     expect('Check again with a new version: it loads it, nothing waits', !before && after && r.game && !r.pending && !r.note, { before, after, r });
+    /* The cached page can be newer than the page on the screen. Android can clear the cache of a site whose storage is
+       not persistent while the app stays open; the next check then saves the network's newer page as the first one.
+       Before the page fingerprint, that check said "newest version" with no Update now, and only a restart showed the
+       new version. Now the app is offered the cached page, with Check again and back on the screen. */
+    const clearPage = () => page.evaluate(async () => (await caches.open('kct-shell')).delete(new URL('./index.html', location.href).href));
+    const has = (/** @type {string} */ m) => page.evaluate(x => document.documentElement.innerHTML.includes(x), m);
+    serve = 'newest';
+    await clearPage();
+    const behind = !(await has('marker N3'));
+    await Promise.all([page.waitForEvent('load', { timeout: 15000 }).catch(() => null), checkAgain().catch(() => null)]);
+    await page.waitForTimeout(1500);
+    r = await state();
+    expect('a cleared cache: Check again loads the new version, nothing waits', behind && await has('marker N3') && !r.pending && !r.note, { behind, r });
+    serve = 'newest2';
+    await clearPage();
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForFunction(() => !document.querySelector('#updateNote').hidden, null, { timeout: 8000 }).catch(() => {});
+    expect('a cleared cache: back on the screen, the new version is offered', await page.evaluate(() => !document.querySelector('#updateNote').hidden));
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    expect('a cleared cache: the update loads the new version', await has('marker N4'));
     /* A changed sw.js reaches an app that stays open: back on the screen, the browser fetches the worker again, the new
        worker takes over the page, and it looks for a new page at once. Nothing needs the app closed. */
     swVersion = 1;
