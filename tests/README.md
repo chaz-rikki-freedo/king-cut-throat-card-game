@@ -12,13 +12,27 @@ npx playwright install chromium
 
 If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` to its `node_modules` folder. If Playwright has no browser of its own, set `PW_CHROMIUM` to the Chromium program file.
 
+## Tiers
+
+Run the lowest tier that covers a change. The tiers, and which tier each part of `index.html` needs, are in
+[CLAUDE.md](../CLAUDE.md). Each section banner in `index.html` also ends with a `Tests:` line.
+
+| Tier | Command | What it runs | Time |
+|---|---|---|---|
+| T0 | `npm run t0` | `typecheck.js` and `palette.js` | about 5 s |
+| T1 | `npm run t1 -- <area>` | T0 and the self-test areas named (all of them with none), then the one UI script for the screen changed | 10 to 40 s |
+| T2 | `npm run t2` | The Checks workflow: T1 with every area, `sw.js`, `forfeit.js` and `stress.js all 4` | about 1 min |
+| T3 | `npm run t3` | `npm test` | several minutes |
+
+`node selftest.js --list` lists the self-test areas and the groups: `rules`, `ai`, `data` and `ui`.
+
 ## Scripts
 
 | Script | What it checks | Time |
 |---|---|---|
 | `node typecheck.js` | The TypeScript checker on the game script in `index.html`, so the JSDoc types are checked. No browser. | about 3 s |
 | `node palette.js` | The colors against the registry, `docs/ui/palette.json`: every color is a registered token or on the untokenized list, no new collisions (also with color blindness simulated), and the contrast pairs. `--pack file.json` checks a theme pack. See [docs/ui/colors.md](../docs/ui/colors.md). No browser. | under 1 s |
-| `node selftest.js` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
+| `node selftest.js [area ...]` | The in-page self-tests (the same as **Self-tests: Run** in Settings → Tools), by area. The Interface area checks that every setting has a named row and every tab its pane, and builds every information popup the table can show at each step of 3 games, with Table memory off and on. | about 2 s |
 | `node sw.js` | The service worker, with the worker running: a page that loads but is not the game (a network sign-in page) is not offered as an update, a real new version is (also one that changes only the theme packs), a page with an ad blocker's scripts still opens offline, another app's browser gets a note to open the game in Chrome, **Check again** in the Install checklist looks for a new version past the CDN and **Update now** loads it, and the Install checklist gives up on a request that hangs. | about 6 s |
 | `node forfeit.js` | Waves tries through the menu buttons and questions: leaving a game in hand 1 is free; from hand 2, **Discard** or **Play wave** counts one try and the question says so, also for a saved wave game while Free play runs; a cleared wave and a game the AI played in cost none. | about 7 s |
 | `node scenarios.js` | The About screen (Menu, Rules, Settings, the build and the credit), then two full games through the real controls (Free play, then Waves wave 1): seat swap and log colors, reload and resume, the questions the app asks, end buttons, results, wave progress, replay codes, the Skip button in a Showdown between the two bots, an old save, and the Your seat setting (the AI seat never carries over). | 2–5 min |
