@@ -145,10 +145,16 @@ srv.listen(0, '127.0.0.1', async () => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    await page.waitForFunction(() => /A new version is ready/.test(document.querySelector('#setInstall').textContent), null, { timeout: 8000 }).catch(() => {});
+    await page.waitForFunction(() => /Update found/.test(document.querySelector('#setInstall').textContent), null, { timeout: 8000 }).catch(() => {});
     const auto = await page.evaluate(() => ({ list: document.querySelector('#setInstall').textContent, btn: !document.querySelector('#setUpdateBtn').hidden }));
-    expect('a new version found while Settings is open: the checklist says so', /A new version is ready/.test(auto.list) && !/newest version/.test(auto.list) && auto.btn, auto);
-    expect('a new version found by the app\'s own check: the collapsed summary says so', /^A new version is ready · /.test(await page.$eval('#setInstallSum', x => x.textContent)));
+    expect('a new version found while Settings is open: the checklist says so', /Update found/.test(auto.list) && !/newest version/.test(auto.list) && auto.btn, auto);
+    const badge = await page.evaluate(() => {
+      const dot = (/** @type {Element | null} */ el) => !!el && getComputedStyle(el, '::after').content !== 'none';
+      return { gear: dot(document.querySelector('#topbar [data-action="toggle-settings"]')), tools: dot(document.querySelector('#setTabTools')),
+        label: document.querySelector('#topbar [data-action="toggle-settings"]').getAttribute('aria-label') };
+    });
+    expect('an update found: a badge on the Settings button and the Tools tab', badge.gear && badge.tools && badge.label === 'Settings: update found', badge);
+    expect('a new version found by the app\'s own check: the collapsed summary says so', /^Update found · /.test(await page.$eval('#setInstallSum', x => x.textContent)));
     const over = await page.evaluate(() => {
       const n = document.querySelector('#updateNote'), b = n.querySelector('[data-action="update-reload"]'), r = b.getBoundingClientRect();
       return { shown: !n.hidden, inert: n.inert, hit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === b };
@@ -158,14 +164,18 @@ srv.listen(0, '127.0.0.1', async () => {
     await page.waitForTimeout(1500);
     r = await state();
     expect('Update now loads it: nothing waits', r.game && !r.pending && !r.note, r);
-    /* Check again that finds a new version loads it, with no second press. */
+    const gone = await page.evaluate(() => getComputedStyle(document.querySelector('#topbar [data-action="toggle-settings"]'), '::after').content === 'none');
+    expect('the update loaded: no badge', gone);
+    /* Check again that finds a new version says so and asks: Update now loads it. */
     serve = 'newer';
     const before = await page.evaluate(() => document.documentElement.innerHTML.includes('a newer version'));
-    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), checkAgain().catch(() => null)]);
+    ck = await checkAgain();
+    expect('Check again with a new version: Update found, and Update now asks', /^Update found · /.test(ck.sum) && ck.btn, ck);
+    await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
     await page.waitForTimeout(1500);
     r = await state();
     const after = await page.evaluate(() => document.documentElement.innerHTML.includes('a newer version'));
-    expect('Check again with a new version: it loads it, nothing waits', !before && after && r.game && !r.pending && !r.note, { before, after, r });
+    expect('Update now after Check again loads it, nothing waits', !before && after && r.game && !r.pending && !r.note, { before, after, r });
     /* The cached page can be newer than the page on the screen. Android can clear the cache of a site whose storage is
        not persistent while the app stays open; the next check then saves the network's newer page as the first one.
        Before the page fingerprint, that check said "newest version" with no Update now, and only a restart showed the
@@ -175,10 +185,12 @@ srv.listen(0, '127.0.0.1', async () => {
     serve = 'newest';
     await clearPage();
     const behind = !(await has('marker N3'));
-    await Promise.all([page.waitForEvent('load', { timeout: 15000 }).catch(() => null), checkAgain().catch(() => null)]);
+    ck = await checkAgain();
+    expect('a cleared cache: Check again says Update found and offers Update now', behind && /^Update found · /.test(ck.sum) && ck.btn, { behind, ck });
+    await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
     await page.waitForTimeout(1500);
     r = await state();
-    expect('a cleared cache: Check again loads the new version, nothing waits', behind && await has('marker N3') && !r.pending && !r.note, { behind, r });
+    expect('a cleared cache: Update now loads the new version, nothing waits', await has('marker N3') && !r.pending && !r.note, r);
     serve = 'newest2';
     await clearPage();
     await page.evaluate(() => {

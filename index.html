@@ -662,6 +662,11 @@ body:has(#askLayer:not([hidden])) :is(.menu-stage > :is(.menu-card,.code-ver), #
 .ask table.data-cmp td:first-child{color:var(--muted)}
 .update-note{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem;padding:0.625rem 0.875rem;border-radius:0.75rem;background:#0b0f0c;border:1px solid var(--gold);box-shadow:0 0.5rem 1.5rem rgba(0,0,0,.5);width:max-content;max-width:calc(100vw - 2rem)}
 .update-note[hidden]{display:none}
+/* The update badge (syncUpdateBtn): a gold dot on the ways into Settings and on its Tools tab. */
+body.update-ready .icon-btn[data-action="toggle-settings"],body.update-ready #setTabTools{position:relative}
+body.update-ready .icon-btn[data-action="toggle-settings"]::after,body.update-ready #setTabTools::after{content:'';position:absolute;top:0.25rem;right:0.25rem;width:0.625rem;height:0.625rem;border-radius:50%;background:var(--gold);pointer-events:none}
+body.update-ready .mfoot [data-action="toggle-settings"]::after{content:'';display:inline-block;width:0.5rem;height:0.5rem;margin-left:0.3125rem;border-radius:50%;background:var(--gold);vertical-align:0.125rem}
+.install-box > summary.upd{color:var(--gold)}
 /* ---- The table: tags, numbers and circles in the seats, the shared facts in one information strip, every
    action button in the play area, and motion that shows each move. ---- */
 .topbar > .info[hidden],.logdrop[hidden],.skip-slot[hidden],.table[hidden],.about[hidden]{display:none!important}
@@ -1093,8 +1098,8 @@ window.kctTheme = (() => {
 <div class="overlay ask-layer" id="askLayer" hidden></div>
 <div class="overlay stale-layer" id="staleLayer" hidden></div>
 <div class="update-note" id="updateNote" role="status" hidden>
-  <span>A new version is ready.</span>
-  <button class="btn primary" type="button" data-action="update-reload">Reload</button>
+  <span>Update found. Update now?</span>
+  <button class="btn primary" type="button" data-action="update-reload">Update</button>
   <button class="btn" type="button" data-action="update-later">Later</button>
 </div>
 
@@ -1167,7 +1172,7 @@ window.kctTheme = (() => {
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for a new version, and loads it.</span></span>
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for an update.</span></span>
           <details class="install-box" id="setInstallBox"><summary id="setInstallSum">Checking…</summary><ul class="install-check" id="setInstall"><li>Checking…</li></ul></details>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button><button class="btn btn-sm primary" type="button" data-action="update-reload" id="setUpdateBtn" hidden>Update now</button></span></div>
         <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
@@ -8400,7 +8405,13 @@ const App = (() => {
     $('updateNote').hidden = false;
   }
   /* Settings → Install: Update now shows while a new version waits. It reloads at once, also mid-game (each move is saved). */
-  function syncUpdateBtn() { const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady; }
+  /* The badge: while an update waits, a gold dot on each way into Settings (the header button, the menu's link) and on
+     its Tools tab, where the Install row offers Update now. CSS draws it from the body's update-ready class. */
+  function syncUpdateBtn() {
+    const b = $('setUpdateBtn'); if (b) b.hidden = !app.updateReady;
+    document.body.classList.toggle('update-ready', app.updateReady);
+    for (const el of document.querySelectorAll('.icon-btn[data-action="toggle-settings"]')) el.setAttribute('aria-label', app.updateReady ? 'Settings: update found' : 'Settings');
+  }
   /* Asks the service worker to fetch the page now, past any CDN copy, and waits for what it found (see checkPage in
      sw.js): 'new', 'same', 'first', 'offline', 'not-game', or null with no worker or no answer in ms. */
   /** @param {number} ms @returns {Promise<string | null>} */
@@ -8497,7 +8508,7 @@ const App = (() => {
       /* The summary line of the collapsed checklist: what needs fixing, else how many checks passed. */
       const sum = $('setInstallSum');
       if (sum) {
-        sum.className = tally.bad ? 'bad' : tally.ok ? 'ok' : '';
+        sum.className = found === 'Update found' ? 'upd' : tally.bad ? 'bad' : tally.ok ? 'ok' : '';
         sum.textContent = (found ? found + ' · ' : '') + (tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes'));
       }
       const btn = $('setInstallBtn');
@@ -8536,19 +8547,12 @@ const App = (() => {
         const r = await checkUpdate(10000);
         if (r === 'new') app.updateReady = true;
         if (r === 'same') { app.updateReady = false; hideUpdateNote(); }
-        /* You pressed Check again to get the new version, so it loads at once, as Update now does (each move is saved). */
-        if (r === 'new' || app.updateReady) {
-          found = 'New version found: loading it';
-          row('ok', 'A new version was found: loading it now.');
-          show();
-          applyUpdate();
-          return rows;
-        }
-        if (r === 'same' || r === 'first') { found = '✔ Newest version'; row('ok', 'This is the newest version (' + $('setBuild').textContent + ').'); }
+        if (r === 'new' || app.updateReady) { found = 'Update found'; row('ok', 'Update found: press Update now to load it.'); }
+        else if (r === 'same' || r === 'first') { found = '✔ Newest version'; row('ok', 'This is the newest version (' + $('setBuild').textContent + ').'); }
         else if (r === 'offline') { found = 'Could not look for a new version'; row('wait', 'Could not reach the server to look for a new version.'); }
         else if (r === 'not-game') { found = 'Could not look for a new version'; row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.'); }
         else { found = 'Could not look for a new version'; row('wait', 'The update check got no answer in 10 s.'); }
-      } else if (app.updateReady) { found = 'A new version is ready'; row('ok', 'A new version is ready: press Update now.'); }
+      } else if (app.updateReady) { found = 'Update found'; row('ok', 'Update found: press Update now to load it.'); }
     }
     const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
     if (kept === true) row('ok', 'Storage is persistent: the browser keeps your progress and saves.');
@@ -8582,13 +8586,16 @@ const App = (() => {
        the worker would look for a new version: each time the app is back on the screen, at most once every 5 minutes,
        the browser looks for a changed sw.js (updateWorker) and the worker for a changed page. */
     let checked = 0;
-    document.addEventListener('visibilitychange', () => {
+    const look = (/** @type {number} */ gap) => {
       const sw = navigator.serviceWorker.controller;
-      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < 5 * 60000) return;
+      if (document.visibilityState !== 'visible' || !sw || Date.now() - checked < gap) return;
       checked = Date.now();
       updateWorker();
       sw.postMessage({ type: 'check-update', page: PAGE_ID });
-    });
+    };
+    document.addEventListener('visibilitychange', () => look(5 * 60000));
+    /* An app left on the screen for hours (a long session) looks every hour too, in the background. */
+    setInterval(() => look(60 * 60000), 5 * 60000);
     requestPersist();
   }
   /* Asks the browser to keep this site's storage (progress, results, saves, replay codes)
