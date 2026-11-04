@@ -123,17 +123,19 @@ srv.listen(0, '127.0.0.1', async () => {
     expect('a change in the theme packs alone is offered', r.game && r.pending && r.note, r);
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
     await page.waitForTimeout(1500);
-    /* Settings → Install → Check again also looks for a new version, past the CDN, and Update now loads it. */
+    /* Settings → Install → Check again also looks for a new version, past the CDN, and loads one it finds. Update now
+       loads one the app's own check found. */
     const checkAgain = () => page.evaluate(async () => {
       if (document.querySelector('#settingsPanel').hidden) document.querySelector('[data-action="toggle-settings"]').click();
       document.querySelector('#setTabTools').click();
       document.querySelector('[data-action="install-check"]').click();
       const t0 = Date.now();
       while (/Checking/.test(document.querySelector('#setInstallSum').textContent) && Date.now() - t0 < 12000) await new Promise(r => setTimeout(r, 50));
-      return { list: document.querySelector('#setInstall').textContent, btn: !document.querySelector('#setUpdateBtn').hidden };
+      return { list: document.querySelector('#setInstall').textContent, sum: document.querySelector('#setInstallSum').textContent, btn: !document.querySelector('#setUpdateBtn').hidden };
     });
     let ck = await checkAgain();
     expect('Check again with nothing new: the newest version, no Update now', /This is the newest version/.test(ck.list) && !ck.btn, ck);
+    expect('Check again with nothing new: the collapsed summary says so', /^✔ Newest version · /.test(ck.sum), ck.sum);
     expect('Check again asks past the CDN', /^fresh=\d+$/.test(lastQuery), lastQuery);
     serve = 'game';
     /* The app's own check (back on the screen) finds the new version while Settings shows the checklist. */
@@ -144,8 +146,7 @@ srv.listen(0, '127.0.0.1', async () => {
     await page.waitForFunction(() => /A new version is ready/.test(document.querySelector('#setInstall').textContent), null, { timeout: 8000 }).catch(() => {});
     const auto = await page.evaluate(() => ({ list: document.querySelector('#setInstall').textContent, btn: !document.querySelector('#setUpdateBtn').hidden }));
     expect('a new version found while Settings is open: the checklist says so', /A new version is ready/.test(auto.list) && !/newest version/.test(auto.list) && auto.btn, auto);
-    ck = await checkAgain();
-    expect('Check again with a new version: Update now shows', /A new version is ready/.test(ck.list) && ck.btn, ck);
+    expect('a new version found by the app\'s own check: the collapsed summary says so', /^A new version is ready · /.test(await page.$eval('#setInstallSum', x => x.textContent)));
     const over = await page.evaluate(() => {
       const n = document.querySelector('#updateNote'), b = n.querySelector('[data-action="update-reload"]'), r = b.getBoundingClientRect();
       return { shown: !n.hidden, inert: n.inert, hit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === b };
@@ -155,6 +156,14 @@ srv.listen(0, '127.0.0.1', async () => {
     await page.waitForTimeout(1500);
     r = await state();
     expect('Update now loads it: nothing waits', r.game && !r.pending && !r.note, r);
+    /* Check again that finds a new version loads it, with no second press. */
+    serve = 'newer';
+    const before = await page.evaluate(() => document.documentElement.innerHTML.includes('a newer version'));
+    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), checkAgain().catch(() => null)]);
+    await page.waitForTimeout(1500);
+    r = await state();
+    const after = await page.evaluate(() => document.documentElement.innerHTML.includes('a newer version'));
+    expect('Check again with a new version: it loads it, nothing waits', !before && after && r.game && !r.pending && !r.note, { before, after, r });
     /* A changed sw.js reaches an app that stays open: back on the screen, the browser fetches the worker again, the new
        worker takes over the page, and it looks for a new page at once. Nothing needs the app closed. */
     swVersion = 1;

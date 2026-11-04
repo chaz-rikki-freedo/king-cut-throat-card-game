@@ -1167,7 +1167,7 @@ window.kctTheme = (() => {
     </section>
     <section class="set-pane" id="setPaneTools" role="tabpanel" aria-labelledby="setTabTools" hidden>
       <div class="set-card" id="setTools">
-        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for a new version.</span></span>
+        <div class="set-row set-row-wide"><span class="set-text"><span class="set-name">Install</span><span class="set-desc">Play from your home screen, also offline. Check again also looks for a new version, and loads it.</span></span>
           <details class="install-box" id="setInstallBox"><summary id="setInstallSum">Checking…</summary><ul class="install-check" id="setInstall"><li>Checking…</li></ul></details>
           <span class="set-btns"><button class="btn btn-sm" type="button" data-action="install-check">Check again</button><button class="btn btn-sm primary" type="button" data-action="install-app" id="setInstallBtn" hidden>Install app</button><button class="btn btn-sm primary" type="button" data-action="update-reload" id="setUpdateBtn" hidden>Update now</button></span></div>
         <p class="k-hint set-note" id="setLocalNote" hidden>This is a local copy, opened from a file. Its progress and saves stay in this browser, apart from the hosted game, and the browser can clear them without a warning.</p>
@@ -8422,9 +8422,12 @@ const App = (() => {
   function hideUpdateNote() { const n = $('updateNote'); if (n) n.hidden = true; }
   function applyUpdate() {
     hideUpdateNote();
-    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-    if (sw) sw.postMessage({ type: 'apply-update' });
-    else location.reload();
+    if (!('serviceWorker' in navigator)) { location.reload(); return; }
+    /* The active worker answers too when it does not control this page yet; with none, a plain reload. */
+    navigator.serviceWorker.getRegistration().then(reg => {
+      const sw = navigator.serviceWorker.controller || (reg && reg.active);
+      if (sw) sw.postMessage({ type: 'apply-update' }); else location.reload();
+    }).catch(() => location.reload());
   }
   /* ---- Install: the browser's own install offer, and a check that shows why it may be missing. ---- */
   const install = { prompt: null, offered: false, installed: false, linkRestored: false };
@@ -8473,6 +8476,9 @@ const App = (() => {
     const run = ++installRun;
     const rows = [];
     const tally = { ok: 0, bad: 0, wait: 0 };
+    /* What the look for a new version found, at the front of the summary: the list starts collapsed, so a result
+       only in its rows would go unseen. */
+    let found = '';
     if (opts && opts.update) { const sum = $('setInstallSum'); if (sum) { sum.className = ''; sum.textContent = '… Checking, also for a new version'; } }
     const row = (state, text) => { tally[state]++; rows.push('<li class="' + state + '">' + (state === 'ok' ? '✔ ' : state === 'bad' ? '✖ ' : '… ') + escHTML(text) + '</li>'); };
     /* A local copy cannot install or play offline, so the checks below do not apply: file://, or content:// when a
@@ -8488,7 +8494,7 @@ const App = (() => {
       const sum = $('setInstallSum');
       if (sum) {
         sum.className = tally.bad ? 'bad' : tally.ok ? 'ok' : '';
-        sum.textContent = tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes');
+        sum.textContent = (found ? found + ' · ' : '') + (tally.bad ? '✖ ' + tally.bad + ' to fix, ' + tally.ok + ' passed' : tally.ok ? '✔ ' + tally.ok + ' checks passed' : '… ' + (rows.length === 1 ? '1 note' : rows.length + ' notes'));
       }
       const btn = $('setInstallBtn');
       if (btn) btn.hidden = local || !install.prompt;
@@ -8526,12 +8532,19 @@ const App = (() => {
         const r = await checkUpdate(10000);
         if (r === 'new') app.updateReady = true;
         if (r === 'same') { app.updateReady = false; hideUpdateNote(); }
-        if (r === 'new' || app.updateReady) row('ok', 'A new version is ready: press Update now.');
-        else if (r === 'same' || r === 'first') row('ok', 'This is the newest version (' + $('setBuild').textContent + ').');
-        else if (r === 'offline') row('wait', 'Could not reach the server to look for a new version.');
-        else if (r === 'not-game') row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.');
-        else row('wait', 'The update check got no answer in 10 s.');
-      } else if (app.updateReady) row('ok', 'A new version is ready: press Update now.');
+        /* You pressed Check again to get the new version, so it loads at once, as Update now does (each move is saved). */
+        if (r === 'new' || app.updateReady) {
+          found = 'New version found: loading it';
+          row('ok', 'A new version was found: loading it now.');
+          show();
+          applyUpdate();
+          return rows;
+        }
+        if (r === 'same' || r === 'first') { found = '✔ Newest version'; row('ok', 'This is the newest version (' + $('setBuild').textContent + ').'); }
+        else if (r === 'offline') { found = 'Could not look for a new version'; row('wait', 'Could not reach the server to look for a new version.'); }
+        else if (r === 'not-game') { found = 'Could not look for a new version'; row('wait', 'The server sent a page that is not the game (a sign-in page?), so it was not taken as an update.'); }
+        else { found = 'Could not look for a new version'; row('wait', 'The update check got no answer in 10 s.'); }
+      } else if (app.updateReady) { found = 'A new version is ready'; row('ok', 'A new version is ready: press Update now.'); }
     }
     const kept = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
     if (kept === true) row('ok', 'Storage is persistent: the browser keeps your progress and saves.');
