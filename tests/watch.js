@@ -195,18 +195,21 @@ function expect(name, ok, detail) {
     }, t);
     const look = () => page.evaluate(() => {
       const gear = document.querySelector('#topbar [data-action="toggle-settings"]');
-      return { badge: document.body.classList.contains('update-ready'), label: gear.getAttribute('aria-label'), note: !document.querySelector('#updateNote').hidden,
-        noteText: document.querySelector('#updateNote span').textContent, said: (document.querySelector('#overlay .wave-note') || {}).textContent || '',
+      return { badge: document.body.classList.contains('update-ready'), label: gear.getAttribute('aria-label'), popup: !!document.querySelector('#updateNote'), said: (document.querySelector('#overlay .wave-note') || {}).textContent || '',
         dots: ['#setBuild', '#aboutBuild'].map(x => !!document.querySelector(x + ' .faux-dot')), menuDot: !!document.querySelector('#overlay .about-build .faux-dot') };
     });
     await devCmd('!dev testupdate');
     r = await look();
-    expect('!dev testupdate: the badge, the label and the note show, as for a real update', r.badge && r.label === 'Settings: update found' && r.note && r.noteText === 'Update found. Update now?' && /test update/.test(r.said), r);
+    expect('!dev testupdate: the badge and the label show, as for a real update, with no pop-up', r.badge && r.label === 'Settings: update found' && !r.popup && /test update/.test(r.said), r);
     expect('!dev testupdate: no build dot before it is applied', !r.dots[0] && !r.dots[1], r.dots);
-    await Promise.all([page.waitForEvent('load'), page.click('#updateNote [data-action="update-reload"]')]);
+    /* The badge leads to Settings, open on Tools: Update now there applies it. */
+    await page.evaluate(() => { document.querySelector('#overlay .mfoot [data-action="toggle-settings"]').click(); });
+    await page.waitForTimeout(100);
+    expect('!dev testupdate: Settings opens on Tools, with Update now', await page.evaluate(() => document.querySelector('#setTabTools').getAttribute('aria-selected') === 'true' && !document.querySelector('#setUpdateBtn').hidden));
+    await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
     await page.waitForFunction(() => window.KCT && KCT.App);
     r = await look();
-    expect('the test update applied: the page reloaded, a dot after each build number, no badge', !r.badge && !r.note && r.dots[0] && r.dots[1] && r.menuDot, r);
+    expect('the test update applied: the page reloaded, a dot after each build number, no badge', !r.badge && r.dots[0] && r.dots[1] && r.menuDot, r);
     await devCmd('!dev reset');
     await page.reload();
     await page.waitForFunction(() => window.KCT && KCT.App);
