@@ -1,6 +1,6 @@
 # Feedback: vibration and sound
 
-> **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). Nothing here is built yet. Items marked **TBD** are still to be decided.
+> **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). Every decision is made. Nothing is built yet.
 
 *Feedback* is what the game does besides drawing the table: a short vibration or a short sound at a game moment. This page defines the cues, when each one plays, when nothing plays, and what is dropped when cues collide. Vibration and sound read the same cue table, so they never disagree about what happened.
 
@@ -93,15 +93,15 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
   `showdownCalled` and the Showdown's trick and King cues don't vibrate for the Mediator. All the sounds still play, except during the skip.
 - **Autoplay.** Your seat's cues play as if you played it yourself, vibration included.
 - **Events that never cue:** `GAME_STARTED`, `TRICK_STARTED`, `BIDDING_ROUND`, `DISCARDS_COMPLETE`, `KITTY_TRANSFER` and `SCORE_CHANGED`. Each comes with another event that already cues.
-- **TBD:** sounds for a pass (`BID_PASS`), Hand void, Hand abandoned, a refused move, and the Next hand, Deal the Showdown and Skip ▶ buttons.
+- **No sound** for a pass (`BID_PASS`), Hand void, Hand abandoned, a refused move, or any button, including Next hand, Deal the Showdown and Skip ▶.
 
 ### Taps
 
 | Tap | Vibration | Sound |
 |---|---|---|
 | A card picked or unpicked | `[8]`, under the Vibration switch | None |
-| Skip ▶, while you mediate | `[20]`, under the Vibration switch | TBD (button sounds) |
-| Buttons, the menu, Settings | None | None (button sounds are TBD) |
+| Skip ▶, while you mediate | `[20]`, under the Vibration switch | None |
+| Other buttons, the menu, Settings | None | None |
 
 ## Gates
 
@@ -145,7 +145,7 @@ A redraw from a new action, **Next hand**, Exit, a new game or a jump in the rep
 
 ## Sound files
 
-Supply one WAV file for each name below. TBD files can come later.
+Supply one WAV file for each name below. These 17 files are the full set.
 
 | File | Cue | Plays | Length |
 |---|---|---|---|
@@ -166,10 +166,6 @@ Supply one WAV file for each name below. TBD files can come later.
 | `game-win.wav` | `gameWin` | You win the game | 1 to 2 s |
 | `game-loss.wav` | `gameLoss` | A bot wins the game | 1 to 2 s |
 | `wave-cleared.wav` | `waveCleared` | You clear a wave | 1.5 to 2.5 s |
-| `pass.wav` | TBD | A pass in bidding | 80 to 150 ms |
-| `hand-void.wav` | TBD | Hand void or Hand abandoned | 300 to 600 ms |
-| `refused.wav` | TBD | A move the rules refuse | 100 to 200 ms |
-| `button.wav` | TBD | Next hand, Deal the Showdown, Skip ▶ | 50 to 100 ms |
 
 ### File format
 
@@ -184,8 +180,8 @@ Supply one WAV file for each name below. TBD files can come later.
 - **Missing files are silent.** A file that is missing or fails to load or decode is dropped: no notice, no toast and no Settings text. The game plays as if that cue had no sound. The Sound row still shows. This covers a local copy opened with only `index.html`, and a set of files that isn't complete yet.
 - Nothing is written to the console for a missing file, so a local copy stays clean. The Event log, when on, records one `SOUND_MISSING` line for each file, once a page load.
 - **Offline, in two steps.**
-  1. **Until the full set exists:** the service worker caches each sound the first time it loads (runtime caching). An installed app that has played a sound once has it offline.
-  2. **Once all 17 required files are in `sounds/`:** the service worker precaches them at install, from a `SOUNDS` list in `sw.js`, so every sound works offline from the start. Runtime caching stays for the TBD files.
+  1. **Until all 17 files exist:** the service worker caches each sound the first time it loads (runtime caching). An installed app that has played a sound once has it offline.
+  2. **Once all 17 required files are in `sounds/`:** the service worker precaches them at install, from a `SOUNDS` list in `sw.js`, so every sound works offline from the start.
 - **A sound never breaks the install.** Precaching fetches each sound on its own, apart from `ASSETS`. A sound that fails to load is skipped and left to runtime caching, so the page, the manifest and the icons still install.
 - A file that changes is picked up by the service worker's update check, the same as the icons.
 
@@ -233,13 +229,9 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 8 | Your seat under autoplay | The same cues as when you play it |
 | 9 | Wave cleared | Its own vibration and sound |
 | 10 | Picking a card | Vibration only, under the Vibration switch |
-| 11 | Pass, void, refused move, buttons | TBD |
+| 11 | Pass, void, refused move, buttons | No sound |
 | 12 | Reset this tab | Sets Sound and touch back to Off |
 | 13 | Sound source | Recorded WAV files, supplied separately |
 | 14 | Where the files live | External files in `sounds/`. The interface is silent when one is missing. |
 | 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
 | 16 | Offline sounds | Runtime caching until the full set exists, then precached at install |
-
-## Still to decide
-
-1. Sounds for a pass, Hand void, Hand abandoned, a refused move and the buttons.
