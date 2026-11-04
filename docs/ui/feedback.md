@@ -19,7 +19,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 | Channel | API | Supported on | Default | Notes |
 |---|---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome on Android, including the installed app | Off | A new call replaces the pattern still running. Not supported on iOS. |
-| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files, embedded in `index.html` (see [Sound files](#sound-files)). Each is decoded once, after the first tap. Never use `<audio>` elements. |
+| Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `sounds/`, next to `index.html` (see [Sound files](#sound-files)). Each is fetched and decoded once, after the first tap. Never use `<audio>` elements. |
 
 ## Settings
 
@@ -122,7 +122,7 @@ The system's reduced-motion setting turns off the motion, so screen time is the 
 Each cue carries the screen time it belongs to. When it is due, it goes through these checks in order:
 
 1. **Stale.** The state version changed, the tab is hidden or another tab is more current. Drop it.
-2. **Not ready.** Its sound isn't decoded yet. Drop the sound. Vibration still plays.
+2. **Not ready.** Its sound is missing, failed to load or isn't decoded yet. Drop the sound. Vibration still plays.
 3. **Late.** More than `LATE_MS` past its moment. Drop it.
 4. **Too soon.** Less than the channel's minimum gap since its last cue. Drop it, unless it ranks higher, in which case it replaces the last cue.
 5. **Too many sounds.** `MAX_VOICES` sounds are already playing. Drop it.
@@ -171,23 +171,32 @@ Supply one WAV file for each name below. TBD files can come later.
 - Mono, 16-bit PCM, 22,050 Hz. A sound effect needs nothing more, and it keeps `index.html` small.
 - No silence at the start, so the sound lines up with the moment. Trim the tail to where it fades out.
 - Peaks at about −3 dBFS. Keep the levels matched, so no sound jumps out at Full.
-- Size: one second at this format is about 44 KB, and about 59 KB once embedded as base64. The 17 required files at the lengths above come to roughly 0.6 to 1 MB of `index.html`. **TBD:** whether that is acceptable, or the files are converted to a compressed format (Opus or MP3) when embedded.
-- Put the source files in `tools/sounds/`. A small tool script embeds them in `index.html`, so a new file means running it again, not editing base64 by hand.
+- Size: one second at this format is about 44 KB. The 17 required files at the lengths above come to roughly 0.5 to 0.7 MB, outside `index.html`.
+
+### Where the files live
+
+- The files are in `sounds/`, next to `index.html`, and `tools/publish.sh` adds `sounds` to the files it publishes.
+- **Missing files are silent.** A file that is missing or fails to load or decode is dropped: no notice, no toast and no Settings text. The game plays as if that cue had no sound. The Sound row still shows. This covers a local copy opened with only `index.html`, and a set of files that isn't complete yet.
+- Nothing is written to the console for a missing file, so a local copy stays clean. The Event log, when on, records one `SOUND_MISSING` line for each file, once a page load.
+- **Offline.** The service worker caches each sound the first time it loads (runtime caching), not at install. A missing file then can't make the install fail. An installed app that has played a sound once has it offline. **TBD:** whether to precache them once the full set exists.
+- A file that changes is picked up by the service worker's update check, the same as the icons.
 
 ## Performance
 
 - Vibration costs microseconds on the main thread. The device does the vibrating.
 - Sound plays on the audio thread. A busy main thread can only delay when a sound starts, and `LATE_MS` drops a sound that starts too late.
-- The `AudioContext` is created or resumed on the first tap. The sounds are decoded then, in the background, one at a time, never during a game moment.
+- The `AudioContext` is created or resumed on the first tap, and only while Sound isn't Off. The sounds are fetched and decoded then, in the background, one at a time, never during a game moment.
+- A file that fails to load is not fetched again on that page load.
 - Sounds are scheduled on `audioContext.currentTime`, not on extra `setTimeout`s.
 
 ## Code
 
-- One module, `Feedback`, in a new section of `index.html` after section 7b (`Fx`). The game stays in one file: a separate script would not load in a local copy or offline without changes to `sw.js` and `tools/publish.sh`.
+- One module, `Feedback`, in a new section of `index.html` after section 7b (`Fx`). The code stays in one file. Only the sound files are outside it, because the game works without them.
 - `Feedback.cueFor(events, ctx)`: a pure function that turns an action's events into at most one cue for each channel. The self-test covers it.
 - `Feedback.play(cue, ctx)`: applies the gates and the dropping rules, then plays the cue on each channel.
 - The vibration patterns, the sound table and the dropping limits are named constants in the module.
 - Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, and the card-pick handler.
+- `sw.js`: runtime caching for `sounds/*.wav`. `tools/publish.sh`: `sounds` in its file list.
 
 ## Tests
 
@@ -195,6 +204,8 @@ Supply one WAV file for each name below. TBD files can come later.
 |---|---|---|
 | The `Feedback` module | T1 | A new `feedback` area in `selftest.js`: cue ranks, seat filters, gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext` |
 | The Settings rows | T1 | `settings.js` |
+| Runtime caching of `sounds/` in `sw.js` | T1 | `sw.js` |
+| Missing files are silent | T1 | The `feedback` area: a failed fetch and a failed decode drop the cue, show nothing and leave vibration playing |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, and whether sound adds any delay at Fast |
 
@@ -217,9 +228,11 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 11 | Pass, void, refused move, buttons | TBD |
 | 12 | Reset this tab | Sets Sound and touch back to Off |
 | 13 | Sound source | Recorded WAV files, supplied separately |
+| 14 | Where the files live | External files in `sounds/`. The interface is silent when one is missing. |
+| 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
 
 ## Still to decide
 
 1. Which events vibrate while you mediate.
 2. Sounds for a pass, Hand void, Hand abandoned, a refused move and the buttons.
-3. Whether about 1 MB of embedded sound is acceptable, or the files are compressed when embedded.
+3. Whether the service worker precaches the sounds once the full set exists.
