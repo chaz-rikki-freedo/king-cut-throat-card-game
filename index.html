@@ -1394,8 +1394,8 @@ const RNG = (() => {
    (Awards; on by default), kept on the device until changed.
    "!dev testupdate" makes a test update: the app shows the update badge and
    asks as for a real one, and applying it reloads the page, after which a small
-   dot next to the build number says a test update was applied (for the tab;
-   "!dev reset" clears it). Nothing is fetched or cached.
+   dot next to the build number says a test update was applied (for the tab,
+   until a real update or "!dev reset"). Nothing is fetched or cached.
    Input that starts with '!' is reserved for these commands: no replay
    code, seed, link or backup starts with it (docs/replay-code.md).
    --------------------------------------------------------------------- */
@@ -1434,10 +1434,14 @@ const Dev = (() => {
       try { if (D.list().length) sessionStorage.setItem(KEY, JSON.stringify(vals)); else sessionStorage.removeItem(KEY); } catch (e) { /* kept for this page only */ }
     },
     reset() { vals = {}; D.set({}); try { sessionStorage.removeItem(FAUX_KEY); } catch (e) { /* nothing kept */ } },
-    /** True after a test update ('!dev testupdate') was applied in this tab: the build lines show a dot. */
-    fauxApplied() { try { return sessionStorage.getItem(FAUX_KEY) === 'applied'; } catch (e) { return false; } },
-    /** Marks a test update as applied, for the reload that follows. */
-    markFaux() { try { sessionStorage.setItem(FAUX_KEY, 'applied'); } catch (e) { /* no dot after the reload */ } },
+    /** True when a test update ('!dev testupdate') was applied in this tab to the version that runs now (ver): the build
+        lines show a dot. A real update changes the version, so it clears the dot, also when it arrives by a restart.
+        @param {string} ver */
+    fauxApplied(ver) { try { return sessionStorage.getItem(FAUX_KEY) === 'applied:' + ver; } catch (e) { return false; } },
+    /** Marks a test update as applied to version ver, for the reload that follows. @param {string} ver */
+    markFaux(ver) { try { sessionStorage.setItem(FAUX_KEY, 'applied:' + ver); } catch (e) { /* no dot after the reload */ } },
+    /** A real update clears the test update's dot. */
+    clearFaux() { try { sessionStorage.removeItem(FAUX_KEY); } catch (e) { /* nothing kept */ } },
     /** Reads a dev command: '!dev', '!dev reset', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
         Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
         (false) or not given (null). @param {string} text
@@ -8022,7 +8026,7 @@ const App = (() => {
       '<ul class="mlist">' + (st ? menuLine('new', 'New game', 'Dynamic, Waves, Free play') : '') + menuLine('rules', 'How to play') + menuLine('lore', 'Lore') + '</ul>' +
       '<nav class="mfoot" aria-label="More">' + link('menu-profile', 'Your profile', ' data-mode="all"') + link('menu-view', 'Load a code', ' data-view="code"') + link('toggle-settings', 'Settings') +
       (install.prompt ? link('install-app', 'Install') : '') + '</nav>' +
-      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.fauxApplied() ? FAUX_DOT : '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
+      '<p class="about-credit"><span>Original game design by</span> <b>C.R.F.B.</b> <small>© 2009–2026</small></p><p class="about-build">' + escHTML($('setBuild').textContent || '') + (Dev.fauxApplied(PAGE_VERSION) ? FAUX_DOT : '') + (Dev.list().length ? ' · <b class="dev-mark">DEV ' + escHTML(Dev.list().map(([k, v]) => k + '=' + v).join(' ')) + '</b>' : '') + '</p>');
   }
   /* New game: one line per mode, with its color, and its saved game or its goal. */
   function menuNewHTML() {
@@ -8404,6 +8408,9 @@ const App = (() => {
      worker can tell this page is older than its cached one, as when the phone cleared the cache while the app stayed
      open and the next check saved the new version. */
   const PAGE_ID = safe(() => /** @type {HTMLMetaElement | null} */ (document.querySelector('meta[name="kct-page"]'))?.content) || '';
+  /* The version that runs now: the fingerprint, or the build when no worker served the page. The test update's dot
+     belongs to one version, so a real update clears it. */
+  const PAGE_VERSION = PAGE_ID || BUILD.commit;
   /* An update is offered quietly: the badge (syncUpdateBtn) and Update now in Settings → Tools → Install. Nothing
      pops up, in a game or between games. */
   function maybeOfferUpdate() { syncUpdateBtn(); }
@@ -8439,7 +8446,8 @@ const App = (() => {
   }
   function applyUpdate() {
     /* A test update ('!dev testupdate'): a plain reload, with the build lines marked after it. */
-    if (app.fakeUpdate) { Dev.markFaux(); location.reload(); return; }
+    if (app.fakeUpdate) { Dev.markFaux(PAGE_VERSION); location.reload(); return; }
+    Dev.clearFaux();
     if (!('serviceWorker' in navigator)) { location.reload(); return; }
     /* The active worker answers too when it does not control this page yet; with none, a plain reload. */
     navigator.serviceWorker.getRegistration().then(reg => {
@@ -9600,7 +9608,7 @@ const App = (() => {
   function init() {
     SuitText.watch(document.body);
     $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
-    if (Dev.fauxApplied()) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);
+    if (Dev.fauxApplied(PAGE_VERSION)) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);
     aboutKings();
     document.addEventListener('click', ev => {
       if (!(ev.target instanceof Element)) return;
