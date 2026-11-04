@@ -13,7 +13,7 @@
     "dynamic": "node dynamic.js",
     "watch": "node watch.js",
     "forced": "node forced.js",
-    "test": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node watch.js && node forced.js && node backup-ui.js && node theme.js && node resets.js && node settings.js && node restart.js && node stress.js all 4"
+    "test": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node watch.js && node profile.js && node forced.js && node backup-ui.js && node theme.js && node resets.js && node settings.js && node restart.js && node stress.js all 4"
   },
   "devDependencies": {
     "playwright": "^1.64.0",

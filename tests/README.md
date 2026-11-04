@@ -29,6 +29,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 | `node settings.js` | Every setting through the real controls: each Game setting is kept and a new game takes it (a running game keeps its rules, and the note says so), every value of every Bots control of every seat is applied, kept and counted, Who sits, Reset this seat and Bot defaults, the settings after a reload, and in Tools the Event log, Clear log and Self-tests. | about 40 s |
 | `node restart.js` | A full restart: every setting changed and a Free play and a Waves game left mid-play, then the browser is closed and opened again on the same profile. Each setting comes back (the theme before the game draws, Settings on its last tab), both games resume at the same move with their seats, tunes and rules and play on, and Speed and AI can play your seat are back to their defaults. A second restart keeps defaults that were set back. | about 30 s |
 | `node theme.js` | Theme through the real controls: the Felt tiles (in the Table tab, before its reset), the Color-blind safe colors switch over a felt, the browser bar color, the theme kept and applied again by the head script on a reload, Classic bringing back every default, and an unknown saved theme falling back to Classic. | about 10 s |
+| `node profile.js` | Your profile and the games kept: each mode keeps its last 50, the Games list holds every game kept with its count, the chart reads the latest 20, and a streak that reaches games a mode dropped reads N+. | about 3 s |
 | `node watch.js` | The replay viewer through the real controls: **Watch** at the end of a game, Previous hand, Back, Forward, Next hand (a redeal is the same hand) and Play, a discard raised before it goes, watching from West's and East's seats, the end result, Exit back to the results with the game and its log as they were, the Watch icon in Your profile and Escape, the `?replay=` link (used once; a bad code opens the menu with a note), and the controls on the table. | about 30 s |
 | `node dynamic.js rates 80 4` | Not a default check. Bot games that measure Dynamic's fast path: how often it catches a player who throws away their best cards within 3 visible hands, and how often it fires for players at ladder rows 4, 6 and 8. Fails under an 80% catch rate or over 3% false alarms. | about 40 s |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
@@ -50,7 +51,7 @@ If Playwright is already on the machine, skip `npm install` and set `NODE_PATH` 
 
 The last five scripts measure the design of Dynamic mode. The results and the decisions they support are on issue #117.
 
-`npm test` runs `typecheck.js`, `palette.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js`, `forced.js`, `backup-ui.js`, `theme.js`, `resets.js`, `settings.js`, `restart.js` and `stress.js all 4`.
+`npm test` runs `typecheck.js`, `palette.js`, `selftest.js`, `sw.js`, `forfeit.js`, `scenarios.js`, `dynamic.js`, `watch.js`, `profile.js`, `forced.js`, `backup-ui.js`, `theme.js`, `resets.js`, `settings.js`, `restart.js` and `stress.js all 4`.
 
 GitHub Actions has two workflows:
 

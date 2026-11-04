@@ -4,7 +4,7 @@
    "you" column from your own finished games (seat 0, games where the AI never played your seat).
    Usage: node habits.js [games=1] [workers=4] [seed=1] [--backup file.kct] [--codes file.txt] [--json]
    games is the number per table of three (120 tables). --backup reads a Your data backup (Settings → Tools → Your data:
-   Save file, or its code); its kct.replays holds your last 20 finished games. --codes reads replay codes, one per line.
+   Save file, or its code); its kct.replays holds your last 50 finished games of each mode. --codes reads replay codes, one per line.
    The spread column is the highest bot rate minus the lowest: a small spread is a habit that all ten bots share. */
 'use strict';
 const fs = require('fs');
