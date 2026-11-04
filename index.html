@@ -1404,7 +1404,7 @@ const RNG = (() => {
 /** @typedef {'saves' | 'log' | 'scroll' | 'logger'} DevKey */
 /** @type {Readonly<Record<DevKey, { def: number, min: number, max: number, note: string }>>} */
 const DEV_KEYS = Object.freeze({
-  saves: { def: 20, min: 1, max: 1000, note: 'replays kept per mode' },
+  saves: { def: 50, min: 1, max: 1000, note: 'replays kept per mode' },
   log: { def: 1500, min: 10, max: 100000, note: 'Latest Scroll lines a save keeps' },
   scroll: { def: 5000, min: 10, max: 100000, note: 'Latest Scroll lines shown' },
   logger: { def: 1500, min: 10, max: 100000, note: 'Logger lines kept' }
@@ -3001,6 +3001,9 @@ function createSlots(store) {
    from a backup, so each one is rebuilt from fields of the right type, and an entry without a
    replay code is dropped. The code itself is checked when it is decoded. */
 const REPLAYS_MAX = () => Dev.num('saves');
+/* Your profile's chart and card play read the latest PF_RECENT games: a chart stays readable, and card play replays
+   each game, so it stays quick. The Games list and the streak read every game kept. */
+const PF_RECENT = 20;
 /** The group a finished game counts in for REPLAYS_MAX: its mode, or 'assisted'. @param {any} e */
 const replayGroup = e => (e.assisted ? 'assisted' : e.mode || 'other');
 /** @param {any} e @returns {object | null} */
@@ -6537,7 +6540,7 @@ const App = (() => {
     }).then(yes => { if (yes) location.reload(); });
   }
   /* ---- Habits: KCT.App.habits() and KCT.App.explain(n) from the console. They read the finished games in Your
-     profile (the latest REPLAYS_MAX of any mode), never the running game. ---- */
+     profile (the latest PF_RECENT of any mode), never the running game. ---- */
   /** The settings each bot seat of a finished record played with. Seat 0 is skipped: a person, or the AI for part of
       the game at most. Dynamic's easing moves after each hand as it did in the game. @param {any} rec */
   function recordSettings(rec) {
@@ -6574,7 +6577,7 @@ const App = (() => {
   function habits() {
     const you = Habits.blank(), /** @type {Record<string, Record<string, number>>} */ bots = {};
     let games = 0, yours = 0, skipped = 0;
-    for (const e of replays.list().slice(0, REPLAYS_MAX())) {
+    for (const e of replays.list().slice(0, PF_RECENT)) {
       const rec = safe(() => Replay.decode(e.code)), seats = rec && safe(() => Habits.count(rec));
       if (!seats) { skipped++; continue; }
       games++;
@@ -8844,13 +8847,21 @@ const App = (() => {
     const close = '</div></div>';
     const sum = g => Object.values(g).reduce((t, r) => ({ played: t.played + r.played, won: t.won + r.won }), { played: 0, won: 0 });
     const tot = m === 'all' ? sum(st.modes) : st.modes[m] || { played: 0, won: 0 };
-    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m)).slice(0, REPLAYS_MAX());
+    const games = replays.list().filter(e => !e.assisted && e.scores && e.winner !== null && (m === 'all' || e.mode === m));
     let streak = '—';
     if (games.length) {
       const w = games[0].winner === 0;
+      /* The games kept are whole back to lim: past the oldest game a mode kept, when it played more than it kept, its
+         older games are gone and could fall between the ones left. A run that reaches lim can be longer: N+. */
+      let lim = games.length;
+      for (const md of new Set(games.map(e => e.mode))) {
+        const kept = games.filter(e => e.mode === md).length, played = (st.modes[md] || { played: 0 }).played;
+        if (played > kept) lim = Math.min(lim, games.map(e => e.mode).lastIndexOf(md) + 1);
+      }
       let k = 0;
-      while (k < games.length && (games[k].winner === 0) === w) k++;
-      streak = k + ' <small>' + (w ? (k === 1 ? 'win' : 'wins') : (k === 1 ? 'loss' : 'losses')) + '</small>';
+      while (k < lim && (games[k].winner === 0) === w) k++;
+      const more = k === lim && tot.played > k;
+      streak = k + (more ? '+' : '') + ' <small>' + (w ? (k === 1 ? 'win' : 'wins') : (k === 1 ? 'loss' : 'losses')) + '</small>';
     }
     const pr = Waves.progress();
     const tile = (label, value) => '<div class="pf-tile"><span>' + label + '</span><b>' + value + '</b></div>';
@@ -8867,13 +8878,13 @@ const App = (() => {
       return html + '<p class="pf-note">' + (m === 'all' ? 'Finish a game to see your results here.' : 'No finished games in this mode yet.') + '</p>' + lists + close;
     }
     if (games.length) {
-      const shown = games.slice().reverse();
+      const shown = games.slice(0, PF_RECENT).reverse();
       const avg = shown.reduce((t, e) => t + e.scores[0], 0) / shown.length;
       html += '<h3>Last ' + shown.length + (shown.length === 1 ? ' game' : ' games') + '</h3><p class="pf-sub">Your final score in each game, oldest first. Your average: ' + (Math.round(avg * 10) / 10) + ' points.</p>' + pfChartHTML(shown);
     }
     html += habitsHTML() + cardPlayHTML() + lists;
     if (m !== 'all') html += '<p class="pf-note">Per-mode results by opponent start with the version that added the results pop-up, and by table with the version that added them here: older games count under All only.</p>';
-    return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX() + ' games; All shows the latest ' + REPLAYS_MAX() + ' of them.</p>' + close;
+    return html + '<p class="pf-note">Games where the AI played your seat are not counted. Each mode keeps its last ' + REPLAYS_MAX() + ' games, and Games lists them all. The chart and Your card play read the latest ' + PF_RECENT + '.</p>' + close;
   }
   /* A collapsed list in Your profile: its name and a short count as the summary. */
   const pfListHTML = (/** @type {string} */ cls, /** @type {string} */ name, /** @type {string} */ count, /** @type {string} */ body) =>
@@ -8890,8 +8901,8 @@ const App = (() => {
         const last = runs[runs.length - 1], f = last && last[0];
         if (f && f.mode === e.mode && f.wave === e.wave && f.west === e.west && f.east === e.east) last.push(e); else runs.push([e]);
       }
-      /* A wave's header gives its real tries (Waves.tries), not the rows: rows can be hidden, and the list keeps only
-         the last REPLAYS_MAX games. */
+      /* A wave's header gives its real tries (Waves.tries), not the rows: rows can be hidden, and each mode keeps only
+         its last REPLAYS_MAX games. */
       const runNote = (/** @type {any[]} */ run) => {
         const wins = run.filter(e => e.winner === 0).length, w = run[0].mode === 'waves' && run[0].wave;
         if (w && Waves.tries(w)) { const t = Waves.tries(w); return (pr.cleared.includes(w) ? 'Won' : 'Not won') + ' · ' + t + (t === 1 ? ' try' : ' tries'); }
@@ -8907,7 +8918,7 @@ const App = (() => {
         (againOf(e) ? tinyButton('replay-seed', 'Try again', ICON_AGAIN, at(e)) : '') + tinyButton('replay-export', 'Export: seed and replay code', ICON_EXPORT, at(e)) +
         tinyButton('replay-delete', 'Remove from this list', ICON_DELETE, at(e)) + '</span></li>';
       const shown = games.filter(e => !e.hidden).length;
-      html += pfListHTML('pf-games', 'Games', (shown < games.length ? shown + ' of ' : '') + 'the last ' + games.length + ', newest first', runs.filter(run => run.some(e => !e.hidden)).map(run => {
+      html += pfListHTML('pf-games', 'Games', (shown < games.length ? shown + ' shown of ' : '') + games.length + ' kept, newest first', runs.filter(run => run.some(e => !e.hidden)).map(run => {
         const e = run[0], note = runNote(run);
         return '<section class="pf-tg"><div class="pf-tg-h"><span>' + pfModeName(e) + ' · ' + pfWho(e.west) + ' / ' + pfWho(e.east) + '</span><small' + (/^Won/.test(note) ? ' class="won"' : '') + '>' + note + '</small></div>' +
           '<ol>' + run.filter(x => !x.hidden).map(row).join('') + '</ol></section>';
