@@ -75,8 +75,8 @@ srv.listen(0, '127.0.0.1', async () => {
     /* What the page shows, and whether the worker keeps a page waiting as an update. */
     const state = () => page.evaluate(async () => {
       const pending = await (await caches.open('kct-pending')).match(new URL('./index.html', location.href).href);
-      const note = document.querySelector('#updateNote');
-      return { game: !!window.KCT, controlled: !!navigator.serviceWorker.controller, pending: !!pending, note: !!note && !note.hidden };
+      /* note: the update is offered, by the badge (there is no pop-up). */
+      return { game: !!window.KCT, controlled: !!navigator.serviceWorker.controller, pending: !!pending, note: document.body.classList.contains('update-ready'), popup: !!document.querySelector('#updateNote') };
     });
     const reload = async () => { await page.reload(); await page.waitForTimeout(1500); };
     await page.goto(url);
@@ -155,11 +155,17 @@ srv.listen(0, '127.0.0.1', async () => {
     });
     expect('an update found: a badge on the Settings button and the Tools tab', badge.gear && badge.tools && badge.label === 'Settings: update found', badge);
     expect('a new version found by the app\'s own check: the collapsed summary says so', /^Update found · /.test(await page.$eval('#setInstallSum', x => x.textContent)));
-    const over = await page.evaluate(() => {
-      const n = document.querySelector('#updateNote'), b = n.querySelector('[data-action="update-reload"]'), r = b.getBoundingClientRect();
-      return { shown: !n.hidden, inert: n.inert, hit: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === b };
+    r = await state();
+    expect('an update is offered quietly: no pop-up', !r.popup, r);
+    /* The badge leads to the update: Settings opens on Tools, with Update now. */
+    const led = await page.evaluate(async () => {
+      const panel = document.querySelector('#settingsPanel');
+      if (!panel.hidden) panel.querySelector('.mback').click();
+      document.querySelector('#topbar [data-action="toggle-settings"]').click();
+      await new Promise(res => setTimeout(res, 100));
+      return { open: !panel.hidden, tools: document.querySelector('#setTabTools').getAttribute('aria-selected') === 'true', btn: !document.querySelector('#setUpdateBtn').hidden };
     });
-    expect('the update note over Settings can be pressed', over.shown && !over.inert && over.hit, over);
+    expect('with an update waiting, Settings opens on Tools, where Update now shows', led.open && led.tools && led.btn, led);
     await Promise.all([page.waitForEvent('load'), page.click('#setUpdateBtn')]);
     await page.waitForTimeout(1500);
     r = await state();
@@ -197,8 +203,8 @@ srv.listen(0, '127.0.0.1', async () => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    await page.waitForFunction(() => !document.querySelector('#updateNote').hidden, null, { timeout: 8000 }).catch(() => {});
-    expect('a cleared cache: back on the screen, the new version is offered', await page.evaluate(() => !document.querySelector('#updateNote').hidden));
+    await page.waitForFunction(() => document.body.classList.contains('update-ready'), null, { timeout: 8000 }).catch(() => {});
+    expect('a cleared cache: back on the screen, the new version is offered', await page.evaluate(() => document.body.classList.contains('update-ready')));
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
     await page.waitForTimeout(1500);
     expect('a cleared cache: the update loads the new version', await has('marker N4'));
@@ -213,7 +219,7 @@ srv.listen(0, '127.0.0.1', async () => {
       return took;
     });
     expect('a changed sw.js: back on the screen, the new worker takes over the open page', swap === true, swap);
-    await page.waitForFunction(() => !document.querySelector('#updateNote').hidden, null, { timeout: 8000 }).catch(() => {});
+    await page.waitForFunction(() => document.body.classList.contains('update-ready'), null, { timeout: 8000 }).catch(() => {});
     /* The new worker's own check runs after it takes over: the new page must still wait as an update after it. */
     await page.waitForTimeout(2000);
     r = await state();

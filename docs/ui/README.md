@@ -32,7 +32,7 @@ The interface has six layers. A higher layer covers the layers below it.
  └───────────────────────────────────────────┴──────────────┘
  Layers above the table, bottom to top:
    Settings panel → Dialog layer (#overlay) → Confirm layer (#askLayer)
-   Notices (toasts, update note) float on top of everything.
+   Notices (toasts) float on top of everything.
 ```
 
 On a screen narrower than 1,150 px, the log panel moves below the table.
@@ -44,7 +44,7 @@ On a screen narrower than 1,150 px, the log panel moves below the table.
 - **Player words.** The words that a player sees in the game (Kitty, Outside pile, Namer, Mediator, Showdown) are the canonical names. Code names that differ (`receiver`, `caller`, `duelist`) are listed as code anchors only.
 - **Seats.** *West* is seat 1 (your left), *East* is seat 2 (your right), *Your seat* is seat 0. Write "a bot's seat" for West or East.
 - **Dialog or panel.** A *dialog* is modal and covers the table (the menu, Rules, Game over). A *panel* slides in and the game keeps running behind it (Settings). A *confirm dialog* is a yes/no question in the confirm layer.
-- **Notice.** A message that is not modal and needs no answer: a toast, the update note.
+- **Notice.** A message that is not modal and needs no answer: a toast.
 - **New parts.** Give a new part a name in the vocabulary before you build it, and give it a stable `id` or class that matches the name.
 
 ## Related documents
