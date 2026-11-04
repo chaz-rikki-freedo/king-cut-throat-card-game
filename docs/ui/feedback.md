@@ -339,7 +339,7 @@ The game's `cancel` message (a new action, **Next hand**, Exit, a new game or a 
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds. |
 | `MAX_VOICES` | 4 | The most sounds that play at once. |
 | `HALF_GAIN` | 0.5 | The volume for Half. |
-| `MEMORY_MAX` | 400 | The most moments the module remembers, for [derived events](#derived-events). A long game sends about 300. |
+| `MEMORY_MAX` | 1000 | The most moments the module remembers, for [derived events](#derived-events). A hand sends about 35 moments; check the value against the longest games in `gamelength.js` before building. |
 
 ## Sound files
 
