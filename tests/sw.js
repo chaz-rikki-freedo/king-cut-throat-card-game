@@ -32,6 +32,8 @@ const srv = http.createServer((req, res) => {
     if (serve === 'newer' || serve === 'theme') body = body.replace('<body>', '<body><!-- a newer version -->');
     if (serve === 'newest') body = body.replace('<body>', '<body><!-- marker N3 -->');
     if (serve === 'newest2') body = body.replace('<body>', '<body><!-- marker N4 -->');
+    if (serve === 'newest3') body = body.replace('<body>', '<body><!-- marker N5 -->');
+    if (serve === 'newest4') body = body.replace('<body>', '<body><!-- marker N6 -->');
     /* The newer version with a change inside the theme packs only: a <script> tag with attributes, but the game's own. */
     if (serve === 'theme') body = body.replace('"classic":{"name":"Classic"', '"classic":{"name":"Classic felt"');
     /* What an ad blocker that filters HTTPS (AdGuard) does to the page as it downloads. */
@@ -208,6 +210,32 @@ srv.listen(0, '127.0.0.1', async () => {
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
     await page.waitForTimeout(1500);
     expect('a cleared cache: the update loads the new version', await has('marker N4'));
+    /* A test update's dot belongs to the version it was applied to: a real update clears it and the badge, by Update now
+       or by a reload onto the new version (as after a restart). */
+    const faux = async () => {
+      await Promise.all([page.waitForEvent('load'), page.evaluate(() => { KCT.App.app.fakeUpdate = true; KCT.App.app.updateReady = true; document.querySelector('#setUpdateBtn').click(); })]);
+      await page.waitForFunction(() => window.KCT && KCT.App);
+      return page.evaluate(() => !!document.querySelector('#setBuild .faux-dot'));
+    };
+    const offered = async (/** @type {string} */ v) => {
+      serve = v;
+      await page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      return page.waitForFunction(() => document.body.classList.contains('update-ready'), null, { timeout: 8000 }).then(() => true, () => false);
+    };
+    const clean = () => page.evaluate(() => ({ dot: !!document.querySelector('#setBuild .faux-dot'), badge: document.body.classList.contains('update-ready') }));
+    let dotted = await faux(), found = await offered('newest3');
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => document.querySelector('#setUpdateBtn').click())]);
+    await page.waitForTimeout(1500);
+    let left = await clean();
+    expect('a real update by Update now clears the test update\'s dot and the badge', dotted && found && !left.dot && !left.badge, { dotted, found, left });
+    dotted = await faux(); found = await offered('newest4');
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    left = await clean();
+    expect('a real update by a reload onto the new version clears the dot too', dotted && found && !left.dot && !left.badge, { dotted, found, left });
     /* A changed sw.js reaches an app that stays open: back on the screen, the browser fetches the worker again, the new
        worker takes over the page, and it looks for a new page at once. Nothing needs the app closed. */
     swVersion = 1;
