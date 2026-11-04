@@ -178,7 +178,10 @@ Supply one WAV file for each name below. TBD files can come later.
 - The files are in `sounds/`, next to `index.html`, and `tools/publish.sh` adds `sounds` to the files it publishes.
 - **Missing files are silent.** A file that is missing or fails to load or decode is dropped: no notice, no toast and no Settings text. The game plays as if that cue had no sound. The Sound row still shows. This covers a local copy opened with only `index.html`, and a set of files that isn't complete yet.
 - Nothing is written to the console for a missing file, so a local copy stays clean. The Event log, when on, records one `SOUND_MISSING` line for each file, once a page load.
-- **Offline.** The service worker caches each sound the first time it loads (runtime caching), not at install. A missing file then can't make the install fail. An installed app that has played a sound once has it offline. **TBD:** whether to precache them once the full set exists.
+- **Offline, in two steps.**
+  1. **Until the full set exists:** the service worker caches each sound the first time it loads (runtime caching). An installed app that has played a sound once has it offline.
+  2. **Once all 17 required files are in `sounds/`:** the service worker precaches them at install, from a `SOUNDS` list in `sw.js`, so every sound works offline from the start. Runtime caching stays for the TBD files.
+- **A sound never breaks the install.** Precaching fetches each sound on its own, apart from `ASSETS`. A sound that fails to load is skipped and left to runtime caching, so the page, the manifest and the icons still install.
 - A file that changes is picked up by the service worker's update check, the same as the icons.
 
 ## Performance
@@ -196,7 +199,7 @@ Supply one WAV file for each name below. TBD files can come later.
 - `Feedback.play(cue, ctx)`: applies the gates and the dropping rules, then plays the cue on each channel.
 - The vibration patterns, the sound table and the dropping limits are named constants in the module.
 - Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, and the card-pick handler.
-- `sw.js`: runtime caching for `sounds/*.wav`. `tools/publish.sh`: `sounds` in its file list.
+- `sw.js`: runtime caching for `sounds/*.wav`, then a `SOUNDS` precache list once the full set exists. `tools/publish.sh`: `sounds` in its file list.
 
 ## Tests
 
@@ -204,7 +207,7 @@ Supply one WAV file for each name below. TBD files can come later.
 |---|---|---|
 | The `Feedback` module | T1 | A new `feedback` area in `selftest.js`: cue ranks, seat filters, gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext` |
 | The Settings rows | T1 | `settings.js` |
-| Runtime caching of `sounds/` in `sw.js` | T1 | `sw.js` |
+| Runtime caching of `sounds/` in `sw.js`, then the `SOUNDS` precache | T1 | `sw.js`, including an install where one sound fails to load |
 | Missing files are silent | T1 | The `feedback` area: a failed fetch and a failed decode drop the cue, show nothing and leave vibration playing |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, and whether sound adds any delay at Fast |
@@ -230,9 +233,9 @@ The new section's banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README
 | 13 | Sound source | Recorded WAV files, supplied separately |
 | 14 | Where the files live | External files in `sounds/`. The interface is silent when one is missing. |
 | 15 | Speed Instant | Turns off vibration, sound and parallax, with no override |
+| 16 | Offline sounds | Runtime caching until the full set exists, then precached at install |
 
 ## Still to decide
 
 1. Which events vibrate while you mediate.
 2. Sounds for a pass, Hand void, Hand abandoned, a refused move and the buttons.
-3. Whether the service worker precaches the sounds once the full set exists.
