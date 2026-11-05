@@ -401,6 +401,35 @@ const batchSrc = `
     expect('beat sounds: an unknown beat plays nothing, and a key always picks the same variant', core.unknown === null && core.same, core);
     expect('the module knows every beat in the spec\'s beat list', ['deal', 'kitty', 'turnUp', 'tuck', 'toss', 'sink', 'discard', 'pileSink', 'card', 'sweep', 'collect', 'handClose'].every((n) => core.names.includes(n)), core.names);
 
+    /* Card count: a train (cards landing one after another) gets a hit per card at the beat's spread; a gesture
+       (cards moving together) gets one sound whose gain follows the count. */
+    const cnt = await page.evaluate(() => {
+      const F = /** @type {any} */ (window).KCTFeedback.core, b = (x) => F.beatSound(x);
+      const four = b({ beat: 'deal', key: 'k4', you: false, cards: 4, spread: 20 });
+      return {
+        offsets: four.hits.map((h) => h.offset), gains: four.hits.map((h) => +h.gain.toFixed(3)), names: four.hits.map((h) => h.sound),
+        one: b({ beat: 'deal', key: 'k1', you: true, cards: 1, spread: 20 }).hits.length,
+        many: b({ beat: 'sink', key: 'k9', cards: 20, spread: 80 }).hits.length,
+        sweep2: b({ beat: 'sweep', key: 's', you: true, cards: 2 }).gain, sweep3: b({ beat: 'sweep', key: 's', you: true, cards: 3 }).gain,
+        kitty: b({ beat: 'kitty', key: 'kt', cards: 3, spread: 20 }).hits.length,
+        pile: b({ beat: 'pileSink', key: 'p', cards: 99 }).gain,
+      };
+    });
+    expect('card count, a train: a 4-card packet gets 4 hits at its spread, each softer, alternating variants',
+      JSON.stringify(cnt.offsets) === '[0,20,40,60]' && cnt.gains[0] === 1 && cnt.gains.every((g, i) => i === 0 || g < cnt.gains[i - 1]) && new Set(cnt.names).size === 2, cnt);
+    expect('card count: one card is one hit, and a train stops at TRAIN_MAX', cnt.one === 1 && cnt.many === 6, cnt);
+    expect('card count, a gesture: a 2-card sweep is softer than a 3-card one, the kitty is one sound, and the gain stays within 1.2',
+      cnt.sweep2 < cnt.sweep3 && cnt.sweep3 === 1 && cnt.kitty === 1 && cnt.pile <= 1.2, cnt);
+    const train = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, t0 = performance.now();
+      const one = w.KCTFeedback.test.buffers.get('classic|deal-hand').length;
+      w.KCTFeedback.test.playBeats({ v: 1, version: w.__ver, replay: false, beats: [{ beat: 'deal', key: 'tr1', at: t0 + 50, you: true, cards: 4, spread: 20 }] });
+      const st = w.__starts.slice(s0);
+      return { n: st.length, len: st.length ? st[0].length : 0, one };
+    });
+    expect('card count: a train is one sound, as long as one card plus its spread', train.n === 1 && Math.abs(train.len - (train.one + 0.06 * 48000)) < 50, train);
+    await wait(300);
+
     /* A batch still ahead: the sound is scheduled on the audio clock, less the output delay; the vibration waits. */
     await wait(200);
     const aheadB = await page.evaluate(async () => {
@@ -566,6 +595,10 @@ const batchSrc = `
     expect('every beat key is sent once', new Set(beatKeys).size === beatKeys.length, beatKeys.filter((k, i) => beatKeys.indexOf(k) !== i).slice(0, 5));
     expect('no beat is in the past when sent, by more than a frame', beats.every((x) => x.at >= x.got - 20), beats.filter((x) => x.at < x.got - 20).slice(0, 3));
     expect('beats carry public facts only: no card names', beats.every((x) => !('card' in x)));
+    const of = (name) => beats.filter((x) => x.beat === name && /^[a-zA-Z]+\|(pip)?1\b/.test(x.key));
+    expect('card count: deal packets carry 3 or 4 cards and a spread; a trick card is 1; a sweep is 3; a discard is 3',
+      of('deal').every((x) => (x.cards === 3 || x.cards === 4) && x.spread > 0) && of('card').every((x) => x.cards === 1) && of('sweep').every((x) => x.cards === 3) && of('discard').every((x) => x.cards === 3),
+      { deal: of('deal').map((x) => [x.cards, x.spread]), sweep: of('sweep').map((x) => x.cards), discard: of('discard').map((x) => [x.cards, x.spread]) });
     const sweepB = data.filter((b) => b.anchor === 'sweep');
     expect('a sweep batch is timed to its sweep beat, and carries beat: true', sweepB.length > 0 && sweepB.every((b) => b.beat === true && beats.some((x) => x.beat === 'sweep' && x.at === b.at)));
     const trumpB = data.filter((b) => b.moments.some((m) => m.type === 'trumpNamed') && !b.moments.some((m) => ['cardPlayed', 'deal', 'flip', 'discard', 'trickWon'].includes(m.type)));
