@@ -1022,7 +1022,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '48c7ad3', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: 'daaf34d', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4991,13 +4991,13 @@ const Moments = (() => {
     if (v.version < observed) reset();
     const now = performance.now();
     const beats = o.instant || o.skipping ? [] : Fx.beats();
-    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
     const last = ( name) => beats.reduce((m, b) => (b.beat === name && (m === null || b.at > m) ? b.at : m),  (null));
     const cardAt = last('card'), sweepAt = last('sweep');
     const due = sweeps.filter(s => s.version < v.version);
     sweeps = sweeps.filter(s => s.version >= v.version);
     for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: sweepAt !== null ? sweepAt : now, beat: sweepAt !== null });
     if (!o.hold && results.length) { const r = results; results = []; for (const x of r) send('result', x.moments, { version: x.version, replay: x.replay, at: now }); }
+    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
     if (!events || !events.length || v.version <= observed) return;
     observed = v.version;
     let moments = build(events, v, { mode: o.mode });
