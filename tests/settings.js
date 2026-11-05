@@ -68,9 +68,18 @@ function expect(name, ok, detail) {
       await roll(0, 6); await roll(10, 16); out.moved = vec();
       click('[data-action="toggle-settings"]'); await roll(10, 16); await sleep(800); out.settings = vec();
       click('[data-action="toggle-settings"]'); speed('instant'); await roll(10, 16); out.instant = vec(); speed('normal');
+      /* A hand that never holds still (a stream of small tilts) must not hold the game up: on your turn, the cues show
+         as soon as the cards have landed. */
+      let j = 0; const jitter = setInterval(() => { j += 0.05; window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 40 + Math.sin(j) * 4, gamma: Math.cos(j * 1.3) * 4 })); }, 16);
+      await Promise.race([drive(() => app.state.phase === KCT.Engine.P.TRICK_PLAY), sleep(8000)]);
+      const t0 = performance.now(); let at = 0;
+      while (performance.now() - t0 < 8000) { if (q('#hand .card.legal')) { at = at || performance.now(); if (!q('.table .turn.wait')) break; } await sleep(20); }
+      out.cueWait = at && !q('.table .turn.wait') ? Math.round(performance.now() - at) : -1;
+      clearInterval(jitter);
       return out;`);
     expect('Table depth Tilt: kept; a tilt moves the table; Settings and Instant bring it to rest',
       t.saved === 'tilt' && t.cls && t.moved > 0.2 && t.settings === 0 && t.instant === 0, t);
+    expect('Table depth Tilt: a hand that never holds still doesn\'t hold up your turn (the cues show within 1.5 s)', t.cueWait >= 0 && t.cueWait < 1500, t);
     await tab('Table');
     await set('setDepth', 'still');
     await tab('Table');
