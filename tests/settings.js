@@ -55,6 +55,24 @@ function expect(name, ok, detail) {
     const d3 = Object.assign(await depth(), { saved: (await saved()).depth });
     expect('Table depth: Still by default, Off and Still each kept and shown after a reload',
       d0.cls && d0.sel === 'still' && !d1.cls && d1.saved === 'off' && !d2.cls && d2.sel === 'off' && d3.cls && d3.saved === 'still', [d0, d1, d2, d3]);
+    /* Tilt: kept; a device tilt moves the table's vector while the table shows; Settings over the table and speed
+       Instant bring it back to rest; Still stops it. (Chromium answers the motion question at once.) */
+    await set('setDepth', 'tilt');
+    const t = await step(`
+      const vec = () => +q('#table').style.getPropertyValue('--dp-vx') || 0;
+      const tilt = g => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 40, gamma: g }));
+      const roll = async (g, n) => { for (let i = 0; i < n; i++) { tilt(g); await sleep(25); } };
+      const out = { saved: JSON.parse(localStorage.getItem('kct.settings')).depth, cls: document.documentElement.classList.contains('tilt') };
+      if (!q('#settingsPanel').hidden) click('[data-action="toggle-settings"]');
+      KCT.App.newGame(4242); await drive(() => q('#overlay').hidden && !!q('#hand .card'));
+      await roll(0, 6); await roll(10, 16); out.moved = vec();
+      click('[data-action="toggle-settings"]'); await roll(10, 16); await sleep(800); out.settings = vec();
+      click('[data-action="toggle-settings"]'); speed('instant'); await roll(10, 16); out.instant = vec(); speed('normal');
+      return out;`);
+    expect('Table depth Tilt: kept; a tilt moves the table; Settings and Instant bring it to rest',
+      t.saved === 'tilt' && t.cls && t.moved > 0.2 && t.settings === 0 && t.instant === 0, t);
+    await tab('Table');
+    await set('setDepth', 'still');
     await tab('Table');
 
     const mem = { setMemTrumps: 'trumps', setMemKings: 'kings', setMemTurned: 'turned', setMemVoids: 'voids' };
