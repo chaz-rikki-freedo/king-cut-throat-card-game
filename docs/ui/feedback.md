@@ -65,7 +65,7 @@ The module adds these rows to **Settings → Table**, under the heading **Sound 
 
 | Row | Control | Shown when | Default | Description text (draft) |
 |---|---|---|---|---|
-| **Vibration** | Switch | `navigator.vibrate` exists | Off | Short vibrations when you win a trick or a King point, pick a card, and at the end of a game. |
+| **Vibration** | Switch | `navigator.vibrate` exists | Off | Short vibrations when you play a card, are dealt cards, pick a card, win a trick or a King point, and at the end of a game. |
 | **Sound** | Off, Half, Full | Always | Off | Short sounds for cards, tricks and results. Half plays them at half volume. |
 | **Sound in replays** | Switch | Sound isn't Off | Off | The replay viewer plays the same sounds, at the Sound level. |
 
@@ -171,7 +171,20 @@ This keeps [Drop, never wait](#principles): a part is scheduled only for a time 
 
 ### Beat dropping
 
-A beat sound goes through the [dropping](#dropping) checks with its own gap, `GAP_BEAT_MS`, and the lowest rank, so a moment's sound always wins. Beats share `MAX_VOICES` with the moments' sounds. Beats play only on the sound channel: they never vibrate or move.
+A beat sound goes through the [dropping](#dropping) checks with its own gap, `GAP_BEAT_MS`, and the lowest rank, so a moment's sound always wins. Beats share `MAX_VOICES` with the moments' sounds. Beats never move anything (event parallax), and only the [beat ticks](#beat-ticks) vibrate.
+
+### Beat ticks
+
+Two beats of your own also vibrate, with a tick at the beat's own time, so you feel the card land:
+
+| Beat | Tick | When |
+|---|---|---|
+| `card`, yours | `[12]` | Your card lands in its slot. Autoplay counts as you. |
+| `deal`, to you | `[10]` | Each packet reaches your hand: 3 a hand. In a Showdown deal, only its first card, since the cards come about 50 ms apart. |
+
+- A tick takes the vibration channel's [gates](#gates): the **Vibration** setting, Android, no replay viewer, a visible tab and no Instant.
+- It goes through the vibration [dropping](#dropping) checks at the lowest rank, so a moment's pattern (your trick, a King point) always wins. At Fast, your deal packets are about 190 ms apart, above `GAP_VIBRATE_MS`.
+- No tick for a bot's card, a deal to a bot or any other beat.
 
 ### Beat presets
 
@@ -777,7 +790,7 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 
 ### 4b. When beats arrive
 
-1. The sound [gates](#gates) run. Beats never vibrate or move.
+1. The sound [gates](#gates) run, and the vibration gates for a [beat tick](#beat-ticks). Beats never move anything.
 2. Each beat takes its sound from the [beat list](#beat-list), with its variant picked by its `key`.
 3. The [beat dropping](#beat-dropping) checks run, and a beat that passes is [scheduled](#scheduling) for its `at`.
 
@@ -880,14 +893,13 @@ The current decisions. Their history is in the commit log.
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
 | **Variety** | Stakes from public scores; variants picked by a hash, with no RNG or seed; escalation by stakes and counts; novelty per game; at most one layer; parameters that are clamped and pure |
-| **Beats** | Fx reports each motion's contact time ahead. Beats play the table's sounds, and moments are timed to them. Every sound is scheduled on the audio clock. Beats are sound only. |
+| **Beats** | Fx reports each motion's contact time ahead. Beats play the table's sounds, and moments are timed to them. Every sound is scheduled on the audio clock. Only your card and your deal packets vibrate: a tick each. |
 | **Parallax** | Event parallax is a channel of the module. Common parallax lives outside it and ignores moments. |
 
 ## Open items
 
 | Item | Where it gets settled |
 |---|---|
-| Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
 | Your own lab picks in place of the default rows | Export the lab's library; its `manifest.json` gives each preset |
 | Where vibration plays, now that beats give exact times | A later pass over the rule and cue tables |
