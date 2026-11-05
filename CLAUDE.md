@@ -45,6 +45,6 @@ Section 8 is large, so its tier depends on the part you changed.
 
 These scripts measure the design and print numbers. They are not checks. Run one only when asked:
 `soak.js`, `roundrobin.js`, `showdown.js`, `handvalue.js`, `gamelength.js`, `levers.js`, `habits.js`, `waves.js`,
-`review.js`, `pace.js`, `career.js`, `tally.js`, `awards.js` and `dynamic.js rates`.
+`review.js`, `pace.js`, `career.js`, `tally.js`, `awards.js`, `interest.js` and `dynamic.js rates`.
 
 See [tests/README.md](tests/README.md) for what each script checks.

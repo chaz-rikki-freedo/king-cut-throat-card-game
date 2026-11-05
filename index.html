@@ -6257,8 +6257,8 @@ const Moments = (() => {
     for (const e of list) {
       switch (e.type) {
         case 'SCORE_CHANGED': running[e.player] += e.delta; break;
-        case 'DEAL': out.push({ type: 'deal', showdown: false }); break;
-        case 'SHOWDOWN_DEAL': out.push({ type: 'deal', showdown: true }); break;
+        case 'DEAL': out.push({ type: 'deal', showdown: false, handNumber: v.handNumber, bottom: seat }); break;
+        case 'SHOWDOWN_DEAL': out.push({ type: 'deal', showdown: true, handNumber: v.handNumber, bottom: seat }); break;
         case 'KITTY_FLIPPED': out.push({ type: 'flip', card: e.card }); break;
         case 'DISCARD': case 'EXCHANGE_DISCARD': case 'SHOWDOWN_DISCARD':
           out.push({ type: 'discard', seat: e.player, you: you(e.player), count: e.count }); break;

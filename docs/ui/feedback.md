@@ -1,6 +1,17 @@
 # Feedback: vibration, sound and event parallax
 
-> **Status: being built, in phases.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184), [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183) and the event part of [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185). **Built:** `feedback/synth.js`, `feedback/palettes.js`, and phase 1 of `feedback/feedback.js` (the contract, settings rows, ordinary rule and cue tables, gates, dropping, rendering at idle, theme palettes), tested by `tests/feedback.js`; and phase 2, the game's side: the `Moments` section of `index.html` (7c), which sends batches at screen time. and phase 3, the wiring: the game loads the module at idle, shows its Settings card once it's ready, and writes its log to the Event log; the service worker caches it and `tools/publish.sh` publishes it. **Not yet:** moments of interest and derived events (phase 4) and variety (phase 5). The remaining choices are listed in [Open items](#open-items).
+> **Status: being built, in phases.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184), [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183) and the event part of [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185).
+>
+> | Phase | What | State |
+> |---|---|---|
+> | — | `feedback/synth.js` and `feedback/palettes.js`, the sound generator | Built |
+> | 1 | `feedback/feedback.js`: the contract, the Settings rows, the ordinary rule and cue tables, gates, dropping, rendering at idle, theme palettes | Built |
+> | 2 | The game's side: the `Moments` section of `index.html` (7c), which sends batches at screen time | Built |
+> | 3 | The wiring: the game loads the module, shows its card and writes its log; the service worker caches it; `tools/publish.sh` publishes it | Built |
+> | 4 | Moments of interest and derived events, measured with `tests/interest.js` | Built |
+> | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Not yet |
+>
+> The remaining choices are listed in [Open items](#open-items).
 
 *Feedback* is what the game does besides drawing the table: a vibration, a sound or a parallax motion at a game moment. The game sends moments to an optional feedback module, and the module decides how to respond. This page defines the module: its cues, when each one plays, when nothing plays, and what is dropped when cues collide. How the game and the module talk is in the [Feedback contract](feedback-contract.md).
 
@@ -188,44 +199,47 @@ The candidates come from where the game's scoring (`index.html`, section 4) crea
 
 ### Candidates
 
-**Source** says where each one comes from: one moment, a derived event from the module's memory, or a fact the game must add.
+Built in phase 4. **Per game** is measured with `node tests/interest.js 200`: 200 bot games (1,803 hands) at tables of three personalities, from the bottom seat, through the module's own `derive` and `cueFor`. **Source** says where each one comes from: one moment, or a derived event from the module's memory.
 
-| Moment of interest | Source | Replaces the cue for | Definition | Status |
-|---|---|---|---|---|
-| **Lead change** on a King point: you take the lead, or a bot takes it from you | One moment: `king` with `scoresBefore`, `scoresAfter` | `king` | See [Lead change](#lead-change) | Candidate, **Open** |
-| **Match point:** a seat reaches 9 for the first time this game. Two cues: you, or a bot. | Derived: `derived:matchPoint` | `king` or `handScored` | A seat's score reaches 9 for the first time this game | Candidate |
-| **Sudden death:** the game ends on a King point | One moment: `gameEnded.byKing` | `gameEnded` | The King point that takes a seat to 10. Two cues: you, or a bot. | Candidate |
-| **Steal:** a sweep by a seat other than the namer (+3) | One moment: `handScored.outcome` | `handScored` | `outcome === 'NON_NAMER_SWEEP'`. Two cues: you, or a bot. | Candidate |
-| **The decider:** the last trick decides between a clear win and a Showdown | Derived: `derived:decider` | `trickWon` at trick 7 | After trick 6, the counts in `tricksWon` allow a 3–3–1 split on trick 7 | Candidate |
-| **King killed:** a King you played loses its trick | Derived: `derived:kingKilled` | `trickWon` | Your `cardPlayed` is a King, and the trick's `trickWon` is another seat's | Candidate |
-| **Denial:** you win while a bot is at 9 | One moment: `handScored` or `showdownScored` with `scoresBefore` | `handScored` or `showdownScored` | You win the hand or the Showdown, and a bot's `scoresBefore` is 9 | Candidate |
-| **Knocked back:** a Showdown loss takes a seat off 9 | One moment: `showdownScored` | `showdownScored` | The loser's score goes from 9 to 8 | Candidate |
-| **Showdown sweep:** a Showdown won 5–0 | One moment: `showdownScored.tricks` | `showdownScored` | One player takes all 5 Showdown tricks | Candidate |
-| **Perfect hand:** you win every main trick | Derived: `derived:perfectHand` | `handScored` | All 7 of the hand's `trickWon` moments are yours | Candidate |
-| **Trick streak** | Derived: `derived:trickStreak` | `trickWon` | You win **Open** (3?) tricks in a row, across hands | Candidate, **Open** |
-| **Comeback win** | Game fact: `maxDeficit` | `gameEnded` | You win after trailing the leader by **Open** points or more | Candidate, **Open** |
-| **Revenge** | Derived: `derived:revenge` | `showdownScored` | You win a Showdown against the seat that won the previous one | Candidate |
-| **Joker win** | One moment: `trickWon.card` | `trickWon` or `king` | Your winning card is the Joker | Candidate |
-| **Last trick** | One moment: `trickWon` | `trickWon` | You win trick 7 of the main hand | Candidate |
-| **First King** | Game fact: `kingsThisGame` | `king` | Your King point count goes from 0 to 1 | Candidate |
-| **Final wave** | One moment: `waveCleared.finalWave` | `waveCleared` | Clearing the last wave of the Waves table | Candidate |
+| Moment of interest | Source | Replaces the cue for | Definition | Per game | Status |
+|---|---|---|---|---|---|
+| **Lead change**: you take the lead, or a bot takes it from you | One moment: `king` or `handScored`, with `scoresBefore`, `scoresAfter` | `king` or `handScored` | See [Lead change](#lead-change) | you 0.16, bot 0.23 | Built |
+| **Match point**: a seat reaches 9 for the first time this game | Derived: `derived:matchPoint` | `king`, `handScored` or `showdownScored` | Once per seat per game, even if it drops back | you 0.33, bot 0.73 | Built |
+| **Sudden death**: the game ends on a King point | One moment: `gameEnded.byKing` | `gameEnded` | Two cues: you, or a bot | you 0.08, bot 0.27 | Built |
+| **Steal**: a sweep by a seat other than the namer (+3) | One moment: `handScored.outcome` | `handScored` | `outcome === 'NON_NAMER_SWEEP'`. Two cues: you, or a bot. | you 0.02, bot 0.11 | Built |
+| **Perfect hand**: your sweep as the namer | One moment: `handScored.outcome` | `handScored` | `outcome === 'NAMER_SWEEP'` and you won. (A sweep by you as a non-namer is a steal.) | 0.04 | Built |
+| **The decider**: the last trick decides between a clear win and a Showdown | Derived: `derived:decider` | `trickWon` at trick 7 | Before trick 7 the counts are 3–3–0, and you're one of the two on 3 | 0.73 | Built |
+| **King killed**: your King of trump loses its trick | Derived: `derived:kingKilled` | `trickWon` | You played the King of trump in this trick, and another seat won it | 0.90 | Built |
+| **Denial**: you win while a bot is at 9 | One moment: `handScored` or `showdownScored` | `handScored` or `showdownScored` | You win, and a bot's `scoresBefore` is 9 | 0.21 | Built |
+| **Knocked back**: a Showdown loss takes a seat off 9 | One moment: `showdownScored` | `showdownScored` | The loser's `scoresBefore` is 9 | 0.05 | Built |
+| **Showdown sweep**: a Showdown won 5–0 | One moment: `showdownScored.tricks` | `showdownScored` | One player takes all 5 Showdown tricks | 0.16 | Built |
+| **Trick streak** | Derived: `derived:trickStreak` | `trickWon` | 4 of your tricks in a row, across hands, then again at 7, 10 and so on. Carries its `count`. | 0.96 | Built |
+| **Comeback win** | Derived: `derived:comeback` | `gameEnded` | You win after trailing the leader by 4 points or more, and the memory saw the whole game | 0.06 | Built |
+| **Revenge** | Derived: `derived:revenge` | `showdownScored` | You win a Showdown against the seat that won the previous one | 0.05 | Built |
+| **First King** | Derived: `derived:firstKing` | `king` | Your first King point of the game, when the memory saw the whole game | 0.96 | Built |
+| **Final wave** | One moment: `waveCleared.finalWave` | `waveCleared` | Clearing the last wave or the last Shark table | Not in free play | Built |
+| **Joker win** | One moment: `trickWon.card` | `trickWon` | Your winning card is the Joker | 2.6 | **Not built**: the Joker is the best card, so it nearly always wins |
+| **Last trick** | One moment: `trickWon` | `trickWon` | You win trick 7 of the main hand | 1.6 | **Not built**: too common, and the decider marks the last trick that matters |
 
-How often each one fires is a guess until it's measured.
+**In all:** 6.0 special cues per game on average (9 at the 90th percentile), and 4.9 of them vibrate for you (8 at the 90th percentile). The first measurement, with the drafts as first written, gave 21 per game: King killed (any King) fired 6.1 times a game, the decider (3–2–1 or 3–3–0) 4.4, Joker win 2.6 and a 3-trick streak 1.9. Each was narrowed, or left unbuilt, until it was rare.
+
+**The memory's whole game.** `deal` carries `handNumber` and `bottom` (your seat). The memory counts as the whole game only when its first moment is the deal of hand 1, so a resumed game never plays First King or Comeback from half a history.
 
 ### Lead change
 
-The leaders are every seat with the top score. Settle these cases before building the lead-change cue:
+The leader is the one seat alone at the top. A lead change counts only once the new leader has `LEAD_FROM` (7) points: earlier, leads change all the time.
 
 | Case | Example (You, West, East) | Counts? |
 |---|---|---|
-| You go from behind into sole first place | `5, 6, 3` → `7, 6, 3` | Yes |
-| You go from behind to a tie for first | `5, 6, 3` → `6, 6, 3` | **Open** |
-| You go from a tie for first into sole first place | `6, 6, 3` → `7, 6, 3` | **Open** |
-| A bot passes you | `6, 5, 3` → `6, 7, 3` | Yes, as "a bot takes the lead from you" |
-| One bot passes the other while you're behind | `3, 6, 5` → `3, 6, 7` | **Open**, probably no |
-| The King point takes a seat to 10 | `9, 8, 3` → `10, 8, 3` | No: sudden death or the game-end cue outranks it |
-| A Showdown King point | Any of the above, in a Showdown | **Open** |
-| A hand result changes the lead | Any of the above, at the hand result | **Open**: a separate moment of interest on `handScored` |
+| You go from behind into sole first place, at 7 or more | `6, 7, 3` → `8, 7, 3` | Yes: **leadYou** |
+| You go from behind to a tie for first | `6, 7, 3` → `7, 7, 3` | No: a tie isn't a lead |
+| You go from a tie for first into sole first place | `7, 7, 3` → `8, 7, 3` | Yes: **leadYou** |
+| A bot passes you, from a tie or from behind you | `7, 7, 3` → `7, 8, 3` | Yes: **leadBot** |
+| One bot passes the other while you trail | `3, 8, 7` → `3, 8, 8` | No: not your lead |
+| The point takes a seat to 10 | `9, 8, 3` → `10, 8, 3` | No: sudden death or the game-end cue outranks it |
+| A Showdown King point | Any of the above | Yes, the same as any King point |
+| A hand result | Any of the above | Yes, on `handScored`, below the hand's own moments of interest |
+| Under 7 | `4, 5, 2` → `5, 5, 2` | No |
 
 ### Adding a moment of interest
 
@@ -709,8 +723,6 @@ The current decisions. Their history is in the commit log.
 
 | Item | Where it gets settled |
 |---|---|
-| The lead-change cases marked **Open** | [Lead change](#lead-change), before that cue is built |
-| The comeback size and the streak length | [Candidates](#candidates), by measuring |
 | Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
 | The `deal` sound: a whole deal is 300 to 600 ms, but `deal` 0 is one card (about 120 ms). Use a `shuffle` archetype, or a new deal archetype that plays several cards | Tuning in the lab |
