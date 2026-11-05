@@ -797,7 +797,8 @@ All draft values, to tune once built.
 | `GAP_VIBRATE_MS` | 150 | The minimum time between two vibrations. A card pick ignores it. |
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds |
 | `MAX_VOICES` | 4 | The most sounds that play at once |
-| `HALF_GAIN` | 0.5 | The volume for Half |
+| `FULL_GAIN` | 0.33 | The volume for Full: two thirds below the rendered level, which was too loud on a phone |
+| `HALF_GAIN` | 0.165 | The volume for Half: half of Full |
 | `VIBRATE_MAX_MS` | 300 | The longest single pulse after scaling |
 | `VIBRATE_TOTAL_MS` | 1500 | The longest whole pattern after scaling |
 | `STAKES_CLOSE` | 7 | The score that makes the stakes Close |

@@ -28,7 +28,7 @@ function stubs() {
     get currentTime() { return performance.now() / 1000; }
     resume() { this.state = 'running'; return Promise.resolve(); }
     suspend() { this.state = 'suspended'; return Promise.resolve(); }
-    createGain() { return { gain: { value: 1 }, connect() {} }; }
+    createGain() { const g = { gain: { value: 1 }, connect() {} }; (w.__gains = w.__gains || []).push(g.gain); return g; }
     createBufferSource() {
       const s = { buffer: null, onended: null, connect() {}, stop() { rec.stopped = true; },
         start(when) { rec.length = s.buffer ? s.buffer.length : 0; rec.when = when; rec.now = performance.now() / 1000; w.__starts.push(rec);
@@ -333,6 +333,8 @@ const batchSrc = `
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 0, you: true }]));
     let c1 = await counts();
     expect('your trick: vibrates [35] and plays a sound', c1.v === c0.v + 1 && JSON.stringify(c1.last) === '[35]' && c1.s === c0.s + 1, { c0, c1 });
+    const fullGain = await page.evaluate(() => { const g = /** @type {any} */ (window).__gains; return g[g.length - 1].value; });
+    expect('Full plays at FULL_GAIN (0.33), two thirds below the rendered level', Math.abs(fullGain - 0.33) < 1e-9, fullGain);
     await wait(200);
     c0 = await counts();
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 1, you: false }]));

@@ -26,7 +26,8 @@ const LATE_MS = 80;
 const GAP_VIBRATE_MS = 150;
 const GAP_SOUND_MS = 60;
 const MAX_VOICES = 4;
-const HALF_GAIN = 0.5;
+const FULL_GAIN = 0.33;        // the volume for Full: synth.js renders at -18 LUFS, which is loud on a phone
+const HALF_GAIN = FULL_GAIN / 2;
 const RENDER_BUDGET_MS = 150;
 const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
 const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
@@ -663,7 +664,7 @@ function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false)
   src.buffer = buffer;
   if (src.playbackRate) src.playbackRate.value = rate;
   const gain = ctx.createGain();
-  gain.gain.value = (settings.sound === 'half' ? HALF_GAIN : 1) * gainParam;
+  gain.gain.value = (settings.sound === 'half' ? HALF_GAIN : FULL_GAIN) * gainParam;
   src.connect(gain);
   gain.connect(ctx.destination);
   const start = audioTime(ctx, at), v = { src, start, end: start + (buffer.duration || 0) / (rate || 1) };
@@ -843,7 +844,7 @@ const api = {
   /** The pure core and the module's state, for tests (tests/feedback.js). */
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
-    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
+    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
     BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
