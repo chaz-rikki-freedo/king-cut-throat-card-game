@@ -143,8 +143,8 @@ The module's own gates are in [Feedback: Gates](feedback.md#gates).
 1. When the browser is idle after page load (`requestIdleCallback`, or a short `setTimeout` where it's missing), the game adds `<script src="feedback/feedback.js">`.
 2. It is a classic script, not a module import: a local copy opened from `file://` blocks module imports.
 3. If the file is missing, the script fails to load and nothing else happens. The browser may still list the failed request in its developer tools; the page can't prevent that, and players never see it.
-4. The module adds its `kct:moment` listener, then announces itself with a `kct:feedback-ready` event that carries its `v`.
-5. On `kct:feedback-ready` with a matching `v`, the game shows the **Sound and touch** card, and the module fills it in.
+4. The module adds its `kct:moment` listener, then announces itself with a `kct:feedback-ready` event that carries its `v` (see [Messages from the module](#messages-from-the-module)).
+5. On `kct:feedback-ready` with a matching `v`, the game shows the **Sound and touch** card, the module fills it in, and the game sends `theme` and `speed`.
 6. Buttons and the table never wait for any of this.
 
 ## Settings in two files
@@ -153,6 +153,53 @@ The module's own gates are in [Feedback: Gates](feedback.md#gates).
 - The module adds the rows from [Feedback: Settings](feedback.md#settings) and handles them. It keeps its device keys itself.
 - Without the module, the heading and card stay hidden, so Settings never offers a choice that does nothing.
 - **Reset this tab** sends `reset`. Its description text names Sound and touch only while the module is loaded.
+
+### The markup the module may use
+
+The module builds its rows from the game's own Settings markup, so they look and behave like every other row. The game keeps these classes and shapes stable. Changing one means changing the module in the same pull request, and `settings.js` checks the rows with the module loaded.
+
+| Row | Markup |
+|---|---|
+| A switch | `<label class="set-row"><span class="set-text"><span class="set-name">…</span><span class="set-desc">…</span></span><input class="sw" type="checkbox" id="…"></label>` |
+| A choice | `<div class="set-row"><span class="set-text"><label class="set-name" for="…">…</label><span class="set-desc">…</span></span><select id="…">…</select></div>` |
+
+- Row ids start with `setFb`, such as `setFbVibration`, so they never collide with the game's.
+- The module adds no CSS of its own. The game's Settings styles, light and dark themes and Color-blind safe colors apply as they do to every row.
+- A row that doesn't apply, such as **Sound in replays** while Sound is Off, is hidden, not dimmed.
+
+### Device keys
+
+The module's three settings use `localStorage` keys with the game's `kct.` prefix:
+
+| Setting | Key | Values |
+|---|---|---|
+| Vibration | `kct.feedback.vibration` | `on`, or absent for Off |
+| Sound | `kct.feedback.sound` | `half` or `full`, or absent for Off |
+| Sound in replays | `kct.feedback.replaySound` | `on`, or absent for Off |
+
+- **Erase covers them.** **Progress + settings** and **Everything + game files** in **Settings → Tools → Your data** already erase every `kct.` key and reload the page, so the module's settings go to Off with the rest. The choices that erase progress only leave them as they are, as they leave every other setting. No message is needed.
+- **In a backup.** A backup holds every `kct.` key (`index.html`, section 5e), so these go with it, like the felt and every other setting. Restoring on another device brings the Vibration and Sound choices along. A device without vibration simply hides that row.
+- Absent means Off, so a device that never turned feedback on stores nothing.
+
+## Messages from the module
+
+The module sends events on `document` too. The game listens, and never depends on them.
+
+| Event | When | Detail | What the game does |
+|---|---|---|---|
+| `kct:feedback-ready` | Once, after the module adds its listener | `v` | Shows the **Sound and touch** card if `v` matches, then sends `theme` and `speed` |
+| `kct:feedback-log` | Something the Event log should record | `v`, `kind`, `data` | Passes it to the game's logger as `Logger.log('FEEDBACK_' + kind, data)`. The logger records it only while the Event log is on. |
+
+Log kinds:
+
+| `kind` | When | `data` |
+|---|---|---|
+| `SOUND_MISSING` | A sound has no rendered preset after the fallbacks, once a page load for each sound | `{ name, palette }` |
+| `RENDER_FAILED` | A preset threw while rendering | `{ name, palette, error }` |
+| `FILE_MISSING` | `synth.js` or `palettes.js` failed to load | `{ file }` |
+
+- The module never writes to the console for any of these, so a local copy without `feedback/` stays clean.
+- The game ignores a kind it doesn't know.
 
 ## Versioning
 
@@ -172,13 +219,15 @@ The module's own gates are in [Feedback: Gates](feedback.md#gates).
 - `Moments.load()`: adds the module's script when the browser is idle.
 - Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, the hand's card handler, Skip ▶, the speed picker, the Felt tiles, **Reset this tab**, and every place that cancels.
 - Settings markup: the hidden **Sound and touch** heading and the empty `#setFeedback` card.
+- A `kct:feedback-log` listener that passes each message to `Logger.log`.
 
 ## Tests
 
 | Change | Tier | Scripts |
 |---|---|---|
 | `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the sending gates send nothing |
-| The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files; a `v` mismatch keeps the module silent; an unknown type or field is ignored |
+| The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files; a `v` mismatch keeps the module silent; an unknown type or field is ignored; each log kind reaches the game's logger |
+| Erase and backup | T1 | `resets.js`: **Progress + settings** clears the three `kct.feedback.` keys, and the choices that erase progress only keep them. `backup-ui.js`: a backup carries them and a restore brings them back. |
 | The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
 
 The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md` list the new area.

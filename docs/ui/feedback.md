@@ -57,7 +57,8 @@ The module adds these rows to **Settings → Table**, under the heading **Sound 
 
 - Vibration and Sound are separate, so you can have either without the other.
 - The device volume sets the overall level. Half and Full scale it inside the game.
-- All three are kept on the device only: one `localStorage` key each, read inside `try`, the same way as the Awards switch. They are not part of `saveSettings()`, a game save or a backup.
+- All three are kept on the device only: one `localStorage` key each, read inside `try`, the same way as the Awards switch. The keys start with `kct.` (see [Feedback contract: Device keys](feedback-contract.md#device-keys)), so **Progress + settings** in **Erase** clears them with the rest, and a backup carries them like every other setting. They are not part of `saveSettings()` or a game save.
+- The rows use the game's own Settings markup and add no CSS (see [Feedback contract: The markup the module may use](feedback-contract.md#the-markup-the-module-may-use)).
 - **Reset this tab** sets all three back to Off.
 - Event parallax settings belong to #185.
 
@@ -410,7 +411,7 @@ The lab's 8 families, each with 4 archetypes:
 | `feedback/feedback.js` | Decides which sound plays and when. It names sounds by their preset name and never makes audio itself. |
 
 - **Rendering at idle.** When the browser is idle after the module loads, and only while Sound isn't Off, the module renders each preset of the current palette into a buffer, one at a time, never during a game moment. Rendering needs no tap.
-- **Silent when missing.** If `synth.js` or `palettes.js` is missing, or a preset fails to render, that sound is skipped: no notice, no toast, no Settings text and nothing in the console. Vibration and event parallax still play. The Event log, when on, records one `SOUND_MISSING` line for each sound, once a page load.
+- **Silent when missing.** If `synth.js` or `palettes.js` is missing, or a preset fails to render, that sound is skipped: no notice, no toast, no Settings text and nothing in the console. Vibration and event parallax still play. The module sends a `kct:feedback-log` message instead, and the game's Event log, when on, records one `FEEDBACK_SOUND_MISSING` line for each sound, once a page load (see [Feedback contract: Messages from the module](feedback-contract.md#messages-from-the-module)).
 - **Kept in memory.** Rendered buffers stay in memory for the page load. A palette change renders the new palette's presets the same way.
 
 ### Theme palettes
@@ -688,7 +689,8 @@ The current decisions. Their history is in the commit log.
 |---|---|
 | **Architecture** | An optional, external module in `feedback/`, separate from the game. The game sends moments and never depends on a reply. See the [Feedback contract](feedback-contract.md). |
 | **Channels** | Vibration (Android only, no iPhone workarounds), sound, and event parallax. Each plays its part on its own. |
-| **Settings** | Vibration (switch), Sound (Off, Half or Full) and Sound in replays (switch), all off by default, kept on the device, reset by Reset this tab |
+| **Settings** | Vibration (switch), Sound (Off, Half or Full) and Sound in replays (switch), all off by default. `kct.feedback.` keys, outside `saveSettings()`: reset by Reset this tab, erased by Progress + settings, carried by a backup. The rows use the game's Settings markup. |
+| **Module to game** | `kct:feedback-ready` and `kct:feedback-log`, which the game writes to its Event log |
 | **Cues** | A rule table for when (first match wins) and a cue table for what, with a column for each channel |
 | **Ordinary cues** | No your-turn cue. A bot's King point and trick get sound only. No vibration for a hand result. While you mediate, only the Showdown's end and Skip ▶ vibrate. Autoplay counts as you. No sound for a pass, a void hand, a refused move or buttons. |
 | **Taps** | Picking a card vibrates, with no sound |
