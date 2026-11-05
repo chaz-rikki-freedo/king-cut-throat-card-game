@@ -135,7 +135,7 @@ The optional feedback module (`feedback/`, see **Install and offline play**) add
 | Setting | What it does |
 |---|---|
 | **Vibration** | Off by default. Short vibrations when you win a trick or a King point, pick a card, and at the end of a game. Shown only where the device can vibrate (Android): an iPhone has no vibration for web pages. |
-| **Sound** | **Off** (the default), **Half** or **Full**. Short sounds for cards, tricks and results, made in the browser from the theme's palette, so each felt has its own sound. |
+| **Sound** | **Max**, **Med**, **Low**, **Lower**, **Min** or **Off** (the default). Short sounds for cards, tricks and results, made in the browser from the theme's palette, so each felt has its own sound. |
 | **Sound in replays** | Off by default, shown while Sound isn't Off. The replay viewer plays the same sounds. |
 
 At speed **Instant**, nothing plays. The three settings are kept on the device, go with a backup, and are erased by **Progress + settings**.

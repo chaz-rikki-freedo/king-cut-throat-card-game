@@ -310,14 +310,14 @@ const batchSrc = `
 
     /* The first tap, then the settings through the rows, as a player would. */
     await page.mouse.click(5, 5);
-    await page.selectOption('#setFbSound', 'full');
+    await page.selectOption('#setFbSound', 'max');
     await page.check('#setFbVibration');
     const after = await page.evaluate(() => ({
       keys: Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)])),
       replayHidden: /** @type {HTMLElement} */ (document.getElementById('setFbReplayRow')).hidden,
       contexts: /** @type {any} */ (window).__contexts,
     }));
-    expect('the rows write kct.feedback. keys, as JSON', after.keys['kct.feedback.sound'] === '"full"' && after.keys['kct.feedback.vibration'] === 'true' && Object.keys(after.keys).every((k) => k.startsWith('kct.feedback.')), after.keys);
+    expect('the rows write kct.feedback. keys, as JSON', after.keys['kct.feedback.sound'] === '"max"' && after.keys['kct.feedback.vibration'] === 'true' && Object.keys(after.keys).every((k) => k.startsWith('kct.feedback.')), after.keys);
     expect('Sound in replays shows once Sound is on', after.replayHidden === false);
     expect('one playing AudioContext, made after the tap', after.contexts === 1, after.contexts);
 
@@ -342,14 +342,17 @@ const batchSrc = `
     const mix = await page.evaluate(() => {
       const w = /** @type {any} */ (window), b = w.KCTFeedback.test.bus();
       return { level: b && b.level.gain.value, filters: (w.__filters || []).map((f) => [f.type, f.frequency.value, f.gain.value]), comp: w.__comp && [w.__comp.threshold.value, w.__comp.ratio.value],
-        full: w.KCTFeedback.core.FULL_GAIN, half: w.KCTFeedback.core.HALF_GAIN };
+        levels: w.KCTFeedback.core.LEVEL_DB, options: [...document.querySelectorAll('#setFbSound option')].map((o) => o.value + ':' + o.textContent),
+        aliases: ['full', 'half', 'max', 'min', 'loud', 7, null].map((x) => w.KCTFeedback.core.levelOf(x)) };
     });
-    expect('Full is -18 dB and Half -28 dB: Half sounds about half as loud as Full', Math.abs(mix.full - Math.pow(10, -18 / 20)) < 1e-9 && Math.abs(mix.half - Math.pow(10, -28 / 20)) < 1e-9 && Math.abs(mix.level - mix.full) < 1e-9, mix);
+    expect('six Sound options, loudest first: Max, Med, Low, Lower, Min and Off', JSON.stringify(mix.options) === '["max:Max","med:Med","low:Low","lower:Lower","min:Min","off:Off"]', mix.options);
+    expect('the levels: Max -18 dB, Med -28 dB (about half as loud), then 6 dB steps to Min -46 dB; the bus plays Max', JSON.stringify(mix.levels) === '{"max":-18,"med":-28,"low":-34,"lower":-40,"min":-46}' && Math.abs(mix.level - Math.pow(10, -18 / 20)) < 1e-9, mix);
+    expect('a stored Full reads as Max and Half as Med; anything else is Off', JSON.stringify(mix.aliases) === '["max","med","max","min","off","off","off"]', mix.aliases);
     expect('the master bus: a high shelf at 4.5 kHz (-5 dB), a low-pass at 9 kHz, and a soft limiter', JSON.stringify(mix.filters) === '[["highshelf",4500,-5],["lowpass",9000,0]]' && JSON.stringify(mix.comp) === '[-12,4]', mix);
-    await page.selectOption('#setFbSound', 'half');
+    await page.selectOption('#setFbSound', 'min');
     const glide = await page.evaluate(() => { const g = /** @type {any} */ (window).__glides || []; return g[g.length - 1]; });
-    await page.selectOption('#setFbSound', 'full');
-    expect('a level change glides the bus (no click) and reaches sounds already playing', glide && Math.abs(glide.v - Math.pow(10, -28 / 20)) < 1e-9 && glide.c === 0.015, glide);
+    await page.selectOption('#setFbSound', 'max');
+    expect('a level change glides the bus (no click) and reaches sounds already playing', glide && Math.abs(glide.v - Math.pow(10, -46 / 20)) < 1e-9 && glide.c === 0.015, glide);
     await wait(200);
     c0 = await counts();
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 1, you: false }]));
@@ -772,13 +775,13 @@ const batchSrc = `
     const keys = await gp.evaluate(async () => {
       const { Backup } = /** @type {any} */ (window).KCT;
       const sel = /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound'));
-      sel.value = 'half'; sel.dispatchEvent(new Event('change'));
+      sel.value = 'med'; sel.dispatchEvent(new Event('change'));
       const env = Backup.create(localStorage);
-      const backedUp = env.data['kct.feedback.sound'] === '"half"';
+      const backedUp = env.data['kct.feedback.sound'] === '"med"';
       Backup.wipe(localStorage);
       const erased = localStorage.getItem('kct.feedback.sound') === null;
       Backup.apply(localStorage, env);
-      const restored = localStorage.getItem('kct.feedback.sound') === '"half"';
+      const restored = localStorage.getItem('kct.feedback.sound') === '"med"';
       return { backedUp, erased, restored };
     });
     expect('a backup carries the module\'s settings, an erase of every kct. key clears them, and a restore brings them back', keys.backedUp && keys.erased && keys.restored, keys);

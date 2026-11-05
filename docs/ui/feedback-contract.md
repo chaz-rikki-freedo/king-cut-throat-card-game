@@ -194,7 +194,7 @@ The module's three settings use `localStorage` keys with the game's `kct.` prefi
 | Setting | Key | Values |
 |---|---|---|
 | Vibration | `kct.feedback.vibration` | `true`, or absent for Off |
-| Sound | `kct.feedback.sound` | `"half"` or `"full"`, or absent for Off |
+| Sound | `kct.feedback.sound` | `"max"`, `"med"`, `"low"`, `"lower"` or `"min"`, or absent for Off. An older `"full"` reads as `"max"` and `"half"` as `"med"`. |
 | Sound in replays | `kct.feedback.replaySound` | `true`, or absent for Off |
 
 - **Every value is JSON,** like every other `kct.` key. A restore checks that each value parses and refuses the whole backup if one doesn't, so a plain-text value would break every backup that holds it.
