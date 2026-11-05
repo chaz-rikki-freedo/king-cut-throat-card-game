@@ -283,10 +283,10 @@ Tap batches hold one moment each, so their rules need no rank.
 The module picks **one cue per batch**: the first rule, in rank order, that any of the batch's moments matches.
 
 - **No your-turn cue.** The table already shows whose turn it is.
-- **A game that ends mid-trick** (a King point reaches 10) plays only `gameWin` or `gameLoss`, never `king` and `trickWon` as well.
-- **A Showdown hand.** `showdownCalled` replaces `handResult`, because both come from the same action.
+- **A game that ends mid-trick** (a King point reaches 10) plays only `gameWin` or `gameLoss`, never a King or trick cue as well. The rule table gives this: the `gameOver` batch holds the game-end moment.
+- **A Showdown hand.** The `showdownCalled` rules rank above the `handScored` rules, so a Showdown call replaces the hand-result cue: both come from the same action.
 - **The Mediator.** While you mediate, only two things vibrate:
-  - **The Showdown ends:** `showdownResult` with its `[60, 40, 60]` pattern, whether the Showdown played out or you skipped it.
+  - **The Showdown ends:** `showdownMediated` with its `[60, 40, 60]` pattern, whether the Showdown played out or you skipped it.
   - **You press Skip ▶:** a short `[20]` tap.
 
   The rule table gives this through `showdownCalledOther` and `showdownMediated`. The Showdown's trick and King cues are a bot's, so they don't vibrate. All the sounds still play, except during the skip.
@@ -329,15 +329,15 @@ Every moment that changes a score carries `scoresBefore` and `scoresAfter`, with
 | You win the game on a King point | `gameWin` | `you`, `byKing` (derived) | The King point that takes you to 10 | Candidate |
 | Your Joker wins a trick | `trickWon` or `king` | `you`, `card` | Your winning card is the Joker | Candidate |
 | You take the last trick of the hand | `trickWon` | `you`, `trickNumber`, `totalTricks` | `trickNumber === totalTricks` in the main hand | Candidate |
-| A Showdown won 5–0 | `showdownResult` | `tricks` per Showdown player | One player takes all 5 Showdown tricks | Candidate |
+| A Showdown won 5–0 | The `showdownScored` cue | `tricks` per Showdown player | One player takes all 5 Showdown tricks | Candidate |
 | A comeback win | `gameWin` | `you`, `maxDeficit` (derived) | You win after trailing the leader by **Open** points or more | Candidate |
 | Your first King point of the game | `king` | `you`, `kingsThisGame` (derived) | Your King point count goes from 0 to 1 | Candidate |
 | You clear the final wave | `waveCleared` | `mode`, `wave`, `finalWave` (derived) | Clearing the last wave of the Waves table | Candidate |
 | `derived:trickStreak` | `trickWon` | The module's memory of `trickWon` | You win **Open** (3?) tricks in a row, across hands | Candidate, derived |
-| `derived:perfectHand` | `handResult` | The module's memory of `trickWon` in the hand | You win every main trick of a hand | Candidate, derived |
+| `derived:perfectHand` | The `handScored` cue | The module's memory of `trickWon` in the hand | You win every main trick of a hand | Candidate, derived |
 | `derived:kingThenLead` | `king` | The `king` moment and the scores before it | A King point that also changes the lead, see [Lead change](#lead-change) | Candidate, derived |
-| `derived:pressure` | `king` or `handResult` | `scoresAfter` over the game | A bot reaches 9 while you're behind, the first time this game | Candidate, derived |
-| `derived:revenge` | `showdownResult` | The module's memory of `showdownScored` | You win a Showdown against the seat that won the previous one | Candidate, derived |
+| `derived:pressure` | The `king` or `handScored` cue | `scoresAfter` over the game | A bot reaches 9 while you're behind, the first time this game | Candidate, derived |
+| `derived:revenge` | The `showdownScored` cue | The module's memory of `showdownScored` | You win a Showdown against the seat that won the previous one | Candidate, derived |
 
 ### Lead change
 
@@ -352,7 +352,7 @@ The leaders are every seat with the top score. Settle these cases before buildin
 | One bot passes the other while you're behind | `3, 6, 5` → `3, 6, 7` | **Open**, probably no |
 | The King point takes a seat to 10 | `9, 8, 3` → `10, 8, 3` | No: the game-end cue outranks it |
 | A Showdown King point | Any of the above, in a Showdown | **Open** |
-| A hand result changes the lead | Any of the above, at the hand result | **Open**: a separate moment of interest, replacing `handResult` |
+| A hand result changes the lead | Any of the above, at the hand result | **Open**: a separate moment of interest, replacing the `handScored` cue |
 
 ### Adding a moment of interest
 
