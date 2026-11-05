@@ -97,9 +97,9 @@ const batchSrc = `
     for (const k of Object.keys(want)) expect('cue for ' + k + ' is ' + want[k], cues[k] === want[k], cues[k]);
 
     const tables = await page.evaluate(() => {
-      const { RULES, CUES } = /** @type {any} */ (window).KCTFeedback.core;
+      const { RULES, CUES, LAYERS } = /** @type {any} */ (window).KCTFeedback.core;
       return { missing: RULES.filter((r) => !CUES[r.cue]).map((r) => r.cue), sorted: RULES.every((r, i) => !i || RULES[i - 1].rank <= r.rank),
-        vibrating: Object.keys(CUES).filter((k) => CUES[k].vibrate), unused: Object.keys(CUES).filter((k) => !RULES.some((r) => r.cue === k)) };
+        vibrating: Object.keys(CUES).filter((k) => CUES[k].vibrate), unused: Object.keys(CUES).filter((k) => !RULES.concat(LAYERS).some((r) => r.cue === k)) };
     });
     expect('every rule names a cue', tables.missing.length === 0, tables.missing);
     expect('the rules are in rank order', tables.sorted);
@@ -179,6 +179,66 @@ const batchSrc = `
     expect('a win from 5 behind: comeback', has(moi.comeback, 'derived:comeback'), moi.comeback);
     expect('beating the seat that won the last Showdown: revenge', has(moi.revenge, 'derived:revenge'), moi.revenge);
     expect('a derived event never spawns another', moi.noChain.length === 0, moi.noChain);
+
+    console.log('Variety');
+    const vr = await page.evaluate(() => {
+      const F = /** @type {any} */ (window).KCTFeedback.core;
+      const mem = () => Object.assign(F.newMemory(), { you: 0, hand: 3 });
+      const found = (name) => ({ name, rank: 0, cue: F.CUES[name] });
+      const r = {};
+      /* Stakes from public scores. */
+      const king = { moments: [{ type: 'king', seat: 0, you: true }] }, card = { moments: [{ type: 'cardPlayed', seat: 0, you: true }] };
+      r.stakes = [F.stakesOf([3, 4, 2], king), F.stakesOf([7, 4, 2], king), F.stakesOf([9, 4, 2], card), F.stakesOf([9, 4, 2], king), F.stakesOf(null, king)];
+      /* Variants: the same batch always picks the same; different versions spread over the list. */
+      const b = (v) => ({ version: v, moments: [{ type: 'cardPlayed', seat: 1, you: false, card: 'AS' }] });
+      const p1 = F.compose(found('cardPlayed'), b(10), mem(), 0).sound, p2 = F.compose(found('cardPlayed'), b(10), mem(), 0).sound;
+      const spread = new Set(); for (let v = 0; v < 40; v++) spread.add(F.compose(found('cardPlayed'), b(v), mem(), 0).sound);
+      r.sameVariant = p1 === p2; r.spread = [...spread].sort();
+      r.missingSkipped = F.compose(found('cardPlayed'), b(5), mem(), 0, (n) => n === 'card-play').sound;
+      /* Escalation: stakes entries replace only the parts they name. */
+      const kb = { version: 3, moments: [{ type: 'king', seat: 0, you: true, scoresBefore: [8, 4, 2], scoresAfter: [9, 4, 2] }] };
+      r.kingCalm = F.compose(found('kingYou'), kb, mem(), 0).vibrate;
+      r.kingDecider = F.compose(found('kingYou'), kb, mem(), 3);
+      r.streak4 = F.compose(found('streak'), { version: 1, moments: [{ type: 'derived:trickStreak', count: 4 }] }, mem(), 0);
+      r.streak7 = F.compose(found('streak'), { version: 1, moments: [{ type: 'derived:trickStreak', count: 7 }] }, mem(), 0);
+      /* Novelty: the same special cue within 3 hands gives way to its ordinary cue; later it plays again. */
+      const m1 = mem(), sb = { version: 1, moments: [{ type: 'derived:firstKing' }] };
+      r.nov1 = F.compose(found('firstKing'), sb, m1, 0).name;
+      m1.hand = 4; r.nov2 = F.compose(found('firstKing'), sb, m1, 0).name;
+      m1.hand = 7; r.nov3 = F.compose(found('firstKing'), sb, m1, 0).name;
+      /* Layering: one part, on a channel the main cue leaves free, at the Decider level only. */
+      const hb = { version: 2, moments: [{ type: 'handScored', winner: 1, you: false, outcome: 'CLEAR_WINNER', scoresBefore: [3, 9, 2], scoresAfter: [3, 10, 2] }] };
+      r.layer3 = F.compose(found('handLoss'), hb, mem(), 3);
+      r.layer2 = F.compose(found('handLoss'), hb, mem(), 2).layer;
+      r.layerBusy = F.compose(found('showdownCalledYou'), { version: 2, moments: [{ type: 'showdownCalled', youPlay: true }, { type: 'king', seat: 0, you: true }] }, mem(), 3);
+      /* Parameters: clamped, a bad one falls back, and none turns a channel on. */
+      const hw = (points) => F.compose(found('handWin'), { version: 1, moments: [{ type: 'handScored', winner: 0, you: true, points, outcome: 'CLEAR_WINNER' }] }, mem(), 0).gain;
+      r.gain = [hw(1), hw(3), hw(99)];
+      const saved = F.CUES.handWin.gain;
+      F.CUES.handWin.gain = () => { throw new Error('bad'); }; r.badGain = hw(1);
+      F.CUES.handWin.gain = () => NaN; r.nanGain = hw(1);
+      F.CUES.handWin.gain = saved;
+      r.noVibrateStill = F.compose(found('handWin'), { version: 1, moments: [{ type: 'handScored', winner: 0, you: true, points: 3 }] }, mem(), 3).vibrate;
+      r.lead = F.compose(found('leadYou'), { version: 1, moments: [{ type: 'king', seat: 0, you: true, scoresBefore: [7, 7, 2], scoresAfter: [9, 7, 2] }] }, mem(), 2).vibrate;
+      r.cap = (() => { const saved2 = F.CUES.leadYou.scale; F.CUES.leadYou.scale = 50; const v = F.compose(found('leadYou'), { version: 1, moments: [{ type: 'king', seat: 0, you: true }] }, mem(), 0).vibrate; F.CUES.leadYou.scale = saved2; return v; })();
+      return r;
+    });
+    expect('stakes: Calm, Close, Match point, Decider (a scoring moment at 9), none without scores', JSON.stringify(vr.stakes) === '[0,1,2,3,0]', vr.stakes);
+    expect('a variant pick is the same for the same batch', vr.sameVariant);
+    expect('variants spread across versions', vr.spread.length === 3, vr.spread);
+    expect('a missing variant is skipped', vr.missingSkipped === 'card-play', vr.missingSkipped);
+    expect('escalation: the King\'s vibration at Calm and at the Decider', JSON.stringify(vr.kingCalm) === '[35,60,35]' && JSON.stringify(vr.kingDecider.vibrate) === '[55,40,55,40,55]' && /^king-you/.test(vr.kingDecider.sound), vr);
+    expect('escalation by count: a streak of 7 vibrates longer than 4', vr.streak7.vibrate.length > vr.streak4.vibrate.length, [vr.streak4.vibrate, vr.streak7.vibrate]);
+    expect('a parameter from the count: the streak plays a little faster at 7', vr.streak7.rate > vr.streak4.rate && vr.streak7.rate <= 1.1, [vr.streak4.rate, vr.streak7.rate]);
+    expect('novelty: firstKing, then its ordinary cue within 3 hands, then firstKing again', vr.nov1 === 'firstKing' && vr.nov2 === 'kingYou' && vr.nov3 === 'firstKing', [vr.nov1, vr.nov2, vr.nov3]);
+    expect('a layer at the Decider adds parallax under a cue that has none', vr.layer3.layer === 'layerDecider' && vr.layer3.parallax === 'pulse', vr.layer3);
+    expect('no layer below the Decider', vr.layer2 === null, vr.layer2);
+    expect('a layer never doubles a channel the main cue uses', vr.layerBusy.parallax === 'lift' && vr.layerBusy.layer === null, vr.layerBusy);
+    expect('gain grows with the hand\'s points, clamped to 1', vr.gain[0] < vr.gain[1] && vr.gain[2] === 1, vr.gain);
+    expect('a parameter that throws or returns NaN plays at its default', vr.badGain === 1 && vr.nanGain === 1, [vr.badGain, vr.nanGain]);
+    expect('no parameter or escalation turns on a channel the cue lacks', vr.noVibrateStill === null, vr.noVibrateStill);
+    expect('the lead\'s vibration scales with the lead', JSON.stringify(vr.lead) === JSON.stringify([35, 40, 70].map((x) => Math.round(x * 1.5))), vr.lead);
+    expect('a scaled pattern stays within 300 ms a pulse', vr.cap.every((x) => x <= 300), vr.cap);
 
     console.log('Gates');
     const gates = await page.evaluate(() => {

@@ -52,11 +52,17 @@ function leadChange(m, you) {
   if (after >= 0 && after !== you && wasTop) return 'bot';
   return null;
 }
+/** Your lead over the next seat after a scoring moment (negative when you trail). */
+function lead(m, c) {
+  const sc = m.scoresAfter, you = c && typeof c.you === 'number' ? c.you : -1;
+  if (!Array.isArray(sc) || you < 0) return 0;
+  return sc[you] - Math.max(...sc.filter((_, i) => i !== you));
+}
 const ninthBefore = (m, seat) => Array.isArray(m.scoresBefore) && m.scoresBefore.some((x, s) => s !== seat && x === MATCH);
 
 /* ---- Rule table: when. First match wins, in rank order. `m` is a moment, `c` the context ({ you: the bottom seat }).
    Moments of interest and derived events (derived:…) rank above the ordinary rule for the same moment. ---- */
-/** @typedef {{ rank: number, cue: string, when: (m: any, c: { you: number }) => boolean }} Rule */
+/** @typedef {{ rank: number, cue: string, when: (m: any, c: { you: number, stakes?: number }) => boolean }} Rule */
 /** @type {Rule[]} */
 const RULES = [
   { rank: 0.5, cue: 'finalWave', when: (m) => m.type === 'waveCleared' && m.finalWave },
@@ -103,9 +109,19 @@ const RULES = [
   { rank: 11, cue: 'skip', when: (m) => m.type === 'skipPressed' && m.youMediate },
 ];
 
+/* Layer rules add one part on a channel the main cue leaves free. At most one per batch. */
+/** @type {Rule[]} */
+const LAYERS = [
+  /* At the Decider level a scoring moment can end the game: a pulse of the table, under whatever plays. */
+  { rank: 1, cue: 'layerDecider', when: (m, c) => c.stakes === 3 && ['king', 'handScored', 'showdownScored'].includes(m.type) },
+];
+
 /* ---- Cue table: what each channel does. null: that channel does nothing. A moment of interest's sound falls back to
    the ordinary cue's (fallback) until its own preset exists. Only your moments vibrate. ---- */
-/** @typedef {{ vibrate: number[] | null, sound: string | null, parallax: string | null, noGap?: boolean, fallback?: string, special?: boolean }} Cue */
+/** A part can be one value or a list of variants. stakes and count hold stronger entries; gain, rate, scale and amount
+    are parameters (numbers or functions of the moment). ordinary: the cue novelty falls back to.
+    @typedef {{ vibrate: any, sound: any, parallax: any, noGap?: boolean, fallback?: string, special?: boolean, ordinary?: string,
+      stakes?: Record<number, any>, count?: Record<number, any>, gain?: any, rate?: any, scale?: any, amount?: any }} Cue */
 /** @type {Record<string, Cue>} */
 const CUES = {
   waveCleared:         { vibrate: [60, 40, 60, 40, 60, 40, 160], sound: 'wave-cleared', parallax: 'celebrate' },
@@ -116,46 +132,52 @@ const CUES = {
   showdownWin:         { vibrate: [60, 40, 60], sound: 'showdown-win', parallax: null },
   showdownLoss:        { vibrate: [60, 40, 60], sound: 'showdown-loss', parallax: null },
   showdownMediated:    { vibrate: [60, 40, 60], sound: 'showdown-win', parallax: null },
-  handWin:             { vibrate: null, sound: 'hand-win', parallax: null },
+  handWin:             { vibrate: null, sound: 'hand-win', parallax: null, gain: (m) => 0.7 + 0.1 * (m.points || 1) },
   handLoss:            { vibrate: null, sound: 'hand-loss', parallax: null },
-  kingYou:             { vibrate: [35, 60, 35], sound: 'king-you', parallax: null },
-  kingBot:             { vibrate: null, sound: 'king-bot', parallax: null },
-  trickYou:            { vibrate: [35], sound: 'trick-you', parallax: null },
-  trickBot:            { vibrate: null, sound: 'trick-bot', parallax: null },
+  kingYou:             { vibrate: [35, 60, 35], sound: ['king-you', 'king-you-2'], parallax: null,
+                         stakes: { 2: { vibrate: [45, 50, 45] }, 3: { vibrate: [55, 40, 55, 40, 55] } } },
+  kingBot:             { vibrate: null, sound: ['king-bot', 'king-bot-2'], parallax: null },
+  trickYou:            { vibrate: [35], sound: ['trick-you', 'trick-you-2'], parallax: null, stakes: { 3: { vibrate: [35, 40, 35] } } },
+  trickBot:            { vibrate: null, sound: ['trick-bot', 'trick-bot-2'], parallax: null },
   trumpNamed:          { vibrate: null, sound: 'trump-named', parallax: null },
-  cardPlayed:          { vibrate: null, sound: 'card-play', parallax: null },
-  deal:                { vibrate: null, sound: 'deal', parallax: null },
+  cardPlayed:          { vibrate: null, sound: ['card-play', 'card-play-2', 'card-play-3'], parallax: null },
+  deal:                { vibrate: null, sound: ['deal', 'deal-2'], parallax: null },
   flip:                { vibrate: null, sound: 'flip', parallax: null },
-  discard:             { vibrate: null, sound: 'discard', parallax: null },
+  discard:             { vibrate: null, sound: ['discard', 'discard-2'], parallax: null },
   pick:                { vibrate: [8], sound: null, parallax: null, noGap: true },
   skip:                { vibrate: [20], sound: null, parallax: null },
+  /* Layers: one part each (docs/ui/feedback.md, Layering). */
+  layerDecider:        { vibrate: null, sound: null, parallax: 'pulse' },
   /* Moments of interest */
-  finalWave:           { vibrate: [60, 40, 60, 40, 60, 40, 60, 40, 200], sound: 'final-wave', fallback: 'wave-cleared', parallax: 'celebrate', special: true },
-  comeback:            { vibrate: [80, 40, 80, 40, 160], sound: 'comeback', fallback: 'game-win', parallax: 'celebrate', special: true },
-  suddenDeathYou:      { vibrate: [40, 30, 40, 30, 40, 30, 200], sound: 'sudden-death-you', fallback: 'game-win', parallax: 'celebrate', special: true },
-  suddenDeathBot:      { vibrate: [200], sound: 'sudden-death-bot', fallback: 'game-loss', parallax: null, special: true },
-  matchPointYou:       { vibrate: [100, 60, 100], sound: 'match-point-you', fallback: 'king-you', parallax: 'lift', special: true },
-  matchPointBot:       { vibrate: null, sound: 'match-point-bot', fallback: 'king-bot', parallax: null, special: true },
-  showdownSweep:       { vibrate: [60, 40, 60, 40, 60], sound: 'showdown-sweep', fallback: 'showdown-win', parallax: null, special: true },
-  knockedBack:         { vibrate: null, sound: 'knocked-back', fallback: 'showdown-loss', parallax: null, special: true },
-  revenge:             { vibrate: [60, 40, 100], sound: 'revenge', fallback: 'showdown-win', parallax: null, special: true },
-  denial:              { vibrate: [50, 30, 50, 30, 90], sound: 'denial', fallback: 'hand-win', parallax: null, special: true },
-  stealYou:            { vibrate: [50, 30, 50, 30, 50, 30, 120], sound: 'steal-you', fallback: 'hand-win', parallax: 'lift', special: true },
-  stealBot:            { vibrate: null, sound: 'steal-bot', fallback: 'hand-loss', parallax: null, special: true },
-  perfectHand:         { vibrate: [50, 30, 50, 30, 50, 30, 50], sound: 'perfect-hand', fallback: 'hand-win', parallax: null, special: true },
-  leadYou:             { vibrate: [35, 40, 70], sound: 'lead-you', fallback: 'king-you', parallax: null, special: true },
-  leadBot:             { vibrate: null, sound: 'lead-bot', fallback: 'king-bot', parallax: null, special: true },
-  decider:             { vibrate: [20, 30, 20], sound: 'decider', fallback: 'trick-you', parallax: null, special: true },
-  kingKilled:          { vibrate: [90], sound: 'king-killed', fallback: 'trick-bot', parallax: null, special: true },
-  firstKing:           { vibrate: [35, 60, 35, 60, 35], sound: 'first-king', fallback: 'king-you', parallax: null, special: true },
-  streak:              { vibrate: [30, 30, 30], sound: 'streak', fallback: 'trick-you', parallax: null, special: true },
+  finalWave:           { vibrate: [60, 40, 60, 40, 60, 40, 60, 40, 200], sound: 'final-wave', fallback: 'wave-cleared', parallax: 'celebrate', special: true, ordinary: 'waveCleared' },
+  comeback:            { vibrate: [80, 40, 80, 40, 160], sound: 'comeback', fallback: 'game-win', parallax: 'celebrate', special: true, ordinary: 'gameWin',
+                         amount: (m) => Math.min(1, (m.deficit || 4) / 6) },
+  suddenDeathYou:      { vibrate: [40, 30, 40, 30, 40, 30, 200], sound: 'sudden-death-you', fallback: 'game-win', parallax: 'celebrate', special: true, ordinary: 'gameWin' },
+  suddenDeathBot:      { vibrate: [200], sound: 'sudden-death-bot', fallback: 'game-loss', parallax: null, special: true, ordinary: 'gameLoss' },
+  matchPointYou:       { vibrate: [100, 60, 100], sound: 'match-point-you', fallback: 'king-you', parallax: 'lift', special: true, ordinary: 'kingYou' },
+  matchPointBot:       { vibrate: null, sound: 'match-point-bot', fallback: 'king-bot', parallax: null, special: true, ordinary: 'kingBot' },
+  showdownSweep:       { vibrate: [60, 40, 60, 40, 60], sound: 'showdown-sweep', fallback: 'showdown-win', parallax: null, special: true, ordinary: 'showdownWin' },
+  knockedBack:         { vibrate: null, sound: 'knocked-back', fallback: 'showdown-loss', parallax: null, special: true, ordinary: 'showdownLoss' },
+  revenge:             { vibrate: [60, 40, 100], sound: 'revenge', fallback: 'showdown-win', parallax: null, special: true, ordinary: 'showdownWin' },
+  denial:              { vibrate: [50, 30, 50, 30, 90], sound: 'denial', fallback: 'hand-win', parallax: null, special: true, ordinary: 'handWin' },
+  stealYou:            { vibrate: [50, 30, 50, 30, 50, 30, 120], sound: 'steal-you', fallback: 'hand-win', parallax: 'lift', special: true, ordinary: 'handWin' },
+  stealBot:            { vibrate: null, sound: 'steal-bot', fallback: 'hand-loss', parallax: null, special: true, ordinary: 'handLoss' },
+  perfectHand:         { vibrate: [50, 30, 50, 30, 50, 30, 50], sound: 'perfect-hand', fallback: 'hand-win', parallax: null, special: true, ordinary: 'handWin' },
+  leadYou:             { vibrate: [35, 40, 70], sound: 'lead-you', fallback: 'king-you', parallax: null, special: true, ordinary: 'kingYou',
+                         scale: (m, c) => 1 + 0.25 * Math.max(0, lead(m, c)) },
+  leadBot:             { vibrate: null, sound: 'lead-bot', fallback: 'king-bot', parallax: null, special: true, ordinary: 'kingBot' },
+  decider:             { vibrate: [20, 30, 20], sound: 'decider', fallback: 'trick-you', parallax: null, special: true, ordinary: 'trickYou' },
+  kingKilled:          { vibrate: [90], sound: 'king-killed', fallback: 'trick-bot', parallax: null, special: true, ordinary: 'trickBot' },
+  firstKing:           { vibrate: [35, 60, 35, 60, 35], sound: 'first-king', fallback: 'king-you', parallax: null, special: true, ordinary: 'kingYou' },
+  streak:              { vibrate: [30, 30, 30], sound: 'streak', fallback: 'trick-you', parallax: null, special: true, ordinary: 'trickYou',
+                         count: { 7: { vibrate: [30, 25, 30, 25, 30] } }, rate: (m) => 1 + 0.02 * ((m.count || 4) - 4) },
 };
 
 /* ---- Derived events and the module's memory (docs/ui/feedback.md, Derived events) ---- */
 /** A fresh memory: nothing seen this game. @returns {any} */
 function newMemory() {
   return { count: 0, complete: false, you: -1, scores: null, reached: [false, false, false], maxDeficit: 0, kingsYou: 0,
-    streak: 0, trickCards: [], lastSdWinner: -1 };
+    streak: 0, trickCards: [], lastSdWinner: -1, hand: 0, novelty: {} };
 }
 /**
  * Adds a batch to the memory and returns the derived events it completes (types derived:…). Deterministic: the same
@@ -171,6 +193,7 @@ function derive(mem, batch) {
       if (typeof m.bottom === 'number') mem.you = m.bottom;
       /* The memory holds the whole game only when it began at the first deal. */
       if (mem.count === 0 && m.handNumber === 1 && !m.showdown) mem.complete = true;
+      if (!m.showdown && typeof m.handNumber === 'number') mem.hand = m.handNumber;
       mem.trickCards = [];
     }
     if (typeof m.seat === 'number' && m.you === true) mem.you = m.seat;
@@ -235,6 +258,97 @@ function cueFor(batch, ctx) {
     }
   }
   return null;
+}
+
+/* ---- Variety (docs/ui/feedback.md, Variety): stakes, variants, escalation, novelty, layering, parameters ---- */
+const STAKES_CLOSE = 7;
+const STAKES_MATCH = 9;
+const NOVELTY_HANDS = 3;
+const VIBRATE_MAX_MS = 300;
+const VIBRATE_TOTAL_MS = 1500;
+const RANGE = { gain: [0, 1], rate: [0.9, 1.1], scale: [0.5, 2], amount: [0, 1] };
+
+/**
+ * The stakes of a batch, from public scores only: 0 Calm, 1 Close (a seat at 7 or 8), 2 Match point (a seat at 9),
+ * 3 Decider (a seat at 9, and the batch holds a scoring moment that can end the game). Pure.
+ * @param {number[] | null} scores the scores before the batch @param {{ moments?: any[] }} batch
+ */
+function stakesOf(scores, batch) {
+  if (!Array.isArray(scores)) return 0;
+  const top = Math.max(...scores);
+  const scoring = (batch.moments || []).some((m) => m && ['king', 'handScored', 'showdownScored'].includes(m.type));
+  if (top >= STAKES_MATCH) return scoring ? 3 : 2;
+  return top >= STAKES_CLOSE ? 1 : 0;
+}
+/** A 32-bit FNV-1a hash of text: the variant pick. */
+function hash(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+/** One of a list, picked by a hash of the cue, the state version and the moment's facts: the same game, the same pick. */
+function pick(list, key) { return Array.isArray(list) && list.length ? list[hash(key) % list.length] : list; }
+const isPattern = (v) => Array.isArray(v) && v.every((x) => typeof x === 'number');
+const clamp = (x, [lo, hi]) => Math.max(lo, Math.min(hi, x));
+/** A parameter's value: a number, or a function of the moment; clamped; its default when it fails. */
+function param(p, m, c, name, dflt) {
+  let v = p;
+  if (typeof p === 'function') { try { v = p(m, c); } catch (e) { v = dflt; } }
+  return typeof v === 'number' && Number.isFinite(v) ? clamp(v, RANGE[name]) : dflt;
+}
+/** The highest entry at or below a level, for escalation. @param {Record<number, any> | undefined} table */
+function entryAt(table, level) {
+  if (!table) return null;
+  const keys = Object.keys(table).map(Number).filter((k) => k <= level).sort((a, b) => b - a);
+  return keys.length ? table[keys[0]] : null;
+}
+
+/**
+ * The parts to play for a batch's main cue (and its layer), after escalation, novelty, variants and parameters.
+ * Pure apart from the memory's novelty record, which it updates when a special cue is used.
+ * @param {{ name: string, cue: Cue }} found @param {any} batch @param {any} mem @param {number} stakes
+ * @param {(name: string) => boolean} [has] whether a sound is ready, so a missing variant is skipped
+ */
+function compose(found, batch, mem, stakes, has) {
+  let name = found.name, cue = found.cue;
+  const moments = (batch.moments || []).filter((m) => m && typeof m.type === 'string');
+  const c = { you: mem.you, stakes };
+  /* Novelty: a special cue that played in the last NOVELTY_HANDS hands gives way to its ordinary cue. */
+  const hand = mem.hand || 0;
+  if (cue.special && cue.ordinary && mem.novelty && typeof mem.novelty[name] === 'number' && hand - mem.novelty[name] < NOVELTY_HANDS) {
+    name = cue.ordinary; cue = CUES[name];
+  } else if (cue.special && mem.novelty) mem.novelty[name] = hand;
+  const m = moments.find((x) => RULES.some((r) => r.cue === name && (() => { try { return r.when(x, c); } catch (e) { return false; } })())) || moments[0] || {};
+  /* Escalation: stakes, then a derived event's count. Each entry replaces only the parts it names. */
+  const derivedCount = moments.reduce((n, x) => (typeof x.count === 'number' ? x.count : n), 0);
+  const up = Object.assign({}, entryAt(cue.stakes, stakes) || {}, entryAt(cue.count, derivedCount) || {});
+  const part = (k) => (k in up ? up[k] : cue[k]);
+  const key = name + '|' + batch.version + '|' + JSON.stringify(m);
+  const sounds = [].concat(part('sound') || []).filter((n) => !has || has(n));
+  const vib = part('vibrate');
+  let pattern = isPattern(vib) ? vib : pick(vib, key + '|v');
+  const scale = param(cue.scale, m, c, 'scale', 1);
+  if (isPattern(pattern)) {
+    let total = 0;
+    pattern = pattern.map((x) => Math.min(VIBRATE_MAX_MS, Math.round(x * scale))).filter((x) => (total += x) <= VIBRATE_TOTAL_MS);
+  }
+  const out = {
+    name, special: !!cue.special,
+    vibrate: isPattern(pattern) && pattern.length ? pattern : null,
+    sound: sounds.length ? pick(sounds, key + '|s') : (cue.sound ? [].concat(cue.sound)[0] : null),
+    fallback: cue.fallback || null,
+    parallax: part('parallax') ? pick(part('parallax'), key + '|p') : null,
+    gain: param(cue.gain, m, c, 'gain', 1), rate: param(cue.rate, m, c, 'rate', 1), amount: param(cue.amount, m, c, 'amount', 1),
+    noGap: !!cue.noGap, layer: null,
+  };
+  /* Layering: the first layer rule that matches adds its one part on a channel the main cue leaves empty. */
+  for (const rule of LAYERS) {
+    if (!moments.some((x) => { try { return rule.when(x, c); } catch (e) { return false; } })) continue;
+    const L = CUES[rule.cue];
+    for (const ch of ['vibrate', 'sound', 'parallax']) if (L[ch] && !out[ch]) { out.layer = rule.cue; out[ch] = ch === 'vibrate' ? L[ch] : pick(L[ch], key + '|l'); break; }
+    break;
+  }
+  return out;
 }
 
 /**
@@ -360,7 +474,7 @@ function renderPalette(felt, showdown) {
   renderQueue = renderQueue.then(async () => {
     if (!(await loadLibs())) return;
     const P = /** @type {any} */ (window).KCTPalettes, S = /** @type {any} */ (window).KCTSynth;
-    for (const name of P.required) {
+    for (const name of P.required.concat(P.optional || [])) {
       const key = keyOf(felt, showdown, name);
       if (buffers.has(key) || settings.sound === 'off') continue;
       await new Promise((r) => idle(r));
@@ -410,14 +524,15 @@ function toBuffer(out) {
   b.getChannelData(0).set(out.samples);
   return b;
 }
-function playSound(buffer, replace) {
+function playSound(buffer, replace, gainParam = 1, rate = 1) {
   const ctx = ensureAudio();
   if (!ctx) return false;
   if (replace && voices.length) { try { voices[voices.length - 1].stop(); } catch (e) { /* already ended */ } }
   const src = ctx.createBufferSource();
   src.buffer = buffer;
+  if (src.playbackRate) src.playbackRate.value = rate;
   const gain = ctx.createGain();
-  gain.gain.value = settings.sound === 'half' ? HALF_GAIN : 1;
+  gain.gain.value = (settings.sound === 'half' ? HALF_GAIN : 1) * gainParam;
   src.connect(gain);
   gain.connect(ctx.destination);
   voices.push(src);
@@ -429,7 +544,7 @@ function playSound(buffer, replace) {
 /* ---- The vibration and event parallax channels ---- */
 function vibrate(pattern) { try { return !!navigator.vibrate(pattern); } catch (e) { return false; } }
 /** Event parallax waits for #185. A listener can set KCTFeedback.parallax to receive motion names. */
-function parallax(name) { const f = api.parallax; if (typeof f === 'function') { try { f(name); } catch (e) { /* never stops feedback */ } } }
+function parallax(name, amount = 1) { const f = api.parallax; if (typeof f === 'function') { try { f(name, amount); } catch (e) { /* never stops feedback */ } } }
 
 const drop = { vibrate: makeDropper(GAP_VIBRATE_MS), sound: makeDropper(GAP_SOUND_MS) };
 /* The memory of this game's moments, for derived events. A cancel with scope 'game' starts it again. */
@@ -438,9 +553,13 @@ let memory = newMemory();
 /** Plays a batch: the order of operations in docs/ui/feedback.md, step 4. Returns what each channel did. */
 function play(batch) {
   const now = performance.now();
+  const before = memory.scores ? memory.scores.slice() : null;
   const derived = derive(memory, batch);
-  const found = cueFor(derived.length ? Object.assign({}, batch, { moments: batch.moments.concat(derived) }) : batch, { you: memory.you });
+  const full = derived.length ? Object.assign({}, batch, { moments: batch.moments.concat(derived) }) : batch;
+  const found = cueFor(full, { you: memory.you });
   if (!found) return null;
+  const stakes = stakesOf(before, full);
+  const parts = compose(found, full, memory, stakes, (n) => !!bufferFor(n));
   const allowed = channelsFor(batch, {
     vibration: settings.vibration, sound: settings.sound, replaySound: settings.replaySound, canVibrate, canSound,
     activated: state.activated || !!(navigator.userActivation && navigator.userActivation.hasBeenActive),
@@ -448,24 +567,24 @@ function play(batch) {
   });
   const stale = typeof batch.version === 'number' && batch.version < state.version;
   const at = typeof batch.at === 'number' ? batch.at : now;
-  const result = { cue: found.name, derived: derived.map((d) => d.type), vibrate: 'off', sound: 'off', parallax: 'off' };
-  const { cue, rank } = found;
-  if (cue.vibrate && allowed.vibrate) {
-    const v = drop.vibrate.decide({ at, now, rank, noGap: cue.noGap, stale });
+  const rank = found.rank;
+  const result = { cue: parts.name, derived: derived.map((d) => d.type), stakes, layer: parts.layer, vibrate: 'off', sound: 'off', parallax: 'off', pattern: parts.vibrate };
+  if (parts.vibrate && allowed.vibrate) {
+    const v = drop.vibrate.decide({ at, now, rank, noGap: parts.noGap, stale });
     result.vibrate = v;
-    if (v === 'play' || v === 'replace') vibrate(cue.vibrate);
+    if (v === 'play' || v === 'replace') vibrate(parts.vibrate);
   }
-  if (cue.sound && allowed.sound) {
-    const buffer = soundFor(cue);
-    if (!buffer) logOnce('SOUND_MISSING', cue.sound + '|' + state.felt, { name: cue.sound, palette: state.felt });
+  if (parts.sound && allowed.sound) {
+    const buffer = bufferFor(parts.sound) || (parts.fallback ? bufferFor(parts.fallback) : null);
+    if (!buffer) logOnce('SOUND_MISSING', parts.sound + '|' + state.felt, { name: parts.sound, palette: state.felt });
     const v = drop.sound.decide({ at, now, rank, stale, ready: !!buffer, voices: voices.length });
     result.sound = v;
-    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, v === 'replace');
+    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, v === 'replace', parts.gain, parts.rate);
   }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (cue.parallax && !batch.replay && !state.instant && !document.hidden && !reduced && batch.v === V) {
+  if (parts.parallax && !batch.replay && !state.instant && !document.hidden && !reduced && batch.v === V) {
     result.parallax = 'play';
-    parallax(cue.parallax);
+    parallax(parts.parallax, parts.amount);
   }
   return result;
 }
@@ -559,9 +678,10 @@ function onFirstTap() {
 const api = {
   version: V,
   /** Set by event parallax (#185) to receive motion names. */
-  parallax: /** @type {null | ((name: string) => void)} */ (null),
+  parallax: /** @type {null | ((name: string, amount: number) => void)} */ (null),
   /** The pure core and the module's state, for tests (tests/feedback.js). */
-  core: Object.freeze({ RULES, CUES, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader,
+  core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
+    STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
     STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS }),
   test: Object.freeze({
     play, state, settings, buffers, voices: () => voices.length, whenRendered: () => renderQueue, memory: () => memory,

@@ -2,7 +2,7 @@
 /* Not a check. How often each feedback cue fires, from bot games: the moments of interest above all, so each one stays
    rare (docs/ui/feedback.md, Moments of interest, rule 4). Plays games in the page with three personalities, from the
    bottom seat, turns each action's events into moments (KCT.Moments.build), groups them into batches by anchor as the
-   game sends them, and runs the module's own derive and cueFor (KCTFeedback.core). Prints each cue's rate per game,
+   game sends them, and runs the module's own derive, cueFor and compose (KCTFeedback.core), so novelty counts. Prints each cue's rate per game,
    and how many special cues and how many vibrations a game gives the player.
    Usage: node interest.js [games=200] [--json] */
 'use strict';
@@ -32,13 +32,18 @@ const json = args.includes('--json');
         let special = 0, vib = 0, youSpecialVib = 0;
         /* A sweep waits for the next action, as the game sends it; a game's end carries its trick. */
         let heldSweep = [];
+        let version = 0;
         const run = (batch) => {
+          const before = mem.scores ? mem.scores.slice() : null;
           const d = F.derive(mem, batch);
-          const found = F.cueFor({ moments: batch.moments.concat(d) }, { you: mem.you });
+          const full = { version: ++version, moments: batch.moments.concat(d) };
+          const found = F.cueFor(full, { you: mem.you });
           if (!found) return;
-          count[found.name] = (count[found.name] || 0) + 1;
-          if (found.cue.special) special++;
-          if (found.cue.vibrate) { vib++; if (found.cue.special) youSpecialVib++; }
+          /* What plays: after novelty (a repeated special gives way to its ordinary cue) and escalation. */
+          const parts = F.compose(found, full, mem, F.stakesOf(before, full));
+          count[parts.name] = (count[parts.name] || 0) + 1;
+          if (parts.special) special++;
+          if (parts.vibrate) { vib++; if (parts.special) youSpecialVib++; }
         };
         for (let k = 0; !g.gameOver && k < 8000; k++) {
           const ac = Engine.actors(g);
