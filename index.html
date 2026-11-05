@@ -835,7 +835,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-title{font-size:1.875rem}
 }
 @property --lift{syntax:'<length>';inherits:false;initial-value:0px}
-.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:calc(var(--sx) - var(--dp-vx,0) * var(--dp-shadow-shift) * var(--lift)) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
+.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:var(--sx) calc(var(--dp-shadow-reach) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
 .depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{transform:none}
 .depth .hand .card{box-shadow:var(--dp-drop);transition-duration:var(--dp-ms)}
 .depth .hand .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
@@ -854,15 +854,13 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .trick .slot .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
 .depth .trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
 .depth .trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
-.depth .table .seat,.depth .table .me{--dp-panel:calc(var(--dp-vx,0) * var(--dp-shadow-shift) * var(--dp-panel-lift) * -1) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
+.depth .table .seat,.depth .table .me{--dp-panel:0 calc(var(--dp-shadow-reach) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
 .depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
 .depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
 .depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
 @keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
-.tilt .table .seat,.tilt .table .me{translate:calc(var(--dp-vx,0) * var(--dp-panel-shift)) calc(var(--dp-vy,0) * var(--dp-panel-shift))}
-.tilt .table .trick{translate:calc(var(--dp-vx,0) * var(--dp-trick-shift)) calc(var(--dp-vy,0) * var(--dp-trick-shift));perspective-origin:calc(50% + var(--dp-vx,0) * var(--dp-view-shift)) calc(120% + var(--dp-vy,0) * var(--dp-view-shift))}
-.tilt .table .hand{translate:calc(var(--dp-vx,0) * var(--dp-hand-shift)) calc(var(--dp-vy,0) * var(--dp-hand-shift))}
+.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot,.tilt .table .hand{will-change:translate}
 .depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
 .depth-dev .dd-row{display:flex;align-items:center;gap:0.375rem;min-height:1.875rem}
 .depth-dev .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
@@ -1066,7 +1064,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '93f85e7', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: '8301d7a', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4472,6 +4470,7 @@ const Render = (() => {
     if (ctx.fit) ctx.fit();
     Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
     Depth.motion(ctx.instant ? 'instant' : ui.speed);
+    Depth.repaint();
     return true;
   }
   return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
@@ -4968,6 +4967,7 @@ const Fx = (() => {
       const fx =  (a.effect), el = fx && fx.target;
       const glide = !!fx && !!fx.pseudoElement && fx.pseudoElement.startsWith('::view-transition');
       if (a.playState !== 'running' || !el || (!glide && (!el.closest || !el.closest('#fx, #table') || (cards && el.closest('.score'))))) continue;
+      if (typeof CSSTransition !== 'undefined' && a instanceof CSSTransition && a.transitionProperty === 'box-shadow') continue;
       const c = a.effect.getComputedTiming(), end = +(c.endTime ?? 0), now = +(c.localTime ?? 0);
       if (Number.isFinite(end)) w = Math.max(w, (end - now) / (a.playbackRate || 1));
     }
@@ -5146,13 +5146,13 @@ const DEPTH =  (Object.freeze({
   tiltRange: { def: 12, min: 3, max: 45, step: 1, unit: '°', group: 'Tilt input', name: 'Full tilt', js: true },
   deadZone: { def: 1.5, min: 0, max: 10, step: 0.25, unit: '°', group: 'Tilt input', name: 'Dead zone', js: true },
   smoothMs: { def: 140, min: 0, max: 600, step: 10, unit: 'ms', group: 'Tilt input', name: 'Smoothing', js: true },
+  tiltHz: { def: 15, min: 5, max: 60, step: 1, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
   driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
   pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
-  panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels' },
-  trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area' },
-  viewShift: { def: 4, min: -12, max: 12, step: 0.25, unit: 'rem', group: 'Tilt planes', name: 'Played cards view' },
-  handShift: { def: 0.1, min: -0.5, max: 0.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Your hand' },
-  shadowShift: { def: 0.3, min: -1, max: 1, step: 0.05, unit: '', group: 'Tilt planes', name: 'Shadows' }
+  panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
+  trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area', js: true },
+  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true },
+  handShift: { def: 0.1, min: -0.5, max: 0.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Your hand', js: true }
 }));
 const Depth = (() => {
   const KEY = 'kct-depth', MODES = ['off', 'still', 'tilt'];
@@ -5223,6 +5223,7 @@ const Depth = (() => {
   function listen(on) {
     if (on === listening) return;
     listening = on;
+    remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const f = on ? 'addEventListener' : 'removeEventListener';
     window[f]('deviceorientation', onTilt);
     window[f]('pointermove', onPointer, { passive: true });
@@ -5231,7 +5232,7 @@ const Depth = (() => {
     window[f]('pointerup', onUp, { capture: true });
     window[f]('pointercancel', onUp, { capture: true });
     document[f]('visibilitychange', onVisible);
-    if (!on) { level = null; rawAt = -1e9; ptrOn = false; hold = false; }
+    if (!on) { level = null; rawAt = -1e9; ptrOn = false; hold = false; v = { x: 0, y: 0 }; paint(true); }
   }
   function target() {
     if (mode !== 'tilt' || preview || speed === 'instant' || document.hidden || covered() || matchMedia('(prefers-reduced-motion: reduce)').matches) return { x: 0, y: 0 };
@@ -5241,9 +5242,9 @@ const Depth = (() => {
     }
     return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
   }
-  function frame( t) {
+  function frame() {
     raf = 0;
-    const dt = last ? Math.min(100, t - last) : 16;
+    const t = performance.now(), dt = last ? Math.min(250, t - last) : 1000 / num('tiltHz');
     last = t;
     if (!hold) {
       const g = target(), tau = num('smoothMs');
@@ -5251,19 +5252,31 @@ const Depth = (() => {
       if (Math.abs(v.x - g.x) < 0.002) v.x = g.x;
       if (Math.abs(v.y - g.y) < 0.002) v.y = g.y;
       paint();
-      if (v.x !== g.x || v.y !== g.y) { raf = requestAnimationFrame(frame); return; }
+      if (v.x !== g.x || v.y !== g.y) { raf = setTimeout(frame, 1000 / num('tiltHz')); return; }
     }
     last = 0;
   }
-  function paint() {
-    if (Math.abs(v.x - shown.x) < 0.001 && Math.abs(v.y - shown.y) < 0.001) return;
-    const tb = document.getElementById('table');
-    if (!tb) return;
-    shown = { x: v.x, y: v.y };
-    tb.style.setProperty('--dp-vx', v.x.toFixed(3));
-    tb.style.setProperty('--dp-vy', v.y.toFixed(3));
+  let remPx = 16;
+  function planes() {
+    const tz = num('trickZ') || 1, out =  ([]);
+    for (const id of ['seat1', 'seat2', 'seat0']) { const e = document.getElementById(id); if (e) out.push([e, num('panelShift')]); }
+    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift')]);
+    for (const sl of document.querySelectorAll('#center .trick .slot')) out.push([sl, num('cardShift') * (sl.classList.contains('win') ? num('winZ') / tz : 1)]);
+    const h = document.querySelector('#seat0 .hand'); if (h) out.push([h, num('handShift')]);
+    return out;
   }
-  function kick() { if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
+  function paint(force) {
+    const x = Math.round(v.x * 100) / 100, y = Math.round(v.y * 100) / 100;
+    if (!force && x === shown.x && y === shown.y) return;
+    shown = { x, y };
+    const still = x === 0 && y === 0;
+    for (const [el, k] of planes()) {
+      const t = still ? '' : Math.round(x * k * remPx * 2) / 2 + 'px ' + Math.round(y * k * remPx * 2) / 2 + 'px', h =  (el);
+      if (h.style.translate !== t && !(t === '0px 0px' && !h.style.translate)) h.style.translate = t === '0px 0px' ? '' : t;
+    }
+  }
+  function repaint() { if (mode === 'tilt' && (shown.x || shown.y)) paint(true); }
+  function kick() { if (!raf) raf = setTimeout(frame, 0); }
   function levelNow() { if (performance.now() - rawAt < 600) level = { x: raw.x, y: raw.y }; kick(); }
   const needsAsk = () => typeof DeviceOrientationEvent !== 'undefined' && typeof  (DeviceOrientationEvent).requestPermission === 'function';
   function ask() {
@@ -5374,7 +5387,7 @@ const Depth = (() => {
   }
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
     on: () => document.documentElement.classList.contains('depth') && liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) > 0,
-    orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow,  vector: () => ({ x: v.x, y: v.y }),
+    repaint, orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow,  vector: () => ({ x: v.x, y: v.y }),
      mode: () => mode,  num });
 })();
 const App = (() => {
@@ -9374,7 +9387,7 @@ const SelfTest = (() => {
       eq('each DEPTH default is in range and on a step of its slider', off, []);
       eq('a key names its custom property', [Depth.prop('trickTilt'), Depth.prop('handPress')], ['--dp-trick-tilt', '--dp-hand-press']);
       const css = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
-      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => !['--dp-drop', '--dp-panel', '--dp-vx', '--dp-vy'].includes(n)).sort();
+      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => !['--dp-drop', '--dp-panel'].includes(n)).sort();
       eq('the CSS reads exactly the custom properties DEPTH gives', read, Object.keys(Depth.vars()).sort());
       const def = DEPTH.liftMs.def;
       eq('a card lifts in its time at Slow, Normal and Fast, and at once at Instant or with reduced motion',
