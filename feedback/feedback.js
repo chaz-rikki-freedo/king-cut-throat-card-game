@@ -28,10 +28,14 @@ const GAP_SOUND_MS = 60;
 const MAX_VOICES = 4;
 /* ---- The mix (docs/ui/feedback.md, Mixing) ---- */
 const dbToGain = (db) => Math.pow(10, db / 20);
-const FULL_DB = -18;           // Full: well under the rendered level (-18 LUFS), which is loud on a phone speaker
-const HALF_DB = -28;           // Half: about half as loud as Full; loudness is heard in decibels, not in gain
-const FULL_GAIN = dbToGain(FULL_DB);
-const HALF_GAIN = dbToGain(HALF_DB);
+/* The Sound levels, loudest first: Max is well under the rendered level (-18 LUFS), which is loud on a phone speaker.
+   Med is about half as loud as Max; each step below it is 6 dB quieter. Loudness is heard in decibels, not in gain. */
+const LEVEL_DB = Object.freeze({ max: -18, med: -28, low: -34, lower: -40, min: -46 });
+const LEVEL_NAMES = Object.freeze({ max: 'Max', med: 'Med', low: 'Low', lower: 'Lower', min: 'Min' });
+/* The levels a device may have stored before there were six: Full is Max and Half is Med. */
+const LEVEL_ALIASES = Object.freeze({ full: 'max', half: 'med' });
+const levelOf = (/** @type {any} */ v) => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(LEVEL_DB, v) ? v
+  : typeof v === 'string' && Object.prototype.hasOwnProperty.call(LEVEL_ALIASES, v) ? LEVEL_ALIASES[v] : 'off');
 const LEVEL_GLIDE_S = 0.015;   // a level change settles in about 50 ms (3 time constants): no click
 const SHELF_HZ = 4500;         // the master tone: a high shelf that softens the cards' contact and grain bands
 const SHELF_DB = -5;
@@ -534,9 +538,9 @@ const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else 
 const settings = {
   get vibration() { return read(KEYS.vibration) === true; },
   set vibration(on) { write(KEYS.vibration, on ? true : null); },
-  /** @returns {string} 'off', 'half' or 'full' */
-  get sound() { const s = read(KEYS.sound); return s === 'half' || s === 'full' ? s : 'off'; },
-  set sound(level) { write(KEYS.sound, level === 'half' || level === 'full' ? level : null); },
+  /** @returns {string} 'off' or a level of LEVEL_DB ('max' to 'min'); a stored 'full' or 'half' reads as 'max' or 'med' */
+  get sound() { return levelOf(read(KEYS.sound)); },
+  set sound(level) { const l = levelOf(level); write(KEYS.sound, l === 'off' ? null : l); },
   get replaySound() { return read(KEYS.replaySound) === true; },
   set replaySound(on) { write(KEYS.replaySound, on ? true : null); },
 };
@@ -709,7 +713,7 @@ function stopScheduled() {
 }
 /** The master bus: every sound goes through the tone filters, the level and a soft limiter. @type {any} */
 let bus = null;
-/** Builds the bus once: tone (high shelf, low-pass), level (Full or Half), limiter. A node the browser lacks is left out. */
+/** Builds the bus once: tone (high shelf, low-pass), level (the Sound setting), limiter. A node the browser lacks is left out. */
 function buildBus(ctx) {
   const chain = [];
   try { if (ctx.createBiquadFilter) { const f = ctx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = SHELF_HZ; f.gain.value = SHELF_DB; chain.push(f); } } catch (e) { /* no tone */ }
@@ -729,7 +733,7 @@ function buildBus(ctx) {
   chain[chain.length - 1].connect(ctx.destination);
   return { input: chain[0], level };
 }
-const levelGain = () => (settings.sound === 'half' ? HALF_GAIN : settings.sound === 'full' ? FULL_GAIN : 0);
+const levelGain = () => { const l = settings.sound; return l === 'off' ? 0 : dbToGain(LEVEL_DB[l]); };
 /** Glides the bus to the current level: a Settings change reaches the sounds already playing. */
 function setLevel() {
   if (!audio || !bus) return;
@@ -915,8 +919,8 @@ function onMoment(e) {
 /* ---- Settings rows (docs/ui/feedback-contract.md, The markup the module may use) ---- */
 const ROWS_HTML =
   (canVibrate ? '<label class="set-row"><span class="set-text"><span class="set-name">Vibration</span><span class="set-desc">Short vibrations when you play a card, are dealt cards, pick a card, win a trick or a King point, and at the end of a game.</span></span><input class="sw" type="checkbox" id="setFbVibration"></label>' : '') +
-  '<div class="set-row"><span class="set-text"><label class="set-name" for="setFbSound">Sound</label><span class="set-desc">Short sounds for cards, tricks and results. Half plays them at half volume.</span></span>' +
-  '<select id="setFbSound"><option value="off">Off</option><option value="half">Half</option><option value="full">Full</option></select></div>' +
+  '<div class="set-row"><span class="set-text"><label class="set-name" for="setFbSound">Sound</label><span class="set-desc">Short sounds for cards, tricks and results, from Max down to Min.</span></span>' +
+  '<select id="setFbSound">' + Object.keys(LEVEL_DB).map((k) => '<option value="' + k + '">' + LEVEL_NAMES[k] + '</option>').join('') + '<option value="off">Off</option></select></div>' +
   '<label class="set-row" id="setFbReplayRow"><span class="set-text"><span class="set-name">Sound in replays</span><span class="set-desc">The replay viewer plays the same sounds, at the Sound level.</span></span><input class="sw" type="checkbox" id="setFbReplay"></label>';
 function rowsRoot() { return document.getElementById('setFeedback'); }
 function syncRows() {
@@ -963,7 +967,7 @@ const api = {
   /** The pure core and the module's state, for tests (tests/feedback.js). */
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
-    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, FULL_DB, HALF_DB, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
+    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LEVEL_DB, LEVEL_ALIASES, levelOf, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
     BEAT_SOUNDS, beatSound, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS, CONTEXT, CONTEXT_MAX_DB, TONE_JITTER_DB, contextOf }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),

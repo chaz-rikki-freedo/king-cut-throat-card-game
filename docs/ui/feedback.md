@@ -67,11 +67,12 @@ The module adds these rows to **Settings → Table**, under the heading **Sound 
 | Row | Control | Shown when | Default | Description text (draft) |
 |---|---|---|---|---|
 | **Vibration** | Switch | `navigator.vibrate` exists | Off | Short vibrations when you play a card, are dealt cards, pick a card, win a trick or a King point, and at the end of a game. |
-| **Sound** | Off, Half, Full | Always | Off | Short sounds for cards, tricks and results. Half plays them at half volume. |
+| **Sound** | Max, Med, Low, Lower, Min, Off | Always | Off | Short sounds for cards, tricks and results, from Max down to Min. |
 | **Sound in replays** | Switch | Sound isn't Off | Off | The replay viewer plays the same sounds, at the Sound level. |
 
 - Vibration and Sound are separate, so you can have either without the other.
-- The device volume sets the overall level. Half and Full scale it inside the game.
+- The device volume sets the overall level. The six Sound levels scale it inside the game (see [Mixing](#mixing)).
+- A device that stored a level before there were six keeps it: `"full"` reads as Max and `"half"` as Med. A change writes the new name.
 - All three are kept on the device only: one `localStorage` key each, read inside `try`, the same way as the Awards switch. The keys start with `kct.` (see [Feedback contract: Device keys](feedback-contract.md#device-keys)), so **Progress + settings** in **Erase** clears them with the rest, and a backup carries them like every other setting. They are not part of `saveSettings()` or a game save.
 - The rows use the game's own Settings markup and add no CSS (see [Feedback contract: The markup the module may use](feedback-contract.md#the-markup-the-module-may-use)).
 - **Reset this tab** sets all three back to Off.
@@ -302,7 +303,7 @@ each sound → its gain (cue, beat, card count, variation, distance) → its pan
 
 | Stage | What it does | Why |
 |---|---|---|
-| **Level** | Full is `FULL_DB` (−18 dB) and Half is `HALF_DB` (−28 dB). | Loudness is heard in decibels: −10 dB sounds about half as loud. A gain of half (−6 dB) would sound about two thirds as loud. |
+| **Level** | `LEVEL_DB`: Max −18 dB, Med −28 dB, Low −34 dB, Lower −40 dB, Min −46 dB. | Loudness is heard in decibels: −10 dB sounds about half as loud, so Med is about half of Max. Each step below Med is 6 dB, about two thirds as loud as the one above. |
 | **Level glide** | A Settings change glides to the new level in about 50 ms (`setTargetAtTime`). | It reaches sounds already playing, with no click. |
 | **Tone** | A high shelf at `SHELF_HZ` (−5 dB) and a gentle low-pass at `LOWPASS_HZ`. | The cards' contact, grain and air bands sit at 3 to 6 kHz. At a phone speaker's level, they sound harsh and gritty. |
 | **Limiter** | A soft compressor: threshold −12 dB, knee 12 dB, ratio 4, attack 3 ms, release 150 ms. | Stacked sounds, such as a train over a King point, never clip. Clipping is heard as grit. |
@@ -562,7 +563,7 @@ A part can be a function of the batch's facts. Parameters change **how much**, n
 
 | Part | Parameter | Range | Example |
 |---|---|---|---|
-| Sound | `gain`, multiplied by the Half or Full level | 0 to 1 | Louder for a bigger hand: `gain: m => 0.6 + 0.1 * m.points` |
+| Sound | `gain`, multiplied by the Sound level | 0 to 1 | Louder for a bigger hand: `gain: m => 0.6 + 0.1 * m.points` |
 | Sound | `rate`, playback speed, which also shifts pitch | 0.9 to 1.1 | Higher with each trick of a streak: `rate: m => 1 + 0.02 * m.count` |
 | Vibration | `scale`, multiplies each pulse | 0.5 to 2 | Longer for a larger lead: `scale: m => 1 + 0.25 * lead(m)` |
 | Event parallax | `amount`, how strong the motion is | 0 to 1 | Stronger for a bigger comeback: `amount: m => Math.min(1, m.maxDeficit / 6)` |
@@ -803,7 +804,7 @@ A variant adds a number to the base name: `trick-you-2`, `trick-you-3`. A stakes
 ### Sound guidelines
 
 - No silence at the start, so the sound lines up with the moment. A fade-out tail, not a cut.
-- Matched levels, peaking at about −3 dBFS, so no sound jumps out at Full.
+- Matched levels, peaking at about −3 dBFS, so no sound jumps out at Max.
 - The lengths in the tables are targets for the presets. The card families are capped at 0.98 s, and `result` at 2.5 s.
 - The lab already applies the level guideline: it normalizes every sound to −18 LUFS with a −1 dBFS ceiling.
 
@@ -838,7 +839,7 @@ The module's side, from loading to a cue playing. The game's side, building and 
 1. Right after it loads, the module loads `synth.js` and `palettes.js` when the browser is idle.
 2. Only if Sound isn't Off, it renders the current palette's presets **one at a time**: the required presets first, then the optional ones its cue table names. Each render runs on an `OfflineAudioContext`.
 3. A file or preset that fails is marked missing, silently, and isn't tried again on that page load.
-4. When Sound changes from Off to Half or Full, rendering starts then, if it hasn't already.
+4. When Sound changes from Off to a level, rendering starts then, if it hasn't already.
 5. On a `theme` message for a new felt, the module renders that palette's presets the same way. Until each one is ready, the [fallbacks](#fallbacks) apply.
 
 ### 3. The first tap
@@ -856,7 +857,7 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 7. It picks each part's [variant](#variants) and works out the [parameters](#parameters).
 8. Each channel takes its part. The [dropping](#dropping) checks run, and a part that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
-   - **Sound:** a buffer source, through a gain node (Half or Full), started at the batch's `at` on the audio clock (see [Scheduling](#scheduling)).
+   - **Sound:** a buffer source, through the master bus at the Sound level, started at the batch's `at` on the audio clock (see [Scheduling](#scheduling)).
    - **Event parallax:** as #185 defines.
 9. Each channel records the time and rank, for its next gap check.
 
@@ -871,7 +872,7 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 | Change | What happens |
 |---|---|
 | Sound to Off | The module cancels, then suspends the playing `AudioContext`. Loaded sounds stay in memory for the page load. |
-| Sound from Off to Half or Full | Loading starts if it hasn't, and the playing `AudioContext` is created or resumed. |
+| Sound from Off to a level | Loading starts if it hasn't, and the playing `AudioContext` is created or resumed. |
 | Vibration off | `navigator.vibrate(0)` stops a pattern that is running. |
 | `reset` message | All three settings go to Off, with the effects above. |
 | `theme` message | The module switches palette and renders the new presets at idle. |
@@ -902,8 +903,7 @@ All draft values, to tune once built.
 | `GAP_VIBRATE_MS` | 150 | The minimum time between two vibrations. A card pick ignores it. |
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds |
 | `MAX_VOICES` | 4 | The most sounds that play at once |
-| `FULL_DB` | −18 | The volume for Full (gain 0.13). −10 was still too loud on a phone. |
-| `HALF_DB` | −28 | The volume for Half (gain 0.04): about half as loud as Full |
+| `LEVEL_DB` | Max −18, Med −28, Low −34, Lower −40, Min −46 | The Sound levels. Max was Full (−10 was still too loud on a phone) and Med was Half. |
 | `SHELF_HZ`, `SHELF_DB` | 4500, −5 | The master high shelf, which softens the cards' contact and grain bands |
 | `LOWPASS_HZ` | 9000 | The master low-pass |
 | `JITTER_DB` | 1.5 | How far a hit's gain varies, either way |
@@ -955,7 +955,7 @@ The current decisions. Their history is in the commit log.
 |---|---|
 | **Architecture** | An optional, external module in `feedback/`, separate from the game. The game sends moments and never depends on a reply. See the [Feedback contract](feedback-contract.md). |
 | **Channels** | Vibration (Android only, no iPhone workarounds), sound, and event parallax. Each plays its part on its own. |
-| **Settings** | Vibration (switch), Sound (Off, Half or Full) and Sound in replays (switch), all off by default. `kct.feedback.` keys, outside `saveSettings()`: reset by Reset this tab, erased by Progress + settings, carried by a backup. The rows use the game's Settings markup. |
+| **Settings** | Vibration (switch), Sound (Max, Med, Low, Lower, Min or Off) and Sound in replays (switch), all off by default. `kct.feedback.` keys, outside `saveSettings()`: reset by Reset this tab, erased by Progress + settings, carried by a backup. The rows use the game's Settings markup. |
 | **Module to game** | `kct:feedback-ready` and `kct:feedback-log`, which the game writes to its Event log |
 | **Cues** | A rule table for when (first match wins) and a cue table for what, with a column for each channel |
 | **Ordinary cues** | No your-turn cue. A bot's King point and trick get sound only. No vibration for a hand result. While you mediate, only the Showdown's end and Skip ▶ vibrate. Autoplay counts as you. No sound for a pass, a void hand, a refused move or buttons. |
