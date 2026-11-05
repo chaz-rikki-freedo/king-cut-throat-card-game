@@ -12,7 +12,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 2. **Keep it rare.** A cue that plays all the time becomes noise. Vibration is kept for moments that matter to you. Sound can mark more moments, but quietly.
 3. **Follow the screen.** A cue plays when the player *sees* the moment, not when the Engine applies it.
 4. **Drop, never wait.** A cue that can't play on time is dropped. Nothing is queued for later.
-5. **Instant turns it all off.** At speed Instant, no vibration, sound or parallax plays (parallax: [#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)). No setting overrides this, including **Sound in replays**.
+5. **Instant turns it all off.** At speed Instant, no vibration, sound or parallax plays, event or common (parallax: [#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)). No setting overrides this, including **Sound in replays**.
 6. **The module is optional.** The game announces moments whether or not anything listens. Without the feedback module, the game is silent and still, and nothing says so.
 
 ## Architecture
@@ -118,9 +118,23 @@ The module can create its own events from the moments it receives: a *derived ev
 
 **Derived events and the moments the game derives.** Facts that need game knowledge, such as `byKing`, still come from the game. A derived event only combines moments the module has already seen: streaks, sequences and combinations over time.
 
+### Parallax: event and common
+
+Parallax ([#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)) comes in two kinds, kept apart by name:
+
+| Kind | What it is | Where it lives | Driven by |
+|---|---|---|---|
+| **Event parallax** | A short parallax motion at a game moment, such as a lift of the table on a King point that changes the lead | `feedback/`, as a third channel beside vibration and sound | The feedback rule table: the same moments, moments of interest and derived events. One cue can carry a sound, a vibration and an event parallax motion. |
+| **Common parallax** | Ambient parallax unrelated to game moments, such as depth in the menu or the felt | Outside `feedback/`, as its own code under #185 | Its own inputs. It never reads `kct:moment` or the rule table. |
+
+- **Event parallax follows the feedback rules:** the [gates](#gates), the [dropping](#dropping) rules, one cue per batch, and silence when the module is missing.
+- **Common parallax works without the module.** Removing `feedback/` stops event parallax only.
+- **Both stop at speed Instant** (principle 5), and both respect the system's reduced-motion setting.
+- The motions, their settings and their interaction with `Fx` belong to #185's spec. This spec defines only that event parallax is a channel of the feedback module.
+
 ### Other listeners
 
-`kct:moment` isn't only for sound and vibration. Any optional module can listen, and each one ignores what it doesn't use. Parallax ([#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)) can react to the same moments, and to the same derived events if they come from a shared rule table, so a moment of interest can combine a sound, a vibration and a parallax motion. **Open:** whether parallax lives in `feedback/` and shares its rule table, or listens on its own.
+`kct:moment` is open to any optional listener, and each one ignores what it doesn't use. A listener outside `feedback/` doesn't share the rule table, so it can't take part in a combined cue.
 
 ### Who owns what
 
@@ -151,6 +165,7 @@ The module can create its own events from the moments it receives: a *derived ev
 | Channel | API | Supported on | Default | Notes |
 |---|---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome on Android, including the installed app | Off | A new call replaces the pattern still running. Not supported on iOS. |
+| Event parallax | Defined in #185 | Defined in #185 | Defined in #185 | Driven by the rule table, see [Parallax: event and common](#parallax-event-and-common). |
 | Sound | Web Audio (`AudioContext`) | All supported browsers | Off | Recorded WAV files in `feedback/sounds/` (see [Sound files](#sound-files)). Each is loaded and decoded once, when the browser is idle after page load. Sound plays only after the first tap. Never use `<audio>` elements. |
 
 ## Settings
@@ -542,3 +557,4 @@ The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md`
 | 23 | Contract version | `v` on every batch and on `kct:feedback-ready`. A mismatch keeps the module silent. |
 | 24 | Open-ended types | The module ignores unknown types and fields. Adding either leaves `v` unchanged. |
 | 25 | Derived events | The module may create `derived:` events from patterns in the moments it received, kept in a short, public-only memory of the current game |
+| 26 | Parallax | **Event parallax** is a channel of the feedback module and shares its rule table. **Common parallax** lives outside it and ignores moments. Both stop at Instant. |
