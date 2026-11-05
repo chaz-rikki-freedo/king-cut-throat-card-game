@@ -834,6 +834,39 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-card{padding:1.5rem 1rem 1rem}
   .about-title{font-size:1.875rem}
 }
+.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:var(--sx) calc(var(--dp-shadow-reach) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
+.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{transform:none}
+.depth .hand .card{box-shadow:var(--dp-drop);transition-duration:var(--dp-ms)}
+.depth .hand .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
+.depth .hand .card.legal{box-shadow:0 0 0 0.125rem var(--accent),var(--dp-drop)}
+.depth .hand .card.legal.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.125rem var(--accent),var(--dp-drop)}
+@media (hover:hover){.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{--lift:var(--dp-hand-hover);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}}
+.depth .hand .card.legal:active,.depth .hand .card.selectable:active{--lift:var(--dp-hand-press);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}
+.depth .hand .card.selected,.depth .hand .card.selected:hover,.depth .hand .card.selected:active{--lift:var(--dp-hand-select);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)));box-shadow:0 0 0 0.1875rem var(--accent),var(--dp-drop)}
+.depth .trick{perspective:var(--dp-perspective)}
+.depth .trick .slot .card{--lift:var(--dp-trick-z);box-shadow:var(--dp-drop)}
+.depth .trick .slot.win .card{--lift:var(--dp-win-z)}
+.depth .trick .slot-0 .card,.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift,var(--dp-trick-z)))}
+.depth .trick .slot-1 .card{--sx:calc(var(--dp-side-shadow-x) * -1);transform:rotateX(var(--dp-trick-tilt)) rotateY(var(--dp-side-turn)) rotateZ(calc(var(--dp-side-roll) * -1)) translateZ(var(--lift))}
+.depth .trick .slot-2 .card{--sx:var(--dp-side-shadow-x);transform:rotateX(var(--dp-trick-tilt)) rotateY(calc(var(--dp-side-turn) * -1)) rotateZ(var(--dp-side-roll)) translateZ(var(--lift))}
+.depth .trick .slot .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
+.depth .trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
+.depth .trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
+.depth .table .seat,.depth .table .me{--dp-panel:0 calc(var(--dp-shadow-reach) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
+.depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
+.depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
+.depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
+.depth-dev .dd-row{display:flex;align-items:center;gap:0.375rem;min-height:1.875rem}
+.depth-dev .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
+.depth-dev .dd-key{flex:1 1 auto;min-width:0;min-height:1.75rem;font-size:0.75rem}
+.depth-dev .dd-val{flex:none;min-width:3.75rem;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;color:var(--gold)}
+.depth-dev .dd-range{flex:1 1 auto;min-width:0;margin:0}
+.depth-dev .dd-cmp{display:flex;align-items:center;gap:0.25rem;color:var(--muted)}
+.depth-dev .dd-tab{display:none}
+.depth-dev.folded{top:auto;left:auto;right:0.5rem;bottom:0.5rem;width:auto;padding:0.125rem}
+.depth-dev.folded > :not(.dd-tab){display:none}
+.depth-dev.folded .dd-tab{display:inline-flex;color:var(--gold)}
+.depth-dev .dd-out{width:100%;min-height:3.5rem;font:0.6875rem ui-monospace,Menlo,Consolas,monospace}
 </style>
 <script type="application/json" id="themePacks">
 {"felts":{
@@ -974,6 +1007,8 @@ window.kctTheme = (() => {
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Off: the classic flat shadows.</span></span>
+          <select id="setDepth"><option value="still">Still</option><option value="off">Off</option></select></div>
       </div>      <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
       <div class="set-card" id="setFeedback" hidden></div>
       <h3 class="set-head">Table defaults</h3>
@@ -1022,7 +1057,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'b5d27ac', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: '6982e32', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1184,7 +1219,8 @@ const DEV_KEYS = Object.freeze({
 });
 const RESET_OPTIONS = Object.freeze({
   saves: 'the saves cap', log: 'the log cap', scroll: 'the scroll cap', logger: 'the logger cap',
-  caps: 'all four caps', testupdate: 'a waiting test update and the build dot', awards: 'awards, shown again'
+  caps: 'all four caps', testupdate: 'a waiting test update and the build dot', awards: 'awards, shown again',
+  parallax: 'the table depth\'s tuning'
 });
 const Dev = (() => {
   const KEY = 'kct-dev', FAUX_KEY = 'kct-dev-faux';
@@ -1233,6 +1269,8 @@ const Dev = (() => {
       if (rest.some(w => /^testupdate$/i.test(w))) return { ok: false, why: 'Write it on its own as testupdate.' };
       if (rest.length === 1 && rest[0].toLowerCase() === 'vibrate') return { ok: true, reset: null, easing: null, look: false, awards: null, vibrate: true, ops: {} };
       if (rest.some(w => /^vibrate(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as vibrate.' };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'parallax') return { ok: true, reset: null, easing: null, look: false, awards: null, parallax: true, ops: {} };
+      if (rest.some(w => /^parallax(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as parallax.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: null, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
@@ -4424,6 +4462,7 @@ const Render = (() => {
     $('seat' + v.seat).classList.toggle('not-sd', !!(v.showdown && v.showdown.mediator === v.seat));
     if (ctx.fit) ctx.fit();
     Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
+    Depth.motion(ctx.instant ? 'instant' : ui.speed);
     return true;
   }
   return Object.freeze({ render, ledTrick, advInfoHTML, memShows, turnedShown, explains, discardNeed, stageHelp, nameOf, personaHTML, faceHTML, summaryText, cardHTML, microHTML, statusText, isTurn, youText, CONTINUE_LABEL, statsTableHTML, trumpCallAndDealerHTML, scoreText, advCircles, advTags });
@@ -5048,6 +5087,141 @@ const Moments = (() => {
   }
   return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load });
 })();
+const DEPTH =  (Object.freeze({
+  trickTilt: { def: 22, min: 0, max: 40, step: 1, unit: 'deg', group: 'Played cards', name: 'Lean back' },
+  sideTurn: { def: 16, min: 0, max: 30, step: 1, unit: 'deg', group: 'Played cards', name: 'Side cards turn' },
+  sideRoll: { def: 14, min: 0, max: 30, step: 1, unit: 'deg', group: 'Played cards', name: 'Side cards roll' },
+  sideShadowX: { def: 0.625, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Played cards', name: 'Side shadow drift' },
+  trickZ: { def: 1.875, min: 0, max: 4, step: 0.125, unit: 'rem', group: 'Played cards', name: 'Height' },
+  winZ: { def: 3.75, min: 0, max: 6, step: 0.125, unit: 'rem', group: 'Played cards', name: 'Winner height' },
+  perspective: { def: 56.25, min: 20, max: 120, step: 0.25, unit: 'rem', group: 'Played cards', name: 'Perspective' },
+  handRest: { def: 0.25, min: 0, max: 0.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Rest height' },
+  handHover: { def: 0.5, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Pointer over' },
+  handPress: { def: 0.375, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Touch lift' },
+  handSelect: { def: 0.875, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Selected' },
+  liftMs: { def: 120, min: 0, max: 400, step: 10, unit: 'ms', group: 'Your hand', name: 'Lift time' },
+  panelLift: { def: 0.5, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Panels', name: 'Panel height' },
+  shadowReach: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Reach' },
+  shadowBase: { def: 0.25, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Shadows', name: 'Base blur' },
+  shadowBlur: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Blur by height' },
+  fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast' }
+}));
+const Depth = (() => {
+  const KEY = 'kct-depth', MODES = ['off', 'still'];
+  const keys = Object.keys(DEPTH);
+  const prop = k => '--dp-' + k.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+  const valid = ( k,  v) => Object.prototype.hasOwnProperty.call(DEPTH, k) && typeof v === 'number' && Number.isFinite(v) && v >= DEPTH[k].min && v <= DEPTH[k].max;
+  function read() {
+    let x = null;
+    try { x = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) {  }
+    const v = {};
+    if (x && x.v && typeof x.v === 'object') for (const k of keys) if (valid(k, x.v[k])) v[k] = x.v[k];
+    return { open: !!(x && x.open), folded: !!(x && x.folded), k: x && typeof x.k === 'string' ? x.k : '', v };
+  }
+  let tab = read(), mode = 'still', speed = 'normal', preview = false;
+  const keep = () => { try { if (tab.open || Object.keys(tab.v).length) sessionStorage.setItem(KEY, JSON.stringify(tab)); else sessionStorage.removeItem(KEY); } catch (e) {  } };
+  const num = k => tab.v[k] !== undefined ? tab.v[k] : DEPTH[k].def;
+  const liftMs = (s, still) => still || s === 'instant' || (s === 'fast' && !num('fastMotion')) ? 0 : num('liftMs');
+  function vars() {
+    const out = {};
+    for (const k of keys) if (k !== 'liftMs' && k !== 'fastMotion') out[prop(k)] = num(k) + DEPTH[k].unit;
+    out['--dp-ms'] = liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) + 'ms';
+    return out;
+  }
+  function apply() {
+    const root = document.documentElement;
+    for (const [p, v] of Object.entries(vars())) root.style.setProperty(p, v);
+    root.classList.toggle('depth', mode !== 'off' && !preview);
+    syncPanel();
+  }
+  function setMode(m) { mode = MODES.includes(m) ? m : 'still'; apply(); return mode; }
+  function motion(s) { if (s === speed) return; speed = s; apply(); }
+  function tune(k, v) {
+    if (v === null || v === DEPTH[k].def) delete tab.v[k]; else if (valid(k, v)) tab.v[k] = v;
+    keep(); apply();
+  }
+  function resetTune() { tab.v = {}; keep(); apply(); }
+  const fmt = ( k) => num(k) + DEPTH[k].unit;
+  const pick = () => Object.prototype.hasOwnProperty.call(DEPTH, tab.k || '') ?  (tab.k) : keys[0];
+  function panelHTML() {
+    let opts = '', group = '';
+    for (const k of keys) {
+      const d = DEPTH[k];
+      if (d.group !== group) { opts += (group ? '</optgroup>' : '') + '<optgroup label="' + escHTML(d.group) + '">'; group = d.group; }
+      opts += '<option value="' + k + '">' + escHTML(d.name) + '</option>';
+    }
+    return '<button class="btn dd-tab" type="button" data-dd="fold">Depth</button>' +
+      '<div class="dd-row"><select class="dd-key" aria-label="Value to tune">' + opts + '</optgroup></select><output class="dd-val"></output>' +
+      '<button class="btn" type="button" data-dd="fold" aria-label="Fold">▴</button><button class="btn" type="button" data-dd="close" aria-label="Close">✕</button></div>' +
+      '<div class="dd-row"><input class="dd-range" type="range" aria-label="Value"><label class="dd-cmp"><input type="checkbox" data-dd="off"> Off</label>' +
+      '<button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button></div>' +
+      '<textarea class="dd-out" readonly hidden aria-label="Values"></textarea>';
+  }
+  function syncPanel() {
+    const el = document.getElementById('depthDev');
+    if (!el) return;
+    el.classList.toggle('folded', tab.folded);
+    const k = pick(), d = DEPTH[k];
+    const sel =  (el.querySelector('.dd-key'));
+    sel.value = k;
+    for (const o of [...sel.options]) o.textContent = DEPTH[o.value].name + (tab.v[o.value] !== undefined ? ' •' : '');
+    const r =  (el.querySelector('.dd-range'));
+    if (r.dataset.k !== k) { r.dataset.k = k; r.min = String(d.min); r.max = String(d.max); r.step = String(d.step); }
+    if (Number(r.value) !== num(k)) r.value = String(num(k));
+     (el.querySelector('.dd-val')).textContent = fmt(k);
+    const off =  (el.querySelector('[data-dd="off"]'));
+    off.checked = preview || mode === 'off';
+    off.disabled = mode === 'off';
+    off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Table.' : 'The classic table, to compare. The setting stays.';
+  }
+  const json = () => JSON.stringify(Object.fromEntries(keys.map(k => [k, num(k)])));
+  function panel(on) {
+    tab.open = on;
+    if (!on) preview = false;
+    keep();
+    const old = document.getElementById('depthDev');
+    if (old) old.remove();
+    if (on) {
+      const el = document.createElement('aside');
+      el.id = 'depthDev';
+      el.className = 'depth-dev';
+      el.setAttribute('aria-label', 'Table depth tuning');
+      el.innerHTML = panelHTML();
+      el.addEventListener('input', e => {
+        const r =  (e.target);
+        if (r.classList.contains('dd-range') && r.dataset.k) tune(r.dataset.k, Number(r.value));
+      });
+      el.addEventListener('change', e => {
+        const c =  (e.target);
+        if (c.classList.contains('dd-key')) { tab.k = c.value; keep(); syncPanel(); }
+        else if (c.dataset.dd === 'off') { preview = c.checked && mode !== 'off'; apply(); }
+      });
+      el.addEventListener('click', e => {
+        const b =  (e.target).closest('button[data-dd]');
+        const act = b ?  (b).dataset.dd : '';
+        const out =  (el.querySelector('.dd-out'));
+        if (act === 'close') panel(false);
+        else if (act === 'reset') { out.hidden = true; resetTune(); }
+        else if (act === 'fold') { tab.folded = !tab.folded; out.hidden = true; keep(); syncPanel(); }
+        else if (act === 'copy') {
+          const done = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1200); };
+          const show = () => { out.value = json(); out.hidden = false; out.select(); };
+          if (navigator.clipboard) navigator.clipboard.writeText(json()).then(done, show); else show();
+        }
+      });
+      document.body.appendChild(el);
+    }
+    apply();
+  }
+  function init() {
+    document.addEventListener('touchstart', () => {}, { passive: true });
+    const rm = matchMedia('(prefers-reduced-motion: reduce)');
+    if (rm.addEventListener) rm.addEventListener('change', apply);
+    if (tab.open) panel(true); else apply();
+  }
+  return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
+     mode: () => mode,  num });
+})();
 const App = (() => {
   const R = Rules, P = Engine.P;
   const Theme =  (window).kctTheme;
@@ -5068,7 +5242,7 @@ const App = (() => {
     dyn:  (null),
     said:  ({}),
     sdSkip: false,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', depth: 'still', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       scoreHold:  ({}) },
     wave: { n: null, wasOpenAtStart: false, practice: false, result: null },
     humanSeatWasAutoplayed: false,
@@ -5402,7 +5576,7 @@ const App = (() => {
   }
   const AFTER = '<p>The page reloads. There is no undo.</p>';
   async function askTableReset() {
-    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off. ' +
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off and Table depth at Still. ' +
       'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
       (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
     tableReset();
@@ -5416,6 +5590,7 @@ const App = (() => {
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setPolitePlay').checked = app.houseRules.politePlay;
     setTheme('classic', '');
+    setDepth('still');
     closePanel();
     saveSettings();
     draw([]);
@@ -5556,6 +5731,11 @@ const App = (() => {
     app.ui.felt = t.felt; app.ui.colors = t.colors;
     Moments.control('theme', { felt: t.felt });
     syncTheme();
+    saveSettings();
+  }
+  function setDepth( value) {
+    app.ui.depth = Depth.setMode(value);
+    $('setDepth').value = app.ui.depth;
     saveSettings();
   }
   const MEMORY_SWITCHES =  ({ trumps: 'setMemTrumps', kings: 'setMemKings', turned: 'setMemTurned', voids: 'setMemVoids',
@@ -7706,7 +7886,7 @@ const App = (() => {
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, parallax: !!d.parallax, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -7736,7 +7916,8 @@ const App = (() => {
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
       'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
-      '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. !dev reset:option resets one thing (!dev reset lists them).';
+      '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. ' +
+      '!dev parallax opens the table depth\'s tuning panel, for this tab. !dev reset:option resets one thing (!dev reset lists them).';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
@@ -7778,6 +7959,14 @@ const App = (() => {
         : 'The browser accepted a 200 ms vibration. No buzz means the phone itself blocks it: check Settings → Sound and vibration → Vibration and haptics, Do Not Disturb and Battery saver.');
       return;
     }
+    if (r.dev && r.dev.parallax) {
+      Depth.panel(true);
+      Logger.log('DEV', { parallax: true });
+      linkNote = 'The table depth\'s tuning panel is open: start or resume a game to tune it. Its ✕ closes it.';
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (r.dev.reset === '') { say(resetText()); return; }
@@ -7785,6 +7974,7 @@ const App = (() => {
         const opt = r.dev.reset;
         Dev.reset(opt);
         if (opt === 'awards') Awards.set(true);
+        if (opt === 'parallax') Depth.resetTune();
         if (opt === 'testupdate') { app.fakeUpdate = false; app.updateReady = app.realUpdate; syncUpdateBtn(); document.querySelectorAll('.faux-dot').forEach(d => d.remove()); }
         Logger.log('DEV', { reset: opt, set: Object.fromEntries(Dev.list()) });
         linkNote = 'Reset ' + RESET_OPTIONS[ (opt)] + '.';
@@ -7856,7 +8046,7 @@ const App = (() => {
     waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats', tally: 'Tally', awards: 'Awards',
     memory: 'Saves', replay: 'Replays', backup: 'Backup',
     moments: 'Moments',
-    interface: 'Interface', 'app logic': 'App logic',
+    interface: 'Interface', depth: 'Table depth', 'app logic': 'App logic',
     'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
   };
   const AREA_ORDER = Object.keys(TEST_AREAS);
@@ -7881,7 +8071,7 @@ const App = (() => {
     $('setTests').innerHTML = html;
   }
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, depth: app.ui.depth, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
   }
   function loadSettings() {
     const x = settingsStore.load();
@@ -7895,6 +8085,7 @@ const App = (() => {
     if (x.logging === true) Logger.enabled = true;
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
+    if (typeof x.depth === 'string' && Depth.MODES.includes(x.depth)) app.ui.depth = x.depth;
     const mem = app.ui.memory, adds =  (['trumps', 'kings', 'turned', 'voids']);
     if (x.memory === undefined && x.thisHand === true) for (const k of adds) mem[k] = true;
     if (typeof x.memory === 'boolean') for (const k of adds) mem[k] = x.memory;
@@ -8010,6 +8201,9 @@ const App = (() => {
     syncTheme();
     $('setFelt').addEventListener('change', ev => { const r =  (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt,  ($('setColorBlind')).checked ? 'colorblind' : ''));
+    $('setDepth').addEventListener('change', () => setDepth($('setDepth').value));
+    $('setDepth').value = Depth.setMode(app.ui.depth);
+    Depth.init();
     $('backupFile').addEventListener('change', () => {
       const input =  ($('backupFile')), file = input.files && input.files[0];
       input.value = '';
@@ -8637,10 +8831,11 @@ const SelfTest = (() => {
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev],
-        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} },
-          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, ops: {} },
-          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, ops: {} }]);
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev, rs('!dev Parallax').dev, rs('!dev reset:parallax').dev],
+        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
+          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, parallax: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, parallax: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: true, ops: {} }, { reset: 'parallax', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }]);
       eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!dev vibrate=1', '!dev vibrate saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(27).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
@@ -8998,6 +9193,23 @@ const SelfTest = (() => {
       st.scores = [4, 0, 0]; st.phase = P.SHOWDOWN_TRICK_DONE; st.trickNumber = 5; st.totalTricks = 5;
       D(st, { type: 'ADVANCE' });
       eq('showdown pts are actual changes (loser at 0 logs 0)', [st.handStats.pts[0].showdown, st.handStats.pts[1].showdown], [1, 0]);
+    });
+    safeRun('depth', () => {
+      const off = Object.entries(DEPTH).filter(([, d]) => !(d.min <= d.def && d.def <= d.max && Math.abs((d.def - d.min) / d.step - Math.round((d.def - d.min) / d.step)) < 1e-9)).map(([k]) => k);
+      eq('each DEPTH default is in range and on a step of its slider', off, []);
+      eq('a key names its custom property', [Depth.prop('trickTilt'), Depth.prop('handPress')], ['--dp-trick-tilt', '--dp-hand-press']);
+      const css = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
+      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => n !== '--dp-drop' && n !== '--dp-panel').sort();
+      eq('the CSS reads exactly the custom properties DEPTH gives', read, Object.keys(Depth.vars()).sort());
+      const def = DEPTH.liftMs.def;
+      eq('a card lifts in its time at Slow, Normal and Fast, and at once at Instant or with reduced motion',
+        [Depth.liftMs('slow', false), Depth.liftMs('normal', false), Depth.liftMs('fast', false), Depth.liftMs('instant', false), Depth.liftMs('normal', true)],
+        Depth.num('liftMs') === def && Depth.num('fastMotion') === 1 ? [def, def, def, 0, 0] : [Depth.liftMs('slow', false), Depth.liftMs('normal', false), Depth.liftMs('fast', false), 0, 0]);
+      const was = Depth.mode(), html = document.documentElement;
+      const seen = [Depth.setMode('off'), html.classList.contains('depth'), Depth.setMode('still'), html.classList.contains('depth'), Depth.setMode('tilt')];
+      Depth.setMode(was);
+      eq('Table depth: Off drops the depth class, Still adds it, and an unknown mode is Still', seen, ['off', false, 'still', true, 'still']);
+      eq('!dev parallax opens the panel, and is written on its own', [Dev.parse('!dev parallax').ok &&  (Dev.parse('!dev parallax')).parallax, Dev.parse('!dev parallax saves=5').ok], [true, false]);
     });
     safeRun('interface', () => {
       const A = 'Mozilla/5.0 (Linux; Android 13; Pixel 7', I = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
@@ -9784,7 +9996,7 @@ const PERSONA_ART = Object.freeze({
   zen: 'data:image/webp;base64,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'
 });
 const YOU_ART = 'data:image/webp;base64,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';
- (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, Moments, App, SelfTest, WAVES, Waves, PERSONAS });
+ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, Moments, Depth, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
