@@ -465,7 +465,7 @@ The 17 presets that the Classic palette must have. They are the full set for ord
 | `showdown-loss` | `showdownLoss` | You lose the Showdown | `result`: Loss fall, 3 notes | 400 to 800 ms |
 | `game-win` | `gameWin` | You win the game | `result`: Fanfare | 1 to 2 s |
 | `game-loss` | `gameLoss` | A bot wins the game | `result`: Settle | 1 to 2 s |
-| `wave-cleared` | `waveCleared` | You clear a wave | `result`: Fanfare, with a riffle tail | 1.5 to 2.5 s |
+| `wave-cleared` | `waveCleared` | You clear a wave | `result`: Fanfare and riffle | 1.5 to 2.5 s |
 
 Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call use the lab's 8 card families. The 7 results use a ninth family, `result`, which the lab doesn't have yet: see [Result family](#result-family).
 
@@ -482,14 +482,15 @@ voice.chime(t, { freq: 523.25, partials: [1, 2, 3], weights: [1, 0.35, 0.12], at
 - Whole-number `partials` give a warm, woody tone. Bell-like ratios, such as `[1, 2.76, 5.4]`, give a glassy one.
 - Every note runs through the lab's master bus: the 70 Hz high-pass, the 7.5 kHz low-pass and the faint table reflection.
 
-**Four archetypes:**
+**Five archetypes:**
 
 | Archetype | Shape | Used for |
 |---|---|---|
 | **Win rise** | A light knock, then 2 or 3 notes rising by step or by a third, the last one held | `hand-win` (2 notes), `showdown-win` (3 notes) |
 | **Loss fall** | A soft knock, then 2 or 3 notes falling, slower and lower, the last one short | `hand-loss` (2 notes), `showdown-loss` (3 notes) |
-| **Fanfare** | A deck knock, then a quick 3- or 4-note rising arpeggio into a held chord. Wave cleared adds a riffle tail from the `shuffle` primitives. | `game-win`, `wave-cleared` |
-| **Settle** | The pack set down, then one low note with a long, even decay | `game-loss` |
+| **Fanfare** | A deck knock, then a quick 3- or 4-note rising arpeggio into a held chord an octave up | `game-win` |
+| **Fanfare and riffle** | The Fanfare, with a falling riffle (the `flutter` primitive) over the chord | `wave-cleared` |
+| **Settle** | The pack set down, then one low note with a long, even decay. The note is heard through its upper partials (`[1, 2, 3, 4]`, with a light fundamental), so a small speaker still carries it. | `game-loss` |
 
 **Design rules:**
 
@@ -503,19 +504,21 @@ voice.chime(t, { freq: 523.25, partials: [1, 2, 3], weights: [1, 0.35, 0.12], at
 
 | Palette | Key and register | Partials |
 |---|---|---|
-| `classic` | Major, middle register | Warm, whole-number |
-| `spring` | Major, one step higher | Light: fewer upper partials |
-| `summer` | Open fifths, middle register | Soft and round |
-| `fall` | Major, lower register. Its Showdown voice is minor. | Warm, with a touch of the third partial |
-| `winter` | Major, higher register | Bell-like ratios |
+| `classic` | Major, root C5 (523 Hz) | Warm, whole-number: `[1, 2, 3]` at `[0.8, 0.6, 0.25]` |
+| `spring` | Major, root D5 (587 Hz) | Light: `[1, 2]` at `[1, 0.25]` |
+| `summer` | Open fifths, root C5 | Soft and round: `[1, 2, 3]` at `[1, 0.2, 0.06]` |
+| `fall` | Major, root A4 (440 Hz). Its Showdown voice is minor. | Warm, with strong upper partials: `[1, 2, 3]` at `[0.6, 0.85, 0.45]` |
+| `winter` | Major, root E5 (659 Hz) | Bell-like: `[1, 2.76, 5.4]` at `[1, 0.3, 0.08]` |
 
 **What the lab needs:**
 
 1. The `chime` primitive in `createVoice`.
-2. The `result` family, with its 4 archetypes, their base settings and a `perform` function, like the other 8.
+2. The `result` family, with its 5 archetypes, their base settings and a `perform` function, like the other 8.
 3. **A length limit per family:** `maxSeconds` and `renderSeconds` on each family, in place of the global `MAX_DURATION_SECONDS` and `RENDER_SECONDS`. The card families keep 0.98 s and 0.96 s; `result` gets 2.5 s and 2.6 s.
 4. **Palette settings** passed into `perform`, such as the key, the register and the partials, so one preset renders in each palette's voice. The card families can ignore them.
 5. The lab's self-test extended to the new family: not silent, within its length, and the same samples twice.
+
+**Built and tested** in a copy of the lab, *Card Sound Lab: Results*, with a Palette menu that re-renders family I. In headless Chromium, every result archetype passes the lab's checks in all 6 palettes (Classic, Spring, Summer, Fall, Fall's Showdown voice and Winter). The lengths are 0.55 to 1.3 s, and each render takes 40 to 95 ms. Two palette changes came out of the lab's mid-band check, which needs 20% of the energy between 700 and 3000 Hz: Classic and Fall carry more of their upper partials.
 
 ### Optional presets: moments of interest
 
@@ -677,7 +680,7 @@ The current decisions. Their history is in the commit log.
 | **Speed Instant** | Turns off vibration, sound and parallax, event and common, with no override |
 | **Replay viewer** | No vibration. Sound only with Sound in replays on. |
 | **Sounds** | Made at run time by `feedback/synth.js`, the Card Sound Lab's synthesis core, from presets (family, archetype, seed) in `feedback/palettes.js`, rendered when the browser is idle while Sound isn't Off, silent when missing, precached with the module |
-| **Result sounds** | A ninth, tonal family, `result`: a card knock that resolves into tones, with 4 archetypes, a key per palette, and lengths up to 2.5 s |
+| **Result sounds** | A ninth, tonal family, `result`: a card knock that resolves into tones, with 5 archetypes, a key per palette, and lengths up to 2.5 s |
 | **Theme palettes** | Each felt has a palette. Classic is the base; the others override preset by preset. A palette can have a Showdown voice. Sound follows the felt, with no setting. |
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
