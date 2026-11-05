@@ -461,6 +461,28 @@ const batchSrc = `
       return (w.__pans || []).slice(p0).map((x) => x.value);
     });
     expect('a bot\'s card on the right plays through a stereo panner at +0.35', JSON.stringify(panned) === '[0.35]', panned);
+    /* Beat ticks: your card landing, and each packet dealt to you, at the beat's own time. */
+    await wait(300);
+    const ticks = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), F = w.KCTFeedback.core, t = w.KCTFeedback.test, v0 = w.__vibrations.length, t0 = performance.now();
+      const pure = { you: F.beatTick({ beat: 'card', key: 'a', you: true }), bot: F.beatTick({ beat: 'card', key: 'a', you: false }),
+        deal: F.beatTick({ beat: 'deal', key: 'deal|3|0|0', you: true }), dealBot: F.beatTick({ beat: 'deal', key: 'deal|3|1|0', you: false }),
+        sd0: F.beatTick({ beat: 'deal', key: 'deal|3sd|0|0', you: true, showdown: true }), sd1: F.beatTick({ beat: 'deal', key: 'deal|3sd|0|1', you: true, showdown: true }),
+        sweep: F.beatTick({ beat: 'sweep', key: 's', you: true }) };
+      const r = t.playBeats({ v: 1, version: w.__ver, replay: false, beats: [
+        { beat: 'deal', key: 'tk|d0', at: t0 + 100, you: true, seat: 0, place: 0, cards: 3, spread: 20 },
+        { beat: 'deal', key: 'tk|d1', at: t0 + 200, you: false, seat: 1, place: 1, cards: 3, spread: 20 },
+        { beat: 'card', key: 'tk|c0', at: t0 + 400, you: true, seat: 0, place: 0, cards: 1 }] });
+      const soon = w.__vibrations.length - v0;
+      await new Promise((res) => setTimeout(res, 500));
+      const got = w.__vibrations.slice(v0);
+      const rp = t.playBeats({ v: 1, version: w.__ver, replay: true, beats: [{ beat: 'card', key: 'tk|r', at: performance.now() + 50, you: true, seat: 0, place: 0 }] });
+      return { pure, verdicts: r.map((x) => x.tick), soon, got, replay: rp[0].tick };
+    });
+    expect('beat ticks: your card [12] and your deal packet [10]; none for a bot, a sweep, or a Showdown deal past its first card',
+      JSON.stringify(ticks.pure) === JSON.stringify({ you: [12], bot: null, deal: [10], dealBot: null, sd0: [10], sd1: null, sweep: null }), ticks.pure);
+    expect('beat ticks play at their beats\' times, not before', ticks.soon === 0 && JSON.stringify(ticks.got) === '[[10],[12]]' && JSON.stringify(ticks.verdicts) === '["play","none","play"]', ticks);
+    expect('beat ticks: none in the replay viewer', ticks.replay === 'off', ticks);
     await wait(300);
 
     /* A batch still ahead: the sound is scheduled on the audio clock, less the output delay; the vibration waits. */
