@@ -16,7 +16,9 @@
    Each page open and "check-update" also saves again any of them missing from the cache: Android never
    asks for the Apple icon, so a lost copy of it would otherwise stay lost.
    The optional feedback module (feedback/*.js) is cached the same way, but each file on its own: a missing one
-   never stops the install, and the game plays silent without it (docs/ui/feedback.md, Offline). */
+   never stops the install, and the game plays silent without it (docs/ui/feedback.md, Offline). Its files go with
+   the page: a check that finds a new page also fetches them, past the CDN, into the waiting cache, and applying the
+   update moves them in with the page, so the reload runs the new page with the module published with it. */
 'use strict';
 const SHELL = 'kct-shell', PENDING = 'kct-pending';
 const PAGE = new URL('./index.html', self.registration.scope).href;
@@ -67,11 +69,14 @@ self.addEventListener('fetch', ev => {
 });
 const isSame = (a, b) => { const u = new URL(b); u.search = ''; return u.href === a; };
 
-/* Fetches an asset and keeps it in the cache. Resolves to the response, or null when offline. */
-async function refreshAsset(url) {
+/* Fetches an asset and keeps it in the cache. Resolves to the response, or null when offline. A feedback file is
+   fetched past the CDN (a query, as checkPage does): GitHub Pages keeps a file for minutes, and an old copy saved
+   after an update would put the old module back with the new page. */
+const fresh = url => OPTIONAL.includes(url) ? url + '?fresh=' + Date.now() : url;
+async function refreshAsset(url, cacheName = SHELL) {
   try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (res.ok) await (await caches.open(SHELL)).put(url, res.clone());
+    const res = await fetch(fresh(url), { cache: OPTIONAL.includes(url) ? 'no-store' : 'no-cache' });
+    if (res.ok) await (await caches.open(cacheName)).put(url, res.clone());
     return res;
   } catch (e) { return null; }
 }
@@ -108,6 +113,8 @@ async function checkPage() {
   const pending = await caches.open(PENDING);
   const waiting = await pending.match(PAGE);
   if (!waiting || core(text) !== core(await waiting.text())) await pending.put(PAGE, res);
+  /* The feedback files published with this page wait with it. A file that doesn't load keeps the cached one. */
+  for (const u of OPTIONAL) await refreshAsset(u, PENDING);
   await tell({ type: 'update-ready' });
   return 'new';
 }
@@ -189,8 +196,11 @@ self.addEventListener('message', ev => {
   }));
   if (type === 'offline-check') ev.waitUntil(offlineReport().then(report => tell({ type: 'offline-report', report }, ev.source)));
   if (type === 'apply-update') ev.waitUntil((async () => {
-    const waiting = await (await caches.open(PENDING)).match(PAGE);
-    if (waiting) await (await caches.open(SHELL)).put(PAGE, waiting);
+    const pending = await caches.open(PENDING), shell = await caches.open(SHELL);
+    const waiting = await pending.match(PAGE);
+    if (waiting) await shell.put(PAGE, waiting);
+    /* The feedback files that waited with the page: the reload runs them with it. */
+    for (const u of OPTIONAL) { const f = await pending.match(u); if (f) await shell.put(u, f); }
     await caches.delete(PENDING);
     await tell({ type: 'update-applied' }, ev.source);
   })());
