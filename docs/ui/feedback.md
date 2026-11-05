@@ -372,11 +372,13 @@ The leaders are every seat with the top score. Settle these cases before buildin
 
 ## Variety
 
-The rule table and the cue table on their own give the same response to the same situation every time. Three additions make feedback vary and build with the game, while staying predictable for tests and replays:
+The rule table and the cue table on their own give the same response to the same situation every time. Five additions make feedback vary and build with the game, while staying predictable for tests and replays:
 
 - **Variants:** a cue can have several versions of each part.
 - **Novelty:** a special cue that played recently gives way to another version, or to the ordinary cue.
 - **Escalation:** the stakes of the moment pick a stronger or a quieter version.
+- **Layering:** a second rule can add one part on top of the main cue.
+- **Parameters:** a part can scale with the moment's facts.
 
 They are all data in the cue table plus a few lines in `cueFor`. None of them changes the game or the contract, apart from the public facts listed in [Drama in the rules](#drama-in-the-rules).
 
@@ -458,10 +460,52 @@ The module's memory records when each **special** cue last played (a moment of i
 
 Novelty memory is per game, cleared with the rest of the memory. A replay of one game then matches the live game exactly. Novelty across games would make replays differ.
 
+### Layering
+
+One cue per batch stays the rule, with one exception: a rule marked `layer` adds **one part** on top of the batch's main cue instead of competing with it.
+
+```js
+// Rule table
+{ when: m => m.type === 'derived:matchPoint' && m.you, cue: 'matchPointLift', layer: true },
+
+// Cue table: a layer cue names exactly one channel
+matchPointLift: { parallax: 'lift' }
+```
+
+1. The module picks the main cue as usual: the first non-layer rule that matches.
+2. It then picks **at most one** layer: the first `layer` rule that matches.
+3. **A layer adds a channel the main cue doesn't use.** If the main cue already uses that channel, the layer is dropped. A layer never replaces or doubles a part.
+4. A layer cue names exactly one channel: a sound, a vibration pattern or an event parallax motion.
+5. Layers follow the same gates, dropping, variants, escalation and novelty as main cues.
+
+So a King point at match point can play the King sound and vibration from the main cue, plus a parallax lift from the layer. The limit of one layer per batch keeps principle 2: at most one extra part, ever.
+
+### Parameters
+
+A part can be a function of the moment's facts instead of a fixed value. Parameters change **how much**, never **whether**: a parameter can't turn a channel on, and it can't change which cue plays.
+
+| Part | Parameter | Example |
+|---|---|---|
+| Sound | `gain`: 0 to 1, multiplied by the Half or Full level | Louder for a bigger hand: `gain: m => 0.6 + 0.1 * m.points` |
+| Sound | `rate`: playback speed, 0.9 to 1.1, which also shifts pitch | Slightly higher with each trick of a streak: `rate: m => 1 + 0.02 * m.count` |
+| Vibration | `scale`: multiplies each pulse, 0.5 to 2 | Longer for a larger lead: `scale: m => 1 + 0.25 * lead(m)` |
+| Event parallax | `amount`: 0 to 1, how strong the motion is | Stronger for a bigger comeback: `amount: m => Math.min(1, m.maxDeficit / 6)` |
+
+```js
+handWin: { sound: 'hand-win', gain: m => 0.6 + 0.1 * m.points }
+```
+
+- **Clamped.** The module clamps every parameter to its range, so a wrong formula can't make a part silent, too loud or too long.
+- **Pure.** A parameter reads only the batch's facts and the stakes level. It never reads the memory, the clock or a random value, so the same batch always gives the same result and replays match.
+- **A bad parameter falls back.** If a function throws or returns something that isn't a number, the part plays at its default.
+- **Vibration patterns stay within limits.** After scaling, each pulse is capped at `VIBRATE_MAX_MS` and the whole pattern at `VIBRATE_TOTAL_MS`.
+
 ### Constants
 
 | Constant | Draft value | Meaning |
 |---|---|---|
+| `VIBRATE_MAX_MS` | 300 | The longest single pulse after scaling |
+| `VIBRATE_TOTAL_MS` | 1500 | The longest whole pattern after scaling |
 | `STAKES_CLOSE` | 7 | The score that makes the stakes Close |
 | `STAKES_MATCH` | 9 | The score that makes the stakes Match point. One below the winning score. |
 | `NOVELTY_HANDS` | 3 | How many hands a special cue waits before it can repeat its version |
@@ -612,6 +656,7 @@ Once the service worker has cached the files, they load from the device in a few
 2. Unknown types and fields are ignored. The batch is added to the module's memory, and any pattern it completes adds a derived event to the batch.
 3. The [rule table](#rule-table) picks one cue for the batch: the first match in rank order, so moments of interest and derived events come first.
    The module works out the [stakes](#stakes), applies [escalation](#escalation) and [novelty](#novelty), and picks each part's [variant](#variants).
+   It then picks at most one [layer](#layering), and works out the [parameters](#parameters).
    Each channel then takes its part from the result.
 4. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
 5. A cue that passes plays once:
@@ -673,7 +718,7 @@ A `cancel` with `scope: 'game'` (a new game, a resume, a jump in the replay view
 | `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the game gates send nothing |
 | `feedback/feedback.js` | T1 | A new `tests/feedback.js` script: cue ranks, moments of interest, seat rules, module gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext`. `typecheck.js` checks the file too. |
 | The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files, a `v` mismatch keeps the module silent, and an unknown type or field is ignored |
-| Variety | T1 | `tests/feedback.js`: the same batch gives the same variant every time; stakes levels from scores; escalation picks the right entry and never adds a channel that's off; novelty rotates, then falls back; a missing variant is skipped |
+| Variety | T1 | `tests/feedback.js`: the same batch gives the same variant every time; at most one layer, and never on a channel the main cue uses; parameters clamp, fall back on a bad value, and never turn a channel on; stakes levels from scores; escalation picks the right entry and never adds a channel that's off; novelty rotates, then falls back; a missing variant is skipped |
 | Derived events | T1 | `tests/feedback.js`: each pattern completes on the right sequence and not on a near miss; a gap (a skip) breaks it; the memory clears on `cancel` with `scope: 'game'`; a derived event never spawns another |
 | The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
 | Runtime caching of `feedback/` in `sw.js`, then the precache | T1 | `sw.js`, including an install where one feedback file fails to load |
@@ -718,3 +763,5 @@ The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md`
 | 29 | Escalation | Stakes from public scores (Calm, Close, Match point, Decider) and counts from derived events pick stronger versions |
 | 30 | Novelty | A special cue that played in the last `NOVELTY_HANDS` hands uses an unused variant or the ordinary cue. Per game, so replays match. |
 | 31 | Drama | Match point, sudden death, steal, the decider, King killed, denial and knocked back join the candidates, each measured before it gets a cue |
+| 32 | Layering | A rule marked `layer` adds one part, on a channel the main cue doesn't use. At most one layer per batch. |
+| 33 | Parameters | A part can scale with the facts: sound gain and rate, vibration scale, parallax amount. Clamped, pure, and never turns a channel on. |
