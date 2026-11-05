@@ -77,6 +77,19 @@ setting stays as it was, and a note under the row says how to allow it.
 
 `orientationOn` and `pointerOn` turn each input off, and `pointerRange` sets how far the mouse reaches.
 
+## Motion
+
+The table's motion (FX, section 7b) keeps its own paths and times; depth adds height only, as separate animations of
+`--lift` (registered with `@property`, so it animates) and `scale`. The sound and vibration beats keep their times.
+
+| Moment | What depth adds | Values |
+|---|---|---|
+| A card is played | It rises on its way to the trick, highest at 45% of the slide, grows a little, and comes down onto the trick. Its shadow grows and tightens with it. | `playArc`, `playGrow` |
+| A trick is won | Each card lifts off the felt as it sweeps to the winner. | `sweepArc` |
+| Trump is known | A light passes once over each trump in your hand and over the turned-up card. | `sheenMs` (0: none), `sheen` |
+
+None of it runs in Off, at Instant, with reduced motion, or at Fast when `fastMotion` is 0.
+
 ## Rules for the code
 
 - Change only `transform`, `translate`, `perspective-origin` and `box-shadow`. No card moves its place in the layout,
@@ -109,5 +122,5 @@ Tuned values last for the tab only (sessionStorage `kct-depth`), and a backup ne
 | Step | Scope |
 |---|---|
 | 1 (done, PR #308) | `DEPTH`, the Still and Off setting, heights and shadows, the touch lift, and the tuning panel. |
-| 2 (this) | Tilt: device orientation and the mouse, opt-in, with the planes and shadows above. |
-| 3 | Motion for playing a card, resolving a trick and revealing trump, from the same config. |
+| 2 (done, PR #309) | Tilt: device orientation and the mouse, opt-in, with the planes and shadows above. |
+| 3 (this) | Motion: a played card's rise, a won trick's lift and the trump light. |
