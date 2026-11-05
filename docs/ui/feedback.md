@@ -2,7 +2,7 @@
 
 > **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). The game sends moments to an optional, external feedback module (see [Architecture](#architecture)). Items marked **Open** are still to be decided. Nothing is built yet.
 
-*Feedback* is what the game does besides drawing the table: a short vibration or a short sound at a game moment. This page defines the cues, when each one plays, when nothing plays, and what is dropped when cues collide. Vibration and sound read the same cue table, so they never disagree about what happened.
+*Feedback* is what the game does besides drawing the table: a short vibration or a short sound at a game moment. This page defines the cues, when each one plays, when nothing plays, and what is dropped when cues collide. Every channel reads the same rule table, so they never disagree about what happened.
 
 Moment names come from [Game moments](moments.md). Area and part names come from [Vocabulary](vocabulary.md).
 
@@ -141,7 +141,7 @@ Parallax ([#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/
 | The game (`index.html`) | The module (`feedback/feedback.js`) |
 |---|---|
 | The moments and their facts | The [cues](#cues), ranks, vibration patterns and sound files |
-| Screen time: when each batch is sent | The [moments of interest](#moments-of-interest) rule table |
+| Screen time: when each batch is sent | The [rule table and cue table](#cues), including the [moments of interest](#moments-of-interest) |
 | Not sending at all: at Instant, during a skip, on a resume, during a viewer jump, while the menu or a question is open, and while another tab is more current | Its own [gates](#gates): its settings, device support, the first tap, a hidden tab, `replay` with **Sound in replays** off |
 | `cancel`, `reset` and `speed` messages | [Dropping](#dropping) |
 | An empty, hidden **Sound and touch** card in Settings → Table | The card's rows, its device keys and its sound loading |
@@ -210,27 +210,77 @@ At Fast, a bot card can land every 220 ms. That suits a short sound, but it is t
 
 ## Cues
 
-**Rank** sets which cue plays when one action causes several moments: a lower number wins. **Yours** means your seat, including while the AI plays it (autoplay).
+Cues are defined in two tables, both named constants in the module:
 
-| Rank | Cue | Moment and source | Tied to | Vibration | Sound file |
-|---|---|---|---|---|---|
-| 1 | `waveCleared` | Game over in Waves, the wave is cleared | The game-over dialog opens | `[60, 40, 60, 40, 60, 40, 160]` | `wave-cleared` |
-| 2 | `gameWin` | Game over, `GAME_ENDED`, you won | The game-over dialog opens | `[60, 40, 60, 40, 120]` | `game-win` |
-| 2 | `gameLoss` | Game over, `GAME_ENDED`, a bot won | The game-over dialog opens | `[150]` | `game-loss` |
-| 3 | `showdownCalled` | Showdown setup, `SHOWDOWN_STARTED` | `holdResult()` releases | `[80, 60, 80]`, if you play in it | `showdown-called` |
-| 4 | `showdownResult` | Showdown result, `SHOWDOWN_SCORED` | `holdResult()` releases | `[60, 40, 60]`, if you play in it | `showdown-win` or `showdown-loss` |
-| 5 | `handResult` | Hand result, `HAND_SCORED` | `holdResult()` releases | None | `hand-win` or `hand-loss` |
-| 6 | `king` | Trick end, `KING_SCORED` | The trick sweep | `[35, 60, 35]`, yours only | `king-you` or `king-bot` |
-| 7 | `trickWon` | Trick end, `TRICK_WON` or `SHOWDOWN_TRICK_WON` | The trick sweep | `[35]`, yours only | `trick-you` or `trick-bot` |
-| 8 | `trumpNamed` | Round 1 or 2 bid, an accept or a named suit | The bid shows | None | `trump-named` |
-| 9 | `cardPlayed` | Trick play, `CARD_PLAYED` | The card lands | None | `card-play` |
-| 9 | `deal` | Deal or Showdown deal, `DEAL` or `SHOWDOWN_DEAL` | The deal motion | None | `deal` |
-| 9 | `flip` | Turn-up, the kitty card turned up | The flip ends | None | `flip` |
-| 10 | `discard` | Opening, kitty or Showdown discard | The cards reach the pile | None | `discard` |
+- The **rule table** says *when*: which cue a batch gets. It is the same for every channel.
+- The **cue table** says *what*: what each channel does for that cue. A channel left empty does nothing for it.
+
+A new moment of interest is a rule row, plus a cue row if it needs a cue of its own. A channel's response to a moment changes only the cue table, never the rules.
+
+### Rule table
+
+The module tries the rules in rank order, and the **first match wins**: a lower number is tried first. Moments of interest and derived events go above the ordinary rule for the same moment. **You** means your seat, including while the AI plays it (autoplay).
+
+| Rank | Matches | Cue | Batch anchor |
+|---|---|---|---|
+| 1 | `waveCleared` | `waveCleared` | `gameOver` |
+| 2 | `gameEnded`, you won | `gameWin` | `gameOver` |
+| 2 | `gameEnded`, a bot won | `gameLoss` | `gameOver` |
+| 3 | `showdownCalled`, you play in it | `showdownCalledYou` | `result` |
+| 3 | `showdownCalled`, you mediate or sit out | `showdownCalledOther` | `result` |
+| 4 | `showdownScored`, you won | `showdownWin` | `result` |
+| 4 | `showdownScored`, you lost | `showdownLoss` | `result` |
+| 4 | `showdownScored`, you mediate | `showdownMediated` | `result` |
+| 5 | `handScored`, you won | `handWin` | `result` |
+| 5 | `handScored`, a bot won | `handLoss` | `result` |
+| 6 | `king`, you | `kingYou` | `sweep` |
+| 6 | `king`, a bot | `kingBot` | `sweep` |
+| 7 | `trickWon`, you | `trickYou` | `sweep` |
+| 7 | `trickWon`, a bot | `trickBot` | `sweep` |
+| 8 | `trumpNamed` | `trumpNamed` | `land` |
+| 9 | `cardPlayed` | `cardPlayed` | `land` |
+| 9 | `deal` | `deal` | `land` |
+| 9 | `flip` | `flip` | `land` |
+| 10 | `discard` | `discard` | `land` |
+| — | `cardPicked` | `pick` | `tap` |
+| — | `skipPressed`, you mediate | `skip` | `tap` |
+
+Tap batches hold one moment each, so their rules need no rank.
+
+### Cue table
+
+| Cue | Vibration (Android) | Sound file | Event parallax |
+|---|---|---|---|
+| `waveCleared` | `[60, 40, 60, 40, 60, 40, 160]` | `wave-cleared` | **Open** (#185), for example `celebrate` |
+| `gameWin` | `[60, 40, 60, 40, 120]` | `game-win` | **Open** (#185), for example `celebrate` |
+| `gameLoss` | `[150]` | `game-loss` | None |
+| `showdownCalledYou` | `[80, 60, 80]` | `showdown-called` | **Open** (#185), for example `lift` |
+| `showdownCalledOther` | None | `showdown-called` | None |
+| `showdownWin` | `[60, 40, 60]` | `showdown-win` | None |
+| `showdownLoss` | `[60, 40, 60]` | `showdown-loss` | None |
+| `showdownMediated` | `[60, 40, 60]` | `showdown-win` | None |
+| `handWin` | None | `hand-win` | None |
+| `handLoss` | None | `hand-loss` | None |
+| `kingYou` | `[35, 60, 35]` | `king-you` | None |
+| `kingBot` | None | `king-bot` | None |
+| `trickYou` | `[35]` | `trick-you` | None |
+| `trickBot` | None | `trick-bot` | None |
+| `trumpNamed` | None | `trump-named` | None |
+| `cardPlayed` | None | `card-play` | None |
+| `deal` | None | `deal` | None |
+| `flip` | None | `flip` | None |
+| `discard` | None | `discard` | None |
+| `pick` | `[8]` | None | None |
+| `skip` | `[20]` | None | None |
+
+- **Event parallax motion names** (`celebrate`, `lift`) are placeholders until #185 defines the motions. Keep event parallax for a few rare cues, by principle 2.
+- **Each channel plays its part on its own.** It checks its own [gates](#gates) and [dropping](#dropping) rules, so a cue degrades gracefully: with Sound off, the vibration and the motion still play; on an iPhone, the sound and the motion still play.
+- **All parts start at the batch's screen time,** so they land together.
+- A cue row can point several rules at the same response. `showdownMediated` reuses `showdown-win`, for example.
 
 ### Cue rules
 
-The module picks **one cue per batch**: the highest-ranked cue among the batch's moments. A moment of interest outranks the ordinary cue for the same moment.
+The module picks **one cue per batch**: the first rule, in rank order, that any of the batch's moments matches.
 
 - **No your-turn cue.** The table already shows whose turn it is.
 - **A game that ends mid-trick** (a King point reaches 10) plays only `gameWin` or `gameLoss`, never `king` and `trickWon` as well.
@@ -239,7 +289,7 @@ The module picks **one cue per batch**: the highest-ranked cue among the batch's
   - **The Showdown ends:** `showdownResult` with its `[60, 40, 60]` pattern, whether the Showdown played out or you skipped it.
   - **You press Skip ▶:** a short `[20]` tap.
 
-  `showdownCalled` and the Showdown's trick and King cues don't vibrate for the Mediator. All the sounds still play, except during the skip.
+  The rule table gives this through `showdownCalledOther` and `showdownMediated`. The Showdown's trick and King cues are a bot's, so they don't vibrate. All the sounds still play, except during the skip.
 - **Autoplay.** Your seat's cues play as if you played it yourself, vibration included.
 - **Events that never cue:** `GAME_STARTED`, `TRICK_STARTED`, `BIDDING_ROUND`, `DISCARDS_COMPLETE`, `KITTY_TRANSFER` and `SCORE_CHANGED`. Each comes with another event that already cues.
 - **No sound** for a pass (`BID_PASS`), Hand void, Hand abandoned, a refused move, or any button, including Next hand, Deal the Showdown and Skip ▶.
@@ -256,7 +306,7 @@ The module picks **one cue per batch**: the highest-ranked cue among the batch's
 
 A *moment of interest* is a rare situation that gets its own cue: a sound, a vibration pattern, or both. It **replaces** the ordinary cue for that moment, never adds to it. This list is a collection of candidates. Each needs a settled definition before it is built.
 
-The rule table lives in the module. Adding a moment of interest changes only `feedback/`, unless it needs a fact the game doesn't send yet.
+Moments of interest are rows in the module's [rule table](#rule-table), above the ordinary rule for the same moment, with their own rows in the [cue table](#cue-table). Adding one changes only `feedback/`, unless it needs a fact the game doesn't send yet.
 
 ### Rules
 
@@ -312,7 +362,7 @@ The leaders are every seat with the top score. Settle these cases before buildin
    - **From a pattern over time:** a derived event in the module.
    - **From game knowledge the moments don't carry:** a new fact the game sends. Public only.
 3. Measure how often it fires.
-4. Give it a cue: a sound file in [Sound files](#sound-files), a vibration pattern, or both.
+4. Add its rule row, above the ordinary rule for that moment. If it needs its own response, add a cue row: a sound file (see [Sound files](#sound-files)), a vibration pattern, an event parallax motion, or any mix.
 
 ## Gates
 
@@ -367,15 +417,15 @@ Supply one WAV file for each name below. These 17 files are the full set.
 | `flip.wav` | `flip` | The kitty card turned up | 100 to 200 ms |
 | `discard.wav` | `discard` | Cards reaching the outside pile or the kitty | 100 to 200 ms |
 | `trump-named.wav` | `trumpNamed` | Trump accepted or named | 200 to 400 ms |
-| `trick-you.wav` | `trickWon` | You win a trick | 150 to 300 ms |
-| `trick-bot.wav` | `trickWon` | A bot wins a trick. Softer than `trick-you`. | 150 to 300 ms |
-| `king-you.wav` | `king` | Your King point | 250 to 500 ms |
-| `king-bot.wav` | `king` | A bot's King point. Distinct from `king-you`. | 250 to 500 ms |
-| `hand-win.wav` | `handResult` | You win the hand | 400 to 800 ms |
-| `hand-loss.wav` | `handResult` | A bot wins the hand | 400 to 800 ms |
-| `showdown-called.wav` | `showdownCalled` | A Showdown is called | 500 to 1000 ms |
-| `showdown-win.wav` | `showdownResult` | You win the Showdown, or you mediate and it ends | 400 to 800 ms |
-| `showdown-loss.wav` | `showdownResult` | You lose the Showdown | 400 to 800 ms |
+| `trick-you.wav` | `trickYou` | You win a trick | 150 to 300 ms |
+| `trick-bot.wav` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | 150 to 300 ms |
+| `king-you.wav` | `kingYou` | Your King point | 250 to 500 ms |
+| `king-bot.wav` | `kingBot` | A bot's King point. Distinct from `king-you`. | 250 to 500 ms |
+| `hand-win.wav` | `handWin` | You win the hand | 400 to 800 ms |
+| `hand-loss.wav` | `handLoss` | A bot wins the hand | 400 to 800 ms |
+| `showdown-called.wav` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | 500 to 1000 ms |
+| `showdown-win.wav` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | 400 to 800 ms |
+| `showdown-loss.wav` | `showdownLoss` | You lose the Showdown | 400 to 800 ms |
 | `game-win.wav` | `gameWin` | You win the game | 1 to 2 s |
 | `game-loss.wav` | `gameLoss` | A bot wins the game | 1 to 2 s |
 | `wave-cleared.wav` | `waveCleared` | You clear a wave | 1.5 to 2.5 s |
@@ -458,7 +508,8 @@ Once the service worker has cached the files, they load from the device in a few
 
 1. The module's [gates](#gates) run. A batch that fails one is dropped.
 2. Unknown types and fields are ignored. The batch is added to the module's memory, and any pattern it completes adds a derived event to the batch.
-3. The rule table picks one cue for the batch: the highest-ranked match, moments of interest and derived events first.
+3. The [rule table](#rule-table) picks one cue for the batch: the first match in rank order, so moments of interest and derived events come first.
+   Each channel then takes its part from the [cue table](#cue-table).
 4. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
 5. A cue that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
@@ -500,7 +551,7 @@ A `cancel` with `scope: 'game'` (a new game, a resume, a jump in the replay view
 ### In `feedback/feedback.js`
 
 - One file, no build step, no dependencies. It reads nothing from the game except batches and control messages.
-- The cue table, the moments-of-interest rule table, the derived-event patterns, the vibration patterns, the sound table, the dropping limits and `MEMORY_MAX` are named constants.
+- The rule table, the cue table, the derived-event patterns, the dropping limits and `MEMORY_MAX` are named constants. The cue table holds each cue's vibration pattern, sound file and event parallax motion.
 - `derive(memory, batch)`: a pure function from the memory and a new batch to the derived events it completes. Its tests feed it sequences of batches.
 - `cueFor(batch)`: a pure function from a batch to at most one cue for each channel. Its tests feed it batches.
 - It checks the [gates](#gates) it owns, applies the dropping rules, and plays.
@@ -558,3 +609,4 @@ The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md`
 | 24 | Open-ended types | The module ignores unknown types and fields. Adding either leaves `v` unchanged. |
 | 25 | Derived events | The module may create `derived:` events from patterns in the moments it received, kept in a short, public-only memory of the current game |
 | 26 | Parallax | **Event parallax** is a channel of the feedback module and shares its rule table. **Common parallax** lives outside it and ignores moments. Both stop at Instant. |
+| 27 | Cue tables | Two tables: a rule table for when (first match wins) and a cue table for what, with a column for each channel: vibration, sound and event parallax |
