@@ -8,6 +8,9 @@
    rendering at idle, and the theme palettes with Fall's Showdown voice. Derived events, moments of interest
    and variety come in later phases. Event parallax waits for #185: its channel is a no-op hook.
 
+   Beats (phase 7): the game also sends each motion's contact time. The module plays the table's sounds at those
+   times, and schedules every part on the audio clock (sound) or a timer (vibration, parallax) for its batch's at.
+
    Spec: docs/ui/feedback.md (the module) and docs/ui/feedback-contract.md (the contract).
    Tests: tests/feedback.js. Exposes window.KCTFeedback (the pure core, for tests). */
 (function () {
@@ -25,6 +28,12 @@ const GAP_SOUND_MS = 60;
 const MAX_VOICES = 4;
 const HALF_GAIN = 0.5;
 const RENDER_BUDGET_MS = 150;
+const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
+const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
+const BEAT_GAIN = 0.7;         // beat sounds sit under the moments' sounds
+const TRAIN_MAX = 6;           // the most cards a train mixes; more add nothing you can hear
+const TRAIN_FALL = 0.88;       // each later card in a train, against the one before
+const GESTURE_STEP = 0.06;     // a gesture's gain per card above or below its usual count
 
 /* ---- Moments of interest (docs/ui/feedback.md): settled definitions ---- */
 const STREAK_MIN = 4;          // tricks in a row, across hands, for a trick streak (then every 3 more)
@@ -120,7 +129,7 @@ const LAYERS = [
    the ordinary cue's (fallback) until its own preset exists. Only your moments vibrate. ---- */
 /** A part can be one value or a list of variants. stakes and count hold stronger entries; gain, rate, scale and amount
     are parameters (numbers or functions of the moment). ordinary: the cue novelty falls back to.
-    @typedef {{ vibrate: any, sound: any, parallax: any, noGap?: boolean, fallback?: string, special?: boolean, ordinary?: string,
+    @typedef {{ vibrate: any, sound: any, parallax: any, noGap?: boolean, beat?: boolean, fallback?: string, special?: boolean, ordinary?: string,
       stakes?: Record<number, any>, count?: Record<number, any>, gain?: any, rate?: any, scale?: any, amount?: any }} Cue */
 /** @type {Record<string, Cue>} */
 const CUES = {
@@ -137,13 +146,14 @@ const CUES = {
   kingYou:             { vibrate: [35, 60, 35], sound: ['king-you', 'king-you-2'], parallax: null,
                          stakes: { 2: { vibrate: [45, 50, 45] }, 3: { vibrate: [55, 40, 55, 40, 55] } } },
   kingBot:             { vibrate: null, sound: ['king-bot', 'king-bot-2'], parallax: null },
-  trickYou:            { vibrate: [35], sound: ['trick-you', 'trick-you-2'], parallax: null, stakes: { 3: { vibrate: [35, 40, 35] } } },
-  trickBot:            { vibrate: null, sound: ['trick-bot', 'trick-bot-2'], parallax: null },
+  /* beat: in a batch timed to a beat (beat: true), the beats play this sound, and the cue keeps its other parts. */
+  trickYou:            { vibrate: [35], sound: ['trick-you', 'trick-you-2'], parallax: null, stakes: { 3: { vibrate: [35, 40, 35] } }, beat: true },
+  trickBot:            { vibrate: null, sound: ['trick-bot', 'trick-bot-2'], parallax: null, beat: true },
   trumpNamed:          { vibrate: null, sound: 'trump-named', parallax: null },
-  cardPlayed:          { vibrate: null, sound: ['card-play', 'card-play-2', 'card-play-3'], parallax: null },
-  deal:                { vibrate: null, sound: ['deal', 'deal-2'], parallax: null },
-  flip:                { vibrate: null, sound: 'flip', parallax: null },
-  discard:             { vibrate: null, sound: ['discard', 'discard-2'], parallax: null },
+  cardPlayed:          { vibrate: null, sound: ['card-play', 'card-play-2', 'card-play-3'], parallax: null, beat: true },
+  deal:                { vibrate: null, sound: ['deal', 'deal-2'], parallax: null, beat: true },
+  flip:                { vibrate: null, sound: 'flip', parallax: null, beat: true },
+  discard:             { vibrate: null, sound: ['discard', 'discard-2'], parallax: null, beat: true },
   pick:                { vibrate: [8], sound: null, parallax: null, noGap: true },
   skip:                { vibrate: [20], sound: null, parallax: null },
   /* Layers: one part each (docs/ui/feedback.md, Layering). */
@@ -297,6 +307,59 @@ function param(p, m, c, name, dflt) {
   return typeof v === 'number' && Number.isFinite(v) ? clamp(v, RANGE[name]) : dflt;
 }
 /** The highest entry at or below a level, for escalation. @param {Record<number, any> | undefined} table */
+/* The sound of each beat (docs/ui/feedback.md, Beat list): a name or a list of variants, picked by the beat's key.
+   A beat this table doesn't name plays nothing. */
+/** @type {Record<string, (b: any) => (string | string[] | { sound: string | string[], gain: number })>} */
+const BEAT_SOUNDS = {
+  deal: (b) => (b.showdown ? 'deal-snap' : b.you ? 'deal-hand' : ['deal', 'deal-2']),
+  kitty: () => 'kitty-set',
+  turnUp: () => 'flip',
+  tuck: () => 'tuck',
+  toss: () => 'toss',
+  sink: () => 'sink',
+  discard: () => ['discard', 'discard-2'],
+  pileSink: () => 'pile-sink',
+  card: (b) => (b.you ? ['card-play', 'card-play-2', 'card-play-3'] : 'card-slide-in'),
+  sweep: (b) => (b.you ? ['trick-you', 'trick-you-2'] : ['trick-bot', 'trick-bot-2']),
+  collect: () => 'collect',
+  handClose: () => ({ sound: 'hand-close', gain: 0.5 }),
+};
+/* The usual card count of a gesture (cards that move together): its sound is designed for that many, and a beat
+   with more or fewer is a little louder or softer (docs/ui/feedback.md, Card count). */
+/** @type {Record<string, number>} */
+const GESTURE_CARDS = { sweep: 3, collect: 21, pileSink: 9, discard: 3, handClose: 7, kitty: 3 };
+/* The beats whose sound is one card's: with a spread, each card gets its own hit. The others are gestures. */
+const TRAIN_BEATS = new Set(['deal', 'discard', 'toss', 'sink']);
+/**
+ * A beat's sound, for its card count (docs/ui/feedback.md, Card count). Pure.
+ * - A train (cards that land one after another, `spread` ms apart): one hit per card, up to TRAIN_MAX, each a
+ *   variant in turn from the one the key picks, each later one TRAIN_FALL softer.
+ * - A gesture (cards that move together, no spread): one sound, its gain set by the count against GESTURE_CARDS.
+ * @param {any} b @param {(name: string) => boolean} [has]
+ * @returns {{ sound: string, gain: number, hits: { sound: string, offset: number, gain: number }[] } | null}
+ */
+function beatSound(b, has) {
+  const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_SOUNDS, b.beat) ? BEAT_SOUNDS[b.beat] : null;
+  if (!f) return null;
+  let r; try { r = f(b); } catch (e) { return null; }
+  const spec = typeof r === 'object' && !Array.isArray(r) ? r : { sound: r, gain: 1 };
+  const all = [].concat(spec.sound || []), ready = all.filter((n) => !has || has(n));
+  const list = ready.length ? ready : all;
+  if (!list.length) return null;
+  const first = pick(list, String(b.key)), at0 = list.indexOf(first);
+  const n = Number.isFinite(b.cards) ? Math.max(1, Math.min(TRAIN_MAX, Math.round(b.cards))) : 1;
+  const spread = Number.isFinite(b.spread) && b.spread > 0 ? Math.min(400, b.spread) : 0;
+  if (spread && n > 1 && TRAIN_BEATS.has(b.beat)) {
+    const hits = [];
+    for (let i = 0; i < n; i++) hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) });
+    return { sound: first, gain: spec.gain, hits };
+  }
+  const usual = GESTURE_CARDS[b.beat];
+  const count = Number.isFinite(b.cards) ? b.cards : usual || 1;
+  const size = usual ? Math.max(0.8, Math.min(1.2, 1 + GESTURE_STEP * (count - usual) / Math.max(1, usual / 3))) : 1;
+  return { sound: first, gain: spec.gain * size, hits: [{ sound: first, offset: 0, gain: 1 }] };
+}
+
 function entryAt(table, level) {
   if (!table) return null;
   const keys = Object.keys(table).map(Number).filter((k) => k <= level).sort((a, b) => b - a);
@@ -324,7 +387,9 @@ function compose(found, batch, mem, stakes, has) {
   const up = Object.assign({}, entryAt(cue.stakes, stakes) || {}, entryAt(cue.count, derivedCount) || {});
   const part = (k) => (k in up ? up[k] : cue[k]);
   const key = name + '|' + batch.version + '|' + JSON.stringify(m);
-  const sounds = [].concat(part('sound') || []).filter((n) => !has || has(n));
+  /* A batch timed to a beat: the beats play the table's sound, so a cue marked beat leaves it out. */
+  const beatOwned = !!batch.beat && !!cue.beat;
+  const sounds = beatOwned ? [] : [].concat(part('sound') || []).filter((n) => !has || has(n));
   const vib = part('vibrate');
   let pattern = isPattern(vib) ? vib : pick(vib, key + '|v');
   const scale = param(cue.scale, m, c, 'scale', 1);
@@ -335,7 +400,7 @@ function compose(found, batch, mem, stakes, has) {
   const out = {
     name, special: !!cue.special,
     vibrate: isPattern(pattern) && pattern.length ? pattern : null,
-    sound: sounds.length ? pick(sounds, key + '|s') : (cue.sound ? [].concat(cue.sound)[0] : null),
+    sound: beatOwned ? null : sounds.length ? pick(sounds, key + '|s') : (cue.sound ? [].concat(cue.sound)[0] : null),
     fallback: cue.fallback || null,
     parallax: part('parallax') ? pick(part('parallax'), key + '|p') : null,
     gain: param(cue.gain, m, c, 'gain', 1), rate: param(cue.rate, m, c, 'rate', 1), amount: param(cue.amount, m, c, 'amount', 1),
@@ -375,20 +440,23 @@ function makeDropper(gapMs) {
   let lastAt = -Infinity, lastRank = Infinity;
   return {
     /**
+     * A part still ahead (at > now) is judged at its own time: the gap is between play times, in either order.
      * @param {{ at: number, now: number, rank: number, noGap?: boolean, stale?: boolean, ready?: boolean, voices?: number }} p
-     * @returns {'play' | 'replace' | 'stale' | 'notReady' | 'late' | 'tooSoon' | 'voices'}
+     * @returns {'play' | 'replace' | 'stale' | 'notReady' | 'late' | 'far' | 'tooSoon' | 'voices'}
      */
     decide(p) {
       if (p.stale) return 'stale';
       if (p.ready === false) return 'notReady';
       if (p.now - p.at > LATE_MS) return 'late';
+      if (p.at - p.now > MAX_AHEAD_MS) return 'far';
+      const t = Math.max(p.at, p.now);
       let verdict = /** @type {'play' | 'replace'} */ ('play');
-      if (!p.noGap && p.now - lastAt < gapMs) {
+      if (!p.noGap && Math.abs(t - lastAt) < gapMs) {
         if (p.rank < lastRank) verdict = 'replace';
         else return 'tooSoon';
       }
       if (verdict === 'play' && p.voices !== undefined && p.voices >= MAX_VOICES) return 'voices';
-      if (!p.noGap) { lastAt = p.now; lastRank = p.rank; }
+      if (!p.noGap) { lastAt = t; lastRank = p.rank; }
       return verdict;
     },
     reset() { lastAt = -Infinity; lastRank = Infinity; },
@@ -474,7 +542,7 @@ function renderPalette(felt, showdown) {
   renderQueue = renderQueue.then(async () => {
     if (!(await loadLibs())) return;
     const P = /** @type {any} */ (window).KCTPalettes, S = /** @type {any} */ (window).KCTSynth;
-    for (const name of P.required.concat(P.optional || [])) {
+    for (const name of P.required.concat(P.optional || [], P.beats || [])) {
       const key = keyOf(felt, showdown, name);
       if (buffers.has(key) || settings.sound === 'off') continue;
       await new Promise((r) => idle(r));
@@ -486,6 +554,7 @@ function renderPalette(felt, showdown) {
         const ms = performance.now() - t0;
         if (ms > RENDER_BUDGET_MS) log('RENDER_SLOW', { name, palette: felt, ms: Math.round(ms) });
         buffers.set(key, toBuffer(out));
+        trains.clear();   // a train may have mixed a fallback that this render replaces
       } catch (e) {
         buffers.set(key, null);
         logOnce('RENDER_FAILED', key, { name, palette: felt, error: String(e && e.message || e) });
@@ -502,11 +571,68 @@ function renderCurrent() {
   if (P && P.palettes[state.felt] && P.palettes[state.felt].showdown) renderPalette(state.felt, true);
 }
 
+/* ---- Card trains: one hit per card, mixed into one buffer (one voice), kept by palette, sounds and spread ---- */
+/** @type {Map<string, any>} */
+const trains = new Map();
+/** The buffer for a beat's hits: the single buffer for one hit, else the mix. Null when a hit's sound isn't ready. */
+function trainBuffer(hits) {
+  if (hits.length === 1) return bufferFor(hits[0].sound);
+  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset).join(',');
+  if (trains.has(key)) return trains.get(key);
+  const parts = hits.map((h) => ({ h, b: bufferFor(h.sound) }));
+  if (parts.some((x) => !x.b)) return null;
+  const rate = parts[0].b.sampleRate;
+  const len = Math.max(...parts.map((x) => Math.round(x.h.offset / 1000 * rate) + x.b.length));
+  const mix = new Float32Array(len);
+  for (const { h, b } of parts) {
+    const d = b.getChannelData(0), o = Math.round(h.offset / 1000 * rate);
+    for (let i = 0; i < d.length; i++) mix[o + i] += d[i] * h.gain;
+  }
+  /* Overlapping hits can add up past the ceiling: bring the peak back under it. */
+  let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(mix[i]));
+  if (peak > 0.89) for (let i = 0; i < len; i++) mix[i] *= 0.89 / peak;
+  const out = toBuffer({ samples: mix, sampleRate: rate });
+  if (trains.size > 96) trains.clear();
+  trains.set(key, out);
+  return out;
+}
+
 /* ---- The sound channel ---- */
 /** @type {any} */
 let audio = null;
-/** @type {any[]} */
+/** Sounds started or scheduled, with their audio-clock start and end. @type {{ src: any, start: number, end: number }[]} */
 const voices = [];
+/** The last moment sound, which a higher-ranked one may replace (never a beat's). @type {any} */
+let lastMoment = null;
+/** Timers for vibration and parallax parts still ahead. @type {Set<number>} */
+const timers = new Set();
+/** The audio-clock time for a performance.now() time, less the device's output delay; never before now. */
+function audioTime(ctx, at) {
+  const ahead = typeof at === 'number' ? Math.max(0, (at - performance.now()) / 1000) : 0;
+  const lat = typeof ctx.outputLatency === 'number' && ctx.outputLatency > 0 ? ctx.outputLatency : 0;
+  return Math.max(ctx.currentTime, ctx.currentTime + ahead - lat);
+}
+/** How many sounds play at a performance.now() time: started or scheduled, and not ended by then. */
+function voicesAt(at) {
+  const ctx = audio;
+  if (!ctx) return 0;
+  const t = audioTime(ctx, at);
+  return voices.filter((v) => v.start <= t + 0.001 && v.end > t).length;
+}
+/** Runs fn at a performance.now() time: now when it is due. */
+function later(at, fn) {
+  const wait = typeof at === 'number' ? at - performance.now() : 0;
+  if (wait <= 4) { fn(); return; }
+  const id = setTimeout(() => { timers.delete(id); fn(); }, wait);
+  timers.add(id);
+}
+/** Stops every sound not yet started and every timer still ahead. */
+function stopScheduled() {
+  for (const id of timers) clearTimeout(id);
+  timers.clear();
+  const ctx = audio, now = ctx ? ctx.currentTime : Infinity;
+  for (const v of voices.slice()) if (v.start > now + 0.001) { try { v.src.stop(); } catch (e) { /* not started */ } const i = voices.indexOf(v); if (i >= 0) voices.splice(i, 1); }
+}
 function ensureAudio() {
   if (!canSound || settings.sound === 'off') return null;
   try {
@@ -524,10 +650,15 @@ function toBuffer(out) {
   b.getChannelData(0).set(out.samples);
   return b;
 }
-function playSound(buffer, replace, gainParam = 1, rate = 1) {
+/**
+ * Plays a sound at a performance.now() time (now when at is missing or past), on the audio clock.
+ * @param {any} buffer @param {boolean} replace stop the last moment sound first @param {number} [gainParam]
+ * @param {number} [rate] @param {number} [at] @param {boolean} [isBeat] a beat's sound, never replaced
+ */
+function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false) {
   const ctx = ensureAudio();
   if (!ctx) return false;
-  if (replace && voices.length) { try { voices[voices.length - 1].stop(); } catch (e) { /* already ended */ } }
+  if (replace && lastMoment) { try { lastMoment.stop(); } catch (e) { /* already ended */ } }
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   if (src.playbackRate) src.playbackRate.value = rate;
@@ -535,9 +666,11 @@ function playSound(buffer, replace, gainParam = 1, rate = 1) {
   gain.gain.value = (settings.sound === 'half' ? HALF_GAIN : 1) * gainParam;
   src.connect(gain);
   gain.connect(ctx.destination);
-  voices.push(src);
-  src.onended = () => { const i = voices.indexOf(src); if (i >= 0) voices.splice(i, 1); };
-  src.start(ctx.currentTime);
+  const start = audioTime(ctx, at), v = { src, start, end: start + (buffer.duration || 0) / (rate || 1) };
+  voices.push(v);
+  src.onended = () => { const i = voices.indexOf(v); if (i >= 0) voices.splice(i, 1); if (lastMoment === src) lastMoment = null; };
+  if (!isBeat) lastMoment = src;
+  src.start(start);
   return true;
 }
 
@@ -546,7 +679,7 @@ function vibrate(pattern) { try { return !!navigator.vibrate(pattern); } catch (
 /** Event parallax waits for #185. A listener can set KCTFeedback.parallax to receive motion names. */
 function parallax(name, amount = 1) { const f = api.parallax; if (typeof f === 'function') { try { f(name, amount); } catch (e) { /* never stops feedback */ } } }
 
-const drop = { vibrate: makeDropper(GAP_VIBRATE_MS), sound: makeDropper(GAP_SOUND_MS) };
+const drop = { vibrate: makeDropper(GAP_VIBRATE_MS), sound: makeDropper(GAP_SOUND_MS), beat: makeDropper(GAP_BEAT_MS) };
 /* The memory of this game's moments, for derived events. A cancel with scope 'game' starts it again. */
 let memory = newMemory();
 
@@ -572,32 +705,59 @@ function play(batch) {
   if (parts.vibrate && allowed.vibrate) {
     const v = drop.vibrate.decide({ at, now, rank, noGap: parts.noGap, stale });
     result.vibrate = v;
-    if (v === 'play' || v === 'replace') vibrate(parts.vibrate);
+    if (v === 'play' || v === 'replace') { const pat = parts.vibrate; later(at, () => vibrate(pat)); }
   }
   if (parts.sound && allowed.sound) {
     const buffer = bufferFor(parts.sound) || (parts.fallback ? bufferFor(parts.fallback) : null);
     if (!buffer) logOnce('SOUND_MISSING', parts.sound + '|' + state.felt, { name: parts.sound, palette: state.felt });
-    const v = drop.sound.decide({ at, now, rank, stale, ready: !!buffer, voices: voices.length });
+    const v = drop.sound.decide({ at, now, rank, stale, ready: !!buffer, voices: voicesAt(at) });
     result.sound = v;
-    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, v === 'replace', parts.gain, parts.rate);
+    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, v === 'replace', parts.gain, parts.rate, at);
   }
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (parts.parallax && !batch.replay && !state.instant && !document.hidden && !reduced && batch.v === V) {
     result.parallax = 'play';
-    parallax(parts.parallax, parts.amount);
+    const name = parts.parallax, amount = parts.amount;
+    later(at, () => parallax(name, amount));
   }
   return result;
 }
 
+/** Plays a beats message: each beat's sound at its own time (docs/ui/feedback.md, When beats arrive). Sound only.
+    Returns each beat's verdict, for tests. */
+function playBeats(msg) {
+  const now = performance.now();
+  const allowed = channelsFor(msg, {
+    vibration: false, sound: settings.sound, replaySound: settings.replaySound, canVibrate: false, canSound,
+    activated: state.activated || !!(navigator.userActivation && navigator.userActivation.hasBeenActive),
+    hidden: document.hidden, instant: state.instant,
+  });
+  const stale = typeof msg.version === 'number' && msg.version < state.version;
+  const out = [];
+  const list = msg.beats.filter((b) => b && typeof b.at === 'number').slice().sort((a, b) => a.at - b.at);
+  for (const b of list) {
+    const bs = beatSound(b, (n) => !!bufferFor(n));
+    if (!bs) { out.push({ beat: b.beat, sound: 'unknown' }); continue; }
+    if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off' }); continue; }
+    const buffer = trainBuffer(bs.hits);
+    const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
+    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, 1, b.at, true);
+    out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain });
+  }
+  return out;
+}
+
 /* ---- Control messages ---- */
-/* Nothing is armed in phase 1: each batch plays when it arrives. A new game (scope 'game') also forgets the Showdown
+/* Every cancel stops what is scheduled but not started. A new game (scope 'game') also forgets the Showdown
    voice and the last part each channel played; a step (scope 'step', such as Next hand) keeps the gaps. */
 function cancel(scope) {
+  stopScheduled();
   if (scope !== 'game') return;
   state.showdown = false;
   memory = newMemory();
   drop.vibrate.reset();
   drop.sound.reset();
+  drop.beat.reset();
 }
 function control(detail) {
   switch (detail.control) {
@@ -624,6 +784,7 @@ function onMoment(e) {
   if (!d || d.v !== V) return;
   if (typeof d.version === 'number' && d.version > state.version) state.version = d.version;
   if (d.control) { control(d); return; }
+  if (Array.isArray(d.beats)) { playBeats(d); return; }
   const moments = Array.isArray(d.moments) ? d.moments : [];
   play(d);
   /* Fall's Showdown voice: from the Showdown call to the Showdown result (after the result's own cue). */
@@ -682,14 +843,17 @@ const api = {
   /** The pure core and the module's state, for tests (tests/feedback.js). */
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
-    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS }),
+    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
+    BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
   test: Object.freeze({
-    play, state, settings, buffers, voices: () => voices.length, whenRendered: () => renderQueue, memory: () => memory,
+    play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
+    timers: () => timers.size, whenRendered: () => renderQueue, memory: () => memory,
     renderCurrent, mountRows,
   }),
 };
 /** @type {any} */ (window).KCTFeedback = api;
 document.addEventListener('kct:moment', onMoment);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopScheduled(); });
 document.addEventListener('pointerdown', onFirstTap, true);
 mountRows();
 idle(() => { loadLibs().then((ok) => { if (ok) renderCurrent(); }); });

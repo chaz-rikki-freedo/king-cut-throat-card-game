@@ -1022,7 +1022,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '56218e6', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: '354aefa', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4449,6 +4449,15 @@ const Fx = (() => {
   const slotFrom = {};
   let moveTimer = 0, cueKey = ''; const riseTimer = {};
   let tuckStart = { hand: -1, t0: 0 };
+  let beatsOut = [];
+  const beatKeys = new Set();
+  function beat(name, key, at, facts) {
+    if (beatKeys.has(key)) return;
+    beatKeys.add(key);
+    beatsOut.push(Object.assign({ beat: name, key, at: Math.round(at * 10) / 10 }, facts || {}));
+  }
+  const who = ( p) => ({ seat: p, you: p === me });
+  const sinkDrop = ( t,  travel) => (travel ? t * 0.7 : 0) + t * 1.3 * 0.3;
   function discardOrder(v) {
     me = v.seat;
     if (v.phase === Engine.P.DISCARD) {
@@ -4590,6 +4599,8 @@ const Fx = (() => {
     const P = Engine.P;
     if ((before.phase === P.ABANDONED || before.phase === P.JOKER_VOID) && v.phase !== before.phase) {
       const to = q('#seat' + v.dealer); if (!to) return;
+      const back = [0, 1, 2].filter(p => p !== me).reduce((n, p) => n + (before.counts[p] ? 3 : 0), 0);
+      beat('collect', 'collect|' + before.hand + '|' + v.dealer, performance.now(), { seat: v.dealer, cards: o.hand.length + (o.kpile ? 3 : 0) + back });
       o.hand.forEach((x, i) => { const g = place(x.k); done(g, [fly(g, to, t, i * 25)]); });
       if (o.kpile) { const g = place(o.kpile); done(g, [fly(g, to, t)]); }
       for (const p of [0, 1, 2]) if (p !== me && before.counts[p]) for (let i = 0; i < 3; i++) { const g = backAt(p, i - 1, 12); done(g, [fly(g, to, t, i * 40)]); }
@@ -4604,6 +4615,7 @@ const Fx = (() => {
         const to = p >= 0 && (q('#seat' + p + ' .tpips') || q('#seat' + p));
         if (to) {
           pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150, label: o.label });
+          beat('sweep', 'sweep|' + pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), performance.now(), Object.assign(who(p), { showdown: !!o.trick.sd, cards: qa('.slot .card[data-card]', g).length }));
           done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
         } else g.remove();
       }
@@ -4612,6 +4624,10 @@ const Fx = (() => {
       const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = (Engine.trumpCall(v.bidLog) || { round: 0 }).round === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
+      const flies = cards.map((c, i) => ({ c, i, fly: (c === turned) === r1 })), now0 = performance.now();
+      const tossed = flies.filter(x => x.fly), sunk = flies.filter(x => !x.fly);
+      if (tossed.length) beat('toss', 'toss|' + v.handNumber, now0 + tossed[0].i * 80, Object.assign(who(v.receiver), { cards: tossed.length, spread: 80 }));
+      if (sunk.length) beat('sink', 'sink|kitty|' + v.handNumber, now0 + t * 0.5 + sunk[0].i * 80 + sinkDrop(t, false), { seat: v.dealer, you: v.dealer === me, cards: sunk.length, spread: 80 });
       done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[pos(v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
     }
     const ids = new Set(v.hand);
@@ -4631,17 +4647,20 @@ const Fx = (() => {
         const at = n * gap;
         pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: now + at + t });
         if (layer) setTimeout(() => { layer.style.visibility = ''; }, at + t);
+        beat('discard', 'discard|' + v.handNumber + '|' + p, now + at + t * 0.85, Object.assign(who(p), { cards: p === me ? mine.length || Engine.C.INITIAL_DISCARD : Engine.C.INITIAL_DISCARD, spread: 70 }));
         if (p === me) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
         for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, at + i * 70)]); }
       });
       const wait = Math.max(until - now, missing.length ? t + (missing.length - 1) * gap : 0);
       done(g, [sink(g, t, wait)]);
+      beat('pileSink', 'pileSink|' + v.handNumber, now + wait + sinkDrop(t, false), { cards: all.length * Engine.C.INITIAL_DISCARD });
       kittyHold = now + wait + t * 0.9;
       if (o.kpile) kittySlide = { x: o.kpile.r.left + scrollX, y: o.kpile.r.top + scrollY, t0: now, hold: kittyHold - now, hand: v.handNumber };
     } else if (pileNow && mine.length) {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
       mineLand = { hand: v.handNumber, idx: discarders.indexOf(me), t0: performance.now() + hold };
+      beat('discard', 'discard|' + v.handNumber + '|' + me, mineLand.t0 + t * 0.85, Object.assign(who(me), { cards: mine.length, spread: 70 }));
       expect('pile' + v.handNumber + '|' + me, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: mineLand.t0 + t });
       holdMyLayer(v, performance.now());
     }
@@ -4650,6 +4669,7 @@ const Fx = (() => {
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - v.handCounts[p]; if (k <= 0) continue;
         expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 2 + 80 * k });
+        beat('sink', 'sink|' + v.handNumber + before.phase + '|' + p, performance.now() + hold + sinkDrop(t, true), Object.assign(who(p), { cards: k, spread: 80 }));
         if (p === me) { o.hand.filter(x => !ids.has(x.id)).forEach((x, i) => { const g = place(x.k); g.classList.remove('selected'); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]); }); continue; }
         if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
         for (let i = 0; i < k; i++) {
@@ -4692,6 +4712,7 @@ const Fx = (() => {
         if (row) { for (let k = 0; k < 3; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back held"></span>'); setTimeout(() => qa('#seat' + p + ' .mini-back.held').forEach(x => x.remove()), -e + 32); }
       }
       if (!t || e >= t) return;
+      beat('discard', 'discard|' + v.handNumber + '|' + p, layerStart[i] + t, Object.assign(who(p), { cards: Engine.C.INITIAL_DISCARD }));
       if (e < 0) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: -e });
       el.style.setProperty('--ms', t + 'ms');
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
@@ -4725,6 +4746,7 @@ const Fx = (() => {
     if (up && !turnStart) turnStart = Math.max(now, dealStart + flight + t * 0.4, kittyHold + t);
     if (elapsed < flight) {
       if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
+      beat('kitty', 'kitty|' + k, dealStart + t, { seat: v.dealer, cards: cards.length, spread: Math.round(t * PACKET_CARD * 10) / 10 });
       const [dx, dy] = center(q('#seat' + v.dealer));
       cards.forEach((c, i) => { const [cx, cy] = center(c);
         startAt(c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[pos(v.dealer)] + 'deg)' }, { transform: 'none' }],
@@ -4733,6 +4755,7 @@ const Fx = (() => {
     const turned = now - turnStart;
     if (up && turned < t * 0.8) {
       if (turned < t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
+      beat('turnUp', 'turnUp|' + k, turnStart + t * 0.4);
       startAt(top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, easing: 'ease-in-out' }), turnStart, now);
       setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, t * 0.4 - turned));
     }
@@ -4743,6 +4766,7 @@ const Fx = (() => {
     if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
     const e = now - tuckStart.t0, move = t * 1.6, dur = move + t, f = move / dur;
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
+    beat('tuck', 'tuck|' + v.handNumber, tuckStart.t0);
     const cards = qa('.card', card.parentElement), w = card.offsetWidth;
     const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
     startAt(card.animate([
@@ -4767,6 +4791,11 @@ const Fx = (() => {
     const last = Math.max(...hands.map((h, j) => h.length ? delay(h.length - 1, j) : 0));
     handDeal.end = Math.max(handDeal.end, handDeal.t0 + t + last);
     if (!t || !from || e > t + last) return;
+    hands.forEach((cards, j) => {
+      const p = order[j];
+      if (sd) { cards.forEach((_, i) => beat('deal', 'deal|' + key + '|' + p + '|' + i, handDeal.t0 + delay(i, j) + t, Object.assign(who(p), { cards: 1, showdown: true }))); return; }
+      for (const [first, n] of PACKETS) if (cards.length > first) beat('deal', 'deal|' + key + '|' + p + '|' + first, handDeal.t0 + delay(first, j) + t, Object.assign(who(p), { cards: Math.min(n, cards.length - first), spread: Math.round(t * PACKET_CARD * 10) / 10 }));
+    });
     const [fx, fy] = center(from);
     hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
       startAt(c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
@@ -4792,6 +4821,7 @@ const Fx = (() => {
       const from = slotFrom[id];
       const slides = !!t && e < t && !!(seat || from);
       if (slides) {
+        beat('card', 'card|' + key + '|' + id, slotStart[id] + t, Object.assign(who(+p), { showdown: !!(v.showdown && v.showdown.active), cards: 1 }));
         const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / cw).toFixed(3) + ') '
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
         startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
@@ -4810,16 +4840,19 @@ const Fx = (() => {
     if (!t || !was) return;
     const cards = qa('#hand .card[data-card]');
     if (cards.length === was.size && cards.every(c => was.has(c.dataset.card))) return;
+    let moved = false;
     for (const c of cards) {
       const r0 = was.get(c.dataset.card); if (!r0) continue;
       const r = c.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      if (!moved) { moved = true; beat('handClose', 'handClose|' + [...was.keys()].sort().join() + '>' + cards.map(x => x.dataset.card).sort().join(), performance.now(), { cards: cards.length }); }
       c.animate([{ translate: dx + 'px ' + dy + 'px' }, { translate: '0 0' }], { duration: t * 0.6, easing: 'ease-out' });
     }
   }
   function after(v, ui) {
     me = v.seat;
     speed = ui.speed;
+    beatsOut = [];
     const now = performance.now();
     discardLayers(v, now);
     holdBacks();
@@ -4867,9 +4900,11 @@ const Fx = (() => {
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
+    beatsOut = []; beatKeys.clear();
     for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
-  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms });
+  function beats() { const b = beatsOut; beatsOut = []; return b; }
+  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms, beats });
 })();
 const Moments = (() => {
   const V = 1;
@@ -4937,8 +4972,9 @@ const Moments = (() => {
   }
   function send(anchor, moments, o) {
     if (!moments.length) return;
-    emit({ v: V, version: o.version, at: o.at !== undefined ? o.at : performance.now(), anchor, replay: !!o.replay, moments });
+    emit(Object.assign({ v: V, version: o.version, at: o.at !== undefined ? o.at : performance.now(), anchor, replay: !!o.replay }, o.beat ? { beat: true } : {}, { moments }));
   }
+  const OWN = { cardPlayed: ['card'], deal: ['deal', 'kitty'], flip: ['turnUp'], discard: ['discard', 'sink'], trickWon: ['sweep'] };
   function control(name, data) {
     emit(Object.assign({ v: V, version: observed, at: performance.now(), moments: [], control: name }, data || {}));
   }
@@ -4952,9 +4988,13 @@ const Moments = (() => {
   function observe(events, v, o) {
     if (v.version < observed) reset();
     const now = performance.now();
+    const beats = o.instant || o.skipping ? [] : Fx.beats();
+    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
+    const last = ( name) => beats.reduce((m, b) => (b.beat === name && (m === null || b.at > m) ? b.at : m),  (null));
+    const cardAt = last('card'), sweepAt = last('sweep');
     const due = sweeps.filter(s => s.version < v.version);
     sweeps = sweeps.filter(s => s.version >= v.version);
-    for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: now });
+    for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: sweepAt !== null ? sweepAt : now, beat: sweepAt !== null });
     if (!o.hold && results.length) { const r = results; results = []; for (const x of r) send('result', x.moments, { version: x.version, replay: x.replay, at: now }); }
     if (!events || !events.length || v.version <= observed) return;
     observed = v.version;
@@ -4965,9 +5005,12 @@ const Moments = (() => {
     const by = ( a) => moments.filter(m => ANCHOR[m.type] === a);
     const at = { version: v.version, replay: o.replay };
     const land = by('land');
-    if (land.length) {
-      if (o.step > 0) { const g = gen; setTimeout(() => { if (g === gen) send('land', land, Object.assign({ at: now + o.step }, at)); }, o.step); }
-      else send('land', land, Object.assign({ at: now }, at));
+    const has = ( b) => beats.some(x => x.beat === b);
+    const timed = land.some(m => OWN[m.type]) && land.every(m => !OWN[m.type] || OWN[m.type].some(has));
+    if (land.length && timed && cardAt !== null) send('land', land, Object.assign({ at: cardAt, beat: true }, at));
+    else if (land.length) {
+      if (o.step > 0) { const g = gen; setTimeout(() => { if (g === gen) send('land', land, Object.assign({ at: now + o.step, beat: timed }, at)); }, o.step); }
+      else send('land', land, Object.assign({ at: now, beat: timed }, at));
     }
     const ends = by('gameOver');
     if (ends.length) gameOvers.push({ version: v.version, replay: o.replay, moments: by('sweep').concat(ends) });

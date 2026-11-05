@@ -55,6 +55,22 @@ const OPTIONAL = {
   'discard-2':       { family: 'slide',   archetype: 0, seed: 185656162 },
 };
 
+/* The beat presets: the sounds of the table's motions, played at each motion's contact time (docs/ui/feedback.md,
+   Beat presets). From the lab archetypes the required presets leave unused, with the lab's default seeds
+   (hashString('<family>-<archetype>')). The beats also use card-play, deal, flip, discard and the trick sounds. */
+const BEATS = {
+  'deal-hand':       { family: 'deal',    archetype: 1, seed: 526455189 },   // C · Card dealt: Into hand
+  'deal-snap':       { family: 'deal',    archetype: 3, seed: 492899951 },   // C · Card dealt: Quick snap
+  'kitty-set':       { family: 'confirm', archetype: 1, seed: 959104853 },   // H · Game-state confirmation: Pack set down
+  'tuck':            { family: 'slide',   archetype: 2, seed: 1911560857 },  // D · Card slide: Two-step nudge
+  'toss':            { family: 'deal',    archetype: 2, seed: 476122332 },   // C · Card dealt: Long toss
+  'sink':            { family: 'play',    archetype: 1, seed: 2152542497 },  // B · Card played: Soft place
+  'pile-sink':       { family: 'collect', archetype: 2, seed: 4245462482 },  // G · Trick collection: Scoop
+  'card-slide-in':   { family: 'play',    archetype: 3, seed: 2118987259 },  // B · Card played: Place and skid
+  'collect':         { family: 'collect', archetype: 1, seed: 4228684863 },  // G · Trick collection: Stack and square
+  'hand-close':      { family: 'slide',   archetype: 1, seed: 1861228000 },  // D · Card slide: Long drag
+};
+
 const NEUTRAL = { center: 1, edge: 1, bright: 0, body: 1, thump: 1, thumpFreq: 1, decay: 1, air: 1, airFreq: 1, rub: 1, rubGain: 1, grain: 1 };
 
 const PALETTES = {
@@ -62,7 +78,7 @@ const PALETTES = {
     title: 'Classic',
     tone: { root: 523.25, scale: MAJOR, partials: [1, 2, 3], weights: [0.8, 0.6, 0.25] },
     timbre: NEUTRAL,
-    presets: Object.assign({}, REQUIRED, OPTIONAL),
+    presets: Object.assign({}, REQUIRED, OPTIONAL, BEATS),
   },
   spring: {
     title: 'Spring',
@@ -115,6 +131,7 @@ function resolve(felt, name, showdown) {
   palettes: PALETTES,
   required: Object.freeze(Object.keys(REQUIRED)),
   optional: Object.freeze(Object.keys(OPTIONAL)),
+  beats: Object.freeze(Object.keys(BEATS)),
   resolve,
 });
 })();
