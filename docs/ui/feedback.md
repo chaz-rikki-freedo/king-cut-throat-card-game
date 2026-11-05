@@ -457,27 +457,29 @@ When a sound is asked for, the module looks for it in this order, and plays the 
 
 ### Required presets
 
-The 17 presets that the Classic palette must have. They are the full set for ordinary play. **Lab family** is the closest family in the lab today.
+The 17 presets that the Classic palette must have, in `feedback/palettes.js`. They are the full set for ordinary play. **Preset** names the lab family and archetype, with the lab's default seed. **Measured** is the rendered length across all 6 palettes and Fall's Showdown voice.
 
-| Preset | Cues | Plays | Lab family | Length |
-|---|---|---|---|---|
-| `card-play` | `cardPlayed` | Each card that lands in a trick, any seat. The most frequent sound: keep it quiet. | `play` | 80 to 150 ms |
-| `deal` | `deal` | Once for each deal and Showdown deal | `shuffle` or `deal` | 300 to 600 ms |
-| `flip` | `flip` | The kitty card turned up | `reveal` | 100 to 200 ms |
-| `discard` | `discard` | Cards reaching the outside pile or the kitty | `slide` | 100 to 200 ms |
-| `trump-named` | `trumpNamed` | Trump accepted or named | `confirm` | 200 to 400 ms |
-| `trick-you` | `trickYou` | You win a trick | `collect` | 150 to 300 ms |
-| `trick-bot` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | `collect`, softer archetype | 150 to 300 ms |
-| `king-you` | `kingYou` | Your King point | `confirm` | 250 to 500 ms |
-| `king-bot` | `kingBot` | A bot's King point. Distinct from `king-you`. | `confirm`, other archetype | 250 to 500 ms |
-| `hand-win` | `handWin` | You win the hand | `result`: Win rise, 2 notes | 400 to 800 ms |
-| `hand-loss` | `handLoss` | A bot wins the hand | `result`: Loss fall, 2 notes | 400 to 800 ms |
-| `showdown-called` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | `shuffle` | 500 to 1000 ms |
-| `showdown-win` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | `result`: Win rise, 3 notes | 400 to 800 ms |
-| `showdown-loss` | `showdownLoss` | You lose the Showdown | `result`: Loss fall, 3 notes | 400 to 800 ms |
-| `game-win` | `gameWin` | You win the game | `result`: Fanfare | 1 to 2 s |
-| `game-loss` | `gameLoss` | A bot wins the game | `result`: Settle | 1 to 2 s |
-| `wave-cleared` | `waveCleared` | You clear a wave | `result`: Fanfare and riffle | 1.5 to 2.5 s |
+| Name | Cues | Plays | Preset | Target | Measured (ms) |
+|---|---|---|---|---|---|
+| `card-play` | `cardPlayed` | Each card that lands in a trick, any seat. The most frequent sound: keep it quiet. | `play` 0: Firm place | 80 to 150 ms | 69 to 86 |
+| `deal` | `deal` | Once for each deal and Showdown deal | `deal` 0: Flick to table | 300 to 600 ms | 113 to 131 |
+| `flip` | `flip` | The kitty card turned up | `reveal` 0: Flip over | 100 to 200 ms | 119 to 131 |
+| `discard` | `discard` | Cards reaching the outside pile or the kitty | `slide` 0: Short push | 100 to 200 ms | 164 to 172 |
+| `trump-named` | `trumpNamed` | Trump accepted or named | `confirm` 0: Deck knock | 200 to 400 ms | 158 to 169 |
+| `trick-you` | `trickYou` | You win a trick | `collect` 0: Sweep together | 150 to 300 ms | 210 to 229 |
+| `trick-bot` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | `collect` 3: Quick gather | 150 to 300 ms | 143 to 156 |
+| `king-you` | `kingYou` | Your King point | `confirm` 2: Thumb strum | 250 to 500 ms | 182 to 199 |
+| `king-bot` | `kingBot` | A bot's King point. Distinct from `king-you`. | `confirm` 3: Square and tap | 250 to 500 ms | 184 to 201 |
+| `hand-win` | `handWin` | You win the hand | `result` 0: Win rise, `notes: 2` | 400 to 800 ms | 547 to 618 |
+| `hand-loss` | `handLoss` | A bot wins the hand | `result` 1: Loss fall, `notes: 2` | 400 to 800 ms | 363 to 387 |
+| `showdown-called` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | `shuffle` 0: Riffle | 500 to 1000 ms | 493 to 505 |
+| `showdown-win` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | `result` 0: Win rise, `notes: 3` | 400 to 800 ms | 631 to 708 |
+| `showdown-loss` | `showdownLoss` | You lose the Showdown | `result` 1: Loss fall, `notes: 3` | 400 to 800 ms | 538 to 561 |
+| `game-win` | `gameWin` | You win the game | `result` 2: Fanfare | 1 to 2 s | 1173 to 1301 |
+| `game-loss` | `gameLoss` | A bot wins the game | `result` 4: Settle | 1 to 2 s | 792 to 821 |
+| `wave-cleared` | `waveCleared` | You clear a wave | `result` 3: Fanfare and riffle | 1.5 to 2.5 s | 1024 to 1122 |
+
+Two measured lengths miss their targets: `deal` is one card, not a whole deal, and `hand-loss` is just short. Both are tuning items in [Open items](#open-items).
 
 Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call use the lab's 8 card families. The 7 results use a ninth family, `result`, which the lab doesn't have yet: see [Result family](#result-family).
 
@@ -639,8 +641,9 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 - `cueFor(batch, memory)`: a pure function from a batch to its main cue, its layer and each part's variant and parameters.
 - It checks its [gates](#gates), applies the [dropping](#dropping) rules, and plays.
 - It builds and handles the rows in `#setFeedback`, and keeps its own device keys.
-- `feedback/synth.js`: `render(preset, params)` returns a promise of an audio buffer. Pure apart from Web Audio: the same preset gives the same sound.
-- `feedback/palettes.js`: the presets, as data, grouped by palette. No code.
+- `feedback/synth.js` (built): `KCTSynth.render(preset, voice)` returns a promise of `{ samples, sampleRate, durationMs }`, the finished sound. `voice` is a palette's `tone` and `timbre`. A preset's `set` fixes seeded settings, such as `{ notes: 2 }`. An unknown family or archetype throws.
+- `feedback/palettes.js` (built): `KCTPalettes.palettes`, `KCTPalettes.required` (the 17 names) and `KCTPalettes.resolve(felt, name, showdown)`, which applies the [fallbacks](#fallbacks) and returns the preset and the voice to render it in. Data apart from `resolve`.
+- **Checked** in headless Chromium: all 102 renders (17 presets in 6 palettes and Fall's Showdown voice) play, none is silent, renders take 13 ms at the median and 47 ms at most, and Classic matches the lab within 1 sample step. Both files pass the repo's type-check settings.
 - Elsewhere: `sw.js` precaches the three files, `tools/publish.sh` publishes them, and `README.md` describes it as an optional add-on to the one-file game. The game's code is in the [Feedback contract](feedback-contract.md#code-in-indexhtml).
 
 ## Constants
@@ -707,7 +710,8 @@ The current decisions. Their history is in the commit log.
 | The comeback size and the streak length | [Candidates](#candidates), by measuring |
 | Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
-| The `result` family's base settings, and each palette's key and partials | Building the family in the lab |
+| The `deal` sound: a whole deal is 300 to 600 ms, but `deal` 0 is one card (about 120 ms). Use a `shuffle` archetype, or a new deal archetype that plays several cards | Tuning in the lab |
+| `hand-loss` is about 370 ms, under its 400 ms target | Tuning in the lab |
 | Rendering time on a real phone | Measuring once `synth.js` exists |
 | Each palette's character and which presets it overrides | Designing the palettes in the artifact |
 | Whether the seed picks an optional extra for each game, within the palette | A later decision: a 3-bit value from the game, never the seed |
