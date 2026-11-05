@@ -41,6 +41,20 @@ const REQUIRED = {
   'wave-cleared':    { family: 'result',  archetype: 3, seed: 3457258952 },  // I · Result tones: Fanfare and riffle
 };
 
+/* Optional variants of the most frequent sounds: the same family and archetype with another seed, so a variant is the
+   same gesture by another hand. A cue lists its variants; the module picks one by a hash of the moment, so a game
+   and its replay pick the same ones (docs/ui/feedback.md, Variants). A missing variant is skipped. */
+const OPTIONAL = {
+  'card-play-2':     { family: 'play',    archetype: 0, seed: 556975261 },
+  'card-play-3':     { family: 'play',    archetype: 0, seed: 540197642 },
+  'trick-you-2':     { family: 'collect', archetype: 0, seed: 1701469623 },
+  'trick-bot-2':     { family: 'collect', archetype: 3, seed: 2103038088 },
+  'king-you-2':      { family: 'confirm', archetype: 2, seed: 673906119 },
+  'king-bot-2':      { family: 'confirm', archetype: 3, seed: 3033046886 },
+  'deal-2':          { family: 'deal',    archetype: 0, seed: 3588240473 },
+  'discard-2':       { family: 'slide',   archetype: 0, seed: 185656162 },
+};
+
 const NEUTRAL = { center: 1, edge: 1, bright: 0, body: 1, thump: 1, thumpFreq: 1, decay: 1, air: 1, airFreq: 1, rub: 1, rubGain: 1, grain: 1 };
 
 const PALETTES = {
@@ -48,7 +62,7 @@ const PALETTES = {
     title: 'Classic',
     tone: { root: 523.25, scale: MAJOR, partials: [1, 2, 3], weights: [0.8, 0.6, 0.25] },
     timbre: NEUTRAL,
-    presets: REQUIRED,
+    presets: Object.assign({}, REQUIRED, OPTIONAL),
   },
   spring: {
     title: 'Spring',
@@ -100,6 +114,7 @@ function resolve(felt, name, showdown) {
   version: 1,
   palettes: PALETTES,
   required: Object.freeze(Object.keys(REQUIRED)),
+  optional: Object.freeze(Object.keys(OPTIONAL)),
   resolve,
 });
 })();

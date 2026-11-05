@@ -9,7 +9,7 @@
 > | 2 | The game's side: the `Moments` section of `index.html` (7c), which sends batches at screen time | Built |
 > | 3 | The wiring: the game loads the module, shows its card and writes its log; the service worker caches it; `tools/publish.sh` publishes it | Built |
 > | 4 | Moments of interest and derived events, measured with `tests/interest.js` | Built |
-> | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Not yet |
+> | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Built |
 >
 > The remaining choices are listed in [Open items](#open-items).
 
@@ -221,7 +221,7 @@ Built in phase 4. **Per game** is measured with `node tests/interest.js 200`: 20
 | **Joker win** | One moment: `trickWon.card` | `trickWon` | Your winning card is the Joker | 2.6 | **Not built**: the Joker is the best card, so it nearly always wins |
 | **Last trick** | One moment: `trickWon` | `trickWon` | You win trick 7 of the main hand | 1.6 | **Not built**: too common, and the decider marks the last trick that matters |
 
-**In all:** 6.0 special cues per game on average (9 at the 90th percentile), and 4.9 of them vibrate for you (8 at the 90th percentile). The first measurement, with the drafts as first written, gave 21 per game: King killed (any King) fired 6.1 times a game, the decider (3–2–1 or 3–3–0) 4.4, Joker win 2.6 and a 3-trick streak 1.9. Each was narrowed, or left unbuilt, until it was rare.
+**In all:** 5.4 special cues per game on average (8 at the 90th percentile), and 4.4 of them vibrate for you (7 at the 90th percentile), with [novelty](#novelty) on. Before novelty, 6.0 and 4.9. The first measurement, with the drafts as first written, gave 21 per game: King killed (any King) fired 6.1 times a game, the decider (3–2–1 or 3–3–0) 4.4, Joker win 2.6 and a 3-trick streak 1.9. Each was narrowed, or left unbuilt, until it was rare.
 
 **The memory's whole game.** `deal` carries `handNumber` and `bottom` (your seat). The memory counts as the whole game only when its first moment is the deal of hand 1, so a resumed game never plays First King or Comeback from half a history.
 
@@ -269,7 +269,19 @@ The module can create its own events from the moments it receives. It watches th
 
 ## Variety
 
-The tables alone give the same response to the same situation every time. Six additions make feedback vary and build with the game, while keeping replays the same (principle 8). All are data in the cue table and a few lines in `cueFor`.
+The tables alone give the same response to the same situation every time. Six additions make feedback vary and build with the game, while keeping replays the same (principle 8). All are data in the cue table, worked out by `compose()` in the module after `cueFor` picks the cue.
+
+**Built in phase 5,** with these first uses in the cue table:
+
+| Addition | Where it's used now |
+|---|---|
+| Stakes | Every batch gets a level; escalation and the Decider layer read it |
+| Variants | `card-play` (3), `trick-you`, `trick-bot`, `king-you`, `king-bot`, `deal` and `discard` (2 each): new presets in `palettes.js`, the same gesture with another seed |
+| Escalation by stakes | `kingYou` (stronger at Match point and Decider), `trickYou` (at Decider) |
+| Escalation by count | `streak` vibrates longer from 7 in a row |
+| Novelty | Every special cue: within 3 hands of its last play it gives way to its ordinary cue (`ordinary` in the cue table) |
+| Layering | `layerDecider`: at the Decider level, a scoring moment adds a parallax `pulse` under a cue that has no parallax |
+| Parameters | `handWin` gain grows with the hand's points; `streak` rate with its count; `leadYou` vibration scale with the lead; `comeback` parallax amount with the deficit |
 
 ### Stakes
 
@@ -679,6 +691,9 @@ All draft values, to tune once built.
 | `STAKES_MATCH` | 9 | The score that makes the stakes Match point: one below the winning score |
 | `NOVELTY_HANDS` | 3 | How many hands a special cue waits before it can repeat its version |
 | `RENDER_BUDGET_MS` | 150 | The most time one preset's render may take on a mid-range phone. A slower preset is a design problem to fix in the lab. |
+| `LEAD_FROM` | 7 | The score a new sole leader needs for a lead change to count |
+| `STREAK_MIN` | 4 | Your tricks in a row for a trick streak; it fires again every 3 more |
+| `COMEBACK_POINTS` | 4 | How far behind the leader a comeback win must have come from |
 | `MEMORY_MAX` | 1000 | The most moments the module remembers. A hand sends about 35; check against the longest games in `gamelength.js`. |
 
 ## Tests
