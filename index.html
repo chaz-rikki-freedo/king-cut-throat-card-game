@@ -1022,7 +1022,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'bc1c146', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: '56218e6', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -1231,6 +1231,8 @@ const Dev = (() => {
       }
       if (rest.length === 1 && rest[0].toLowerCase() === 'testupdate') return { ok: true, reset: null, easing: null, look: false, awards: null, test: true, ops: {} };
       if (rest.some(w => /^testupdate$/i.test(w))) return { ok: false, why: 'Write it on its own as testupdate.' };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'vibrate') return { ok: true, reset: null, easing: null, look: false, awards: null, vibrate: true, ops: {} };
+      if (rest.some(w => /^vibrate(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as vibrate.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: null, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
@@ -7650,7 +7652,7 @@ const App = (() => {
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -7680,7 +7682,7 @@ const App = (() => {
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
       'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
-      '!dev testupdate shows the update badge and prompt with a test update. !dev reset:option resets one thing (!dev reset lists them).';
+      '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. !dev reset:option resets one thing (!dev reset lists them).';
   }
   function clearCodeField() {
     if (!document.getElementById('codeIn')) return;
@@ -7710,6 +7712,16 @@ const App = (() => {
       menuView = 'home';
       showMenu(app.menuLaunch);
       maybeOfferUpdate();
+      return;
+    }
+    if (r.dev && r.dev.vibrate) {
+      const nav =  (navigator);
+      let answer = 'missing';
+      if (typeof nav.vibrate === 'function') { try { answer = nav.vibrate(200) ? 'accepted' : 'refused'; } catch (e) { answer = 'refused'; } }
+      Logger.log('DEV', { vibrate: answer });
+      say(answer === 'missing' ? 'This browser has no vibration: navigator.vibrate is missing. Use Chrome or Samsung Internet on Android.'
+        : answer === 'refused' ? 'The browser refused the vibration. Tap Load again; if it still refuses, the browser blocks vibration here.'
+        : 'The browser accepted a 200 ms vibration. No buzz means the phone itself blocks it: check Settings → Sound and vibration → Vibration and haptics, Do Not Disturb and Battery saver.');
       return;
     }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
@@ -8571,11 +8583,11 @@ const SelfTest = (() => {
       let newer = null; try { newer = Replay.encode(Object.assign({}, rec, { rules: Engine.RULES_VERSION + 1 })); } catch (e) {  }
       const rs = ( x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev],
-        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, ops: {} },
-          { reset: null, easing: 120, look: false, awards: null, test: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, ops: {} },
-          { reset: null, easing: null, look: false, awards: true, test: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, ops: {} }]);
-      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(25).fill('bad'));
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev],
+        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} },
+          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, ops: {} }]);
+      eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!dev vibrate=1', '!dev vibrate saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(27).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
       check('Load a code: no code, seed, link or backup reads as a Dev command', ![code, wrapped, '4242', '?replay=' + code, 'https://example.com/?seed=7', 'KCTS1-H4sIAAAA', '{"format":"kct-backup"}'].some(x => rs(x).kind === 'dev'));
