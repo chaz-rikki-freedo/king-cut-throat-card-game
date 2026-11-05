@@ -23,13 +23,17 @@ function stubs() {
   w.__starts = [];
   w.__contexts = 0;
   class FakeAudioContext {
-    constructor() { w.__contexts++; this.state = 'running'; this.currentTime = 0; this.destination = {}; }
+    constructor() { w.__contexts++; this.state = 'running'; this.destination = {}; this.outputLatency = 0.02; }
+    /* A moving clock, as a real context has: seconds since the page loaded. */
+    get currentTime() { return performance.now() / 1000; }
     resume() { this.state = 'running'; return Promise.resolve(); }
     suspend() { this.state = 'suspended'; return Promise.resolve(); }
     createGain() { return { gain: { value: 1 }, connect() {} }; }
     createBufferSource() {
-      const s = { buffer: null, onended: null, connect() {}, stop() {},
-        start() { w.__starts.push({ length: s.buffer ? s.buffer.length : 0 }); setTimeout(() => s.onended && s.onended(), 5); } };
+      const s = { buffer: null, onended: null, connect() {}, stop() { rec.stopped = true; },
+        start(when) { rec.length = s.buffer ? s.buffer.length : 0; rec.when = when; rec.now = performance.now() / 1000; w.__starts.push(rec);
+          setTimeout(() => s.onended && s.onended(), Math.max(0, ((when || 0) - performance.now() / 1000) * 1000) + 5); } };
+      const rec = /** @type {any} */ ({});
       return s;
     }
   }
@@ -372,6 +376,86 @@ const batchSrc = `
     c1 = await counts();
     const newLogs = await page.evaluate((n) => /** @type {any} */ (window).__logs.slice(n), logs0);
     expect('a steal plays its pattern and the hand-win sound in place of its own, quietly', c1.s === c0.s + 1 && JSON.stringify(c1.last) === '[50,30,50,30,50,30,120]' && newLogs.length === 0, { c0, c1, newLogs });
+    await wait(200);
+
+    /* ---------- Beats (phase 7): scheduling on the audio clock, and the beats' own sounds ---------- */
+    console.log('Beats');
+    const beatsRendered = await page.evaluate(() => {
+      const t = /** @type {any} */ (window).KCTFeedback.test, P = /** @type {any} */ (window).KCTPalettes;
+      return { ok: P.beats.filter((n) => t.buffers.get('classic|' + n)).length, total: P.beats.length };
+    });
+    expect('every beat preset renders in Classic', beatsRendered.total === 10 && beatsRendered.ok === beatsRendered.total, beatsRendered);
+    const core = await page.evaluate(() => {
+      const F = /** @type {any} */ (window).KCTFeedback.core, b = (x) => F.beatSound(x);
+      return {
+        dealYou: b({ beat: 'deal', key: 'k', you: true }).sound, dealBot: b({ beat: 'deal', key: 'k', you: false }).sound, dealSd: b({ beat: 'deal', key: 'k', showdown: true }).sound,
+        cardBot: b({ beat: 'card', key: 'k', you: false }).sound, sweepBot: b({ beat: 'sweep', key: 'k', you: false }).sound,
+        close: b({ beat: 'handClose', key: 'k' }), unknown: b({ beat: 'juggle', key: 'k' }), same: b({ beat: 'card', key: 'x1', you: true }).sound === b({ beat: 'card', key: 'x1', you: true }).sound,
+        names: Object.keys(F.BEAT_SOUNDS),
+      };
+    });
+    expect('beat sounds: into hand for you, a flick or its variant to a bot, a quick snap in a Showdown',
+      core.dealYou === 'deal-hand' && /^deal(-2)?$/.test(core.dealBot) && core.dealSd === 'deal-snap', core);
+    expect('beat sounds: a bot\'s card skids in, a bot\'s sweep is a quick gather, the hand closes at half gain',
+      core.cardBot === 'card-slide-in' && /^trick-bot/.test(core.sweepBot) && core.close.sound === 'hand-close' && core.close.gain === 0.5, core);
+    expect('beat sounds: an unknown beat plays nothing, and a key always picks the same variant', core.unknown === null && core.same, core);
+    expect('the module knows every beat in the spec\'s beat list', ['deal', 'kitty', 'turnUp', 'tuck', 'toss', 'sink', 'discard', 'pileSink', 'card', 'sweep', 'collect', 'handClose'].every((n) => core.names.includes(n)), core.names);
+
+    /* A batch still ahead: the sound is scheduled on the audio clock, less the output delay; the vibration waits. */
+    await wait(200);
+    const aheadB = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, v0 = w.__vibrations.length, at = performance.now() + 300;
+      w.__send([{ type: 'trickWon', seat: 0, you: true }], { at });
+      const soon = w.__vibrations.length - v0, st = w.__starts.slice(s0);
+      await new Promise((r) => setTimeout(r, 380));
+      return { soon, later: w.__vibrations.length - v0, n: st.length, lead: st.length ? st[0].when - st[0].now : null };
+    });
+    expect('a batch 300 ms ahead: its sound is scheduled 300 ms ahead, less the 20 ms output delay', aheadB.n === 1 && Math.abs(aheadB.lead - 0.28) < 0.03, aheadB);
+    expect('a batch 300 ms ahead: its vibration waits for it', aheadB.soon === 0 && aheadB.later === 1, aheadB);
+    await wait(200);
+    const owned = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, v0 = w.__vibrations.length;
+      w.__send([{ type: 'trickWon', seat: 0, you: true }], { beat: true });
+      return { s: w.__starts.length - s0, v: w.__vibrations.length - v0 };
+    });
+    expect('beat: true: the beats play the trick\'s sound, so the batch plays its vibration alone', owned.s === 0 && owned.v === 1, owned);
+    await wait(200);
+    const kingBeat = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length;
+      w.__send([{ type: 'trickWon', seat: 1, you: false }, { type: 'king', seat: 1, you: false, card: 'KS', scoresBefore: [1, 1, 1], scoresAfter: [1, 2, 1] }], { beat: true });
+      return w.__starts.length - s0;
+    });
+    expect('beat: true: a King point still plays its own sound', kingBeat === 1, kingBeat);
+    await wait(200);
+    /* A beats message: a deal of 9 packets, 99 ms apart, from 100 ms on; each plays at its own time. */
+    const deal = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, t0 = performance.now();
+      const beats = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ beat: 'deal', key: 'deal|9|' + (i % 3) + '|' + i, at: t0 + 100 + i * 99, seat: i % 3, you: i % 3 === 0, cards: 3 }));
+      document.dispatchEvent(new CustomEvent('kct:moment', { detail: { v: 1, version: w.__ver, replay: false, beats } }));
+      const st = w.__starts.slice(s0);
+      return { n: st.length, gaps: st.slice(1).map((x, i) => Math.round((x.when - st[i].when) * 1000)), vib: 0 };
+    });
+    expect('a beats message: 9 deal packets, each scheduled at its own time, none dropped for voices', deal.n === 9 && deal.gaps.every((g) => g >= 97 && g <= 101), deal);
+    await wait(1200);
+    const far = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, t0 = performance.now();
+      const r = w.KCTFeedback.test.playBeats({ v: 1, version: w.__ver, replay: false, beats: [{ beat: 'card', key: 'far1', at: t0 + 5000, you: true }, { beat: 'juggle', key: 'j1', at: t0 + 50 }] });
+      return { n: w.__starts.length - s0, r };
+    });
+    expect('a beat past MAX_AHEAD_MS is dropped, and an unknown beat is skipped', far.n === 0 && far.r.find((x) => x.beat === 'card').sound === 'far' && far.r.find((x) => x.beat === 'juggle').sound === 'unknown', far);
+    /* A cancel stops what is scheduled and not started: a beat's sound and a batch's vibration. */
+    await wait(200);
+    const cancelled = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), s0 = w.__starts.length, v0 = w.__vibrations.length, t0 = performance.now();
+      document.dispatchEvent(new CustomEvent('kct:moment', { detail: { v: 1, version: w.__ver, replay: false, beats: [{ beat: 'sweep', key: 'c1', at: t0 + 400, you: true }] } }));
+      w.__send([{ type: 'trickWon', seat: 0, you: true }], { at: t0 + 450, beat: true });
+      const timers = w.KCTFeedback.test.timers();
+      w.__control('cancel', { scope: 'step' });
+      await new Promise((r) => setTimeout(r, 550));
+      const st = w.__starts.slice(s0);
+      return { scheduled: st.length, stopped: st.filter((x) => x.stopped).length, timers, after: w.KCTFeedback.test.timers(), vib: w.__vibrations.length - v0 };
+    });
+    expect('cancel: a scheduled beat sound stops, and a vibration still ahead never plays', cancelled.scheduled === 1 && cancelled.stopped === 1 && cancelled.timers === 1 && cancelled.after === 0 && cancelled.vib === 0, cancelled);
     await wait(200);
 
     /* Fall, and its Showdown voice. */
