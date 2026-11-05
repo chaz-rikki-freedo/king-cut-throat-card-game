@@ -57,6 +57,7 @@ const CONTEXT = [
 ];
 const RENDER_BUDGET_MS = 150;
 const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
+const RETRY_AHEAD_MS = 40;     // a beat whose sound is still rendering asks again this long before it is due
 const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
 const BEAT_GAIN = 0.7;         // beat sounds sit under the moments' sounds
 const TRAIN_MAX = 6;           // the most cards a train mixes; more add nothing you can hear
@@ -605,11 +606,26 @@ function bufferFor(name) {
 }
 /** A cue's sound after every fallback: its own preset, then the ordinary cue's (docs/ui/feedback.md, Fallbacks). */
 function soundFor(cue) { return bufferFor(cue.sound) || (cue.fallback ? bufferFor(cue.fallback) : null); }
+/* The sounds of a deal (its packets and the kitty) render first: a game's first deal can come a second after the
+   page opens, and every other sound has a hand's time to follow. Once they are ready, the game hears it
+   (kct:feedback-sounds), so it can stop holding a first deal (docs/ui/feedback-contract.md, Sounds ready). */
+const FIRST = /^(deal|kitty)/;
+let dealReady = false;
+function dealSoundsReady() {
+  if (dealReady) return;
+  dealReady = true;
+  document.dispatchEvent(new CustomEvent('kct:feedback-sounds', { detail: { v: V, ready: 'deal' } }));
+}
 function renderPalette(felt, showdown) {
   renderQueue = renderQueue.then(async () => {
     if (!(await loadLibs())) return;
     const P = /** @type {any} */ (window).KCTPalettes, S = /** @type {any} */ (window).KCTSynth;
-    for (const name of P.required.concat(P.optional || [], P.beats || [])) {
+    const all = P.required.concat(P.optional || [], P.beats || []);
+    const names = all.filter((n) => FIRST.test(n)).concat(all.filter((n) => !FIRST.test(n)));
+    let first = names.findIndex((n) => !FIRST.test(n));
+    for (const name of names) {
+      if (first === 0 && felt === 'classic' && !showdown) dealSoundsReady();
+      first--;
       const key = keyOf(felt, showdown, name);
       if (buffers.has(key) || settings.sound === 'off') continue;
       await new Promise((r) => idle(r));
@@ -627,6 +643,7 @@ function renderPalette(felt, showdown) {
         logOnce('RENDER_FAILED', key, { name, palette: felt, error: String(e && e.message || e) });
       }
     }
+    if (felt === 'classic' && !showdown) dealSoundsReady();
   }).catch(() => { /* a failed render never stops the queue */ });
   return renderQueue;
 }
@@ -862,6 +879,13 @@ function playBeats(msg) {
     if (!bs) { out.push({ beat: b.beat, sound: 'unknown', tick: felt }); continue; }
     if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off', tick: felt }); continue; }
     const buffer = trainBuffer(bs.hits);
+    /* Its sound is still rendering but its time is ahead: ask again just before it is due, once. */
+    if (!buffer && !b.again && b.at - now > RETRY_AHEAD_MS) {
+      /* No version: a cancel clears this timer (stopScheduled), and a newer message in the meantime must not drop it. */
+      later(b.at - RETRY_AHEAD_MS, () => playBeats(Object.assign({}, msg, { version: undefined, beats: [Object.assign({}, b, { again: true })] })));
+      out.push({ beat: b.beat, sound: 'again', name: bs.sound, hits: bs.hits.length, gain: bs.gain, tick: felt });
+      continue;
+    }
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
     /* A single hit plays at its own pitch; a train's hits are at theirs inside the mix. */
     const one = bs.hits.length === 1, rate = one ? bs.hits[0].rate || 1 : 1, tone = one ? bs.hits[0].tone || 0 : 0;
@@ -981,5 +1005,6 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) stopS
 document.addEventListener('pointerdown', onFirstTap, true);
 mountRows();
 idle(() => { loadLibs().then((ok) => { if (ok) renderCurrent(); }); });
-document.dispatchEvent(new CustomEvent('kct:feedback-ready', { detail: { v: V } }));
+/* sound: the deal's sounds will come (Sound on, on a device that can play it): the game may hold a first deal for them. */
+document.dispatchEvent(new CustomEvent('kct:feedback-ready', { detail: { v: V, sound: settings.sound !== 'off' && canSound && !dealReady } }));
 })();
