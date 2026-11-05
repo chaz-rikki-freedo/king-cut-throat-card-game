@@ -28,8 +28,8 @@ const GAP_SOUND_MS = 60;
 const MAX_VOICES = 4;
 /* ---- The mix (docs/ui/feedback.md, Mixing) ---- */
 const dbToGain = (db) => Math.pow(10, db / 20);
-const FULL_DB = -10;           // Full: about half as loud as the rendered level (-18 LUFS), which is loud on a phone
-const HALF_DB = -20;           // Half: about half as loud as Full; loudness is heard in decibels, not in gain
+const FULL_DB = -18;           // Full: well under the rendered level (-18 LUFS), which is loud on a phone speaker
+const HALF_DB = -28;           // Half: about half as loud as Full; loudness is heard in decibels, not in gain
 const FULL_GAIN = dbToGain(FULL_DB);
 const HALF_GAIN = dbToGain(HALF_DB);
 const LEVEL_GLIDE_S = 0.015;   // a level change settles in about 50 ms (3 time constants): no click
