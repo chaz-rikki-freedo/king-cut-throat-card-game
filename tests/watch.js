@@ -198,6 +198,32 @@ function expect(name, ok, detail) {
       return { badge: document.body.classList.contains('update-ready'), label: gear.getAttribute('aria-label'), popup: !!document.querySelector('#updateNote'), said: (document.querySelector('#overlay .wave-note') || {}).textContent || '',
         dots: ['#setBuild', '#aboutBuild'].map(x => !!document.querySelector(x + ' .faux-dot')), menuDot: !!document.querySelector('#overlay .about-build .faux-dot') };
     });
+    /* !dev vibrate: one 200 ms vibration, whatever the Vibration setting, and what the browser answered. */
+    const vib = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), calls = [];
+      w.KCT.Logger.enabled = true;
+      const real = Object.getOwnPropertyDescriptor(Navigator.prototype, 'vibrate');
+      const said = () => document.querySelector('#codeRead').textContent;
+      const run = async () => {
+        const q = (/** @type {string} */ x) => document.querySelector(x);
+        if (!q('#codeIn')) { const v = q('#overlay .mfoot [data-view="code"]'); if (v) v.click(); await new Promise(r => setTimeout(r, 50)); }
+        const i = q('#codeIn'); i.value = '!dev vibrate'; i.dispatchEvent(new Event('input', { bubbles: true }));
+        i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await new Promise(r => setTimeout(r, 100));
+        return said();
+      };
+      Object.defineProperty(navigator, 'vibrate', { configurable: true, value: (/** @type {any} */ p) => { calls.push(p); return true; } });
+      const accepted = await run();
+      Object.defineProperty(navigator, 'vibrate', { configurable: true, value: () => false });
+      const refused = await run();
+      delete (/** @type {any} */ (navigator)).vibrate;
+      const proto = /** @type {any} */ (Navigator.prototype); const had = 'vibrate' in proto; if (had) delete proto.vibrate;
+      const missing = await run();
+      if (real) Object.defineProperty(Navigator.prototype, 'vibrate', real);
+      return { calls, accepted, refused, missing, setting: localStorage.getItem('kct.feedback.vibration'), log: w.KCT.Logger.lines.filter((/** @type {string} */ l) => / DEV vibrate=/.test(l)).map((/** @type {string} */ l) => l.split('=')[1]) };
+    });
+    expect('!dev vibrate: one 200 ms vibration with the Vibration setting Off, and says the browser accepted it', JSON.stringify(vib.calls) === '[200]' && vib.setting === null && /accepted a 200 ms vibration/.test(vib.accepted), vib);
+    expect('!dev vibrate: says when the browser refuses it, or has no vibration, and logs each answer', /refused/.test(vib.refused) && /no vibration/.test(vib.missing) && vib.log.join() === 'accepted,refused,missing', vib);
     await devCmd('!dev testupdate');
     r = await look();
     expect('!dev testupdate: the badge and the label show, as for a real update, with no pop-up', r.badge && r.label === 'Settings: update found' && !r.popup && /test update/.test(r.said), r);
