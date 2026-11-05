@@ -31,15 +31,58 @@ Settings → Table → Theme → **Table depth**:
 
 - **Still** (the default): the depth rules apply. A card in your hand lifts while you touch it. With a mouse, it
   lifts while the pointer is over it.
+- **Tilt**: everything in Still, and the table also shifts a little as you tilt your phone. On a computer, the mouse
+  gives the same input. See [Tilt](#tilt).
 - **Off**: the classic table, exactly as before Table depth.
 
 The setting is kept with the other settings (`kct.settings`, `depth`), so a backup holds it. **Reset this tab** sets
 it back to Still.
 
+## Tilt
+
+Tilt turns the device's angle, or the mouse's place on a computer, into one vector from -1 to 1 on each axis. The
+script writes the vector on `#table` as `--dp-vx` and `--dp-vy`, and each plane moves by its own share of it:
+
+| Plane | At full tilt | Value |
+|---|---|---|
+| Table and info strip | Stay | None |
+| Panels | Shift | `panelShift` |
+| Trick area | Shift | `trickShift` |
+| Played cards | Seen from a viewpoint that moves, so a higher card shifts more and the trick seems to turn slightly | `viewShift` |
+| Your hand | Shift, on top of its panel's | `handShift` |
+| Shadows | Move opposite the tilt, as if the light stays fixed | `shadowShift` |
+
+A negative value moves a plane the other way. The planes move with `translate`, not `transform`, so their own
+transforms and the table's motion (FX) are left alone.
+
+How a reading becomes the vector:
+
+1. **Level.** The angle when Tilt starts, or when the page shows again, is level. Level then follows the grip over
+   `driftSec`, so a new grip settles back to flat and only a quick tilt moves the table. **Level** in the tuning strip
+   makes the present angle level at once.
+2. **Dead zone and full tilt.** A tilt within `deadZone` degrees of level reads 0, so a steady hand keeps the table
+   still. At `tiltRange` degrees, the tilt is full.
+3. **Smoothing.** The table follows the vector over `smoothMs`, which also removes sensor jitter.
+4. **Rest.** The vector eases back to 0, and the frames stop, when:
+   - the sensor stops,
+   - speed is Instant or the system asks for reduced motion,
+   - a menu, Settings or a dialog covers the table,
+   - the page is hidden.
+5. **Hold.** While a finger touches the table, the vector holds, so a card never moves under the finger.
+
+The sensor is read only in Tilt. A browser that asks before a page reads motion (iOS) is asked when you choose Tilt.
+If it asks only from a tap, the game explains first, and the browser's question comes from the tap on **Continue**.
+On a later visit, the first tap asks again; the browser usually remembers the answer. If motion is refused, the
+setting stays as it was, and a note under the row says how to allow it.
+
+`orientationOn` and `pointerOn` turn each input off, and `pointerRange` sets how far the mouse reaches.
+
 ## Rules for the code
 
-- Change only `transform` and `box-shadow`. No card moves its place in the layout or its tap area.
-- Read every number from `DEPTH`. The CSS reads them as `--dp-*` custom properties under `html.depth`. The `depth`
+- Change only `transform`, `translate`, `perspective-origin` and `box-shadow`. No card moves its place in the layout,
+  and in Tilt the hand holds still under a finger.
+- Read every number from `DEPTH`. The CSS reads them as `--dp-*` custom properties under `html.depth` (and
+  `html.tilt`). A value marked `js` is read by the script only. The `depth`
   self-test area checks that the CSS reads exactly the properties that `DEPTH` gives.
 - A card lifts over `liftMs`. It lifts at once at speed Instant, under the system's reduced-motion setting, and at
   Fast when `fastMotion` is 0.
@@ -54,7 +97,8 @@ it back to Still.
    list.
 4. Select the **Off** checkbox to compare with the classic table. It doesn't change the setting.
 5. Select **Copy** to copy every value as JSON, to paste into `DEPTH`'s defaults.
-6. Select **▴** to fold the strip into a small **Depth** tab in the bottom-right corner. Select the tab to open the
+6. In Tilt, select **Level** to make the present angle level.
+7. Select **▴** to fold the strip into a small **Depth** tab in the bottom-right corner. Select the tab to open the
    strip again.
 
 **Reset** returns every value to `DEPTH`'s. The ✕ closes the panel. `!dev reset:parallax` also drops the values.
@@ -64,6 +108,6 @@ Tuned values last for the tab only (sessionStorage `kct-depth`), and a backup ne
 
 | Step | Scope |
 |---|---|
-| 1 (this) | `DEPTH`, the Still and Off setting, heights and shadows, the touch lift, and the tuning panel. |
-| 2 | Tilt and pointer input. A **Tilt** choice turns on device orientation, opt-in only. iOS asks for permission on that tap, and no sensor listener runs otherwise. The angle when Tilt turns on is level, and the neutral point then slowly follows the grip. Each plane shifts by its own multiplier, the trick plane rotates by about 2° at most, and the shadows move opposite the tilt. On desktop, the pointer gives the same input. It is off at Instant, in menus and dialogs, and when the page is hidden. |
+| 1 (done, PR #308) | `DEPTH`, the Still and Off setting, heights and shadows, the touch lift, and the tuning panel. |
+| 2 (this) | Tilt: device orientation and the mouse, opt-in, with the planes and shadows above. |
 | 3 | Motion for playing a card, resolving a trick and revealing trump, from the same config. |

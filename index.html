@@ -1005,7 +1005,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 /* Table depth (DEPTH, section 7d), under html.depth: Settings → Table → Table depth set to Still. Off leaves the rules
    above as they are. Each card has a height (--lift, rem over the felt) and its shadow comes from that height
    (--dp-drop); the light is fixed. Only transform and box-shadow change, so no card moves its place or its tap area. */
-.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:var(--sx) calc(var(--dp-shadow-reach) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
+.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:calc(var(--sx) - var(--dp-vx,0) * var(--dp-shadow-shift) * var(--lift)) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
 /* Your hand: a card lifts while you touch it, and with a pointer while it is over the card (no hover on touch). */
 /* A card at rest has no transform at all: an identity transform can put each card on its own GPU layer, drawn at a
    part-pixel place, which blurs it on some phones. The old hover lift (sticky after a tap on touch) is cleared. */
@@ -1028,9 +1028,15 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
 .depth .trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
 /* The seats and your panel sit a little over the felt; the turn ring stays. */
-.depth .table .seat,.depth .table .me{--dp-panel:0 calc(var(--dp-shadow-reach) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
+.depth .table .seat,.depth .table .me{--dp-panel:calc(var(--dp-vx,0) * var(--dp-shadow-shift) * var(--dp-panel-lift) * -1) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
 .depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
 .depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
+/* Tilt (html.tilt): each plane shifts by its own amount of one vector (--dp-vx, --dp-vy on #table, -1 to 1), and the
+   played cards are seen from a viewpoint that moves with it, so a higher card shifts more. The felt and the info strip
+   stay. translate, not transform, so the planes' own transforms (and Fx's) are left alone. */
+.tilt .table .seat,.tilt .table .me{translate:calc(var(--dp-vx,0) * var(--dp-panel-shift)) calc(var(--dp-vy,0) * var(--dp-panel-shift))}
+.tilt .table .trick{translate:calc(var(--dp-vx,0) * var(--dp-trick-shift)) calc(var(--dp-vy,0) * var(--dp-trick-shift));perspective-origin:calc(50% + var(--dp-vx,0) * var(--dp-view-shift)) calc(120% + var(--dp-vy,0) * var(--dp-view-shift))}
+.tilt .table .hand{translate:calc(var(--dp-vx,0) * var(--dp-hand-shift)) calc(var(--dp-vy,0) * var(--dp-hand-shift))}
 /* '!dev parallax': the tuning panel, a strip of two rows over the header (your hand and the trick stay in view), for
    the tab. Folded, only its Depth tab shows, in the bottom right corner, clear of the menu button. */
 .depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
@@ -1194,8 +1200,9 @@ window.kctTheme = (() => {
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Off: the classic flat shadows.</span></span>
-          <select id="setDepth"><option value="still">Still</option><option value="off">Off</option></select></div>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Tilt: the table also shifts a little as you tilt your phone, or with the mouse. Off: the classic flat shadows.</span></span>
+          <select id="setDepth"><option value="still">Still</option><option value="tilt">Tilt</option><option value="off">Off</option></select></div>
+        <p class="k-hint set-note" id="setDepthNote" hidden></p>
       </div>
       <!-- The optional feedback module (feedback/feedback.js) fills this card and shows it once it has loaded. -->
       <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
@@ -6525,9 +6532,18 @@ const Moments = (() => {
    7d. DEPTH — the table's physical depth (docs/ui/depth.md): how high each
    card sits over the felt, the shadow that height casts, and the lift of a
    card in your hand as you touch it. Settings → Table → Table depth: Off
-   (the classic table: none of this applies) or Still. Every value is in
-   DEPTH, one place; the CSS reads them as --dp-* custom properties under
+   (the classic table: none of this applies), Still or Tilt. Every value is
+   in DEPTH, one place; the CSS reads them as --dp-* custom properties under
    the html element's depth class. It never reads or changes a game.
+   Tilt (html.tilt) also moves each plane a little as you tilt the device,
+   or with the mouse on a computer: one vector, from -1 to 1 on each axis,
+   written on #table as --dp-vx and --dp-vy, and each plane's shift is a
+   DEPTH value. The sensor is used only in Tilt, never at load otherwise;
+   where the browser asks first (iOS), a tap asks. The angle when Tilt
+   starts is level, and level then follows the grip (driftSec). The vector
+   rests at 0 at Instant, with reduced motion, while a menu, Settings or a
+   dialog covers the table, and while you touch the table, so a card never
+   moves under your finger.
    Motion (how fast a card lifts) stops at speed Instant, under the system's
    reduced-motion setting, and at Fast when fastMotion is 0.
    "!dev parallax" opens a tuning panel over the table, for the tab: its
@@ -6535,7 +6551,8 @@ const Moments = (() => {
    and Copy gives them as JSON for DEPTH. "!dev reset:parallax" drops them.
    Tests: T1. selftest.js depth; settings.js (Table depth); resets.js.
    --------------------------------------------------------------------- */
-/** @typedef {{ def: number, min: number, max: number, step: number, unit: string, group: string, name: string }} DepthKey */
+/** @typedef {{ def: number, min: number, max: number, step: number, unit: string, group: string, name: string, js?: boolean }} DepthKey
+    js: read by the script only (no custom property). */
 /* Heights are in rem over the felt. A shadow falls reach × height below its card and blurs base + blur × height,
    so a higher card casts a longer, softer shadow. */
 const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
@@ -6550,15 +6567,30 @@ const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
   handHover: { def: 0.5, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Pointer over' },
   handPress: { def: 0.375, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Touch lift' },
   handSelect: { def: 0.875, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Selected' },
-  liftMs: { def: 120, min: 0, max: 400, step: 10, unit: 'ms', group: 'Your hand', name: 'Lift time' },
+  liftMs: { def: 120, min: 0, max: 400, step: 10, unit: 'ms', group: 'Your hand', name: 'Lift time', js: true },
   panelLift: { def: 0.5, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Panels', name: 'Panel height' },
   shadowReach: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Reach' },
   shadowBase: { def: 0.25, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Shadows', name: 'Base blur' },
   shadowBlur: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Blur by height' },
-  fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast' }
+  fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast', js: true },
+  /* Tilt: how a tilt becomes the vector. A tilt of tiltRange degrees from level is full (1); the dead zone is cut off
+     first, so a steady hand reads 0. */
+  orientationOn: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Tilt input', name: 'Device tilt', js: true },
+  pointerOn: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Tilt input', name: 'Mouse', js: true },
+  tiltRange: { def: 12, min: 3, max: 45, step: 1, unit: '°', group: 'Tilt input', name: 'Full tilt', js: true },
+  deadZone: { def: 1.5, min: 0, max: 10, step: 0.25, unit: '°', group: 'Tilt input', name: 'Dead zone', js: true },
+  smoothMs: { def: 140, min: 0, max: 600, step: 10, unit: 'ms', group: 'Tilt input', name: 'Smoothing', js: true },
+  driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
+  pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
+  /* Tilt: each plane's shift at full tilt. A negative value moves it the other way. The table itself stays. */
+  panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels' },
+  trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area' },
+  viewShift: { def: 4, min: -12, max: 12, step: 0.25, unit: 'rem', group: 'Tilt planes', name: 'Played cards view' },
+  handShift: { def: 0.1, min: -0.5, max: 0.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Your hand' },
+  shadowShift: { def: 0.3, min: -1, max: 1, step: 0.05, unit: '', group: 'Tilt planes', name: 'Shadows' }
 }));
 const Depth = (() => {
-  const KEY = 'kct-depth', MODES = ['off', 'still'];
+  const KEY = 'kct-depth', MODES = ['off', 'still', 'tilt'];
   const keys = Object.keys(DEPTH);
   /** The CSS custom property of a key: trickTilt → --dp-trick-tilt. @param {string} k */
   const prop = k => '--dp-' + k.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
@@ -6583,7 +6615,7 @@ const Depth = (() => {
   function vars() {
     /** @type {Record<string, string>} */
     const out = {};
-    for (const k of keys) if (k !== 'liftMs' && k !== 'fastMotion') out[prop(k)] = num(k) + DEPTH[k].unit;
+    for (const k of keys) if (!DEPTH[k].js) out[prop(k)] = num(k) + DEPTH[k].unit;
     out['--dp-ms'] = liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) + 'ms';
     return out;
   }
@@ -6591,12 +6623,139 @@ const Depth = (() => {
     const root = document.documentElement;
     for (const [p, v] of Object.entries(vars())) root.style.setProperty(p, v);
     root.classList.toggle('depth', mode !== 'off' && !preview);
+    root.classList.toggle('tilt', mode === 'tilt' && !preview);
+    listen(mode === 'tilt');
     syncPanel();
+    kick();
   }
-  /** Settings → Table → Table depth. @param {string} m 'off' or 'still' (anything else: still) */
+  /** Settings → Table → Table depth. @param {string} m 'off', 'still' or 'tilt' (anything else: still) */
   function setMode(m) { mode = MODES.includes(m) ? m : 'still'; apply(); return mode; }
   /** The table's speed (Instant when skipping), from each draw. @param {string} s */
   function motion(s) { if (s === speed) return; speed = s; apply(); }
+
+  /* ---- Tilt: the vector. ---- */
+  /** A reading (degrees) as the screen sees it: x to the right, y toward you, for the screen's turn (0, 90, 180, 270).
+      @param {number} beta front to back @param {number} gamma left to right @param {number} angle */
+  function orient(beta, gamma, angle) {
+    const a = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+    return a === 90 ? { x: beta, y: -gamma } : a === 180 ? { x: -gamma, y: -beta } : a === 270 ? { x: -beta, y: gamma } : { x: gamma, y: beta };
+  }
+  /** Degrees from level → -1 to 1: the dead zone is cut off, range is full. @param {number} d @param {number} dz @param {number} range */
+  function shape(d, dz, range) {
+    const a = Math.abs(d) - dz;
+    return a <= 0 ? 0 : Math.max(-1, Math.min(1, Math.sign(d) * a / Math.max(0.5, range - dz)));
+  }
+  /** A step toward a target, over a time constant (0: at once). @param {number} from @param {number} to @param {number} dt ms @param {number} tau ms */
+  const follow = (from, to, dt, tau) => tau <= 0 ? to : from + (to - from) * (1 - Math.exp(-Math.max(0, dt) / tau));
+  /** @type {{ x: number, y: number } | null} */
+  let level = null;
+  let raw = { x: 0, y: 0 }, rawAt = -1e9, inAt = 0, ptr = { x: 0, y: 0 }, ptrOn = false, hold = false;
+  let v = { x: 0, y: 0 }, shown = { x: NaN, y: NaN }, raf = 0, last = 0, listening = false;
+  /** @type {() => boolean} App: true while a menu, Settings or a dialog covers the table. */
+  let covered = () => false;
+  const angle = () => { const so = /** @type {any} */ (screen).orientation; return so && typeof so.angle === 'number' ? so.angle : Number(/** @type {any} */ (window).orientation) || 0; };
+  function onTilt(/** @type {DeviceOrientationEvent} */ e) {
+    if (e.beta === null || e.gamma === null || !num('orientationOn')) return;
+    const r = orient(e.beta, e.gamma, angle()), now = performance.now();
+    /* Level is the first reading, then it follows the grip slowly. */
+    if (!level || now - rawAt > 1000) level = r;
+    else { const tau = num('driftSec') * 1000, dt = now - inAt; level = { x: follow(level.x, r.x, dt, tau), y: follow(level.y, r.y, dt, tau) }; }
+    raw = r; rawAt = inAt = now;
+    kick();
+  }
+  function onPointer(/** @type {PointerEvent} */ e) {
+    if (e.pointerType !== 'mouse') return;
+    const k = num('pointerRange');
+    ptr = { x: Math.max(-1, Math.min(1, (e.clientX / innerWidth * 2 - 1) * k)), y: Math.max(-1, Math.min(1, (e.clientY / innerHeight * 2 - 1) * k)) };
+    ptrOn = true;
+    kick();
+  }
+  const onLeave = () => { ptrOn = false; kick(); };
+  /* A touch on the table holds the vector, so nothing moves under the finger. */
+  const onDown = (/** @type {PointerEvent} */ e) => { if (e.pointerType !== 'mouse' && /** @type {Element} */ (e.target).closest && /** @type {Element} */ (e.target).closest('#table')) hold = true; };
+  const onUp = () => { if (hold) { hold = false; kick(); } };
+  const onVisible = () => { level = null; kick(); };
+  /** Adds or removes the listeners: only in Tilt. @param {boolean} on */
+  function listen(on) {
+    if (on === listening) return;
+    listening = on;
+    const f = on ? 'addEventListener' : 'removeEventListener';
+    window[f]('deviceorientation', onTilt);
+    window[f]('pointermove', onPointer, { passive: true });
+    document.documentElement[f]('pointerleave', onLeave);
+    window[f]('pointerdown', onDown, { passive: true, capture: true });
+    window[f]('pointerup', onUp, { capture: true });
+    window[f]('pointercancel', onUp, { capture: true });
+    document[f]('visibilitychange', onVisible);
+    if (!on) { level = null; rawAt = -1e9; ptrOn = false; hold = false; }
+  }
+  /** The vector the table should show now, before smoothing. */
+  function target() {
+    if (mode !== 'tilt' || preview || speed === 'instant' || document.hidden || covered() || matchMedia('(prefers-reduced-motion: reduce)').matches) return { x: 0, y: 0 };
+    if (level && performance.now() - rawAt < 600) {
+      const dz = num('deadZone'), range = num('tiltRange');
+      return { x: shape(raw.x - level.x, dz, range), y: shape(raw.y - level.y, dz, range) };
+    }
+    return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
+  }
+  /** One frame: a step toward the target, written on #table. It stops once the table rests where it should. */
+  function frame(/** @type {number} */ t) {
+    raf = 0;
+    const dt = last ? Math.min(100, t - last) : 16;
+    last = t;
+    if (!hold) {
+      const g = target(), tau = num('smoothMs');
+      v = { x: follow(v.x, g.x, dt, tau), y: follow(v.y, g.y, dt, tau) };
+      if (Math.abs(v.x - g.x) < 0.002) v.x = g.x;
+      if (Math.abs(v.y - g.y) < 0.002) v.y = g.y;
+      paint();
+      if (v.x !== g.x || v.y !== g.y) { raf = requestAnimationFrame(frame); return; }
+    }
+    last = 0;
+  }
+  function paint() {
+    if (Math.abs(v.x - shown.x) < 0.001 && Math.abs(v.y - shown.y) < 0.001) return;
+    const tb = document.getElementById('table');
+    if (!tb) return;
+    shown = { x: v.x, y: v.y };
+    tb.style.setProperty('--dp-vx', v.x.toFixed(3));
+    tb.style.setProperty('--dp-vy', v.y.toFixed(3));
+  }
+  /** Starts the frames if they are stopped. */
+  function kick() { if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
+  /** Makes the present angle level (the panel's Level). */
+  function levelNow() { if (performance.now() - rawAt < 600) level = { x: raw.x, y: raw.y }; kick(); }
+  /** iOS asks before a page reads the sensor, and only from a tap. needsAsk: the browser asks. */
+  const needsAsk = () => typeof DeviceOrientationEvent !== 'undefined' && typeof /** @type {any} */ (DeviceOrientationEvent).requestPermission === 'function';
+  /** Asks the browser. @returns {Promise<boolean | null>} true when granted or not needed, false when refused, null
+      when the browser would not ask outside a tap */
+  function ask() {
+    if (!needsAsk()) return Promise.resolve(true);
+    try { return /** @type {any} */ (DeviceOrientationEvent).requestPermission().then((/** @type {string} */ r) => r === 'granted', () => null); }
+    catch (e) { return Promise.resolve(null); }
+  }
+  /* The ask waits for a tap: the browser lets a page ask only from inside one. */
+  /** @type {((e: Event) => void) | null} */
+  let armed = null;
+  /** Asks at the next tap on an element that matches sel (any tap when sel is ''), from inside that tap.
+      @param {string} sel @returns {Promise<boolean>} true when the sensor may be read */
+  function askOnTap(sel) {
+    cancelAsk();
+    if (!needsAsk()) return Promise.resolve(true);
+    return new Promise(done => {
+      armed = e => {
+        if (sel && !(/** @type {Element} */ (e.target).closest && /** @type {Element} */ (e.target).closest(sel))) return;
+        cancelAsk();
+        ask().then(r => done(!!r));
+      };
+      document.addEventListener('click', armed, true);
+    });
+  }
+  function cancelAsk() { if (armed) document.removeEventListener('click', armed, true); armed = null; }
+  /** App: what covers the table. @param {() => boolean} fn */
+  function gate(fn) { covered = fn; }
+  /** App, when a menu, Settings or a dialog opens or closes: the vector heads to rest or back. */
+  const covers = () => kick();
   /** Sets one tuned value (null: back to DEPTH's). @param {string} k @param {number | null} v */
   function tune(k, v) {
     if (v === null || v === DEPTH[k].def) delete tab.v[k]; else if (valid(k, v)) tab.v[k] = v;
@@ -6619,7 +6778,7 @@ const Depth = (() => {
       '<div class="dd-row"><select class="dd-key" aria-label="Value to tune">' + opts + '</optgroup></select><output class="dd-val"></output>' +
       '<button class="btn" type="button" data-dd="fold" aria-label="Fold">▴</button><button class="btn" type="button" data-dd="close" aria-label="Close">✕</button></div>' +
       '<div class="dd-row"><input class="dd-range" type="range" aria-label="Value"><label class="dd-cmp"><input type="checkbox" data-dd="off"> Off</label>' +
-      '<button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button></div>' +
+      '<button class="btn" type="button" data-dd="level" hidden>Level</button><button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button></div>' +
       '<textarea class="dd-out" readonly hidden aria-label="Values"></textarea>';
   }
   function syncPanel() {
@@ -6639,6 +6798,7 @@ const Depth = (() => {
     off.checked = preview || mode === 'off';
     off.disabled = mode === 'off';
     off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Table.' : 'The classic table, to compare. The setting stays.';
+    /** @type {HTMLElement} */ (el.querySelector('[data-dd="level"]')).hidden = mode !== 'tilt';
   }
   /** The values in use, as JSON for DEPTH's defaults. */
   const json = () => JSON.stringify(Object.fromEntries(keys.map(k => [k, num(k)])));
@@ -6670,6 +6830,7 @@ const Depth = (() => {
         const out = /** @type {HTMLTextAreaElement} */ (el.querySelector('.dd-out'));
         if (act === 'close') panel(false);
         else if (act === 'reset') { out.hidden = true; resetTune(); }
+        else if (act === 'level') levelNow();
         else if (act === 'fold') { tab.folded = !tab.folded; out.hidden = true; keep(); syncPanel(); }
         else if (act === 'copy') {
           /* To the clipboard; the values show in a field only when the browser refuses. */
@@ -6691,6 +6852,7 @@ const Depth = (() => {
     if (tab.open) panel(true); else apply();
   }
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
+    orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow, /** The vector shown. */ vector: () => ({ x: v.x, y: v.y }),
     /** The mode in use. */ mode: () => mode, /** The value in use. */ num });
 })();
 
@@ -7358,6 +7520,7 @@ const App = (() => {
     syncSpeedTitle();
     if (app.ui.speed === value) return;
     app.ui.speed = value;
+    Depth.motion(value);
     Moments.control('speed', { speed: value });
     schedule();
   }
@@ -7384,9 +7547,26 @@ const App = (() => {
     syncTheme();
     saveSettings();
   }
-  /* Settings → Table → Table depth (section 7d): Still or Off. */
-  function setDepth(/** @type {string} */ value) {
-    app.ui.depth = Depth.setMode(value);
+  /* Settings → Table → Table depth (section 7d): Still, Tilt or Off. Where the browser asks before a page reads the
+     motion sensor, Tilt asks it at once (Android answers at once, with no question). A browser that asks only from a
+     tap (iOS) gets one: the game asks first, and the browser's question comes from the tap on Continue. Refused, the
+     table stays as it was and the note says how to allow it. */
+  async function setDepth(/** @type {string} */ value) {
+    let v = value;
+    $('setDepthNote').hidden = true;
+    let allowed = v === 'tilt' ? await Depth.ask() : true;
+    if (allowed === null) {
+      const tap = Depth.askOnTap('[data-action="ask-ok"]');
+      const yes = await ask({ title: 'Tilt the table?', text: '<p>The table shifts a little as you tilt your phone. Your browser asks next whether this page may read the phone\'s motion. Nothing leaves your phone.</p>', ok: 'Continue', cancel: 'Cancel' });
+      if (yes) allowed = await tap; else Depth.cancelAsk();
+      if (!yes) v = app.ui.depth === 'tilt' ? 'still' : app.ui.depth;
+    }
+    if (v === 'tilt' && !allowed) {
+      v = app.ui.depth === 'tilt' ? 'still' : app.ui.depth;
+      $('setDepthNote').textContent = 'Motion was not allowed, so Tilt is off. To allow it, close the browser, open the game again and choose Tilt.';
+      $('setDepthNote').hidden = false;
+    }
+    app.ui.depth = Depth.setMode(v);
     $('setDepth').value = app.ui.depth;
     saveSettings();
   }
@@ -10343,6 +10523,13 @@ const App = (() => {
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt, /** @type {HTMLInputElement} */ ($('setColorBlind')).checked ? 'colorblind' : ''));
     $('setDepth').addEventListener('change', () => setDepth($('setDepth').value));
     $('setDepth').value = Depth.setMode(app.ui.depth);
+    /* Tilt rests while a menu, Settings or a dialog covers the table: each layer's hidden attribute says when. */
+    const covers = ['overlay', 'askLayer', 'staleLayer', 'settingsPanel', 'table'].map(id => $(id));
+    Depth.gate(() => covers.some(el => el.id === 'table' ? el.hidden : !el.hidden));
+    const coverWatch = new MutationObserver(() => Depth.covers());
+    for (const el of covers) coverWatch.observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    /* Tilt kept from an earlier visit: where the browser asks, the first tap asks (the answer is usually remembered). */
+    if (app.ui.depth === 'tilt') Depth.askOnTap('');
     Depth.init();
     $('backupFile').addEventListener('change', () => {
       const input = /** @type {HTMLInputElement} */ ($('backupFile')), file = input.files && input.files[0];
@@ -11455,9 +11642,9 @@ const SelfTest = (() => {
       eq('each DEPTH default is in range and on a step of its slider', off, []);
       eq('a key names its custom property', [Depth.prop('trickTilt'), Depth.prop('handPress')], ['--dp-trick-tilt', '--dp-hand-press']);
       /* The CSS reads only what DEPTH gives, and DEPTH gives nothing the CSS leaves unread (--dp-drop and --dp-panel are
-         the CSS's own, --dp-ms the lift time). */
+         the CSS's own, --dp-ms the lift time, --dp-vx and --dp-vy the tilt vector on #table). */
       const css = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
-      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => n !== '--dp-drop' && n !== '--dp-panel').sort();
+      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => !['--dp-drop', '--dp-panel', '--dp-vx', '--dp-vy'].includes(n)).sort();
       eq('the CSS reads exactly the custom properties DEPTH gives', read, Object.keys(Depth.vars()).sort());
       const def = DEPTH.liftMs.def;
       eq('a card lifts in its time at Slow, Normal and Fast, and at once at Instant or with reduced motion',
@@ -11465,9 +11652,18 @@ const SelfTest = (() => {
         Depth.num('liftMs') === def && Depth.num('fastMotion') === 1 ? [def, def, def, 0, 0] : [Depth.liftMs('slow', false), Depth.liftMs('normal', false), Depth.liftMs('fast', false), 0, 0]);
       /* Off takes the depth class away and Still puts it back; anything else is Still. The mode in use comes back. */
       const was = Depth.mode(), html = document.documentElement;
-      const seen = [Depth.setMode('off'), html.classList.contains('depth'), Depth.setMode('still'), html.classList.contains('depth'), Depth.setMode('tilt')];
+      const cls = () => ['depth', 'tilt'].filter(c => html.classList.contains(c)).join(' ');
+      const seen = [Depth.setMode('off'), cls(), Depth.setMode('still'), cls(), Depth.setMode('tilt'), cls(), Depth.setMode('sideways')];
       Depth.setMode(was);
-      eq('Table depth: Off drops the depth class, Still adds it, and an unknown mode is Still', seen, ['off', false, 'still', true, 'still']);
+      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, and an unknown mode is Still', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still']);
+      /* Tilt's input: the screen's turn, the dead zone and the full tilt, and the smoothing. */
+      eq('a reading turns with the screen: upright, and turned 90, 180 and 270 degrees',
+        [0, 90, 180, 270, -90].map(a => Depth.orient(10, 4, a)), [{ x: 4, y: 10 }, { x: 10, y: -4 }, { x: -4, y: -10 }, { x: -10, y: 4 }, { x: -10, y: 4 }]);
+      eq('a tilt inside the dead zone is 0, past the full tilt is 1, and the sign stays',
+        [Depth.shape(1, 1.5, 12), Depth.shape(-1.5, 1.5, 12), Depth.shape(6.75, 1.5, 12), Depth.shape(-20, 1.5, 12), Depth.shape(30, 0, 12)], [0, 0, 0.5, -1, 1]);
+      const f = Depth.follow;
+      eq('smoothing: none at 0 ms; one time constant goes 63% of the way; a long wait arrives',
+        [f(0, 1, 16, 0), Math.round(f(0, 1, 100, 100) * 100) / 100, Math.round(f(0, 1, 2000, 100) * 1000) / 1000, f(0.4, 0.4, 16, 100)], [1, 0.63, 1, 0.4]);
       eq('!dev parallax opens the panel, and is written on its own', [Dev.parse('!dev parallax').ok && /** @type {any} */ (Dev.parse('!dev parallax')).parallax, Dev.parse('!dev parallax saves=5').ok], [true, false]);
     });
     safeRun('interface', () => {
