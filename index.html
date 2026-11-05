@@ -5718,6 +5718,17 @@ const Fx = (() => {
     beatsOut.push(Object.assign({ beat: name, key, at: Math.round(at * 10) / 10 }, f));
   }
   const who = (/** @type {number} */ p) => ({ seat: p, you: p === me });
+  /* A trick card's public context, for its sound (docs/ui/feedback.md, Context): the card is face up as it lands, so
+     these facts show nothing hidden. The card itself is never named. Empty when the card isn't in the trick's plays. */
+  function cardContext(v, id) {
+    const plays = v.trick && v.trick.plays && v.trick.plays.some(x => x.card === id) ? v.trick.plays : v.lastTrick && v.lastTrick.plays ? v.lastTrick.plays : [];
+    const i = plays.findIndex(x => x.card === id);
+    if (i < 0) return {};
+    const sd = v.showdown && v.showdown.active, n = sd ? v.showdown.participants.length : Engine.C.PLAYERS;
+    const c = Rules.card(id), lead = Rules.getEffectiveSuit(plays[0].card, v.trump);
+    return { trump: Rules.isTrump(id, v.trump), high: !!c && (c.isJoker || c.rank === 'A' || c.rank === 'K'), lead: i === 0, last: i === n - 1,
+      follow: i === 0 || Rules.isTrump(id, v.trump) || Rules.getEffectiveSuit(id, v.trump) === lead };
+  }
   /* The moment a sink() starts to drop, from its start (t: one motion step; travel: it slides to a target first). */
   const sinkDrop = (/** @type {number} */ t, /** @type {boolean} */ travel) => (travel ? t * 0.7 : 0) + t * 1.3 * 0.3;
 
@@ -6163,7 +6174,7 @@ const Fx = (() => {
       const from = slotFrom[id];
       const slides = !!t && e < t && !!(seat || from);
       if (slides) {
-        beat('card', 'card|' + key + '|' + id, slotStart[id] + t, Object.assign(who(+p), { showdown: !!(v.showdown && v.showdown.active), cards: 1 }));
+        beat('card', 'card|' + key + '|' + id, slotStart[id] + t, Object.assign(who(+p), { showdown: !!(v.showdown && v.showdown.active), cards: 1 }, cardContext(v, card.dataset.card || '')));
         const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / cw).toFixed(3) + ') '
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
         startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
