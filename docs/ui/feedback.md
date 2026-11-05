@@ -816,6 +816,11 @@ A variant adds a number to the base name: `trick-you-2`, `trick-you-3`. A stakes
 - **The module goes with the page.** When the update check finds a new page, it also fetches the three files, past the CDN (a `?fresh=` query, as for the page), into the waiting cache. Applying the update moves them in with the page, so the first load after an update runs the module published with that page. Before, the cached module ran until a later load, and the background refresh could get GitHub Pages' old copy for up to 10 minutes.
 - Each load also refreshes the three files in the background, past the CDN.
 
+### On a device
+
+When a sound plays in a desktop browser but not on a phone, the sound readout (`!dev sound`) shows each beat's verdict
+on the phone itself. See [the contract: Sound readout](feedback-contract.md#sound-readout).
+
 ## Performance
 
 - The module loads when the browser is idle, so it never delays the page or the first table. Nothing in the interface waits for it or for its sounds.

@@ -1057,6 +1057,13 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth-dev.folded > :not(.dd-tab){display:none}
 .depth-dev.folded .dd-tab{display:inline-flex;color:var(--gold)}
 .depth-dev .dd-out{width:100%;min-height:3.5rem;font:0.6875rem ui-monospace,Menlo,Consolas,monospace}
+/* '!dev sound': the sound readout (Moments, section 7c), at the bottom left, for the tab. Folded, only its state line shows. */
+.sound-dev{position:fixed;left:0.5rem;bottom:0.5rem;z-index:95;width:min(26rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.6875rem}
+.sound-dev .sd-row{display:flex;align-items:center;gap:0.375rem}
+.sound-dev .sd-head{flex:1 1 auto;min-width:0;color:var(--gold)}
+.sound-dev .btn{flex:none;min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
+.sound-dev .sd-log{margin:0;max-height:7.5rem;overflow:auto;white-space:pre-wrap;word-break:break-word;font:0.625rem/1.35 ui-monospace,Menlo,Consolas,monospace;color:var(--muted)}
+.sound-dev.folded .sd-log{display:none}
 </style>
 <!-- Theme packs (Settings → Table → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
@@ -1469,6 +1476,8 @@ const RNG = (() => {
    device lets web pages vibrate. Nothing is kept.
    "!dev parallax" opens the table depth's tuning panel (Depth, section 7d),
    which lasts for the tab until its ✕.
+   "!dev sound" opens the sound readout (Moments, section 7c): what the
+   feedback module did with each sound, for the tab until its ✕.
    "!dev reset:<option>" resets one thing only (RESET_OPTIONS); "!dev reset"
    alone changes nothing and lists the options.
    Input that starts with '!' is reserved for these commands: no replay
@@ -1535,9 +1544,9 @@ const Dev = (() => {
     /** Reads a dev command: '!dev', '!dev reset', '!dev reset:<option>', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
         Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
         (false) or not given (null). @param {string} text
-        test: '!dev testupdate'. vibrate: '!dev vibrate'. parallax: '!dev parallax'.
+        test: '!dev testupdate'. vibrate: '!dev vibrate'. parallax: '!dev parallax'. sound: '!dev sound'.
         reset: null (not a reset), '' ('reset' alone: list the options) or a RESET_OPTIONS key.
-        @returns {{ ok: true, reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, vibrate?: boolean, parallax?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+        @returns {{ ok: true, reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, vibrate?: boolean, parallax?: boolean, sound?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
@@ -1559,6 +1568,8 @@ const Dev = (() => {
       if (rest.some(w => /^vibrate(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as vibrate.' };
       if (rest.length === 1 && rest[0].toLowerCase() === 'parallax') return { ok: true, reset: null, easing: null, look: false, awards: null, parallax: true, ops: {} };
       if (rest.some(w => /^parallax(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as parallax.' };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'sound') return { ok: true, reset: null, easing: null, look: false, awards: null, sound: true, ops: {} };
+      if (rest.some(w => /^sound(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as sound.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: null, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
@@ -6400,7 +6411,9 @@ const Fx = (() => {
    Without a listener every event goes nowhere: the game never waits for,
    or reads, a reply. load() adds feedback/feedback.js when the browser is
    idle; the Controller shows its Settings card on kct:feedback-ready and
-   writes its kct:feedback-log messages to the Event log.
+   writes its kct:feedback-log messages to the Event log. readout() is the
+   sound readout ('!dev sound'): what the module did with each message, on
+   the device (docs/ui/feedback-contract.md, Sound readout).
    Tests: T2. selftest.js moments; feedback.js. A change to a moment's shape changes V (and the module's).
    --------------------------------------------------------------------- */
 const Moments = (() => {
@@ -6585,7 +6598,92 @@ const Moments = (() => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
   }
 
-  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load, soundWait });
+  /* ---- The sound readout ('!dev sound'): at the bottom left, for the tab, until its ✕. It shows the sound channel's
+     state and what the module did with each message: each beat's cards, how far ahead it was (ms) and its verdict
+     (docs/ui/feedback.md, Dropping), and each moment's cue. Copy puts it all on the clipboard, to paste in a report.
+     It reads the module's trace hook (KCTFeedback.trace) and changes nothing it plays. ---- */
+  const READOUT_KEY = 'kct-sound-dev', READOUT_LINES = 80;
+  /** @type {string[]} */
+  let readLines = [];
+  /** @type {() => string} */
+  let readFacts = () => '';
+  const fbApi = () => /** @type {any} */ (window).KCTFeedback;
+  /** One trace record as a line. Pure. @param {string} kind @param {any} d @param {number} t seconds since the readout opened */
+  function traceLine(kind, d, t) {
+    const at = t.toFixed(1).padStart(5) + 's ';
+    const ahead = (/** @type {number} */ ms) => (ms >= 0 ? '+' : '') + ms;
+    if (kind === 'beats') return at + (d.retry ? 'retry ' : 'beats ') + (d.beats || []).map((/** @type {any} */ b) => b.beat + (b.cards > 1 ? '×' + b.cards : '') + ' ' + ahead(b.ahead) + ' ' + b.sound).join(', ');
+    if (kind === 'moment') return at + (d.anchor || '?') + (d.beat ? ' (beat)' : '') + ' ' + (d.types || []).join('+') + ' → ' + (d.cue || 'no cue') + ' ' + (d.beat && d.sound === 'off' ? 'by beats' : d.sound) + (d.ahead ? ' ' + ahead(d.ahead) : '');
+    if (kind === 'log') return at + 'log ' + d.kind + ' ' + JSON.stringify(d.data || {});
+    return at + kind;
+  }
+  /** The state line: the module's sound channel, the motion and the facts the Controller adds. */
+  function readHead() {
+    const f = fbApi(), s = f && typeof f.status === 'function' ? f.status() : null;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'motion reduced' : 'motion on';
+    if (!s) return 'Sound: no module · ' + reduced + ' · ' + readFacts();
+    return 'Sound ' + s.sound + ' · context ' + s.context + (s.rate ? ' ' + s.rate + ' Hz' : '') + (s.latency !== null ? ' · latency ' + s.latency + ' ms' : '') +
+      ' · ' + s.ready + ' sounds' + (s.failed ? ', ' + s.failed + ' failed' : '') + (s.dealReady ? '' : ', deal rendering') + ' · ' + (s.activated ? 'tapped' : 'no tap yet') +
+      ' · ' + reduced + ' · ' + readFacts();
+  }
+  let read0 = 0;
+  function readAdd(/** @type {string} */ kind, /** @type {any} */ d) {
+    const el = document.getElementById('soundDev');
+    if (!el) return;
+    readLines.push(traceLine(kind, d, (performance.now() - read0) / 1000));
+    if (readLines.length > READOUT_LINES) readLines = readLines.slice(-READOUT_LINES);
+    readDraw();
+  }
+  function readDraw() {
+    const el = document.getElementById('soundDev');
+    if (!el) return;
+    /** @type {HTMLElement} */ (el.querySelector('.sd-head')).textContent = readHead();
+    const log = /** @type {HTMLElement} */ (el.querySelector('.sd-log'));
+    log.textContent = readLines.join('\n');
+    log.scrollTop = log.scrollHeight;
+  }
+  const onFbLog = (/** @type {Event} */ e) => { const d = /** @type {CustomEvent} */ (e).detail; if (d) readAdd('log', d); };
+  /** Hooks the module's trace, now or once it has loaded. */
+  function readHook() { const f = fbApi(); if (f && f.trace !== readAdd) f.trace = readAdd; readDraw(); }
+  /**
+   * Opens or closes the readout. on null: opens it when this tab had it open (a reload). facts: the Controller's line.
+   * @param {boolean | null} on @param {() => string} [facts]
+   */
+  function readout(on, facts) {
+    if (facts) readFacts = facts;
+    if (on === null) { let was = false; try { was = sessionStorage.getItem(READOUT_KEY) === '1'; } catch (e) { /* no storage */ } if (!was) return; on = true; }
+    const old = document.getElementById('soundDev');
+    try { if (on) sessionStorage.setItem(READOUT_KEY, '1'); else sessionStorage.removeItem(READOUT_KEY); } catch (e) { /* for this page only */ }
+    if (!on) {
+      if (old) old.remove();
+      const f = fbApi(); if (f && f.trace === readAdd) f.trace = null;
+      document.removeEventListener('kct:feedback-log', onFbLog);
+      document.removeEventListener('kct:feedback-ready', readHook);
+      return;
+    }
+    if (old) return;
+    const el = document.createElement('div');
+    el.id = 'soundDev';
+    el.className = 'sound-dev';
+    el.innerHTML = '<div class="sd-row"><span class="sd-head"></span><button type="button" class="btn sd-fold" aria-label="Fold the readout" aria-expanded="true">▾</button>' +
+      '<button type="button" class="btn sd-copy">Copy</button><button type="button" class="btn sd-close" aria-label="Close the sound readout">✕</button></div><pre class="sd-log"></pre>';
+    document.body.appendChild(el);
+    read0 = performance.now(); readLines = [];
+    /** @type {HTMLElement} */ (el.querySelector('.sd-close')).addEventListener('click', () => readout(false));
+    const fold = /** @type {HTMLElement} */ (el.querySelector('.sd-fold'));
+    fold.addEventListener('click', () => { const f = el.classList.toggle('folded'); fold.textContent = f ? '▴' : '▾'; fold.setAttribute('aria-expanded', String(!f)); });
+    const copy = /** @type {HTMLElement} */ (el.querySelector('.sd-copy'));
+    copy.addEventListener('click', () => {
+      const text = readHead() + '\n' + navigator.userAgent + '\n' + readLines.join('\n');
+      const done = (/** @type {boolean} */ ok) => { copy.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { copy.textContent = 'Copy'; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); else done(false);
+    });
+    document.addEventListener('kct:feedback-log', onFbLog);
+    document.addEventListener('kct:feedback-ready', readHook);
+    readHook();
+  }
+
+  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load, soundWait, readout, traceLine });
 })();
 
 /* ---------------------------------------------------------------------
@@ -10262,14 +10360,14 @@ const App = (() => {
      text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test: boolean, vibrate: boolean, parallax: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test: boolean, vibrate: boolean, parallax: boolean, sound: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, parallax: !!d.parallax, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, parallax: !!d.parallax, sound: !!d.sound, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -10302,7 +10400,7 @@ const App = (() => {
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
       'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
       '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. ' +
-      '!dev parallax opens the table depth\'s tuning panel, for this tab. !dev reset:option resets one thing (!dev reset lists them).';
+      '!dev parallax opens the table depth\'s tuning panel, for this tab. !dev sound opens the sound readout, for this tab. !dev reset:option resets one thing (!dev reset lists them).';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -10358,6 +10456,15 @@ const App = (() => {
       Depth.panel(true);
       Logger.log('DEV', { parallax: true });
       linkNote = 'The table depth\'s tuning panel is open: start or resume a game to tune it. Its ✕ closes it.';
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
+    /* The sound readout: it opens over the menu and stays over the table, for the tab. */
+    if (r.dev && r.dev.sound) {
+      Moments.readout(true);
+      Logger.log('DEV', { sound: true });
+      linkNote = 'The sound readout is open: play a hand with Sound on, then select Copy to copy what it shows. Its ✕ closes it.';
       menuView = 'home';
       showMenu(app.menuLaunch);
       return;
@@ -10648,6 +10755,7 @@ const App = (() => {
     /* Tilt kept from an earlier visit: where the browser asks, the first tap asks (the answer is usually remembered). */
     if (app.ui.depth === 'tilt') Depth.askOnTap('');
     Depth.init();
+    Moments.readout(null, () => 'speed ' + app.ui.speed + ' · depth ' + app.ui.depth);
     $('backupFile').addEventListener('change', () => {
       const input = /** @type {HTMLInputElement} */ ($('backupFile')), file = input.files && input.files[0];
       input.value = '';
@@ -11354,11 +11462,12 @@ const SelfTest = (() => {
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev, rs('!dev Parallax').dev, rs('!dev reset:parallax').dev],
-        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
-          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
-          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, parallax: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, parallax: false, ops: {} },
-          { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: true, ops: {} }, { reset: 'parallax', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }]);
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev, rs('!dev Parallax').dev, rs('!dev reset:parallax').dev, rs('!dev Sound').dev],
+        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} },
+          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, parallax: false, sound: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: true, sound: false, ops: {} }, { reset: 'parallax', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, sound: true, ops: {} }]);
       eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!dev vibrate=1', '!dev vibrate saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(27).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
@@ -11784,6 +11893,13 @@ const SelfTest = (() => {
       eq('smoothing: none at 0 ms; one time constant goes 63% of the way; a long wait arrives',
         [f(0, 1, 16, 0), Math.round(f(0, 1, 100, 100) * 100) / 100, Math.round(f(0, 1, 2000, 100) * 1000) / 1000, f(0.4, 0.4, 16, 100)], [1, 0.63, 1, 0.4]);
       eq('!dev parallax opens the panel, and is written on its own', [Dev.parse('!dev parallax').ok && /** @type {any} */ (Dev.parse('!dev parallax')).parallax, Dev.parse('!dev parallax saves=5').ok], [true, false]);
+      eq('!dev sound opens the sound readout, and is written on its own', [Dev.parse('!dev sound').ok && /** @type {any} */ (Dev.parse('!dev sound')).sound, Dev.parse('!dev sound saves=5').ok], [true, false]);
+      eq('the sound readout\'s lines: beats with cards, time ahead and verdict; a moment\'s cue', [
+        Moments.traceLine('beats', { beats: [{ beat: 'deal', cards: 3, ahead: 383, sound: 'play' }, { beat: 'kitty', cards: 1, ahead: -90, sound: 'late' }] }, 2.04),
+        Moments.traceLine('beats', { retry: true, beats: [{ beat: 'deal', cards: 4, ahead: 40, sound: 'notReady' }] }, 12.5),
+        Moments.traceLine('moment', { anchor: 'land', beat: true, types: ['cardPlayed'], cue: 'cardPlayed', sound: 'off', ahead: 0 }, 3),
+        Moments.traceLine('moment', { anchor: 'result', beat: false, types: ['handScored'], cue: 'handLoss', sound: 'play', ahead: -1 }, 4)],
+        ['  2.0s beats deal×3 +383 play, kitty -90 late', ' 12.5s retry deal×4 +40 notReady', '  3.0s land (beat) cardPlayed → cardPlayed by beats', '  4.0s result handScored → handLoss play -1']);
     });
     safeRun('interface', () => {
       /* Another app's built-in browser: named when it says so, else 'another app'; real browsers and installed apps are ''. */

@@ -892,7 +892,25 @@ function playBeats(msg) {
     if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan, tone);
     out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain, tick: felt });
   }
+  trace('beats', { retry: msg.version === undefined, beats: list.map((b, i) => ({ beat: b.beat, cards: b.cards, ahead: Math.round(b.at - now), sound: out[i] && out[i].sound })) });
   return out;
+}
+
+/* ---- The trace ('!dev sound'): what each message did, for a readout on the device ---- */
+/** Hands a record to api.trace when a listener set it. Never stops feedback. @param {string} kind @param {any} data */
+function trace(kind, data) {
+  const f = api.trace;
+  if (typeof f === 'function') { try { f(kind, data); } catch (e) { /* never stops feedback */ } }
+}
+/** The sound channel's state, for the readout. */
+function status() {
+  const all = [...buffers.values()];
+  return {
+    canSound, sound: settings.sound, activated: state.activated || !!(navigator.userActivation && navigator.userActivation.hasBeenActive),
+    context: audio ? audio.state : 'none', rate: audio ? audio.sampleRate : 0,
+    latency: audio && typeof audio.outputLatency === 'number' ? Math.round(audio.outputLatency * 1000) : null,
+    ready: all.filter(Boolean).length, failed: all.filter((b) => b === null).length, dealReady, felt: state.felt, voices: voices.length,
+  };
 }
 
 /* ---- Control messages ---- */
@@ -934,7 +952,9 @@ function onMoment(e) {
   if (d.control) { control(d); return; }
   if (Array.isArray(d.beats)) { playBeats(d); return; }
   const moments = Array.isArray(d.moments) ? d.moments : [];
-  play(d);
+  const r = play(d);
+  if (api.trace) trace('moment', { anchor: d.anchor, beat: !!d.beat, types: moments.map((m) => m && m.type), ahead: typeof d.at === 'number' ? Math.round(d.at - performance.now()) : 0,
+    cue: r ? r.cue : null, sound: r ? r.sound : 'none' });
   /* Fall's Showdown voice: from the Showdown call to the Showdown result (after the result's own cue). */
   if (moments.some((m) => m && m.type === 'showdownCalled')) state.showdown = true;
   if (moments.some((m) => m && (m.type === 'showdownScored' || m.type === 'gameEnded'))) state.showdown = false;
@@ -988,6 +1008,10 @@ const api = {
   version: V,
   /** Set by event parallax (#185) to receive motion names. */
   parallax: /** @type {null | ((name: string, amount: number) => void)} */ (null),
+  /** Set by the game's sound readout ('!dev sound') to receive what each message did: ('beats' | 'moment', record). */
+  trace: /** @type {null | ((kind: string, data: any) => void)} */ (null),
+  /** The sound channel's state: the context, the rendered sounds, the setting. Read-only. */
+  status,
   /** The pure core and the module's state, for tests (tests/feedback.js). */
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
