@@ -1029,21 +1029,20 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .table .seat,.depth .table .me{--dp-panel:0 calc(var(--dp-shadow-reach) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
 .depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
 .depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
-/* '!dev parallax': the tuning panel, over the header (your hand and the trick stay in view), for the tab. */
-.depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(20rem,calc(100vw - 1rem));max-height:min(28rem,40vh);overflow:auto;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.75rem;box-shadow:0 0.875rem 2.5rem rgba(0,0,0,.5);font-size:0.75rem}
-.depth-dev .dd-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:0.375rem;padding:0.375rem 0.5rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);border-bottom:1px solid rgba(255,255,255,.12)}
-.depth-dev .dd-head b{flex:1 1 auto;color:var(--gold)}
-.depth-dev .dd-head .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
+/* '!dev parallax': the tuning panel, a strip of two rows over the header (your hand and the trick stay in view), for
+   the tab. Folded, only its Depth tab shows, in the bottom right corner, clear of the menu button. */
+.depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
+.depth-dev .dd-row{display:flex;align-items:center;gap:0.375rem;min-height:1.875rem}
+.depth-dev .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
+.depth-dev .dd-key{flex:1 1 auto;min-width:0;min-height:1.75rem;font-size:0.75rem}
+.depth-dev .dd-val{flex:none;min-width:3.75rem;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;color:var(--gold)}
+.depth-dev .dd-range{flex:1 1 auto;min-width:0;margin:0}
 .depth-dev .dd-cmp{display:flex;align-items:center;gap:0.25rem;color:var(--muted)}
-.depth-dev.folded .dd-body{display:none}
-.depth-dev .dd-body{padding:0.25rem 0.5rem 0.5rem}
-.depth-dev .dd-group{margin:0.5rem 0 0.125rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:0.625rem}
-.depth-dev .dd-row{display:grid;grid-template-columns:6.5rem minmax(0,1fr) 4.25rem;align-items:center;gap:0.375rem;min-height:1.75rem}
-.depth-dev .dd-row input{width:100%;margin:0}
-.depth-dev .dd-name{line-height:1.15}
-.depth-dev .dd-val{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-.depth-dev .dd-note{margin:0.5rem 0 0;color:var(--muted)}
-.depth-dev .dd-out{width:100%;min-height:4.5rem;margin-top:0.5rem;font:0.6875rem ui-monospace,Menlo,Consolas,monospace}
+.depth-dev .dd-tab{display:none}
+.depth-dev.folded{top:auto;left:auto;right:0.5rem;bottom:0.5rem;width:auto;padding:0.125rem}
+.depth-dev.folded > :not(.dd-tab){display:none}
+.depth-dev.folded .dd-tab{display:inline-flex;color:var(--gold)}
+.depth-dev .dd-out{width:100%;min-height:3.5rem;font:0.6875rem ui-monospace,Menlo,Consolas,monospace}
 </style>
 <!-- Theme packs (Settings → Table → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
@@ -6570,7 +6569,7 @@ const Depth = (() => {
     /** @type {Record<string, number>} */
     const v = {};
     if (x && x.v && typeof x.v === 'object') for (const k of keys) if (valid(k, x.v[k])) v[k] = x.v[k];
-    return { open: !!(x && x.open), folded: !!(x && x.folded), v };
+    return { open: !!(x && x.open), folded: !!(x && x.folded), k: x && typeof x.k === 'string' ? x.k : '', v };
   }
   let tab = read(), mode = 'still', speed = 'normal', preview = false;
   const keep = () => { try { if (tab.open || Object.keys(tab.v).length) sessionStorage.setItem(KEY, JSON.stringify(tab)); else sessionStorage.removeItem(KEY); } catch (e) { /* for this page only */ } };
@@ -6603,35 +6602,41 @@ const Depth = (() => {
   }
   function resetTune() { tab.v = {}; keep(); apply(); }
 
-  /* ---- The tuning panel ('!dev parallax'): a slider for each key, over the live table. ---- */
+  /* ---- The tuning panel ('!dev parallax'): a strip over the header. One value at a time: pick it in the list, set it
+     with the slider. Folded, it is a small Depth tab in the bottom right corner. ---- */
   const fmt = (/** @type {string} */ k) => num(k) + DEPTH[k].unit;
+  const pick = () => Object.prototype.hasOwnProperty.call(DEPTH, tab.k || '') ? /** @type {string} */ (tab.k) : keys[0];
   function panelHTML() {
-    let html = '<div class="dd-head"><b>Depth</b><label class="dd-cmp"><input type="checkbox" data-dd="off"> Off</label>' +
-      '<button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button>' +
-      '<button class="btn" type="button" data-dd="fold" aria-label="Fold">▾</button><button class="btn" type="button" data-dd="close" aria-label="Close">✕</button></div><div class="dd-body">';
-    let group = '';
+    let opts = '', group = '';
     for (const k of keys) {
       const d = DEPTH[k];
-      if (d.group !== group) { group = d.group; html += '<p class="dd-group">' + escHTML(group) + '</p>'; }
-      html += '<label class="dd-row"><span class="dd-name">' + escHTML(d.name) + '</span><input type="range" data-k="' + k + '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '" value="' + num(k) + '">' +
-        '<output class="dd-val">' + fmt(k) + '</output></label>';
+      if (d.group !== group) { opts += (group ? '</optgroup>' : '') + '<optgroup label="' + escHTML(d.group) + '">'; group = d.group; }
+      opts += '<option value="' + k + '">' + escHTML(d.name) + '</option>';
     }
-    return html + '<p class="dd-note" hidden></p><textarea class="dd-out" readonly hidden aria-label="Values"></textarea></div>';
+    return '<button class="btn dd-tab" type="button" data-dd="fold">Depth</button>' +
+      '<div class="dd-row"><select class="dd-key" aria-label="Value to tune">' + opts + '</optgroup></select><output class="dd-val"></output>' +
+      '<button class="btn" type="button" data-dd="fold" aria-label="Fold">▴</button><button class="btn" type="button" data-dd="close" aria-label="Close">✕</button></div>' +
+      '<div class="dd-row"><input class="dd-range" type="range" aria-label="Value"><label class="dd-cmp"><input type="checkbox" data-dd="off"> Off</label>' +
+      '<button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button></div>' +
+      '<textarea class="dd-out" readonly hidden aria-label="Values"></textarea>';
   }
   function syncPanel() {
     const el = document.getElementById('depthDev');
     if (!el) return;
     el.classList.toggle('folded', tab.folded);
-    for (const r of /** @type {HTMLInputElement[]} */ ([...el.querySelectorAll('input[data-k]')])) {
-      const k = r.dataset.k || '';
-      if (Number(r.value) !== num(k)) r.value = String(num(k));
-      const o = r.nextElementSibling;
-      if (o) o.textContent = fmt(k) + (tab.v[k] !== undefined ? ' •' : '');
-    }
-    /** @type {HTMLInputElement} */ (el.querySelector('[data-dd="off"]')).checked = preview || mode === 'off';
-    const note = /** @type {HTMLElement} */ (el.querySelector('.dd-note'));
-    note.hidden = mode !== 'off';
-    note.textContent = 'Table depth is Off in Settings → Table: set it to Still to see these values.';
+    const k = pick(), d = DEPTH[k];
+    const sel = /** @type {HTMLSelectElement} */ (el.querySelector('.dd-key'));
+    sel.value = k;
+    /* A tuned value shows a dot in the list. */
+    for (const o of [...sel.options]) o.textContent = DEPTH[o.value].name + (tab.v[o.value] !== undefined ? ' •' : '');
+    const r = /** @type {HTMLInputElement} */ (el.querySelector('.dd-range'));
+    if (r.dataset.k !== k) { r.dataset.k = k; r.min = String(d.min); r.max = String(d.max); r.step = String(d.step); }
+    if (Number(r.value) !== num(k)) r.value = String(num(k));
+    /** @type {HTMLElement} */ (el.querySelector('.dd-val')).textContent = fmt(k);
+    const off = /** @type {HTMLInputElement} */ (el.querySelector('[data-dd="off"]'));
+    off.checked = preview || mode === 'off';
+    off.disabled = mode === 'off';
+    off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Table.' : 'The classic table, to compare. The setting stays.';
   }
   /** The values in use, as JSON for DEPTH's defaults. */
   const json = () => JSON.stringify(Object.fromEntries(keys.map(k => [k, num(k)])));
@@ -6650,24 +6655,25 @@ const Depth = (() => {
       el.innerHTML = panelHTML();
       el.addEventListener('input', e => {
         const r = /** @type {HTMLInputElement} */ (e.target);
-        if (r.dataset.k) tune(r.dataset.k, Number(r.value));
+        if (r.classList.contains('dd-range') && r.dataset.k) tune(r.dataset.k, Number(r.value));
       });
       el.addEventListener('change', e => {
         const c = /** @type {HTMLInputElement} */ (e.target);
-        if (c.dataset.dd === 'off') { preview = c.checked && mode !== 'off'; apply(); }
+        if (c.classList.contains('dd-key')) { tab.k = c.value; keep(); syncPanel(); }
+        else if (c.dataset.dd === 'off') { preview = c.checked && mode !== 'off'; apply(); }
       });
       el.addEventListener('click', e => {
         const b = /** @type {HTMLElement} */ (e.target).closest('button[data-dd]');
         const act = b ? /** @type {HTMLElement} */ (b).dataset.dd : '';
+        const out = /** @type {HTMLTextAreaElement} */ (el.querySelector('.dd-out'));
         if (act === 'close') panel(false);
-        else if (act === 'reset') resetTune();
-        else if (act === 'fold') { tab.folded = !tab.folded; keep(); syncPanel(); }
+        else if (act === 'reset') { out.hidden = true; resetTune(); }
+        else if (act === 'fold') { tab.folded = !tab.folded; out.hidden = true; keep(); syncPanel(); }
         else if (act === 'copy') {
-          const out = /** @type {HTMLTextAreaElement} */ (el.querySelector('.dd-out'));
-          out.value = json();
-          out.hidden = false;
-          out.select();
-          if (navigator.clipboard) navigator.clipboard.writeText(out.value).catch(() => { /* the field shows them */ });
+          /* To the clipboard; the values show in a field only when the browser refuses. */
+          const done = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1200); };
+          const show = () => { out.value = json(); out.hidden = false; out.select(); };
+          if (navigator.clipboard) navigator.clipboard.writeText(json()).then(done, show); else show();
         }
       });
       document.body.appendChild(el);

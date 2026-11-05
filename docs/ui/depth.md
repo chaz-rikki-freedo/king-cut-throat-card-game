@@ -48,10 +48,14 @@ it back to Still.
 ## Tuning during a game
 
 1. In the menu, type `!dev parallax` in **Load a code**, and then select **Load**.
-2. Start or resume a game. The panel stays over the header for the tab, also after a reload.
-3. Move a slider. The table changes at once. A value that differs from `DEPTH` shows a dot.
+2. Start or resume a game. A two-row strip covers the header, so the trick and your hand stay in view. It stays for
+   the tab, also after a reload.
+3. Choose a value in the list, and then move the slider. The table changes at once. A tuned value shows a dot in the
+   list.
 4. Select the **Off** checkbox to compare with the classic table. It doesn't change the setting.
-5. Select **Copy** to get every value as JSON, to paste into `DEPTH`'s defaults.
+5. Select **Copy** to copy every value as JSON, to paste into `DEPTH`'s defaults.
+6. Select **▴** to fold the strip into a small **Depth** tab in the bottom-right corner. Select the tab to open the
+   strip again.
 
 **Reset** returns every value to `DEPTH`'s. The ✕ closes the panel. `!dev reset:parallax` also drops the values.
 Tuned values last for the tab only (sessionStorage `kct-depth`), and a backup never holds them.
