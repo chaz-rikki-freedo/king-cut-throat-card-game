@@ -12,6 +12,7 @@
 > | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Built |
 > | 6 | [Beats](#beats), the game's side: Fx reports each motion's contact time, and batches are timed to them | Built |
 > | 7 | Beats, the module's side: [scheduling](#scheduling) on the audio clock, [beat presets](#beat-presets) | Built |
+> | 8 | [Variation within a game](#variation-within-a-game): context, per-play tone, more variants | Planned |
 >
 > The remaining choices are listed in [Open items](#open-items).
 
@@ -310,6 +311,70 @@ each sound → its gain (cue, beat, card count, variation, distance) → its pan
 | **Pan** | By the beat's `place`: the left seat left, the right seat right, yours in the middle. | Heard with headphones or stereo speakers. A browser without `StereoPannerNode` plays it in the middle. |
 
 Moment sounds (a King point, a result) take the level, tone and limiter, with no variation, distance or pan: their meaning stays in front and in the middle. A node that the browser lacks is left out of the bus, and the sound still plays.
+
+## Variation within a game
+
+> **Status: planned (phase 8).** Nothing here is built yet.
+
+An average game plays about 500 sounds from 35 rendered presets. The most frequent ones repeat too often to stay unnoticed: card play sounds about 210 times a game with 3 variants, so each recording returns every third card. Three layers add variation, in order of what they mean:
+
+1. **[Context](#context):** a card sounds like the card it is.
+2. **[Per-play tone](#per-play-tone):** each hit's brightness varies a little.
+3. **[More variants](#more-variants):** the most frequent sounds get more takes.
+
+Each layer is deterministic: it uses public facts and hashes of beat keys, never a random number or the seed, so a replay sounds the same ([principle 8](#principles)).
+
+### Context
+
+A trick card's sound follows public facts about the card and its place in the trick. The card is face up when it lands, so these facts reveal nothing.
+
+| Fact | Change | Why |
+|---|---|---|
+| A trump | +1.5 dB, −2% pitch | It lands with weight. |
+| An Ace or a King | +1 dB on the high shelf | It snaps. |
+| The lead (first card of the trick) | +0.5 dB | A firm opening. |
+| The last card of the trick | +1 dB | It completes the trick, just before the sweep. |
+| An off-suit card, not a trump (a slough) | −1.5 dB, +1% pitch | It's thrown away, lightly. |
+
+- **The offsets add up**, then the total is clamped to `CONTEXT_MAX_DB` either way, so a trump Ace that wins as the last card stays in range.
+- **They come before the [per-hit variation](#mixing)**, which still applies on top.
+- **The game's side:** the `card` beat gains four public facts:
+  - `trump` (true or false)
+  - `high` (an Ace or a King)
+  - `lead` and `last` (its place in the trick)
+  - `follow` (false for a slough)
+
+  It still never names the card.
+- **Other beats** keep their sounds. A deal or a sweep has no card of its own to characterize.
+
+### Per-play tone
+
+Each hit also varies in brightness: a high shelf at `SHELF_HZ` on the voice, with a gain within ±`TONE_JITTER_DB`, picked by a hash of the beat's key with its own salt. Gain and pitch already vary. Brightness is the third dimension, and it is what makes two takes of the same recording sound like two cards.
+
+- **For a single hit**, the voice's filter applies at playback, so nothing new is rendered.
+- **For a train**, each hit's tone is part of the mix, like its pitch, so the train stays one voice. A one-pole shelf, applied as the mix is built, is enough.
+- **The cost:** one `BiquadFilterNode` for each playing voice, at most `MAX_VOICES` at a time.
+
+### More variants
+
+The four most frequent table sounds get more takes: the same family and archetype, with another seed. Each new seed is `hashString('<family>-<archetype>-v<n>')`, the rule the existing variants use. Your own lab picks can replace any of them.
+
+| Sound | Plays a game | Variants now | Planned | New presets and seeds |
+|---|---|---|---|---|
+| `card-play` (your card) | About 70 | 3 | 8 | `card-play-4` 456309547, `-5` 439531928, `-6` 489864785, `-7` 473087166, `-8` 389199071 |
+| `card-slide-in` (a bot's card) | About 140 | 1 | 4 | `card-slide-in-2` 925596490, `-3` 942374109, `-4` 824930776 |
+| `deal` (a packet to a bot) | About 65 | 2 | 4 | `deal-3` 3571462854, `-4` 3621795711 |
+| `deal-hand` (a packet to you) | About 30 | 1 | 4 | `deal-hand-2` 1588157528, `-3` 1604935147, `-4` 1688823242 |
+| `trick-you` (your sweep) | About 18 | 2 | 4 | `trick-you-3` 1684692004, `-4` 1667914385 |
+| `trick-bot` (a bot's sweep) | About 37 | 2 | 4 | `trick-bot-3` 2119815707, `-4` 2203703802 |
+
+- **17 new presets**, about 3 s of audio and 0.5 MB for each palette that is rendered, and under a second of idle rendering.
+- **The beats' sound table** lists the new names, and a key picks among them as it does now. Trains already step through the list, so a 4-card packet takes 4 different takes.
+- **A variant that hasn't rendered yet** is skipped, as now.
+
+### Measuring it
+
+`tests/interest.js` gains a repeat count: how often the same sound with the same tone comes back within 3 plays of itself. The target is under 10% for card play. Measure today's rate first, as the baseline.
 
 ## Moments of interest
 
@@ -838,6 +903,8 @@ All draft values, to tune once built.
 | `JITTER_RATE` | 0.02 | How far a hit's pitch varies, either way |
 | `DISTANCE_DB` | −2 | A bot's table sounds, against yours |
 | `PAN` | 0, −0.35, +0.35 | The stereo pan for you, the left seat and the right seat |
+| `CONTEXT_MAX_DB` | 2.5 | Planned: the most a card's [context](#context) moves its gain, either way |
+| `TONE_JITTER_DB` | 1.5 | Planned: how far a hit's brightness varies, either way |
 | `VIBRATE_MAX_MS` | 300 | The longest single pulse after scaling |
 | `VIBRATE_TOTAL_MS` | 1500 | The longest whole pattern after scaling |
 | `STAKES_CLOSE` | 7 | The score that makes the stakes Close |
@@ -866,6 +933,7 @@ All draft values, to tune once built.
 | `feedback/synth.js` | T1 | `tests/feedback.js`, in the browser: every preset in `palettes.js` renders, isn't silent, stays within its target length and `RENDER_BUDGET_MS`, and renders the same samples twice. The lab's own self-test checks are the model. |
 | Beats, the game's side | T1 | `tests/feedback.js`, in the real page: a hand gives one `deal` beat per packet, 21 `card` beats and 7 `sweep` beats; every key is unique and a redraw part way through sends none twice; a `land` batch's `at` equals its draw's latest `card` beat; reduced motion sends no beats and no `beat: true` |
 | Beats, the module's side | T1 | `tests/feedback.js`, with a fake `AudioContext` that records `start(when)`: a future `at` starts at the right audio time, less `outputLatency`; past `MAX_AHEAD_MS` it drops; `cancel` stops what is scheduled; with `beat: true` the **Beat** sounds stay silent and the vibration still plays; every beat preset renders |
+| Variation (planned) | T1 | `tests/feedback.js`: each context fact moves the card's sound by its offset and the total stays within `CONTEXT_MAX_DB`; a key always gives the same tone; a train's hits differ in tone; every new variant renders. Game side: the `card` beat carries `trump`, `high`, `lead`, `last` and `follow`, and never `card`. `interest.js`: the repeat count for card play is under 10%. |
 | Caching | T1 | `sw.js`: the three feedback files are precached apart from `ASSETS`, including an install where one fails |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, rendering time against `RENDER_BUDGET_MS`, and whether sound adds any delay at Fast |
