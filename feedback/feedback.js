@@ -324,8 +324,11 @@ function play(batch) {
 }
 
 /* ---- Control messages ---- */
+/* Nothing is armed in phase 1: each batch plays when it arrives. A new game (scope 'game') also forgets the Showdown
+   voice and the last part each channel played; a step (scope 'step', such as Next hand) keeps the gaps. */
 function cancel(scope) {
-  if (scope === 'game') state.showdown = false;
+  if (scope !== 'game') return;
+  state.showdown = false;
   drop.vibrate.reset();
   drop.sound.reset();
 }

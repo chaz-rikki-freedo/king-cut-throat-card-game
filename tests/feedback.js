@@ -260,6 +260,87 @@ const batchSrc = `
     expect('no page errors or console warnings', errors.length === 0, errors);
     await ctx.close();
 
+    /* ---------- The game's side: index.html sends batches at screen time ---------- */
+    console.log('The game sends moments');
+    const g = await browser.newContext({ serviceWorkers: 'block' });
+    await g.addInitScript(() => {
+      const w = /** @type {any} */ (window);
+      w.__batches = [];
+      /* With each batch, the cards the table shows face up at that moment: played this hand, or turned up. */
+      document.addEventListener('kct:moment', (e) => {
+        const st = w.KCT && w.KCT.App.app.state;
+        w.__batches.push(Object.assign({ got: performance.now(), faceUp: st ? st.played.concat(st.flippedId ? [st.flippedId] : []) : [] }, /** @type {CustomEvent} */ (e).detail));
+      });
+    });
+    const gp = await g.newPage();
+    const gErrors = [];
+    gp.on('pageerror', (e) => gErrors.push(String(e)));
+    await gp.goto(server.url);
+    await gp.waitForFunction(() => /** @type {any} */ (window).KCT && /** @type {any} */ (window).KCT.App.app.ui);
+    /* One hand of wave 1 at Fast: the bots play by the game's own timers, and the test plays your seat. */
+    const played = await gp.evaluate(async () => {
+      const { App, Engine, AI } = /** @type {any} */ (window).KCT, a = App.app;
+      const sel = /** @type {HTMLSelectElement} */ (document.getElementById('speedSel'));
+      App.newGame(4242, 1);
+      sel.value = 'fast'; sel.dispatchEvent(new Event('change'));
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const t0 = performance.now();
+      while (performance.now() - t0 < 40000 && !a.state.gameOver && a.state.handNumber <= 1) {
+        const st = a.state, ac = Engine.actors(st);
+        if (ac.includes(0) && !a.ui.autoplay) App.act(AI.fastAction(st, 0));
+        else if (!ac.length && !a.timerFn) { const sys = Engine.systemAction(st); if (sys) App.act(sys); }
+        await sleep(30);
+      }
+      await sleep(1500);
+      return { hand: a.state.handNumber, played: a.state.playLog ? a.state.playLog.length : null, flipped: a.state.flippedId };
+    });
+    const batches = await gp.evaluate(() => /** @type {any} */ (window).__batches);
+    const ANCHOR = await gp.evaluate(() => /** @type {any} */ (window).KCT.Moments.ANCHOR);
+    const data = batches.filter((b) => !b.control);
+    const types = data.flatMap((b) => b.moments.map((m) => m.type));
+    expect('the first hand plays through', played.hand >= 2, played);
+    expect('every batch has v 1 and its moments their own anchor', data.length > 0 && data.every((b) => b.v === 1 && b.moments.every((m) => ANCHOR[m.type] === b.anchor)),
+      data.filter((b) => b.v !== 1 || b.moments.some((m) => ANCHOR[m.type] !== b.anchor)).slice(0, 3));
+    expect('a speed control message for Fast', batches.some((b) => b.control === 'speed' && b.speed === 'fast'));
+    const count = (t) => types.filter((x) => x === t).length;
+    expect('one deal, one flip and one trump call', count('deal') >= 1 && count('flip') >= 1 && count('trumpNamed') >= 1, { deal: count('deal'), flip: count('flip'), trump: count('trumpNamed') });
+    expect('21 cards played and 7 tricks won in the hand', count('cardPlayed') === 21 && count('trickWon') === 7, { cards: count('cardPlayed'), tricks: count('trickWon') });
+    expect('the hand ends with one result: a hand score or a Showdown call', count('handScored') + count('showdownCalled') === 1, { hand: count('handScored'), sd: count('showdownCalled') });
+    /* Screen time: a card is heard after it lands, its trick after the sweep, the result after the last sweep. */
+    const at = (pred) => data.findIndex((b) => b.moments.some(pred));
+    /* The batch of each main-hand card, in play order: the trick's third card comes before its sweep. */
+    const cardBatch = data.flatMap((b, i) => b.moments.filter((m) => m.type === 'cardPlayed' && !m.showdown).map(() => i));
+    const late = [];
+    for (let n = 1; n <= 7; n++) {
+      const sweep = data.findIndex((b) => b.anchor === 'sweep' && b.moments.some((m) => m.type === 'trickWon' && m.trickNumber === n && !m.showdown));
+      if (sweep < 0 || !(cardBatch[3 * n - 1] < sweep)) late.push({ trick: n, sweep, third: cardBatch[3 * n - 1] });
+    }
+    expect('each trick is swept after its third card lands', late.length === 0, late);
+    const lastSweep = data.reduce((k, b, i) => (b.anchor === 'sweep' ? i : k), -1);
+    const result = at((m) => m.type === 'handScored' || m.type === 'showdownCalled');
+    expect('the result comes after the last sweep', result > lastSweep, { lastSweep, result });
+    const landGaps = data.filter((b) => b.anchor === 'land' && b.moments.some((m) => m.type === 'cardPlayed')).map((b) => b.got - b.at);
+    expect('a card\'s batch is sent once it lands, not before', landGaps.every((d) => d >= -1 && d < 300), landGaps.filter((d) => d < -1 || d >= 300).slice(0, 5));
+    const hidden = data.flatMap((b) => b.moments.filter((m) => m.card && !b.faceUp.includes(m.card)).map((m) => m.type + ' ' + m.card));
+    expect('every card in a moment is face up on the table when it is sent: nothing hidden', hidden.length === 0, hidden.slice(0, 5));
+    /* Instant: nothing more is sent. */
+    const instant = await gp.evaluate(async () => {
+      const { App, Engine, AI } = /** @type {any} */ (window).KCT, a = App.app, w = /** @type {any} */ (window);
+      const sel = /** @type {HTMLSelectElement} */ (document.getElementById('speedSel'));
+      sel.value = 'instant'; sel.dispatchEvent(new Event('change'));
+      const before = w.__batches.filter((b) => !b.control).length, v0 = a.state.version;
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (let i = 0; i < 400 && !a.state.gameOver && a.state.version < v0 + 40; i++) {
+        const st = a.state, ac = Engine.actors(st);
+        if (ac.includes(0)) App.act(AI.fastAction(st, 0)); else await sleep(10);
+      }
+      await sleep(300);
+      return { moves: a.state.version - v0, sent: w.__batches.filter((b) => !b.control).length - before };
+    });
+    expect('at Instant the game sends no batches', instant.moves > 10 && instant.sent === 0, instant);
+    expect('no page errors in the game', gErrors.length === 0, gErrors);
+    await g.close();
+
     /* ---------- Missing files ---------- */
     console.log('Missing files');
     const ctx2 = await browser.newContext({ serviceWorkers: 'block' });

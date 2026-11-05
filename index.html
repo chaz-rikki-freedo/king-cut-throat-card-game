@@ -6212,6 +6212,161 @@ const Fx = (() => {
   return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms });
 })();
 
+/* ---------------------------------------------------------------------
+   7c. MOMENTS — what happened, as the optional feedback module hears it
+   (docs/ui/feedback-contract.md). build() turns an action's Engine events
+   into moments: public facts only, read from the View for the seat at the
+   bottom, never from the full state, and never the seed. observe() runs at
+   each table draw (Controller draw) and sends each batch at its screen time:
+   'land' one motion step after the cards are drawn, 'sweep' when the next
+   table (the trick swept) is drawn, 'result' when the result shows (after
+   holdResult), 'gameOver' from showGameOver, 'tap' at once. Nothing is sent
+   at Instant, during a skip (but the Showdown result), for a jump in the
+   replay viewer, or for a draw with no new events (a resume, a redraw).
+   Without a listener every event goes nowhere: the game never waits for,
+   or reads, a reply.
+   Tests: T2. selftest.js moments; feedback.js. A change to a moment's shape changes V (and the module's).
+   --------------------------------------------------------------------- */
+const Moments = (() => {
+  const V = 1;
+  /** @type {Record<string, 'land' | 'sweep' | 'result' | 'gameOver' | 'tap'>} */
+  const ANCHOR = { deal: 'land', flip: 'land', discard: 'land', trumpNamed: 'land', cardPlayed: 'land', trickWon: 'sweep', king: 'sweep',
+    handScored: 'result', showdownCalled: 'result', showdownScored: 'result', gameEnded: 'gameOver', waveCleared: 'gameOver',
+    cardPicked: 'tap', skipPressed: 'tap' };
+
+  /**
+   * An action's events as moments, for the seat at the bottom of view v. Pure. Each event object counts once.
+   * @param {any[]} events @param {any} v buildView(state, seat) after the events @param {{ mode?: string | null }} [ctx]
+   * @returns {any[]}
+   */
+  function build(events, v, ctx) {
+    const seat = v.seat, you = (/** @type {number} */ p) => p === seat;
+    const list = [...new Set(events || [])];
+    /* The scores before the events: the View's scores less each change. */
+    const running = v.scores.slice();
+    for (const e of list) if (e.type === 'SCORE_CHANGED') running[e.player] -= e.delta;
+    const out = [];
+    /** @type {any} a scoring moment that waits for its scoresAfter */
+    let open = null;
+    const close = () => { if (open) { open.scoresAfter = running.slice(); open = null; } };
+    for (const e of list) {
+      switch (e.type) {
+        case 'SCORE_CHANGED': running[e.player] += e.delta; break;
+        case 'DEAL': out.push({ type: 'deal', showdown: false }); break;
+        case 'SHOWDOWN_DEAL': out.push({ type: 'deal', showdown: true }); break;
+        case 'KITTY_FLIPPED': out.push({ type: 'flip', card: e.card }); break;
+        case 'DISCARD': case 'EXCHANGE_DISCARD': case 'SHOWDOWN_DISCARD':
+          out.push({ type: 'discard', seat: e.player, you: you(e.player), count: e.count }); break;
+        case 'TRUMP_ACCEPTED': case 'TRUMP_NAMED':
+          out.push({ type: 'trumpNamed', seat: e.player, you: you(e.player), trump: e.suit, round: e.round }); break;
+        case 'CARD_PLAYED': out.push({ type: 'cardPlayed', seat: e.player, you: you(e.player), card: e.card, showdown: !!e.showdown }); break;
+        case 'TRICK_WON': case 'SHOWDOWN_TRICK_WON': {
+          const sd = e.type === 'SHOWDOWN_TRICK_WON';
+          out.push({ type: 'trickWon', seat: e.winner, you: you(e.winner), card: e.card, trump: v.trump, trickNumber: e.number,
+            totalTricks: v.totalTricks, showdown: sd, tricksWon: (sd && v.showdown ? v.showdown.tricksWon : v.tricksWon).slice(), caller: v.caller });
+          break;
+        }
+        case 'KING_SCORED':
+          close();
+          open = { type: 'king', seat: e.player, you: you(e.player), card: e.card, showdown: !!e.showdown, scoresBefore: running.slice() };
+          out.push(open);
+          break;
+        case 'HAND_SCORED':
+          if (e.outcome === 'SHOWDOWN') break;   // the Showdown call speaks for this hand
+          close();
+          open = { type: 'handScored', winner: e.winner, you: you(e.winner), outcome: e.outcome, points: e.points, caller: v.caller,
+            tricks: e.tricks.slice(), scoresBefore: running.slice() };
+          out.push(open);
+          break;
+        case 'SHOWDOWN_STARTED':
+          out.push({ type: 'showdownCalled', players: e.participants.slice(), mediator: e.mediator, youPlay: e.participants.includes(seat), youMediate: e.mediator === seat });
+          break;
+        case 'SHOWDOWN_SCORED':
+          close();
+          open = { type: 'showdownScored', winner: e.winner, loser: e.loser, you: you(e.winner), youMediate: !!v.showdown && v.showdown.mediator === seat,
+            tricks: e.tricks.slice(), scoresBefore: running.slice() };
+          out.push(open);
+          break;
+        case 'GAME_ENDED':
+          out.push({ type: 'gameEnded', winner: e.winner, you: you(e.winner), scores: e.scores.slice(), mode: (ctx && ctx.mode) || null,
+            byKing: e.reason === 'KING' || e.reason === 'SHOWDOWN_KING' });
+          break;
+        default: /* events that never become moments */
+      }
+    }
+    close();
+    return out;
+  }
+
+  /* ---- Sending ---- */
+  function emit(detail) {
+    try { document.dispatchEvent(new CustomEvent('kct:moment', { detail })); } catch (e) { /* no listener can break the game */ }
+  }
+  /** @param {string} anchor @param {any[]} moments @param {{ version: number, replay?: boolean, at?: number }} o */
+  function send(anchor, moments, o) {
+    if (!moments.length) return;
+    emit({ v: V, version: o.version, at: o.at !== undefined ? o.at : performance.now(), anchor, replay: !!o.replay, moments });
+  }
+  /** A control message: cancel (scope 'game' or 'step'), reset, speed, theme. */
+  function control(name, data) {
+    emit(Object.assign({ v: V, version: observed, at: performance.now(), moments: [], control: name }, data || {}));
+  }
+
+  /* ---- Timing: each batch at its screen time ---- */
+  let observed = -1, gen = 0;
+  /** @type {{ version: number, replay: boolean, moments: any[] }[]} */
+  let sweeps = [], results = [], gameOvers = [];
+  /** Forgets everything waiting: a new game, a resume, the replay viewer opened, closed or jumped. */
+  function reset() {
+    sweeps = []; results = []; gameOvers = [];
+    observed = -1; gen++;
+    control('cancel', { scope: 'game' });
+  }
+  /**
+   * A table draw (the Controller's draw, after it rendered). events: the events this draw shows, maybe none.
+   * @param {any[]} events @param {any} v the true View (not the held one)
+   * @param {{ replay: boolean, mode: string | null, hold: boolean, instant: boolean, skipping: boolean, step: number }} o
+   */
+  function observe(events, v, o) {
+    if (v.version < observed) reset();
+    const now = performance.now();
+    /* The swept trick is on the table once a later table is drawn. */
+    const due = sweeps.filter(s => s.version < v.version);
+    sweeps = sweeps.filter(s => s.version >= v.version);
+    for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: now });
+    /* A held result shows on the next draw that does not hold. */
+    if (!o.hold && results.length) { const r = results; results = []; for (const x of r) send('result', x.moments, { version: x.version, replay: x.replay, at: now }); }
+    if (!events || !events.length || v.version <= observed) return;
+    observed = v.version;
+    let moments = build(events, v, { mode: o.mode });
+    if (o.instant) return;
+    if (o.skipping) moments = moments.filter(m => m.type === 'showdownScored' || m.type === 'gameEnded');
+    if (!moments.length) return;
+    const by = (/** @type {string} */ a) => moments.filter(m => ANCHOR[m.type] === a);
+    const at = { version: v.version, replay: o.replay };
+    const land = by('land');
+    if (land.length) {
+      if (o.step > 0) { const g = gen; setTimeout(() => { if (g === gen) send('land', land, Object.assign({ at: now + o.step }, at)); }, o.step); }
+      else send('land', land, Object.assign({ at: now }, at));
+    }
+    const ends = by('gameOver');
+    /* A game that ends mid-trick: there is no next table to sweep it, so its trick goes with the game's end. */
+    if (ends.length) gameOvers.push({ version: v.version, replay: o.replay, moments: by('sweep').concat(ends) });
+    else if (by('sweep').length) sweeps.push({ version: v.version, replay: o.replay, moments: by('sweep') });
+    const res = by('result');
+    if (res.length) { if (o.hold) results.push({ version: v.version, replay: o.replay, moments: res }); else send('result', res, Object.assign({ at: now }, at)); }
+  }
+  /** The game-over dialog opened: its batch, once, with a cleared wave's moment when there is one. @param {any[]} [extra] */
+  function gameOver(extra) {
+    const g = gameOvers; gameOvers = [];
+    for (const x of g) send('gameOver', x.moments.concat(extra || []), { version: x.version, replay: x.replay });
+  }
+  /** A tap of your own: at once. @param {any} moment @param {number} version */
+  function tap(moment, version) { send('tap', [moment], { version }); }
+
+  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap });
+})();
+
 
 /* ---------------------------------------------------------------------
    8. CONTROLLER — game flow, timing, and human input.
@@ -6727,6 +6882,7 @@ const App = (() => {
   /** Console: KCT.App.tableReset(), with no question. Table memory, House rules and Theme go back to their defaults. */
   function tableReset() {
     Logger.log('TABLE_RESET', {});
+    Moments.control('reset');
     setMemoryAll(MEMORY_STANDARD);
     Object.assign(app.houseRules, HOUSE_DEFAULTS);
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
@@ -6863,6 +7019,7 @@ const App = (() => {
       return false;
     }
     addLog('Game resumed.', '');
+    Moments.reset();
     schedule();
     return true;
   }
@@ -6873,6 +7030,7 @@ const App = (() => {
     syncSpeedTitle();
     if (app.ui.speed === value) return;
     app.ui.speed = value;
+    Moments.control('speed', { speed: value });
     schedule();
   }
   /* The speed shows as its icon only: the tooltip names the current speed. */
@@ -6894,6 +7052,7 @@ const App = (() => {
     const t = Theme.apply(felt, colors);
     seatColors();
     app.ui.felt = t.felt; app.ui.colors = t.colors;
+    Moments.control('theme', { felt: t.felt });
     syncTheme();
     saveSettings();
   }
@@ -7303,7 +7462,12 @@ const App = (() => {
   }
   /* Ends the current wait at once: a click on the center, Space or Enter. */
   function skip() { if (app.timerFn) { const f = app.timerFn; clearTimeout(app.timer); f(); } }
-  function skipShowdown() { if (!canSkip()) return; app.sdSkip = true; skip(); }
+  function skipShowdown() {
+    if (!canSkip()) return;
+    const sd = app.state.showdown;
+    if (app.ui.speed !== 'instant') Moments.tap({ type: 'skipPressed', youMediate: !!sd && sd.mediator === HUMAN }, app.state.version);
+    app.sdSkip = true; skip();
+  }
 
   /** @param {object[]} [events] the events of the action just played, for the animations */
   function schedule(events) {
@@ -7439,6 +7603,7 @@ const App = (() => {
      press before it runs does nothing (the state has moved on). */
   function continueFrom(sys) {
     const v0 = app.state.version, go = () => { if (app.state.version === v0) act(sys); };
+    Moments.control('cancel', { scope: 'step' });
     if (RESULT_PHASES.includes(app.state.phase)) morph(go); else go();
   }
   /* The finished trick, its cards gone to the winner: nothing in the middle, nobody to play. */
@@ -7456,6 +7621,7 @@ const App = (() => {
       if (w > 0) { heldEvents = events.slice(); heldDraw = setTimeout(() => { heldDraw = 0; const e = heldEvents; heldEvents = []; draw(e); }, w + 16); return; }
     }
     const ui = watch ? watchUI() : app.ui;
+    const shown = events;   // every event this draw puts on the table, for Moments (the held result keeps only score changes)
     if (fresh) resultHold = -1;
     const hold = !fresh && holdResult(app.state, ui);
     drawnVersion = app.state ? app.state.version : -1;
@@ -7474,6 +7640,8 @@ const App = (() => {
     }
     syncAbout();
     if (Render.render(v, ui, ctx)) closePanel();
+    Moments.observe(shown, built, { replay: !!watch, mode: watch ? null : app.mode, hold, instant: ui.speed === 'instant',
+      skipping: !watch && skipping(), step: Fx.step() });
     syncModeUI();
     Fit.update();
   }
@@ -7955,11 +8123,19 @@ const App = (() => {
       (viewer ? '' : waveEndHTML()) +
       '<div class="row">' + (viewer ? '' : app.ui.endButtons) + '</div></div>';
     ov.hidden = false;
+    Moments.gameOver(viewer ? [] : waveClearedMoment());
     if (ov.firstElementChild) awardBox(ov.firstElementChild, viewer ? /** @type {string} */ (code) : endCode);
     if (viewer) return;
     maybeOfferUpdate();
     /* The review runs once the box has drawn, so you never wait on it. */
     if (pendingReview) requestAnimationFrame(() => setTimeout(runReview, 0));
+  }
+  /* The moment for a cleared wave, as waveEndHTML says it: a win that counts. Empty otherwise. */
+  function waveClearedMoment() {
+    const w = app.wave, r = w.result;
+    if (!w.n || !r || app.state.winner !== HUMAN || app.humanSeatWasAutoplayed || !w.wasOpenAtStart || w.practice) return [];
+    const shark = WAVES[w.n - 1].shark;
+    return [{ type: 'waveCleared', wave: w.n, shark: !!shark, finalWave: shark ? !!r.sharkComplete : !!r.complete }];
   }
   function waveEndHTML() {
     if (!app.wave.n || !app.wave.result) return '';
@@ -8280,6 +8456,7 @@ const App = (() => {
     watch.marks[0] = logLines.length;
     watchStep();   /* START_GAME: the table, with its dealer */
     watch.min = watch.cur.steps;
+    Moments.reset();
     resetDraw();
     draw([]);
     return true;
@@ -8327,6 +8504,7 @@ const App = (() => {
     }
     w.preview = null;
     app.ui.selected.clear();
+    Moments.reset();   /* a jump: nothing it skipped over plays */
     if (to < w.cur.steps) {
       w.cur.seek(to);
       app.state = w.cur.state;
@@ -8426,6 +8604,7 @@ const App = (() => {
     closePanel();
     logLines = b.log;
     redrawLog();
+    Moments.reset();
     resetDraw();
     draw([]);
     app.menuOpen = b.menuOpen;
@@ -9049,9 +9228,11 @@ const App = (() => {
     const sel = app.ui.selected;
     const limit = Render.discardNeed(v, HUMAN);
     if (limit) {
+      const had = sel.has(id), size = sel.size;
       if (sel.has(id)) sel.delete(id);
       else if (limit === 1) { sel.clear(); sel.add(id); }
       else if (sel.size < limit) sel.add(id);
+      if ((sel.has(id) !== had || sel.size !== size) && app.ui.speed !== 'instant') Moments.tap({ type: 'cardPicked', card: id, picked: sel.has(id) }, app.state.version);
       draw([]);
       return;
     }
@@ -9621,6 +9802,7 @@ const App = (() => {
     'random games': 'Random games', simulation: 'Simulations',
     waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats', tally: 'Tally', awards: 'Awards',
     memory: 'Saves', replay: 'Replays', backup: 'Backup',
+    moments: 'Moments',
     interface: 'Interface', 'app logic': 'App logic',
     'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
   };
@@ -11396,6 +11578,64 @@ const SelfTest = (() => {
     });
     /* --- Awards: the cost of a seat's choices, a band from 6 (neon green, best) to 0 (neon red). tests/awards.js checks
        the grade on whole games; here, its parts. --- */
+    safeRun('moments', () => {
+      /* Moments.build over whole bot games, from the bottom seat: every moment is known, carries only public facts,
+         and agrees with the events and the scores. Pure: nothing is sent. */
+      const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
+      const bad = [], counts = { cardPlayed: 0, CARD_PLAYED: 0, trickWon: 0, TRICK_WON: 0, SHOWDOWN_TRICK_WON: 0, king: 0, KING_SCORED: 0, showdownCalled: 0, SHOWDOWN_STARTED: 0, gameEnded: 0 };
+      let scoreErr = 0, hiddenErr = 0, handSd = 0, games = 0;
+      for (const seed of [4242, 77, 31337]) {
+        const g = Engine.createGame(seed, ['A', 'B', 'C']);
+        for (let n = 0; !g.gameOver && n < 6000; n++) {
+          const actors = Engine.actors(g);
+          const a = actors.length ? AI.decide(buildView(g, actors[0]), cfgs[actors[0]]) : Engine.systemAction(g);
+          if (!a) break;
+          const res = Engine.dispatch(g, a);
+          if (!res.ok) break;
+          const v = buildView(g, 0), ms = Moments.build(res.events, v, { mode: 'free' });
+          for (const e of res.events) if (e.type in counts) counts[e.type]++;
+          for (const m of ms) {
+            if (m.type in counts) counts[m.type]++;
+            if (!Moments.ANCHOR[m.type]) bad.push(m.type);
+            /* Public only: a card in a moment has been played or turned up, and no moment names a hand, the kitty or the seed. */
+            if (m.card && !v.played.includes(m.card) && m.card !== v.flipped) hiddenErr++;
+            if (['hands', 'hand', 'kitty', 'seed', 'deck', 'outside'].some(k => k in m)) hiddenErr++;
+            if (m.scoresBefore) {
+              const d = m.scoresAfter.map((x, i) => x - m.scoresBefore[i]);
+              if (m.type === 'king' && d[m.seat] !== 1) scoreErr++;
+              if (m.type === 'handScored' && d[m.winner] !== m.points) scoreErr++;
+              if (m.type === 'showdownScored' && d[m.winner] !== 1) scoreErr++;
+            }
+            if (m.type === 'handScored' && m.outcome === 'SHOWDOWN') handSd++;
+            if (m.type === 'gameEnded' && m.byKing !== (g.endEvent.reason === 'KING' || g.endEvent.reason === 'SHOWDOWN_KING')) scoreErr++;
+          }
+          /* The last scoring moment ends at the View's scores. */
+          const last = ms.filter(m => m.scoresAfter).pop();
+          if (last && JSON.stringify(last.scoresAfter) !== JSON.stringify(v.scores)) scoreErr++;
+        }
+        if (g.gameOver) games++;
+      }
+      eq('every moment type has an anchor', bad, []);
+      check('three bot games finish', games === 3, String(games));
+      eq('one cardPlayed moment for each card played', counts.cardPlayed, counts.CARD_PLAYED);
+      eq('one king moment for each King point', counts.king, counts.KING_SCORED);
+      eq('one trickWon moment for each trick won, Showdown tricks too', counts.trickWon, counts.TRICK_WON + counts.SHOWDOWN_TRICK_WON);
+      check('the games include a Showdown', counts.SHOWDOWN_STARTED > 0, JSON.stringify(counts));
+      eq('one showdownCalled moment for each Showdown', counts.showdownCalled, counts.SHOWDOWN_STARTED);
+      eq('one gameEnded moment for each game', counts.gameEnded, 3);
+      eq('no moment carries a card nobody has seen, a hand, the kitty or the seed', hiddenErr, 0);
+      eq('scoresBefore and scoresAfter agree with the scoring', scoreErr, 0);
+      eq('a 3–3–1 hand gives no handScored moment (the Showdown call speaks for it)', handSd, 0);
+      /* The seat at the bottom decides 'you'. */
+      const ev = [{ type: 'TRICK_WON', number: 1, winner: 2, card: 'KS', king: true }, { type: 'KING_SCORED', player: 2, card: 'KS', number: 1, showdown: false },
+        { type: 'SCORE_CHANGED', player: 2, delta: 1, requested: 1, reason: 'KING', score: 4 }];
+      const vv = { seat: 2, scores: [1, 2, 4], trump: 'S', totalTricks: 7, tricksWon: [0, 0, 1], caller: 1, showdown: null };
+      const mm = Moments.build(ev, vv);
+      eq('you: the bottom seat, from its own View', mm.map(m => [m.type, m.you]), [['trickWon', true], ['king', true]]);
+      eq('a King point: scores before and after', [mm[1].scoresBefore, mm[1].scoresAfter], [[1, 2, 3], [1, 2, 4]]);
+      eq('the same event twice counts once', Moments.build(ev.concat(ev), vv).length, 2);
+      eq('unknown events make no moments', Moments.build([{ type: 'TRICK_STARTED' }, { type: 'BID_PASS', player: 1 }, { type: 'GAME_STARTED', seed: 9 }], vv), []);
+    });
     safeRun('awards', () => {
       eq('7 bands, 6 edges in rising order', [Awards.BANDS, Awards.EDGES.length, Awards.EDGES.every((x, i) => !i || x > Awards.EDGES[i - 1])], [7, 6, true]);
       eq('no cost is band 6, a cost on an edge is the band it starts, a cost above every edge band 0', [Awards.bandOf(0), Awards.bandOf(Awards.EDGES[0]), Awards.bandOf(Awards.EDGES[3]), Awards.bandOf(9)], [6, 5, 2, 0]);
@@ -11697,7 +11937,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
    10. BOOT
    Tests: T2. Every test script reads window.KCT.
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, Moments, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>
