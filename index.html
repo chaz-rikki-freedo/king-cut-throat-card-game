@@ -1007,14 +1007,16 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
    (--dp-drop); the light is fixed. Only transform and box-shadow change, so no card moves its place or its tap area. */
 .depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:var(--sx) calc(var(--dp-shadow-reach) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
 /* Your hand: a card lifts while you touch it, and with a pointer while it is over the card (no hover on touch). */
-.depth .hand .card,.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover,.depth .hand .card.selected{transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}
+/* A card at rest has no transform at all: an identity transform can put each card on its own GPU layer, drawn at a
+   part-pixel place, which blurs it on some phones. The old hover lift (sticky after a tap on touch) is cleared. */
+.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{transform:none}
 .depth .hand .card{box-shadow:var(--dp-drop);transition-duration:var(--dp-ms)}
 .depth .hand .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
 .depth .hand .card.legal{box-shadow:0 0 0 0.125rem var(--accent),var(--dp-drop)}
 .depth .hand .card.legal.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.125rem var(--accent),var(--dp-drop)}
-@media (hover:hover){.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{--lift:var(--dp-hand-hover)}}
-.depth .hand .card.legal:active,.depth .hand .card.selectable:active{--lift:var(--dp-hand-press)}
-.depth .hand .card.selected,.depth .hand .card.selected:hover,.depth .hand .card.selected:active{--lift:var(--dp-hand-select);box-shadow:0 0 0 0.1875rem var(--accent),var(--dp-drop)}
+@media (hover:hover){.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{--lift:var(--dp-hand-hover);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}}
+.depth .hand .card.legal:active,.depth .hand .card.selectable:active{--lift:var(--dp-hand-press);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}
+.depth .hand .card.selected,.depth .hand .card.selected:hover,.depth .hand .card.selected:active{--lift:var(--dp-hand-select);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)));box-shadow:0 0 0 0.1875rem var(--accent),var(--dp-drop)}
 /* Played cards: the trick leans back and the side cards turn toward the middle, at their height; the winner rises. */
 .depth .trick{perspective:var(--dp-perspective)}
 .depth .trick .slot .card{--lift:var(--dp-trick-z);box-shadow:var(--dp-drop)}
