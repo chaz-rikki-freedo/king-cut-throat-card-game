@@ -10,7 +10,7 @@
 > | 3 | The wiring: the game loads the module, shows its card and writes its log; the service worker caches it; `tools/publish.sh` publishes it | Built |
 > | 4 | Moments of interest and derived events, measured with `tests/interest.js` | Built |
 > | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Built |
-> | 6 | [Beats](#beats), the game's side: Fx reports each motion's contact time, and batches are timed to them | Spec |
+> | 6 | [Beats](#beats), the game's side: Fx reports each motion's contact time, and batches are timed to them | Built |
 > | 7 | Beats, the module's side: [scheduling](#scheduling) on the audio clock, [beat presets](#beat-presets) | Spec |
 >
 > The remaining choices are listed in [Open items](#open-items).
