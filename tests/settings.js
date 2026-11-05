@@ -76,10 +76,19 @@ function expect(name, ok, detail) {
       while (performance.now() - t0 < 8000) { if (q('#hand .card.legal')) { at = at || performance.now(); if (!q('.table .turn.wait')) break; } await sleep(20); }
       out.cueWait = at && !q('.table .turn.wait') ? Math.round(performance.now() - at) : -1;
       clearInterval(jitter);
+      /* While a card flies, Tilt eases down to a third of itself (motionCalm). */
+      if (q('#hand .card.legal')) {
+        let g = 0; const steady = setInterval(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 40 + (g++ < 5 ? 0 : 8), gamma: 0 })), 16);
+        await sleep(900); const before = KCT.Depth.vector().y;
+        click('#hand .card.legal'); await sleep(300); const during = KCT.Depth.vector().y;
+        clearInterval(steady);
+        out.calm = [Math.round(before * 100) / 100, Math.round(during * 100) / 100];
+      }
       return out;`);
     expect('Table depth Tilt: kept; a tilt moves the table; Settings and Instant bring it to rest',
       t.saved === 'tilt' && t.cls && t.moved > 0.2 && t.settings === 0 && t.instant === 0, t);
     expect('Table depth Tilt: a hand that never holds still doesn\'t hold up your turn (the cues show within 1.5 s)', t.cueWait >= 0 && t.cueWait < 1500, t);
+    expect('Table depth Tilt: while a card flies, the tilt eases down (to a third)', !!t.calm && t.calm[0] > 0.2 && t.calm[1] < t.calm[0] * 0.7, t);
     await tab('Table');
     await set('setDepth', 'still');
     await tab('Table');

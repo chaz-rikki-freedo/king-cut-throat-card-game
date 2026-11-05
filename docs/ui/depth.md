@@ -93,6 +93,9 @@ How a reading becomes the vector:
    - a menu, Settings or a dialog covers the table,
    - the page is hidden.
 5. **Hold.** While a finger touches the table, the vector holds, so a card never moves under the finger.
+6. **Calm.** While cards move (a deal, a play, a sweep), the vector eases down to `motionCalm` of itself (a third),
+   and back once they land. The moving cards have the stage, and the page's time goes to them and their sounds. FX
+   says how long the motion runs after each draw (`busyFor`).
 
 The sensor is read only in Tilt. A browser that asks before a page reads motion (iOS) is asked when you choose Tilt.
 If it asks only from a tap, the game explains first, and the browser's question comes from the tap on **Continue**.

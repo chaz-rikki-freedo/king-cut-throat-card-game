@@ -6328,6 +6328,8 @@ const Fx = (() => {
     if (last && last.handNumber === v.handNumber && !last.trump && v.trump) setTimeout(trumpLight, ms());
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
+    /* Tilt eases down while the cards it just set moving fly (Depth, 7d). */
+    if (Depth.mode() === 'tilt') Depth.calm(busyFor(true));
     refreshCounts();
     /* Last, once every motion has started. Whose turn it is waits until the table is still (a deal, a trick sweeping to
        its winner, a card landing, then the circle it fills): your move's label, the turn's seat and tag, and the
@@ -6602,7 +6604,8 @@ const Moments = (() => {
    starts is level, and level then follows the grip (driftSec). The vector
    rests at 0 at Instant, with reduced motion, while a menu, Settings or a
    dialog covers the table, and while you touch the table, so a card never
-   moves under your finger.
+   moves under your finger. While cards move (Fx's busyFor, after each
+   draw), it eases down to motionCalm of itself, and back once they land.
    Motion (how fast a card lifts, and Fx's added height: a played card's
    rise, a won trick's lift, the trump light) stops at speed Instant, under
    the system's reduced-motion setting, and at Fast when fastMotion is 0.
@@ -6654,6 +6657,9 @@ const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
   tiltHz: { def: 60, min: 10, max: 60, step: 5, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
   driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
   pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
+  /* While cards move (a deal, a play, a sweep), Tilt eases down to this share of itself and back after: the moving
+     cards have the stage, and the page's time goes to them and to their sounds. */
+  motionCalm: { def: 0.33, min: 0, max: 1, step: 0.01, unit: '', group: 'Tilt input', name: 'During card motion', js: true },
   /* Tilt: each plane's shift at full tilt, over its parent's. A negative value moves it the other way. The table
      itself stays, and your hand moves with its panel. The played cards shift cardShift over the trick area, and the
      winner, higher, shifts cardShift × winZ / trickZ. */
@@ -6762,14 +6768,27 @@ const Depth = (() => {
     document[f]('visibilitychange', onVisible);
     if (!on) { level = null; rawAt = -1e9; ptrOn = false; hold = false; v = { x: 0, y: 0 }; paint(true); }
   }
+  /* Until when cards are moving (Fx, after each draw): Tilt eases down to motionCalm of itself until then. */
+  let calmUntil = 0, calmTimer = 0;
+  /** @param {number} ms how long the table's motion still runs */
+  function calm(ms) {
+    if (mode !== 'tilt' || !(ms > 0)) return;
+    const until = performance.now() + ms;
+    if (until <= calmUntil) return;
+    calmUntil = until;
+    clearTimeout(calmTimer);
+    calmTimer = setTimeout(kick, ms + 20);   // and back up once the table is still
+    kick();
+  }
   /** The vector the table should show now, before smoothing. */
   function target() {
     if (mode !== 'tilt' || preview || speed === 'instant' || document.hidden || covered() || matchMedia('(prefers-reduced-motion: reduce)').matches) return { x: 0, y: 0 };
+    const k = performance.now() < calmUntil ? num('motionCalm') : 1;
     if (level && performance.now() - rawAt < 600) {
       const dz = num('deadZone'), range = num('tiltRange');
-      return { x: shape(raw.x - level.x, dz, range), y: shape(raw.y - level.y, dz, range) };
+      return { x: k * shape(raw.x - level.x, dz, range), y: k * shape(raw.y - level.y, dz, range) };
     }
-    return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
+    return ptrOn && num('pointerOn') ? { x: k * ptr.x, y: k * ptr.y } : { x: 0, y: 0 };
   }
   /** One step toward the target, given to the planes, on the screen's own frames (a timer drifts against them, and
       the planes would step unevenly). Below 60 a second, frames are skipped evenly. It stops once the table rests
@@ -6950,7 +6969,7 @@ const Depth = (() => {
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
     /** True while the table has depth and may move (Fx's motion adds height only then). */
     on: () => document.documentElement.classList.contains('depth') && liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) > 0,
-    repaint, orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow, /** The vector shown. */ vector: () => ({ x: v.x, y: v.y }),
+    repaint, calm, orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow, /** The vector shown. */ vector: () => ({ x: v.x, y: v.y }),
     /** The mode in use. */ mode: () => mode, /** The value in use. */ num });
 })();
 
