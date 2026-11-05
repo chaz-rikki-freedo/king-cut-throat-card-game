@@ -11,7 +11,7 @@
 > | 4 | Moments of interest and derived events, measured with `tests/interest.js` | Built |
 > | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Built |
 > | 6 | [Beats](#beats), the game's side: Fx reports each motion's contact time, and batches are timed to them | Built |
-> | 7 | Beats, the module's side: [scheduling](#scheduling) on the audio clock, [beat presets](#beat-presets) | Spec |
+> | 7 | Beats, the module's side: [scheduling](#scheduling) on the audio clock, [beat presets](#beat-presets) | Built |
 >
 > The remaining choices are listed in [Open items](#open-items).
 
@@ -162,18 +162,20 @@ A beat sound goes through the [dropping](#dropping) checks with its own gap, `GA
 
 New presets in Classic, from the lab archetypes that had no use. Each uses the lab's default seed for its row (`hashString('<family>-<archetype>')`), so it matches the lab's default variant. The other palettes play them in their own tone and timbre.
 
-| Name | Beat | Preset | Seed |
-|---|---|---|---|
-| `deal-hand` | A packet reaches your hand | `deal` 1: Into hand | 526455189 |
-| `deal-snap` | One Showdown card | `deal` 3: Quick snap | 492899951 |
-| `kitty-set` | The kitty packet | `confirm` 1: Pack set down | 959104853 |
-| `tuck` | The turned card tucked | `slide` 2: Two-step nudge | 1911560857 |
-| `toss` | Kitty cards to the receiver | `deal` 2: Long toss | 476122332 |
-| `sink` | Cards drop through the table | `play` 1: Soft place | 2152542497 |
-| `pile-sink` | The outside pile drops | `collect` 2: Scoop | 4245462482 |
-| `card-slide-in` | A bot's trick card | `play` 3: Place and skid | 2118987259 |
-| `collect` | A thrown-in hand | `collect` 1: Stack and square | 4228684863 |
-| `hand-close` | Your hand closes up | `slide` 1: Long drag | 1861228000 |
+| Name | Beat | Preset | Seed | Measured (ms) |
+|---|---|---|---|---|
+| `deal-hand` | A packet reaches your hand | `deal` 1: Into hand | 526455189 | 101 to 104 |
+| `deal-snap` | One Showdown card | `deal` 3: Quick snap | 492899951 | 82 to 92 |
+| `kitty-set` | The kitty packet | `confirm` 1: Pack set down | 959104853 | 87 to 98 |
+| `tuck` | The turned card tucked | `slide` 2: Two-step nudge | 1911560857 | 240 to 246 |
+| `toss` | Kitty cards to the receiver | `deal` 2: Long toss | 476122332 | 173 to 183 |
+| `sink` | Cards drop through the table | `play` 1: Soft place | 2152542497 | 93 to 120 |
+| `pile-sink` | The outside pile drops | `collect` 2: Scoop | 4245462482 | 264 to 276 |
+| `card-slide-in` | A bot's trick card | `play` 3: Place and skid | 2118987259 | 99 to 108 |
+| `collect` | A thrown-in hand | `collect` 1: Stack and square | 4228684863 | 329 to 345 |
+| `hand-close` | Your hand closes up | `slide` 1: Long drag | 1861228000 | 340 to 342 |
+
+**Measured** is the rendered length across all 6 palettes and Fall's Showdown voice. The slowest render took 35 ms in headless Chromium.
 
 The beats also reuse `deal`, `flip`, `discard`, `card-play`, `trick-you` and `trick-bot`, with their variants.
 
@@ -765,7 +767,8 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 - It checks its [gates](#gates), applies the [dropping](#dropping) rules, and plays.
 - It builds and handles the rows in `#setFeedback`, and keeps its own device keys.
 - `feedback/synth.js` (built): `KCTSynth.render(preset, voice)` returns a promise of `{ samples, sampleRate, durationMs }`, the finished sound. `voice` is a palette's `tone` and `timbre`. A preset's `set` fixes seeded settings, such as `{ notes: 2 }`. An unknown family or archetype throws.
-- `feedback/palettes.js` (built): `KCTPalettes.palettes`, `KCTPalettes.required` (the 17 names) and `KCTPalettes.resolve(felt, name, showdown)`, which applies the [fallbacks](#fallbacks) and returns the preset and the voice to render it in. Data apart from `resolve`.
+- **Beats (phase 7, built):** `BEAT_SOUNDS` and `beatSound(beat)` pick a beat's sound by its `key`; `playBeats` plays a beats message on its own dropper; `playSound` starts every sound at its `at` on the audio clock, and `voicesAt` counts the sounds playing at that time, so a deal scheduled ahead doesn't fill `MAX_VOICES`. A replace stops only the last moment sound, never a beat's. Every `cancel`, and the tab becoming hidden, stops what is scheduled.
+- `feedback/palettes.js` (built): `KCTPalettes.palettes`, `KCTPalettes.required` (the 17 names), `KCTPalettes.beats` (the 10 beat presets) and `KCTPalettes.resolve(felt, name, showdown)`, which applies the [fallbacks](#fallbacks) and returns the preset and the voice to render it in. Data apart from `resolve`.
 - **Checked** in headless Chromium: all 102 renders (17 presets in 6 palettes and Fall's Showdown voice) play, none is silent, renders take 13 ms at the median and 47 ms at most, and Classic matches the lab within 1 sample step. Both files pass the repo's type-check settings.
 - Elsewhere: `sw.js` precaches the three files, `tools/publish.sh` publishes them, and `README.md` describes it as an optional add-on to the one-file game. The game's code is in the [Feedback contract](feedback-contract.md#code-in-indexhtml).
 
