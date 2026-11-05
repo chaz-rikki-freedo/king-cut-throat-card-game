@@ -1002,6 +1002,49 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-card{padding:1.5rem 1rem 1rem}
   .about-title{font-size:1.875rem}
 }
+/* Table depth (DEPTH, section 7d), under html.depth: Settings → Table → Table depth set to Still. Off leaves the rules
+   above as they are. Each card has a height (--lift, rem over the felt) and its shadow comes from that height
+   (--dp-drop); the light is fixed. Only transform and box-shadow change, so no card moves its place or its tap area. */
+.depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:var(--sx) calc(var(--dp-shadow-reach) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
+/* Your hand: a card lifts while you touch it, and with a pointer while it is over the card (no hover on touch). */
+/* A card at rest has no transform at all: an identity transform can put each card on its own GPU layer, drawn at a
+   part-pixel place, which blurs it on some phones. The old hover lift (sticky after a tap on touch) is cleared. */
+.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{transform:none}
+.depth .hand .card{box-shadow:var(--dp-drop);transition-duration:var(--dp-ms)}
+.depth .hand .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
+.depth .hand .card.legal{box-shadow:0 0 0 0.125rem var(--accent),var(--dp-drop)}
+.depth .hand .card.legal.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.125rem var(--accent),var(--dp-drop)}
+@media (hover:hover){.depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{--lift:var(--dp-hand-hover);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}}
+.depth .hand .card.legal:active,.depth .hand .card.selectable:active{--lift:var(--dp-hand-press);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)))}
+.depth .hand .card.selected,.depth .hand .card.selected:hover,.depth .hand .card.selected:active{--lift:var(--dp-hand-select);transform:translateY(calc(var(--dp-hand-rest) - var(--lift)));box-shadow:0 0 0 0.1875rem var(--accent),var(--dp-drop)}
+/* Played cards: the trick leans back and the side cards turn toward the middle, at their height; the winner rises. */
+.depth .trick{perspective:var(--dp-perspective)}
+.depth .trick .slot .card{--lift:var(--dp-trick-z);box-shadow:var(--dp-drop)}
+.depth .trick .slot.win .card{--lift:var(--dp-win-z)}
+.depth .trick .slot-0 .card,.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift,var(--dp-trick-z)))}
+.depth .trick .slot-1 .card{--sx:calc(var(--dp-side-shadow-x) * -1);transform:rotateX(var(--dp-trick-tilt)) rotateY(var(--dp-side-turn)) rotateZ(calc(var(--dp-side-roll) * -1)) translateZ(var(--lift))}
+.depth .trick .slot-2 .card{--sx:var(--dp-side-shadow-x);transform:rotateX(var(--dp-trick-tilt)) rotateY(calc(var(--dp-side-turn) * -1)) rotateZ(var(--dp-side-roll)) translateZ(var(--lift))}
+.depth .trick .slot .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
+.depth .trick .slot.win .card{box-shadow:0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
+.depth .trick .slot.win .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),0 0 0 0.1875rem #0b1a12,0 0 0 0.375rem #fff,0 0 1.5rem rgba(255,255,255,.55),var(--dp-drop)!important}
+/* The seats and your panel sit a little over the felt; the turn ring stays. */
+.depth .table .seat,.depth .table .me{--dp-panel:0 calc(var(--dp-shadow-reach) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
+.depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
+.depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
+/* '!dev parallax': the tuning panel, a strip of two rows over the header (your hand and the trick stay in view), for
+   the tab. Folded, only its Depth tab shows, in the bottom right corner, clear of the menu button. */
+.depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
+.depth-dev .dd-row{display:flex;align-items:center;gap:0.375rem;min-height:1.875rem}
+.depth-dev .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
+.depth-dev .dd-key{flex:1 1 auto;min-width:0;min-height:1.75rem;font-size:0.75rem}
+.depth-dev .dd-val{flex:none;min-width:3.75rem;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;color:var(--gold)}
+.depth-dev .dd-range{flex:1 1 auto;min-width:0;margin:0}
+.depth-dev .dd-cmp{display:flex;align-items:center;gap:0.25rem;color:var(--muted)}
+.depth-dev .dd-tab{display:none}
+.depth-dev.folded{top:auto;left:auto;right:0.5rem;bottom:0.5rem;width:auto;padding:0.125rem}
+.depth-dev.folded > :not(.dd-tab){display:none}
+.depth-dev.folded .dd-tab{display:inline-flex;color:var(--gold)}
+.depth-dev .dd-out{width:100%;min-height:3.5rem;font:0.6875rem ui-monospace,Menlo,Consolas,monospace}
 </style>
 <!-- Theme packs (Settings → Table → Theme): a felt, and an optional color pack laid over it. A pack sets only tokens.
      tests/palette.js checks every felt, alone and with every color pack. See docs/ui/colors.md, Theme packs. -->
@@ -1151,6 +1194,8 @@ window.kctTheme = (() => {
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Off: the classic flat shadows.</span></span>
+          <select id="setDepth"><option value="still">Still</option><option value="off">Off</option></select></div>
       </div>
       <!-- The optional feedback module (feedback/feedback.js) fills this card and shows it once it has loaded. -->
       <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
@@ -1409,6 +1454,8 @@ const RNG = (() => {
    "!dev vibrate" makes one plain 200 ms vibration from the Load tap, whatever the
    Vibration setting, and says what the browser answered: it shows whether the
    device lets web pages vibrate. Nothing is kept.
+   "!dev parallax" opens the table depth's tuning panel (Depth, section 7d),
+   which lasts for the tab until its ✕.
    "!dev reset:<option>" resets one thing only (RESET_OPTIONS); "!dev reset"
    alone changes nothing and lists the options.
    Input that starts with '!' is reserved for these commands: no replay
@@ -1427,7 +1474,8 @@ const DEV_KEYS = Object.freeze({
    everything, and none for Dynamic's easing, which has no undo. */
 const RESET_OPTIONS = Object.freeze({
   saves: 'the saves cap', log: 'the log cap', scroll: 'the scroll cap', logger: 'the logger cap',
-  caps: 'all four caps', testupdate: 'a waiting test update and the build dot', awards: 'awards, shown again'
+  caps: 'all four caps', testupdate: 'a waiting test update and the build dot', awards: 'awards, shown again',
+  parallax: 'the table depth\'s tuning'
 });
 const Dev = (() => {
   const KEY = 'kct-dev', FAUX_KEY = 'kct-dev-faux';
@@ -1474,9 +1522,9 @@ const Dev = (() => {
     /** Reads a dev command: '!dev', '!dev reset', '!dev reset:<option>', '!dev easing', '!dev easing=N', '!dev awards=on|off' or '!dev key=value ...'.
         Never changes anything. easing: the hand count N, or null. look: '!dev easing', the readout. awards: on (true), off
         (false) or not given (null). @param {string} text
-        test: '!dev testupdate'. vibrate: '!dev vibrate'.
+        test: '!dev testupdate'. vibrate: '!dev vibrate'. parallax: '!dev parallax'.
         reset: null (not a reset), '' ('reset' alone: list the options) or a RESET_OPTIONS key.
-        @returns {{ ok: true, reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, vibrate?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
+        @returns {{ ok: true, reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test?: boolean, vibrate?: boolean, parallax?: boolean, ops: Partial<Record<DevKey, number>> } | { ok: false, why: string }} */
     parse(text) {
       const words = String(text || '').trim().split(/\s+/);
       if (words[0].toLowerCase() !== '!dev') return { ok: false, why: 'This is not a replay code or a seed.' };
@@ -1496,6 +1544,8 @@ const Dev = (() => {
       if (rest.some(w => /^testupdate$/i.test(w))) return { ok: false, why: 'Write it on its own as testupdate.' };
       if (rest.length === 1 && rest[0].toLowerCase() === 'vibrate') return { ok: true, reset: null, easing: null, look: false, awards: null, vibrate: true, ops: {} };
       if (rest.some(w => /^vibrate(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as vibrate.' };
+      if (rest.length === 1 && rest[0].toLowerCase() === 'parallax') return { ok: true, reset: null, easing: null, look: false, awards: null, parallax: true, ops: {} };
+      if (rest.some(w => /^parallax(=|$)/i.test(w))) return { ok: false, why: 'Write it on its own as parallax.' };
       if (rest.some(w => /^awards(=|$)/i.test(w))) {
         const m = rest.length === 1 ? /^awards=(on|off)$/i.exec(rest[0]) : null;
         return m ? { ok: true, reset: null, easing: null, look: false, awards: m[1].toLowerCase() === 'on', ops: {} } : { ok: false, why: 'Write it on its own as awards=on or awards=off.' };
@@ -5651,6 +5701,7 @@ const Render = (() => {
     /* The card size is fitted to the new table first: the motion is measured on the table as it will stay. */
     if (ctx.fit) ctx.fit();
     Fx.after(v, ctx.instant ? Object.assign({}, ui, { speed: 'instant' }) : ui);
+    Depth.motion(ctx.instant ? 'instant' : ui.speed);
     return true;
   }
 
@@ -6470,6 +6521,179 @@ const Moments = (() => {
   return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load });
 })();
 
+/* ---------------------------------------------------------------------
+   7d. DEPTH — the table's physical depth (docs/ui/depth.md): how high each
+   card sits over the felt, the shadow that height casts, and the lift of a
+   card in your hand as you touch it. Settings → Table → Table depth: Off
+   (the classic table: none of this applies) or Still. Every value is in
+   DEPTH, one place; the CSS reads them as --dp-* custom properties under
+   the html element's depth class. It never reads or changes a game.
+   Motion (how fast a card lifts) stops at speed Instant, under the system's
+   reduced-motion setting, and at Fast when fastMotion is 0.
+   "!dev parallax" opens a tuning panel over the table, for the tab: its
+   values last for the tab (sessionStorage 'kct-depth', never in a backup),
+   and Copy gives them as JSON for DEPTH. "!dev reset:parallax" drops them.
+   Tests: T1. selftest.js depth; settings.js (Table depth); resets.js.
+   --------------------------------------------------------------------- */
+/** @typedef {{ def: number, min: number, max: number, step: number, unit: string, group: string, name: string }} DepthKey */
+/* Heights are in rem over the felt. A shadow falls reach × height below its card and blurs base + blur × height,
+   so a higher card casts a longer, softer shadow. */
+const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
+  trickTilt: { def: 22, min: 0, max: 40, step: 1, unit: 'deg', group: 'Played cards', name: 'Lean back' },
+  sideTurn: { def: 16, min: 0, max: 30, step: 1, unit: 'deg', group: 'Played cards', name: 'Side cards turn' },
+  sideRoll: { def: 14, min: 0, max: 30, step: 1, unit: 'deg', group: 'Played cards', name: 'Side cards roll' },
+  sideShadowX: { def: 0.625, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Played cards', name: 'Side shadow drift' },
+  trickZ: { def: 1.875, min: 0, max: 4, step: 0.125, unit: 'rem', group: 'Played cards', name: 'Height' },
+  winZ: { def: 3.75, min: 0, max: 6, step: 0.125, unit: 'rem', group: 'Played cards', name: 'Winner height' },
+  perspective: { def: 56.25, min: 20, max: 120, step: 0.25, unit: 'rem', group: 'Played cards', name: 'Perspective' },
+  handRest: { def: 0.25, min: 0, max: 0.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Rest height' },
+  handHover: { def: 0.5, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Pointer over' },
+  handPress: { def: 0.375, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Touch lift' },
+  handSelect: { def: 0.875, min: 0, max: 1.5, step: 0.025, unit: 'rem', group: 'Your hand', name: 'Selected' },
+  liftMs: { def: 120, min: 0, max: 400, step: 10, unit: 'ms', group: 'Your hand', name: 'Lift time' },
+  panelLift: { def: 0.5, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Panels', name: 'Panel height' },
+  shadowReach: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Reach' },
+  shadowBase: { def: 0.25, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Shadows', name: 'Base blur' },
+  shadowBlur: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Blur by height' },
+  fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast' }
+}));
+const Depth = (() => {
+  const KEY = 'kct-depth', MODES = ['off', 'still'];
+  const keys = Object.keys(DEPTH);
+  /** The CSS custom property of a key: trickTilt → --dp-trick-tilt. @param {string} k */
+  const prop = k => '--dp-' + k.replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+  const valid = (/** @type {string} */ k, /** @type {unknown} */ v) => Object.prototype.hasOwnProperty.call(DEPTH, k) && typeof v === 'number' && Number.isFinite(v) && v >= DEPTH[k].min && v <= DEPTH[k].max;
+  /** The tab's tuning: the panel open or folded, and the values changed from DEPTH. */
+  function read() {
+    /** @type {any} */
+    let x = null;
+    try { x = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { /* no storage: no tuning */ }
+    /** @type {Record<string, number>} */
+    const v = {};
+    if (x && x.v && typeof x.v === 'object') for (const k of keys) if (valid(k, x.v[k])) v[k] = x.v[k];
+    return { open: !!(x && x.open), folded: !!(x && x.folded), k: x && typeof x.k === 'string' ? x.k : '', v };
+  }
+  let tab = read(), mode = 'still', speed = 'normal', preview = false;
+  const keep = () => { try { if (tab.open || Object.keys(tab.v).length) sessionStorage.setItem(KEY, JSON.stringify(tab)); else sessionStorage.removeItem(KEY); } catch (e) { /* for this page only */ } };
+  /** The value in use. @param {string} k */
+  const num = k => tab.v[k] !== undefined ? tab.v[k] : DEPTH[k].def;
+  /** Lift time in ms: 0 when nothing should move. @param {string} s @param {boolean} still reduced motion */
+  const liftMs = (s, still) => still || s === 'instant' || (s === 'fast' && !num('fastMotion')) ? 0 : num('liftMs');
+  /** The custom properties, by name, for the values in use. */
+  function vars() {
+    /** @type {Record<string, string>} */
+    const out = {};
+    for (const k of keys) if (k !== 'liftMs' && k !== 'fastMotion') out[prop(k)] = num(k) + DEPTH[k].unit;
+    out['--dp-ms'] = liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) + 'ms';
+    return out;
+  }
+  function apply() {
+    const root = document.documentElement;
+    for (const [p, v] of Object.entries(vars())) root.style.setProperty(p, v);
+    root.classList.toggle('depth', mode !== 'off' && !preview);
+    syncPanel();
+  }
+  /** Settings → Table → Table depth. @param {string} m 'off' or 'still' (anything else: still) */
+  function setMode(m) { mode = MODES.includes(m) ? m : 'still'; apply(); return mode; }
+  /** The table's speed (Instant when skipping), from each draw. @param {string} s */
+  function motion(s) { if (s === speed) return; speed = s; apply(); }
+  /** Sets one tuned value (null: back to DEPTH's). @param {string} k @param {number | null} v */
+  function tune(k, v) {
+    if (v === null || v === DEPTH[k].def) delete tab.v[k]; else if (valid(k, v)) tab.v[k] = v;
+    keep(); apply();
+  }
+  function resetTune() { tab.v = {}; keep(); apply(); }
+
+  /* ---- The tuning panel ('!dev parallax'): a strip over the header. One value at a time: pick it in the list, set it
+     with the slider. Folded, it is a small Depth tab in the bottom right corner. ---- */
+  const fmt = (/** @type {string} */ k) => num(k) + DEPTH[k].unit;
+  const pick = () => Object.prototype.hasOwnProperty.call(DEPTH, tab.k || '') ? /** @type {string} */ (tab.k) : keys[0];
+  function panelHTML() {
+    let opts = '', group = '';
+    for (const k of keys) {
+      const d = DEPTH[k];
+      if (d.group !== group) { opts += (group ? '</optgroup>' : '') + '<optgroup label="' + escHTML(d.group) + '">'; group = d.group; }
+      opts += '<option value="' + k + '">' + escHTML(d.name) + '</option>';
+    }
+    return '<button class="btn dd-tab" type="button" data-dd="fold">Depth</button>' +
+      '<div class="dd-row"><select class="dd-key" aria-label="Value to tune">' + opts + '</optgroup></select><output class="dd-val"></output>' +
+      '<button class="btn" type="button" data-dd="fold" aria-label="Fold">▴</button><button class="btn" type="button" data-dd="close" aria-label="Close">✕</button></div>' +
+      '<div class="dd-row"><input class="dd-range" type="range" aria-label="Value"><label class="dd-cmp"><input type="checkbox" data-dd="off"> Off</label>' +
+      '<button class="btn" type="button" data-dd="copy">Copy</button><button class="btn" type="button" data-dd="reset">Reset</button></div>' +
+      '<textarea class="dd-out" readonly hidden aria-label="Values"></textarea>';
+  }
+  function syncPanel() {
+    const el = document.getElementById('depthDev');
+    if (!el) return;
+    el.classList.toggle('folded', tab.folded);
+    const k = pick(), d = DEPTH[k];
+    const sel = /** @type {HTMLSelectElement} */ (el.querySelector('.dd-key'));
+    sel.value = k;
+    /* A tuned value shows a dot in the list. */
+    for (const o of [...sel.options]) o.textContent = DEPTH[o.value].name + (tab.v[o.value] !== undefined ? ' •' : '');
+    const r = /** @type {HTMLInputElement} */ (el.querySelector('.dd-range'));
+    if (r.dataset.k !== k) { r.dataset.k = k; r.min = String(d.min); r.max = String(d.max); r.step = String(d.step); }
+    if (Number(r.value) !== num(k)) r.value = String(num(k));
+    /** @type {HTMLElement} */ (el.querySelector('.dd-val')).textContent = fmt(k);
+    const off = /** @type {HTMLInputElement} */ (el.querySelector('[data-dd="off"]'));
+    off.checked = preview || mode === 'off';
+    off.disabled = mode === 'off';
+    off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Table.' : 'The classic table, to compare. The setting stays.';
+  }
+  /** The values in use, as JSON for DEPTH's defaults. */
+  const json = () => JSON.stringify(Object.fromEntries(keys.map(k => [k, num(k)])));
+  /** Opens or closes the panel, for the tab. @param {boolean} on */
+  function panel(on) {
+    tab.open = on;
+    if (!on) preview = false;
+    keep();
+    const old = document.getElementById('depthDev');
+    if (old) old.remove();
+    if (on) {
+      const el = document.createElement('aside');
+      el.id = 'depthDev';
+      el.className = 'depth-dev';
+      el.setAttribute('aria-label', 'Table depth tuning');
+      el.innerHTML = panelHTML();
+      el.addEventListener('input', e => {
+        const r = /** @type {HTMLInputElement} */ (e.target);
+        if (r.classList.contains('dd-range') && r.dataset.k) tune(r.dataset.k, Number(r.value));
+      });
+      el.addEventListener('change', e => {
+        const c = /** @type {HTMLInputElement} */ (e.target);
+        if (c.classList.contains('dd-key')) { tab.k = c.value; keep(); syncPanel(); }
+        else if (c.dataset.dd === 'off') { preview = c.checked && mode !== 'off'; apply(); }
+      });
+      el.addEventListener('click', e => {
+        const b = /** @type {HTMLElement} */ (e.target).closest('button[data-dd]');
+        const act = b ? /** @type {HTMLElement} */ (b).dataset.dd : '';
+        const out = /** @type {HTMLTextAreaElement} */ (el.querySelector('.dd-out'));
+        if (act === 'close') panel(false);
+        else if (act === 'reset') { out.hidden = true; resetTune(); }
+        else if (act === 'fold') { tab.folded = !tab.folded; out.hidden = true; keep(); syncPanel(); }
+        else if (act === 'copy') {
+          /* To the clipboard; the values show in a field only when the browser refuses. */
+          const done = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1200); };
+          const show = () => { out.value = json(); out.hidden = false; out.select(); };
+          if (navigator.clipboard) navigator.clipboard.writeText(json()).then(done, show); else show();
+        }
+      });
+      document.body.appendChild(el);
+    }
+    apply();
+  }
+  /** Applies the tab's tuning and reopens the panel after a reload. iOS Safari shows :active (the touch lift) only
+      once the page listens for touches. */
+  function init() {
+    document.addEventListener('touchstart', () => {}, { passive: true });
+    const rm = matchMedia('(prefers-reduced-motion: reduce)');
+    if (rm.addEventListener) rm.addEventListener('change', apply);
+    if (tab.open) panel(true); else apply();
+  }
+  return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
+    /** The mode in use. */ mode: () => mode, /** The value in use. */ num });
+})();
+
 
 /* ---------------------------------------------------------------------
    8. CONTROLLER — game flow, timing, and human input.
@@ -6521,7 +6745,7 @@ const App = (() => {
        forced: Forced plays (Your seat, or the Human tag's popup): your only legal card in a trick plays itself. Kept. */
     /* felt, colors: Settings → Table → Theme, the felt pack and the color pack ('' for none; see Theme).
        memory: Table memory, what the table keeps for you this hand, one switch per aid (MEMORY_SWITCHES). All are kept. */
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', memory: /** @type {Record<MemoryKey, boolean>} */ (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', depth: 'still', memory: /** @type {Record<MemoryKey, boolean>} */ (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
       /* scoreHold: King points per seat whose +1 is still flying there (kingPop); the seat shows the score without them. */
       scoreHold: /** @type {Record<number, number>} */ ({}) },
     /* n: the wave being played, or null. result: the progress after the game ended. */
@@ -6977,7 +7201,7 @@ const App = (() => {
   const AFTER = '<p>The page reloads. There is no undo.</p>';
   /** Settings → Table → Reset this tab, after a question. */
   async function askTableReset() {
-    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off. ' +
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off and Table depth at Still. ' +
       'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
       (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
     tableReset();
@@ -6992,6 +7216,7 @@ const App = (() => {
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setPolitePlay').checked = app.houseRules.politePlay;
     setTheme('classic', '');
+    setDepth('still');
     closePanel();
     saveSettings();
     draw([]);
@@ -7157,6 +7382,12 @@ const App = (() => {
     app.ui.felt = t.felt; app.ui.colors = t.colors;
     Moments.control('theme', { felt: t.felt });
     syncTheme();
+    saveSettings();
+  }
+  /* Settings → Table → Table depth (section 7d): Still or Off. */
+  function setDepth(/** @type {string} */ value) {
+    app.ui.depth = Depth.setMode(value);
+    $('setDepth').value = app.ui.depth;
     saveSettings();
   }
   /* Table memory: each aid and its switch, and the Help level presets. Help level shows Custom for any other mix. */
@@ -9734,14 +9965,14 @@ const App = (() => {
      text that is not a code. */
   const SEED_MAX = 0xFFFFFFFF;
   const NOT_A_CODE = 'This is not a replay code or a seed.';
-  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test: boolean, vibrate: boolean, ops: Partial<Record<DevKey, number>> } }} */
+  /** @param {string} text @param {boolean} [submit] @returns {{ kind: string, code?: string, seed?: number, wave?: number, why?: string, dev?: { reset: string | null, easing: number | null, look: boolean, awards: boolean | null, test: boolean, vibrate: boolean, parallax: boolean, ops: Partial<Record<DevKey, number>> } }} */
   function readCode(text, submit = false) {
     let t = String(text || '').trim();
     if (!t) return { kind: 'empty' };
     if (t.startsWith('!')) {
       if (!submit || !/^!dev(\s|$)/i.test(t)) return { kind: 'bad', why: NOT_A_CODE };
       const d = Dev.parse(t);
-      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, ops: d.ops } };
+      return 'why' in d ? { kind: 'bad', why: d.why } : { kind: 'dev', dev: { reset: d.reset, easing: d.easing, look: d.look, awards: d.awards, test: !!d.test, vibrate: !!d.vibrate, parallax: !!d.parallax, ops: d.ops } };
     }
     if (submit && /^pulse$/i.test(t)) return { kind: 'readout' };
     if (t.startsWith('{') && t.includes('kct-backup')) return { kind: 'backup' };
@@ -9773,7 +10004,8 @@ const App = (() => {
     return 'Dev keys, for this tab: ' + keys.map(k => k + '=' + Dev.num(k) + (Dev.num(k) === DEV_KEYS[k].def ? '' : ' (default ' + DEV_KEYS[k].def + ')') + ' (' + DEV_KEYS[k].note + ')').join('; ') +
       '. !dev easing shows a readout; !dev easing=hands sets the hand count of Dynamic\'s profile, which moves the hold and the taper, after a question. ' +
       'Awards are ' + (Awards.on() ? 'on' : 'off') + ': !dev awards=on or awards=off shows or hides them on the game-over box, on this device. ' +
-      '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. !dev reset:option resets one thing (!dev reset lists them).';
+      '!dev testupdate shows the update badge and prompt with a test update. !dev vibrate makes one 200 ms vibration, to check that this device lets web pages vibrate. ' +
+      '!dev parallax opens the table depth\'s tuning panel, for this tab. !dev reset:option resets one thing (!dev reset lists them).';
   }
   /* The field says nothing while you type: an edit only clears what the last Load said (and the seed's list). */
   function clearCodeField() {
@@ -9824,6 +10056,15 @@ const App = (() => {
         : 'The browser accepted a 200 ms vibration. No buzz means the phone itself blocks it: check Settings → Sound and vibration → Vibration and haptics, Do Not Disturb and Battery saver.');
       return;
     }
+    /* The table depth's tuning panel: it opens over the menu and stays over the table, for the tab. */
+    if (r.dev && r.dev.parallax) {
+      Depth.panel(true);
+      Logger.log('DEV', { parallax: true });
+      linkNote = 'The table depth\'s tuning panel is open: start or resume a game to tune it. Its ✕ closes it.';
+      menuView = 'home';
+      showMenu(app.menuLaunch);
+      return;
+    }
     if ((r.dev && r.dev.look) || r.kind === 'readout') { const t = easingReadout(); say(t); $('codeRead').classList.add('dev-read'); Logger.log('DEV', { readout: t }); return; }
     if (r.dev) {
       if (r.dev.reset === '') { say(resetText()); return; }
@@ -9831,6 +10072,7 @@ const App = (() => {
         const opt = r.dev.reset;
         Dev.reset(opt);
         if (opt === 'awards') Awards.set(true);
+        if (opt === 'parallax') Depth.resetTune();
         /* The test update goes; a real update found meanwhile keeps its badge. */
         if (opt === 'testupdate') { app.fakeUpdate = false; app.updateReady = app.realUpdate; syncUpdateBtn(); document.querySelectorAll('.faux-dot').forEach(d => d.remove()); }
         Logger.log('DEV', { reset: opt, set: Object.fromEntries(Dev.list()) });
@@ -9918,7 +10160,7 @@ const App = (() => {
     waves: 'Waves', dynamic: 'Dynamic', seats: 'Seats', tally: 'Tally', awards: 'Awards',
     memory: 'Saves', replay: 'Replays', backup: 'Backup',
     moments: 'Moments',
-    interface: 'Interface', 'app logic': 'App logic',
+    interface: 'Interface', depth: 'Table depth', 'app logic': 'App logic',
     'service worker': 'Service worker', 'airplane mode': 'Airplane mode'
   };
   const AREA_ORDER = Object.keys(TEST_AREAS);
@@ -9947,7 +10189,7 @@ const App = (() => {
 
   /* Settings are kept between visits. Speed is not: each page load starts at Normal. */
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
+    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, depth: app.ui.depth, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
   }
   /* Reads the saved settings (quietly: no log lines). AI.config checks every value. */
   function loadSettings() {
@@ -9965,6 +10207,7 @@ const App = (() => {
     /* The theme boot script applied the saved theme already: keep what it applied (unknown names became Classic). */
     if (typeof x.felt === 'string' && Theme.packs.felts[x.felt]) app.ui.felt = x.felt;
     if (typeof x.colors === 'string' && Theme.packs.colors[x.colors]) app.ui.colors = x.colors;
+    if (typeof x.depth === 'string' && Depth.MODES.includes(x.depth)) app.ui.depth = x.depth;
     /* Table memory was one switch (a boolean) before it split into one per fact: it sets them all. Profiles → Show this
        hand's bids and voids (up to 0.6.14) was part of it. */
     const mem = app.ui.memory, adds = /** @type {MemoryKey[]} */ (['trumps', 'kings', 'turned', 'voids']);
@@ -10098,6 +10341,9 @@ const App = (() => {
     syncTheme();
     $('setFelt').addEventListener('change', ev => { const r = /** @type {HTMLInputElement} */ (ev.target); if (r.checked) setTheme(r.value, app.ui.colors); });
     $('setColorBlind').addEventListener('change', () => setTheme(app.ui.felt, /** @type {HTMLInputElement} */ ($('setColorBlind')).checked ? 'colorblind' : ''));
+    $('setDepth').addEventListener('change', () => setDepth($('setDepth').value));
+    $('setDepth').value = Depth.setMode(app.ui.depth);
+    Depth.init();
     $('backupFile').addEventListener('change', () => {
       const input = /** @type {HTMLInputElement} */ ($('backupFile')), file = input.files && input.files[0];
       input.value = '';
@@ -10804,10 +11050,11 @@ const SelfTest = (() => {
          '!dev' command is read (rs: as on Enter), so the field never hints at one. */
       const rs = (/** @type {string} */ x) => rc(x, true), notCode = rc('hello');
       eq('Load a code: while you type, ! input reads as any text that is not a code', ['!dev saves=40', '!dev', '!dev reset', '!dev easing', '!dev easing=0', '!dev savs=4', '!', '!foo'].map(x => rc(x)), Array(8).fill(notCode));
-      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev],
-        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} },
-          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, ops: {} },
-          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, ops: {} }]);
+      eq('Load a code: a submitted Dev command is read, not applied', [rs('!dev saves=40 LOG=300'), rs(' !DEV ').dev, rs('!dev reset').dev, rs('!dev Easing=120').dev, rs('!dev easing=0').dev, rs('!dev EASING').dev, rs('!dev awards=on').dev, rs('!dev AWARDS=Off').dev, rs('!dev TestUpdate').dev, rs('!dev reset:Caps').dev, rs('!dev reset:testupdate').dev, rs('!dev reset:saves').dev, rs('!dev Vibrate').dev, rs('!dev Parallax').dev, rs('!dev reset:parallax').dev],
+        [{ kind: 'dev', dev: { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: { saves: 40, log: 300 } } }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: '', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
+          { reset: null, easing: 120, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: 0, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: true, awards: null, test: false, vibrate: false, parallax: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: true, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: false, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: true, vibrate: false, parallax: false, ops: {} }, { reset: 'caps', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'testupdate', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: 'saves', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }, { reset: null, easing: null, look: false, awards: null, test: false, vibrate: true, parallax: false, ops: {} },
+          { reset: null, easing: null, look: false, awards: null, test: false, vibrate: false, parallax: true, ops: {} }, { reset: 'parallax', easing: null, look: false, awards: null, test: false, vibrate: false, parallax: false, ops: {} }]);
       eq('Load a code: a submitted unknown key, value out of range or other ! text is refused', ['!dev savs=4', '!dev saves=0', '!dev saves=x', '!dev __proto__=1', '!dev constructor=1', '!dev log=100001', '!dev easing now', '!dev easing reset', '!dev easing=-1', '!dev easing=x', '!dev easing=10000000', '!dev easing=0 saves=40', '!dev awards', '!dev awards=1', '!dev awards=on saves=40', '!dev testupdate saves=40', '!dev testupdate=1', '!dev reset saves=40', '!dev reset:bogus', '!dev reset:', '!dev reset:caps saves=40', '!dev reset:easing', '!dev vibrate=1', '!dev vibrate saves=40', '!devx', '!foo', '!'].map(x => rs(x).kind), Array(27).fill('bad'));
       eq('Load a code: other submitted ! text says only that it is not a code', ['!devx', '!foo', '!'].map(rs), Array(3).fill(notCode));
       eq('Load a code: pulse on Load is the readout, in any case; typed, it reads as any text that is not a code', [rs('pulse').kind, rs(' PULSE ').kind, rc('pulse'), rs('pulses').kind, rs('!pulse').kind], ['readout', 'readout', notCode, 'bad', 'bad']);
@@ -11202,6 +11449,27 @@ const SelfTest = (() => {
     /* --- Restart --- */
     /* --- Interface: the Settings panel's structure, and every information popup across real games. Reads the page and
        the settings; changes nothing (Table memory is switched for the check and put back). --- */
+    safeRun('depth', () => {
+      /* Every value sits on its slider: in range, on a step. */
+      const off = Object.entries(DEPTH).filter(([, d]) => !(d.min <= d.def && d.def <= d.max && Math.abs((d.def - d.min) / d.step - Math.round((d.def - d.min) / d.step)) < 1e-9)).map(([k]) => k);
+      eq('each DEPTH default is in range and on a step of its slider', off, []);
+      eq('a key names its custom property', [Depth.prop('trickTilt'), Depth.prop('handPress')], ['--dp-trick-tilt', '--dp-hand-press']);
+      /* The CSS reads only what DEPTH gives, and DEPTH gives nothing the CSS leaves unread (--dp-drop and --dp-panel are
+         the CSS's own, --dp-ms the lift time). */
+      const css = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
+      const read = [...new Set([...css.matchAll(/var\((--dp-[a-z-]+)/g)].map(m => m[1]))].filter(n => n !== '--dp-drop' && n !== '--dp-panel').sort();
+      eq('the CSS reads exactly the custom properties DEPTH gives', read, Object.keys(Depth.vars()).sort());
+      const def = DEPTH.liftMs.def;
+      eq('a card lifts in its time at Slow, Normal and Fast, and at once at Instant or with reduced motion',
+        [Depth.liftMs('slow', false), Depth.liftMs('normal', false), Depth.liftMs('fast', false), Depth.liftMs('instant', false), Depth.liftMs('normal', true)],
+        Depth.num('liftMs') === def && Depth.num('fastMotion') === 1 ? [def, def, def, 0, 0] : [Depth.liftMs('slow', false), Depth.liftMs('normal', false), Depth.liftMs('fast', false), 0, 0]);
+      /* Off takes the depth class away and Still puts it back; anything else is Still. The mode in use comes back. */
+      const was = Depth.mode(), html = document.documentElement;
+      const seen = [Depth.setMode('off'), html.classList.contains('depth'), Depth.setMode('still'), html.classList.contains('depth'), Depth.setMode('tilt')];
+      Depth.setMode(was);
+      eq('Table depth: Off drops the depth class, Still adds it, and an unknown mode is Still', seen, ['off', false, 'still', true, 'still']);
+      eq('!dev parallax opens the panel, and is written on its own', [Dev.parse('!dev parallax').ok && /** @type {any} */ (Dev.parse('!dev parallax')).parallax, Dev.parse('!dev parallax saves=5').ok], [true, false]);
+    });
     safeRun('interface', () => {
       /* Another app's built-in browser: named when it says so, else 'another app'; real browsers and installed apps are ''. */
       const A = 'Mozilla/5.0 (Linux; Android 13; Pixel 7', I = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)';
@@ -12073,7 +12341,7 @@ const YOU_ART = 'data:image/webp;base64,UklGRtYHAABXRUJQVlA4TMkHAAAvn8AnEJV4u23t
    10. BOOT
    Tests: T2. Every test script reads window.KCT.
    --------------------------------------------------------------------- */
-/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, Moments, App, SelfTest, WAVES, Waves, PERSONAS });
+/** @type {any} */ (window).KCT = Object.freeze({ SuitText, Rules, RNG, Logger, Engine, Replay, Backup, TabLock, buildView, AI, Dynamic, Tally, Awards, Habits, Render, Moments, Depth, App, SelfTest, WAVES, Waves, PERSONAS });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.init());
 else App.init();
 </script>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Every setting through the real controls: each control changes what it names, is kept (or, for the ones kept for one
    page load, is not), shows the same after a reload, and a new game takes it. Table tab: Table memory, House rules,
-   Theme. Bots tab: AI can play your seat, every control of every seat, Who sits in West and East, Reset this seat and
+   Theme (with Table depth). Bots tab: AI can play your seat, every control of every seat, Who sits in West and East, Reset this seat and
    Reset this tab.
    Tools tab: Event log, Clear log, Self-tests. resets.js, theme.js, backup-ui.js and sw.js go deeper on their own
    parts. Exit code 1 on a failed check. */
@@ -43,6 +43,19 @@ function expect(name, ok, detail) {
     expect('Color-blind safe colors on is kept', (await saved()).colors === 'colorblind');
     await set('setColorBlind', false);
     expect('Color-blind safe colors off is kept', (await saved()).colors === '');
+    /* Table depth: Still (the default) puts the depth class on the page, Off takes it away; each is kept, and shows the
+       same after a reload. */
+    const depth = () => step(`return { cls: document.documentElement.classList.contains('depth'), sel: q('#setDepth').value };`);
+    const d0 = await depth();
+    await set('setDepth', 'off');
+    const d1 = Object.assign(await depth(), { saved: (await saved()).depth });
+    await reload();
+    const d2 = await depth();
+    await set('setDepth', 'still');
+    const d3 = Object.assign(await depth(), { saved: (await saved()).depth });
+    expect('Table depth: Still by default, Off and Still each kept and shown after a reload',
+      d0.cls && d0.sel === 'still' && !d1.cls && d1.saved === 'off' && !d2.cls && d2.sel === 'off' && d3.cls && d3.saved === 'still', [d0, d1, d2, d3]);
+    await tab('Table');
 
     const mem = { setMemTrumps: 'trumps', setMemKings: 'kings', setMemTurned: 'turned', setMemVoids: 'voids' };
     for (const [id, key] of Object.entries(mem)) {

@@ -10,7 +10,7 @@ All commands run in `tests/`. Times are on a warm machine.
 | Tier | Run it for | Command | Time |
 |---|---|---|---|
 | **T0: Static** | Text and wording (popups, notes, labels, the log), CSS, comments, docs | `npm run t0` (`typecheck.js` and `palette.js`) | about 5 s |
-| **T1: Targeted** | UI behavior, one setting, one screen or popup's logic, the measuring code (Habits, Tally, Awards), the feedback module (`feedback/`: run `node feedback.js`) | `npm run t1 -- <area>`, then the one UI script for that screen (map below) | 10 to 40 s |
+| **T1: Targeted** | UI behavior, one setting, one screen or popup's logic, the measuring code (Habits, Tally, Awards), Table depth (section 7d: area `depth`, then `settings.js`), the feedback module (`feedback/`: run `node feedback.js`) | `npm run t1 -- <area>`, then the one UI script for that screen (map below) | 10 to 40 s |
 | **T2: Core** | Rules, RNG, Engine, Replay, View, Waves, Memory, Backup, AI, personalities, Dynamic, Moments, Boot | `npm run t2`, then that section's UI script, if it has one | about 1 min, more with the UI script |
 | **T3: Full** | The replay-code format, what a save holds, an RNG sequence, a change across many sections, before a major release tag | `npm run t3` (`npm test`) | several minutes |
 
@@ -31,6 +31,7 @@ Section 8 is large, so its tier depends on the part you changed.
 | Settings rows and their values | `settings.js` |
 | Reset this tab, Erase | `resets.js` |
 | Theme, felt, Color-blind safe colors | `theme.js` |
+| Table depth row | `settings.js` (and `resets.js` for its reset) |
 | Your data: Save file, restore | `backup-ui.js` |
 | Replay viewer, Watch, `?replay=` links | `watch.js` |
 | Your profile, the games list | `profile.js` |
