@@ -5712,7 +5712,10 @@ const Fx = (() => {
   function beat(name, key, at, facts) {
     if (beatKeys.has(key)) return;
     beatKeys.add(key);
-    beatsOut.push(Object.assign({ beat: name, key, at: Math.round(at * 10) / 10 }, facts || {}));
+    const f = Object.assign({}, facts || {});
+    /* Where the seat sits on the table, for the module's stereo pan: 0 the bottom, 1 left, 2 right. Public. */
+    if (typeof f.seat === 'number' && f.place === undefined) f.place = pos(f.seat);
+    beatsOut.push(Object.assign({ beat: name, key, at: Math.round(at * 10) / 10 }, f));
   }
   const who = (/** @type {number} */ p) => ({ seat: p, you: p === me });
   /* The moment a sink() starts to drop, from its start (t: one motion step; travel: it slides to a target first). */

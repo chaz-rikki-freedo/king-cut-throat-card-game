@@ -278,6 +278,26 @@ Parallax motion names are placeholders until #185 defines the motions. Several r
 - **No cue** for a pass, Hand void, Hand abandoned, a refused move, or any button other than **Skip ▶** while you mediate.
 - **Taps.** Picking or unpicking a card in your hand vibrates `[8]` and plays no sound. It skips the gap check in [Dropping](#dropping).
 
+## Mixing
+
+Every sound goes through one master bus, so the whole mix is shaped in one place:
+
+```
+each sound → its gain (cue, beat, card count, variation, distance) → its pan → high shelf → low-pass → level → limiter → speakers
+```
+
+| Stage | What it does | Why |
+|---|---|---|
+| **Level** | Full is `FULL_DB` (−10 dB) and Half is `HALF_DB` (−20 dB). | Loudness is heard in decibels: −10 dB sounds about half as loud. A gain of half (−6 dB) would sound about two thirds as loud. |
+| **Level glide** | A Settings change glides to the new level in about 50 ms (`setTargetAtTime`). | It reaches sounds already playing, with no click. |
+| **Tone** | A high shelf at `SHELF_HZ` (−5 dB) and a gentle low-pass at `LOWPASS_HZ`. | The cards' contact, grain and air bands sit at 3 to 6 kHz. At a phone speaker's level, they sound harsh and gritty. |
+| **Limiter** | A soft compressor: threshold −12 dB, knee 12 dB, ratio 4, attack 3 ms, release 150 ms. | Stacked sounds, such as a train over a King point, never clip. Clipping is heard as grit. |
+| **Variation** | Each hit's gain varies within ±`JITTER_DB` and its pitch within ±`JITTER_RATE`, by a hash of its beat's key. | No two cards land with the same force. A train's hits each take their own value inside its mix. The same key always gives the same value, so a replay sounds the same ([principle 8](#principles)). |
+| **Distance** | A bot's table sounds are `DISTANCE_DB` (−2 dB) behind yours. | Your own play sits in front. |
+| **Pan** | By the beat's `place`: the left seat left, the right seat right, yours in the middle. | Heard with headphones or stereo speakers. A browser without `StereoPannerNode` plays it in the middle. |
+
+Moment sounds (a King point, a result) take the level, tone and limiter, with no variation, distance or pan: their meaning stays in front and in the middle. A node that the browser lacks is left out of the bus, and the sound still plays.
+
 ## Moments of interest
 
 A *moment of interest* is a rare situation with its own rule, above the ordinary rule for that moment, and usually its own cue. It **replaces** the ordinary cue, never adds to it. Only a [layer](#layering) adds.
@@ -797,8 +817,14 @@ All draft values, to tune once built.
 | `GAP_VIBRATE_MS` | 150 | The minimum time between two vibrations. A card pick ignores it. |
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds |
 | `MAX_VOICES` | 4 | The most sounds that play at once |
-| `FULL_GAIN` | 0.33 | The volume for Full: two thirds below the rendered level, which was too loud on a phone |
-| `HALF_GAIN` | 0.165 | The volume for Half: half of Full |
+| `FULL_DB` | −10 | The volume for Full (gain 0.32): about half as loud as the rendered level, which was too loud on a phone |
+| `HALF_DB` | −20 | The volume for Half (gain 0.10): about half as loud as Full |
+| `SHELF_HZ`, `SHELF_DB` | 4500, −5 | The master high shelf, which softens the cards' contact and grain bands |
+| `LOWPASS_HZ` | 9000 | The master low-pass |
+| `JITTER_DB` | 1.5 | How far a hit's gain varies, either way |
+| `JITTER_RATE` | 0.02 | How far a hit's pitch varies, either way |
+| `DISTANCE_DB` | −2 | A bot's table sounds, against yours |
+| `PAN` | 0, −0.35, +0.35 | The stereo pan for you, the left seat and the right seat |
 | `VIBRATE_MAX_MS` | 300 | The longest single pulse after scaling |
 | `VIBRATE_TOTAL_MS` | 1500 | The longest whole pattern after scaling |
 | `STAKES_CLOSE` | 7 | The score that makes the stakes Close |

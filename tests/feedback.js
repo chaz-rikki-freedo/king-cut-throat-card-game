@@ -28,7 +28,13 @@ function stubs() {
     get currentTime() { return performance.now() / 1000; }
     resume() { this.state = 'running'; return Promise.resolve(); }
     suspend() { this.state = 'suspended'; return Promise.resolve(); }
-    createGain() { const g = { gain: { value: 1 }, connect() {} }; (w.__gains = w.__gains || []).push(g.gain); return g; }
+    createGain() {
+      const g = { gain: { value: 1, setTargetAtTime(v, t, c) { this.value = v; (w.__glides = w.__glides || []).push({ v, c }); } }, connect(n) { g.to = n; return n; } };
+      (w.__gains = w.__gains || []).push(g.gain); return g;
+    }
+    createBiquadFilter() { const f = { type: '', frequency: { value: 0 }, gain: { value: 0 }, Q: { value: 1 }, connect(n) { f.to = n; return n; } }; (w.__filters = w.__filters || []).push(f); return f; }
+    createDynamicsCompressor() { const c = { threshold: { value: 0 }, knee: { value: 0 }, ratio: { value: 1 }, attack: { value: 0 }, release: { value: 0 }, connect(n) { c.to = n; return n; } }; w.__comp = c; return c; }
+    createStereoPanner() { const p = { pan: { value: 0 }, connect(n) { p.to = n; return n; } }; (w.__pans = w.__pans || []).push(p.pan); return p; }
     createBufferSource() {
       const s = { buffer: null, onended: null, connect() {}, stop() { rec.stopped = true; },
         start(when) { rec.length = s.buffer ? s.buffer.length : 0; rec.when = when; rec.now = performance.now() / 1000; w.__starts.push(rec);
@@ -333,8 +339,17 @@ const batchSrc = `
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 0, you: true }]));
     let c1 = await counts();
     expect('your trick: vibrates [35] and plays a sound', c1.v === c0.v + 1 && JSON.stringify(c1.last) === '[35]' && c1.s === c0.s + 1, { c0, c1 });
-    const fullGain = await page.evaluate(() => { const g = /** @type {any} */ (window).__gains; return g[g.length - 1].value; });
-    expect('Full plays at FULL_GAIN (0.33), two thirds below the rendered level', Math.abs(fullGain - 0.33) < 1e-9, fullGain);
+    const mix = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), b = w.KCTFeedback.test.bus();
+      return { level: b && b.level.gain.value, filters: (w.__filters || []).map((f) => [f.type, f.frequency.value, f.gain.value]), comp: w.__comp && [w.__comp.threshold.value, w.__comp.ratio.value],
+        full: w.KCTFeedback.core.FULL_GAIN, half: w.KCTFeedback.core.HALF_GAIN };
+    });
+    expect('Full is -10 dB and Half -20 dB: Half sounds about half as loud as Full', Math.abs(mix.full - 0.3162) < 1e-3 && Math.abs(mix.half - 0.1) < 1e-9 && Math.abs(mix.level - mix.full) < 1e-9, mix);
+    expect('the master bus: a high shelf at 4.5 kHz (-5 dB), a low-pass at 9 kHz, and a soft limiter', JSON.stringify(mix.filters) === '[["highshelf",4500,-5],["lowpass",9000,0]]' && JSON.stringify(mix.comp) === '[-12,4]', mix);
+    await page.selectOption('#setFbSound', 'half');
+    const glide = await page.evaluate(() => { const g = /** @type {any} */ (window).__glides || []; return g[g.length - 1]; });
+    await page.selectOption('#setFbSound', 'full');
+    expect('a level change glides the bus (no click) and reaches sounds already playing', glide && Math.abs(glide.v - 0.1) < 1e-9 && glide.c === 0.015, glide);
     await wait(200);
     c0 = await counts();
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 1, you: false }]));
@@ -399,7 +414,7 @@ const batchSrc = `
     expect('beat sounds: into hand for you, a flick or its variant to a bot, a quick snap in a Showdown',
       core.dealYou === 'deal-hand' && /^deal(-2)?$/.test(core.dealBot) && core.dealSd === 'deal-snap', core);
     expect('beat sounds: a bot\'s card skids in, a bot\'s sweep is a quick gather, the hand closes at half gain',
-      core.cardBot === 'card-slide-in' && /^trick-bot/.test(core.sweepBot) && core.close.sound === 'hand-close' && core.close.gain === 0.5, core);
+      core.cardBot === 'card-slide-in' && /^trick-bot/.test(core.sweepBot) && core.close.sound === 'hand-close' && core.close.gain > 0.42 && core.close.gain < 0.6, core);
     expect('beat sounds: an unknown beat plays nothing, and a key always picks the same variant', core.unknown === null && core.same, core);
     expect('the module knows every beat in the spec\'s beat list', ['deal', 'kitty', 'turnUp', 'tuck', 'toss', 'sink', 'discard', 'pileSink', 'card', 'sweep', 'collect', 'handClose'].every((n) => core.names.includes(n)), core.names);
 
@@ -418,10 +433,10 @@ const batchSrc = `
       };
     });
     expect('card count, a train: a 4-card packet gets 4 hits at its spread, each softer, alternating variants',
-      JSON.stringify(cnt.offsets) === '[0,20,40,60]' && cnt.gains[0] === 1 && cnt.gains.every((g, i) => i === 0 || g < cnt.gains[i - 1]) && new Set(cnt.names).size === 2, cnt);
+      JSON.stringify(cnt.offsets) === '[0,20,40,60]' && cnt.gains.every((g, i) => g >= 0.84 * Math.pow(0.88, i) && g <= 1.19 * Math.pow(0.88, i)) && new Set(cnt.names).size === 2, cnt);
     expect('card count: one card is one hit, and a train stops at TRAIN_MAX', cnt.one === 1 && cnt.many === 6, cnt);
     expect('card count, a gesture: a 2-card sweep is softer than a 3-card one, the kitty is one sound, and the gain stays within 1.2',
-      cnt.sweep2 < cnt.sweep3 && cnt.sweep3 === 1 && cnt.kitty === 1 && cnt.pile <= 1.2, cnt);
+      cnt.sweep2 < cnt.sweep3 && Math.abs(cnt.sweep2 / cnt.sweep3 - 0.94) < 0.005 && cnt.kitty === 1 && cnt.pile <= 1.2 * 1.19, cnt);
     const train = await page.evaluate(() => {
       const w = /** @type {any} */ (window), s0 = w.__starts.length, t0 = performance.now();
       const one = w.KCTFeedback.test.buffers.get('classic|deal-hand').length;
@@ -429,7 +444,23 @@ const batchSrc = `
       const st = w.__starts.slice(s0);
       return { n: st.length, len: st.length ? st[0].length : 0, one };
     });
-    expect('card count: a train is one sound, as long as one card plus its spread', train.n === 1 && Math.abs(train.len - (train.one + 0.06 * 48000)) < 50, train);
+    expect('card count: a train is one sound, as long as one card plus its spread (each hit within 2% of its pitch)', train.n === 1 && Math.abs(train.len - (train.one + 0.06 * 48000)) < train.one * 0.03 + 50, train);
+    /* Realism: each hit varies a little, by its key (so a replay is the same); a bot's sounds sit behind yours and to its side. */
+    const real = await page.evaluate(() => {
+      const F = /** @type {any} */ (window).KCTFeedback.core, b = (x) => F.beatSound(x);
+      const a = b({ beat: 'card', key: 'r1', you: true, seat: 0, place: 0 }), a2 = b({ beat: 'card', key: 'r1', you: true, seat: 0, place: 0 }), c = b({ beat: 'card', key: 'r2', you: true, seat: 0, place: 0 });
+      const you = b({ beat: 'sweep', key: 'd1', you: true, seat: 0, place: 0 }), bot = b({ beat: 'sweep', key: 'd1', you: false, seat: 1, place: 1 }), right = b({ beat: 'sweep', key: 'd1', you: false, seat: 2, place: 2 });
+      return { same: a.gain === a2.gain && a.hits[0].rate === a2.hits[0].rate, differ: a.gain !== c.gain || a.hits[0].rate !== c.hits[0].rate,
+        rateOk: [a, c].every((x) => Math.abs(x.hits[0].rate - 1) <= 0.02), dist: bot.gain / you.gain, pans: [you.pan, bot.pan, right.pan] };
+    });
+    expect('realism: a key always gives the same small variation, and two keys differ, within 2% of pitch', real.same && real.differ && real.rateOk, real);
+    expect('realism: a bot\'s sweep is 2 dB behind yours, panned to its side', Math.abs(real.dist - Math.pow(10, -2 / 20)) < 1e-9 && JSON.stringify(real.pans) === '[0,-0.35,0.35]', real);
+    const panned = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), p0 = (w.__pans || []).length, t0 = performance.now();
+      w.KCTFeedback.test.playBeats({ v: 1, version: w.__ver, replay: false, beats: [{ beat: 'card', key: 'pn1', at: t0 + 250, you: false, seat: 2, place: 2 }] });
+      return (w.__pans || []).slice(p0).map((x) => x.value);
+    });
+    expect('a bot\'s card on the right plays through a stereo panner at +0.35', JSON.stringify(panned) === '[0.35]', panned);
     await wait(300);
 
     /* A batch still ahead: the sound is scheduled on the audio clock, less the output delay; the vibration waits. */
@@ -601,6 +632,9 @@ const batchSrc = `
     expect('card count: deal packets carry 3 or 4 cards and a spread; a trick card is 1; a sweep is 3; a discard is 3',
       of('deal').every((x) => (x.cards === 3 || x.cards === 4) && x.spread > 0) && of('card').every((x) => x.cards === 1) && of('sweep').every((x) => x.cards === 3) && of('discard').every((x) => x.cards === 3),
       { deal: of('deal').map((x) => [x.cards, x.spread]), sweep: of('sweep').map((x) => x.cards), discard: of('discard').map((x) => [x.cards, x.spread]) });
+    expect('every beat with a seat carries its place on the table: 0 for you, 1 and 2 for the left and right seats',
+      beats.filter((x) => typeof x.seat === 'number').every((x) => x.place === (x.seat === 0 ? 0 : x.seat)) && beats.some((x) => x.place === 1) && beats.some((x) => x.place === 2),
+      beats.filter((x) => typeof x.seat === 'number' && x.place !== x.seat).slice(0, 3));
     const sweepB = data.filter((b) => b.anchor === 'sweep');
     expect('a sweep batch is timed to its sweep beat, and carries beat: true', sweepB.length > 0 && sweepB.every((b) => b.beat === true && beats.some((x) => x.beat === 'sweep' && x.at === b.at)));
     const trumpB = data.filter((b) => b.moments.some((m) => m.type === 'trumpNamed') && !b.moments.some((m) => ['cardPlayed', 'deal', 'flip', 'discard', 'trickWon'].includes(m.type)));

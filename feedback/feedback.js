@@ -26,8 +26,20 @@ const LATE_MS = 80;
 const GAP_VIBRATE_MS = 150;
 const GAP_SOUND_MS = 60;
 const MAX_VOICES = 4;
-const FULL_GAIN = 0.33;        // the volume for Full: synth.js renders at -18 LUFS, which is loud on a phone
-const HALF_GAIN = FULL_GAIN / 2;
+/* ---- The mix (docs/ui/feedback.md, Mixing) ---- */
+const dbToGain = (db) => Math.pow(10, db / 20);
+const FULL_DB = -10;           // Full: about half as loud as the rendered level (-18 LUFS), which is loud on a phone
+const HALF_DB = -20;           // Half: about half as loud as Full; loudness is heard in decibels, not in gain
+const FULL_GAIN = dbToGain(FULL_DB);
+const HALF_GAIN = dbToGain(HALF_DB);
+const LEVEL_GLIDE_S = 0.015;   // a level change settles in about 50 ms (3 time constants): no click
+const SHELF_HZ = 4500;         // the master tone: a high shelf that softens the cards' contact and grain bands
+const SHELF_DB = -5;
+const LOWPASS_HZ = 9000;       // and a gentle low-pass for the airy top end
+const JITTER_DB = 1.5;         // each hit's gain varies within this, by a hash of its beat's key: no two cards land alike
+const JITTER_RATE = 0.02;      // and its pitch, within this fraction
+const DISTANCE_DB = -2;        // a bot's table sounds sit behind yours
+const PAN = { 0: 0, 1: -0.35, 2: 0.35 };   // by place on the table: you, the left seat, the right seat
 const RENDER_BUDGET_MS = 150;
 const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
 const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
@@ -300,6 +312,8 @@ function hash(text) {
 /** One of a list, picked by a hash of the cue, the state version and the moment's facts: the same game, the same pick. */
 function pick(list, key) { return Array.isArray(list) && list.length ? list[hash(key) % list.length] : list; }
 const isPattern = (v) => Array.isArray(v) && v.every((x) => typeof x === 'number');
+/** A number in [-1, 1] from a key: the same key, the same number, so a replay sounds the same. */
+const unit = (key) => (hash(key) / 0xffffffff) * 2 - 1;
 const clamp = (x, [lo, hi]) => Math.max(lo, Math.min(hi, x));
 /** A parameter's value: a number, or a function of the moment; clamped; its default when it fails. */
 function param(p, m, c, name, dflt) {
@@ -337,7 +351,7 @@ const TRAIN_BEATS = new Set(['deal', 'discard', 'toss', 'sink']);
  *   variant in turn from the one the key picks, each later one TRAIN_FALL softer.
  * - A gesture (cards that move together, no spread): one sound, its gain set by the count against GESTURE_CARDS.
  * @param {any} b @param {(name: string) => boolean} [has]
- * @returns {{ sound: string, gain: number, hits: { sound: string, offset: number, gain: number }[] } | null}
+ * @returns {{ sound: string, gain: number, pan: number, hits: { sound: string, offset: number, gain: number, rate: number }[] } | null}
  */
 function beatSound(b, has) {
   const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_SOUNDS, b.beat) ? BEAT_SOUNDS[b.beat] : null;
@@ -352,14 +366,23 @@ function beatSound(b, has) {
   const spread = Number.isFinite(b.spread) && b.spread > 0 ? Math.min(400, b.spread) : 0;
   if (spread && n > 1 && TRAIN_BEATS.has(b.beat)) {
     const hits = [];
-    for (let i = 0; i < n; i++) hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) });
-    return { sound: first, gain: spec.gain, hits };
+    for (let i = 0; i < n; i++) {
+      const k = String(b.key) + '|' + i;
+      hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) * dbToGain(JITTER_DB * unit(k + 'g')), rate: 1 + JITTER_RATE * unit(k + 'r') });
+    }
+    return Object.assign({ sound: first, gain: spec.gain * placeGain(b), hits }, { pan: panOf(b) });
   }
   const usual = GESTURE_CARDS[b.beat];
   const count = Number.isFinite(b.cards) ? b.cards : usual || 1;
   const size = usual ? Math.max(0.8, Math.min(1.2, 1 + GESTURE_STEP * (count - usual) / Math.max(1, usual / 3))) : 1;
-  return { sound: first, gain: spec.gain * size, hits: [{ sound: first, offset: 0, gain: 1 }] };
+  const k = String(b.key) + '|0';
+  return { sound: first, gain: spec.gain * size * placeGain(b) * dbToGain(JITTER_DB * unit(k + 'g')), pan: panOf(b),
+    hits: [{ sound: first, offset: 0, gain: 1, rate: 1 + JITTER_RATE * unit(k + 'r') }] };
 }
+/** A beat's distance: a bot's motion is DISTANCE_DB behind yours; one with no seat (the pile) sits between. */
+function placeGain(b) { return b && b.you === false && typeof b.seat === 'number' ? dbToGain(DISTANCE_DB) : 1; }
+/** A beat's pan, by its place on the table (0 the bottom, 1 left, 2 right); the middle when it has none. */
+function panOf(b) { return b && Object.prototype.hasOwnProperty.call(PAN, b.place) ? PAN[b.place] : 0; }
 
 function entryAt(table, level) {
   if (!table) return null;
@@ -578,16 +601,18 @@ const trains = new Map();
 /** The buffer for a beat's hits: the single buffer for one hit, else the mix. Null when a hit's sound isn't ready. */
 function trainBuffer(hits) {
   if (hits.length === 1) return bufferFor(hits[0].sound);
-  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset).join(',');
+  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset + '*' + h.gain.toFixed(3) + '^' + (h.rate || 1).toFixed(4)).join(',');
   if (trains.has(key)) return trains.get(key);
   const parts = hits.map((h) => ({ h, b: bufferFor(h.sound) }));
   if (parts.some((x) => !x.b)) return null;
   const rate = parts[0].b.sampleRate;
-  const len = Math.max(...parts.map((x) => Math.round(x.h.offset / 1000 * rate) + x.b.length));
+  /* Each hit at its own pitch (rate): read with linear interpolation, so it is a little shorter or longer. */
+  const lenOf = (x) => Math.floor((x.b.length - 1) / (x.h.rate || 1));
+  const len = Math.max(...parts.map((x) => Math.round(x.h.offset / 1000 * rate) + lenOf(x) + 1));
   const mix = new Float32Array(len);
-  for (const { h, b } of parts) {
-    const d = b.getChannelData(0), o = Math.round(h.offset / 1000 * rate);
-    for (let i = 0; i < d.length; i++) mix[o + i] += d[i] * h.gain;
+  for (const x of parts) {
+    const { h, b } = x, d = b.getChannelData(0), o = Math.round(h.offset / 1000 * rate), r = h.rate || 1, n = lenOf(x);
+    for (let i = 0; i <= n; i++) { const p = i * r, j = Math.floor(p), f = p - j; mix[o + i] += (d[j] + ((d[j + 1] || 0) - d[j]) * f) * h.gain; }
   }
   /* Overlapping hits can add up past the ceiling: bring the peak back under it. */
   let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(mix[i]));
@@ -634,12 +659,42 @@ function stopScheduled() {
   const ctx = audio, now = ctx ? ctx.currentTime : Infinity;
   for (const v of voices.slice()) if (v.start > now + 0.001) { try { v.src.stop(); } catch (e) { /* not started */ } const i = voices.indexOf(v); if (i >= 0) voices.splice(i, 1); }
 }
+/** The master bus: every sound goes through the tone filters, the level and a soft limiter. @type {any} */
+let bus = null;
+/** Builds the bus once: tone (high shelf, low-pass), level (Full or Half), limiter. A node the browser lacks is left out. */
+function buildBus(ctx) {
+  const chain = [];
+  try { if (ctx.createBiquadFilter) { const f = ctx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = SHELF_HZ; f.gain.value = SHELF_DB; chain.push(f); } } catch (e) { /* no tone */ }
+  try { if (ctx.createBiquadFilter) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = LOWPASS_HZ; f.Q.value = 0.5; chain.push(f); } } catch (e) { /* no tone */ }
+  const level = ctx.createGain();
+  level.gain.value = levelGain();
+  chain.push(level);
+  /* Soft limiter: stacked sounds (a train over a King point) never clip, which is what grit is. */
+  try {
+    if (ctx.createDynamicsCompressor) {
+      const c = ctx.createDynamicsCompressor();
+      c.threshold.value = -12; c.knee.value = 12; c.ratio.value = 4; c.attack.value = 0.003; c.release.value = 0.15;
+      chain.push(c);
+    }
+  } catch (e) { /* no limiter */ }
+  for (let i = 0; i < chain.length - 1; i++) chain[i].connect(chain[i + 1]);
+  chain[chain.length - 1].connect(ctx.destination);
+  return { input: chain[0], level };
+}
+const levelGain = () => (settings.sound === 'half' ? HALF_GAIN : settings.sound === 'full' ? FULL_GAIN : 0);
+/** Glides the bus to the current level: a Settings change reaches the sounds already playing. */
+function setLevel() {
+  if (!audio || !bus) return;
+  const g = bus.level.gain, v = levelGain();
+  try { if (typeof g.setTargetAtTime === 'function') g.setTargetAtTime(v, audio.currentTime, LEVEL_GLIDE_S); else g.value = v; } catch (e) { g.value = v; }
+}
 function ensureAudio() {
   if (!canSound || settings.sound === 'off') return null;
   try {
     if (!audio) audio = new AudioCtor();
+    if (!bus) bus = buildBus(audio);
     if (audio.state === 'suspended' && typeof audio.resume === 'function') audio.resume();
-  } catch (e) { audio = null; }
+  } catch (e) { audio = null; bus = null; }
   return audio;
 }
 /* A buffer needs no context: making one never creates the playing AudioContext, so nothing happens before
@@ -656,7 +711,7 @@ function toBuffer(out) {
  * @param {any} buffer @param {boolean} replace stop the last moment sound first @param {number} [gainParam]
  * @param {number} [rate] @param {number} [at] @param {boolean} [isBeat] a beat's sound, never replaced
  */
-function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false) {
+function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false, pan = 0) {
   const ctx = ensureAudio();
   if (!ctx) return false;
   if (replace && lastMoment) { try { lastMoment.stop(); } catch (e) { /* already ended */ } }
@@ -664,9 +719,13 @@ function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false)
   src.buffer = buffer;
   if (src.playbackRate) src.playbackRate.value = rate;
   const gain = ctx.createGain();
-  gain.gain.value = (settings.sound === 'half' ? HALF_GAIN : FULL_GAIN) * gainParam;
+  gain.gain.value = gainParam;
   src.connect(gain);
-  gain.connect(ctx.destination);
+  let out = gain;
+  if (pan && typeof ctx.createStereoPanner === 'function') {
+    try { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); gain.connect(p); out = p; } catch (e) { /* centered */ }
+  }
+  out.connect(bus ? bus.input : ctx.destination);
   const start = audioTime(ctx, at), v = { src, start, end: start + (buffer.duration || 0) / (rate || 1) };
   voices.push(v);
   src.onended = () => { const i = voices.indexOf(v); if (i >= 0) voices.splice(i, 1); if (lastMoment === src) lastMoment = null; };
@@ -742,7 +801,9 @@ function playBeats(msg) {
     if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off' }); continue; }
     const buffer = trainBuffer(bs.hits);
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
-    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, 1, b.at, true);
+    /* A single hit plays at its own pitch; a train's hits are at theirs inside the mix. */
+    const rate = bs.hits.length === 1 ? bs.hits[0].rate || 1 : 1;
+    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan);
     out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain });
   }
   return out;
@@ -823,7 +884,7 @@ function mountRows() {
     settings.sound = /** @type {HTMLSelectElement} */ (s).value;
     syncRows();
     if (settings.sound === 'off') { cancel('step'); suspend(); }
-    else { ensureAudio(); if (was === 'off') renderCurrent(); }
+    else { ensureAudio(); setLevel(); if (was === 'off') renderCurrent(); }
   });
   if (r) r.addEventListener('change', () => { settings.replaySound = /** @type {HTMLInputElement} */ (r).checked; });
   syncRows();
@@ -844,11 +905,11 @@ const api = {
   /** The pure core and the module's state, for tests (tests/feedback.js). */
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
-    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
+    STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, FULL_DB, HALF_DB, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
     BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
-    timers: () => timers.size, whenRendered: () => renderQueue, memory: () => memory,
+    timers: () => timers.size, bus: () => bus, whenRendered: () => renderQueue, memory: () => memory,
     renderCurrent, mountRows,
   }),
 };

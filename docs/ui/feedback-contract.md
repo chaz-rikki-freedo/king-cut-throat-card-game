@@ -92,7 +92,7 @@ document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
 } }));
 ```
 
-- `beat` is a name from the [beat list](feedback.md#beat-list), `at` is in `performance.now()` time, and `key` is unique for the game. The other fields are public facts. `cards` is how many cards the motion moves, and `spread` the ms between their landings when they land one after another (see [Feedback: Card count](feedback.md#card-count)).
+- `beat` is a name from the [beat list](feedback.md#beat-list), `at` is in `performance.now()` time, and `key` is unique for the game. The other fields are public facts. `place` is the seat's place on the table (0 the bottom, 1 left, 2 right), for the stereo pan. `cards` is how many cards the motion moves, and `spread` the ms between their landings when they land one after another (see [Feedback: Card count](feedback.md#card-count)).
 - A beat is sent once, by the draw that starts its motion. A redraw that resumes the motion sends nothing.
 - The [sending gates](#sending-gates) apply as for a `land` batch. Without motion, Fx makes no beats.
 - An older module reads a beats message as a batch with no moments and plays nothing. Beats are open-ended like moment types: the module ignores a beat it doesn't know.
