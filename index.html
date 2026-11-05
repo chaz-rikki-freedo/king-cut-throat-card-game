@@ -834,6 +834,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-card{padding:1.5rem 1rem 1rem}
   .about-title{font-size:1.875rem}
 }
+@property --lift{syntax:'<length>';inherits:false;initial-value:0px}
 .depth .card{--lift:var(--dp-hand-rest);--sx:0rem;--dp-drop:calc(var(--sx) - var(--dp-vx,0) * var(--dp-shadow-shift) * var(--lift)) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--lift)) rgba(0,0,0,.5)}
 .depth .hand .card.legal:hover,.depth .hand .card.selectable:hover{transform:none}
 .depth .hand .card{box-shadow:var(--dp-drop);transition-duration:var(--dp-ms)}
@@ -846,7 +847,8 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .trick{perspective:var(--dp-perspective)}
 .depth .trick .slot .card{--lift:var(--dp-trick-z);box-shadow:var(--dp-drop)}
 .depth .trick .slot.win .card{--lift:var(--dp-win-z)}
-.depth .trick .slot-0 .card,.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift,var(--dp-trick-z)))}
+.depth .trick .slot-0 .card{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift))}
+.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--dp-trick-z))}
 .depth .trick .slot-1 .card{--sx:calc(var(--dp-side-shadow-x) * -1);transform:rotateX(var(--dp-trick-tilt)) rotateY(var(--dp-side-turn)) rotateZ(calc(var(--dp-side-roll) * -1)) translateZ(var(--lift))}
 .depth .trick .slot-2 .card{--sx:var(--dp-side-shadow-x);transform:rotateX(var(--dp-trick-tilt)) rotateY(calc(var(--dp-side-turn) * -1)) rotateZ(var(--dp-side-roll)) translateZ(var(--lift))}
 .depth .trick .slot .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
@@ -855,6 +857,9 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .table .seat,.depth .table .me{--dp-panel:calc(var(--dp-vx,0) * var(--dp-shadow-shift) * var(--dp-panel-lift) * -1) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
 .depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
 .depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
+.depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
+@keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
 .tilt .table .seat,.tilt .table .me{translate:calc(var(--dp-vx,0) * var(--dp-panel-shift)) calc(var(--dp-vy,0) * var(--dp-panel-shift))}
 .tilt .table .trick{translate:calc(var(--dp-vx,0) * var(--dp-trick-shift)) calc(var(--dp-vy,0) * var(--dp-trick-shift));perspective-origin:calc(50% + var(--dp-vx,0) * var(--dp-view-shift)) calc(120% + var(--dp-vy,0) * var(--dp-view-shift))}
 .tilt .table .hand{translate:calc(var(--dp-vx,0) * var(--dp-hand-shift)) calc(var(--dp-vy,0) * var(--dp-hand-shift))}
@@ -1061,7 +1066,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '1e45859', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: '93f85e7', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4562,6 +4567,24 @@ const Fx = (() => {
     b.className = 'card back';
     return place({ el: b, r: { left: r.left + r.width / 2 - w / 2 + i * spread, top: r.top + r.height / 2 - w * 0.7, width: w, height: w * 1.4 }, vars: {} });
   }
+  function arc(el, t, up, grow, peak, delay = 0, away = false) {
+    if (!el || !t || !Depth.on() || (!up && !grow)) return [];
+    const base = getComputedStyle(el).getPropertyValue('--lift').trim() || '0px', top = 'calc(' + base + ' + ' + up + 'rem)';
+    const out = [];
+    if (up) out.push(el.animate([{ '--lift': base }, { '--lift': top, offset: peak }, { '--lift': away ? top : base }], { duration: t, delay, easing: 'ease-in-out' }));
+    if (grow) out.push(el.animate([{ scale: '1' }, { scale: String(1 + grow), offset: peak }, { scale: '1' }], { duration: t, delay, easing: 'ease-in-out' }));
+    return out;
+  }
+  function trumpLight() {
+    const d = Depth.num('sheenMs');
+    if (!d || !ms() || !Depth.on()) return;
+    for (const c of qa('#hand .card.trump, #center .kpile .card:not(.back)')) {
+      c.classList.remove('sheen');
+      void c.offsetWidth;
+      c.classList.add('sheen');
+      setTimeout(() => c.classList.remove('sheen'), d + 50);
+    }
+  }
   function fly(el, to, t, delay = 0, turn = 0) {
     const m = 16, [sx, sy] = center(el), [cx, cy] = center(to), from = getComputedStyle(el).transform;
     const tx = Math.min(innerWidth - m, Math.max(m, cx)), ty = Math.min(innerHeight - m, Math.max(m, cy));
@@ -4670,7 +4693,9 @@ const Fx = (() => {
         if (to) {
           pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150, label: o.label });
           beat('sweep', 'sweep|' + pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), performance.now(), Object.assign(who(p), { showdown: !!o.trick.sd, cards: qa('.slot .card[data-card]', g).length }));
-          done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
+          done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; }
+            arc( (q('.card[data-card]', sl)), t * 1.3, Depth.num('sweepArc'), 0, 0.3, i * 60, true);
+            return fly(sl, to, t, i * 60); }).filter(Boolean));
         } else g.remove();
       }
     }
@@ -4880,6 +4905,7 @@ const Fx = (() => {
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
         startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
           { duration: t, easing: 'ease-out', fill: 'backwards' }), slotStart[id], now);
+        for (const a of arc(card, t, Depth.num('playArc'), Depth.num('playGrow'), 0.45)) startAt(a, slotStart[id], now);
         if (!from) { seat.classList.add('rise'); clearTimeout(riseTimer[p]); riseTimer[p] = setTimeout(() => { const s = q('#seat' + p); if (s) s.classList.remove('rise'); }, t - e); }
       }
       if (isWin && !slides) {
@@ -4920,6 +4946,7 @@ const Fx = (() => {
     dealHand(v, now);
     const ep = q('#center .outpile.empty'), wait = handDeal.key === String(v.handNumber) ? handDeal.end - now : 0;
     if (ep && ms() && wait > 0) ep.animate([{ opacity: 0 }, { opacity: 0, offset: wait / (wait + 200) }, { opacity: 1 }], { duration: wait + 200 });
+    if (last && last.handNumber === v.handNumber && !last.trump && v.trump) setTimeout(trumpLight, ms());
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
     refreshCounts();
@@ -5109,6 +5136,11 @@ const DEPTH =  (Object.freeze({
   shadowBase: { def: 0.25, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Shadows', name: 'Base blur' },
   shadowBlur: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Blur by height' },
   fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast', js: true },
+  playArc: { def: 2.5, min: 0, max: 6, step: 0.125, unit: 'rem', group: 'Motion', name: 'Played card rise', js: true },
+  playGrow: { def: 0.06, min: 0, max: 0.2, step: 0.01, unit: '', group: 'Motion', name: 'Played card grow', js: true },
+  sweepArc: { def: 1.5, min: 0, max: 4, step: 0.125, unit: 'rem', group: 'Motion', name: 'Won trick lift', js: true },
+  sheenMs: { def: 700, min: 0, max: 1500, step: 50, unit: 'ms', group: 'Motion', name: 'Trump light time' },
+  sheen: { def: 0.8, min: 0, max: 1, step: 0.05, unit: '', group: 'Motion', name: 'Trump light' },
   orientationOn: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Tilt input', name: 'Device tilt', js: true },
   pointerOn: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Tilt input', name: 'Mouse', js: true },
   tiltRange: { def: 12, min: 3, max: 45, step: 1, unit: '°', group: 'Tilt input', name: 'Full tilt', js: true },
@@ -5341,6 +5373,7 @@ const Depth = (() => {
     if (tab.open) panel(true); else apply();
   }
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
+    on: () => document.documentElement.classList.contains('depth') && liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) > 0,
     orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow,  vector: () => ({ x: v.x, y: v.y }),
      mode: () => mode,  num });
 })();
@@ -9350,8 +9383,10 @@ const SelfTest = (() => {
       const was = Depth.mode(), html = document.documentElement;
       const cls = () => ['depth', 'tilt'].filter(c => html.classList.contains(c)).join(' ');
       const seen = [Depth.setMode('off'), cls(), Depth.setMode('still'), cls(), Depth.setMode('tilt'), cls(), Depth.setMode('sideways')];
+      Depth.setMode('off'); const onOff = Depth.on(); Depth.setMode('still'); Depth.motion('instant'); const onInstant = Depth.on(); Depth.motion('normal');
+      seen.push(String(onOff), String(onInstant));
       Depth.setMode(was);
-      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, and an unknown mode is Still', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still']);
+      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, an unknown mode is Still; the motion adds no height in Off or at Instant', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still', 'false', 'false']);
       eq('a reading turns with the screen: upright, and turned 90, 180 and 270 degrees',
         [0, 90, 180, 270, -90].map(a => Depth.orient(10, 4, a)), [{ x: 4, y: 10 }, { x: 10, y: -4 }, { x: -4, y: -10 }, { x: -10, y: 4 }, { x: -10, y: 4 }]);
       eq('a tilt inside the dead zone is 0, past the full tilt is 1, and the sign stays',
