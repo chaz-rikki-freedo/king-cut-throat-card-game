@@ -6398,7 +6398,6 @@ const Moments = (() => {
     /* The beats this draw's motions started (Fx.after ran just before): sent as one message, and the times the
        draw's land and sweep batches are timed to. None at Instant or during a skip. */
     const beats = o.instant || o.skipping ? [] : Fx.beats();
-    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
     const last = (/** @type {string} */ name) => beats.reduce((m, b) => (b.beat === name && (m === null || b.at > m) ? b.at : m), /** @type {number | null} */ (null));
     const cardAt = last('card'), sweepAt = last('sweep');
     /* The swept trick is on the table once a later table is drawn. */
@@ -6407,6 +6406,9 @@ const Moments = (() => {
     for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: sweepAt !== null ? sweepAt : now, beat: sweepAt !== null });
     /* A held result shows on the next draw that does not hold. */
     if (!o.hold && results.length) { const r = results; results = []; for (const x of r) send('result', x.moments, { version: x.version, replay: x.replay, at: now }); }
+    /* The beats go after the held batches: a beats message carries this draw's newer version, and the module drops a
+       batch older than the newest version it has heard as stale. */
+    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
     if (!events || !events.length || v.version <= observed) return;
     observed = v.version;
     let moments = build(events, v, { mode: o.mode });
