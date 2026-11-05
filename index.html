@@ -6144,9 +6144,10 @@ const Fx = (() => {
      packet takes the slot after its round. PACKETS: [first card, cards, first slot] of each player's packets. */
   const PL = Engine.C.PLAYERS, KITTY_SLOT = Engine.C.KITTY_AFTER * PL;
   const PACKETS = Engine.C.DEAL_PACKETS.reduce((/** @type {number[][]} */ out, n, r) => { const card = out.length ? out[out.length - 1][0] + out[out.length - 1][1] : 0; out.push([card, n, r * PL + (r >= Engine.C.KITTY_AFTER ? 1 : 0)]); return out; }, []);
-  /* The start of a hand's deal: after the outside pile has cleared and the hand backs are home. */
+  /* The start of a hand's deal: after the outside pile has cleared and the hand backs are home, and, for the first deal
+     of a visit with Sound on, once its sounds are ready (Moments.soundWait). */
   function dealClock(key, now) {
-    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold), end: 0 };
+    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold, now + Moments.soundWait(now)), end: 0 };
     return handDeal.t0;
   }
 
@@ -6556,6 +6557,20 @@ const Moments = (() => {
   /* Loads the optional module when the browser is idle: a classic script, since a page opened from file:// blocks
      module imports. A missing file fails without a word (the browser's developer tools may list the request). */
   let loading = false;
+  /* A first deal waits for its sounds (docs/ui/feedback-contract.md, Sounds ready): when the module says Sound is on and
+     its deal sounds are still rendering, the first deal of the visit waits for them, at most SOUND_HOLD_MS. Without
+     the module, or with Sound off, nothing waits. */
+  const SOUND_HOLD_MS = 1500;
+  let soundsDue = false, soundsIn = false, holdUntil = 0;
+  document.addEventListener('kct:feedback-ready', e => { const d = /** @type {CustomEvent} */ (e).detail; if (d && d.v === V && d.sound === true && !soundsIn) soundsDue = true; });
+  document.addEventListener('kct:feedback-sounds', e => { const d = /** @type {CustomEvent} */ (e).detail; if (d && d.v === V) { soundsIn = true; soundsDue = false; } });
+  /** How long a deal starting now should wait for its sounds (ms): 0 once they are ready, or once the hold is spent.
+      @param {number} now */
+  function soundWait(now) {
+    if (!soundsDue) return 0;
+    if (!holdUntil) holdUntil = now + SOUND_HOLD_MS;
+    return Math.max(0, holdUntil - now);
+  }
   function load() {
     if (loading) return;
     loading = true;
@@ -6568,7 +6583,7 @@ const Moments = (() => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
   }
 
-  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load });
+  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load, soundWait });
 })();
 
 /* ---------------------------------------------------------------------
@@ -12264,6 +12279,18 @@ const SelfTest = (() => {
     /* --- Awards: the cost of a seat's choices, a band from 6 (neon green, best) to 0 (neon red). tests/awards.js checks
        the grade on whole games; here, its parts. --- */
     safeRun('moments', () => {
+      /* A first deal waits for its sounds only while the module says Sound is on and they are still rendering, and at most
+         SOUND_HOLD_MS; once they are ready, nothing waits. */
+      {
+        const ev = (/** @type {string} */ n, /** @type {object} */ d) => document.dispatchEvent(new CustomEvent(n, { detail: d }));
+        ev('kct:feedback-ready', { v: Moments.V, sound: true });
+        const t = performance.now(), w = [Moments.soundWait(t), Moments.soundWait(t + 1000), Moments.soundWait(t + 2000)];
+        ev('kct:feedback-sounds', { v: Moments.V, ready: 'deal' });
+        const after = Moments.soundWait(t + 500);
+        ev('kct:feedback-ready', { v: Moments.V, sound: true });
+        eq('a first deal waits for its sounds: up to 1.5 s, only while they render, never once they are ready',
+          [w[0], w[1], w[2], after, Moments.soundWait(t + 600)], [1500, 500, 0, 0, 0]);
+      }
       /* Moments.build over whole bot games, from the bottom seat: every moment is known, carries only public facts,
          and agrees with the events and the scores. Pure: nothing is sent. */
       const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));

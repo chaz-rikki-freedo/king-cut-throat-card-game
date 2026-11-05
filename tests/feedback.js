@@ -22,6 +22,8 @@ function stubs() {
   Object.defineProperty(navigator, 'vibrate', { configurable: true, value: (p) => { w.__vibrations.push(p); return true; } });
   w.__starts = [];
   w.__contexts = 0;
+  w.__dealReady = [];
+  document.addEventListener('kct:feedback-sounds', (e) => { w.__dealReady.push(/** @type {CustomEvent} */ (e).detail); });
   class FakeAudioContext {
     constructor() { w.__contexts++; this.state = 'running'; this.destination = {}; this.outputLatency = 0.02; }
     /* A moving clock, as a real context has: seconds since the page loaded. */
@@ -329,6 +331,14 @@ const batchSrc = `
       return { classic: P.required.filter((n) => t.buffers.get('classic|' + n)).length, total: P.required.length };
     });
     expect('every required preset renders in Classic', rendered.classic === rendered.total, rendered);
+    /* A deal's sounds render first, and the game hears once that they are ready (feedback-contract.md, Sounds ready). */
+    const order = await page.evaluate(() => {
+      const w = /** @type {any} */ (window), keys = [...w.KCTFeedback.test.buffers.keys()].filter((k) => k.startsWith('classic|')).map((k) => k.slice(8));
+      const deal = keys.map((k, i) => /^(deal|kitty)/.test(k) ? i : -1).filter((i) => i >= 0), other = keys.findIndex((k) => !/^(deal|kitty)/.test(k));
+      return { deal: deal.length, lastDeal: Math.max(...deal), firstOther: other, ready: w.__dealReady };
+    });
+    expect('the deal\'s sounds render first, and kct:feedback-sounds says so once', order.deal >= 9 && order.lastDeal < order.firstOther &&
+      order.ready.length === 1 && order.ready[0].v === 1 && order.ready[0].ready === 'deal', order);
 
     /* ---------- Playing ---------- */
     console.log('Playing');
@@ -575,6 +585,20 @@ const batchSrc = `
       return { scheduled: st.length, stopped: st.filter((x) => x.stopped).length, timers, after: w.KCTFeedback.test.timers(), vib: w.__vibrations.length - v0 };
     });
     expect('cancel: a scheduled beat sound stops, and a vibration still ahead never plays', cancelled.scheduled === 1 && cancelled.stopped === 1 && cancelled.timers === 1 && cancelled.after === 0 && cancelled.vib === 0, cancelled);
+    await wait(200);
+    /* A beat whose sound is still rendering, with its time ahead, asks again just before it is due: rendered by then, it
+       plays, even after a newer message. */
+    const again = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), b = w.KCTFeedback.test.buffers, s0 = w.__starts.length, t0 = performance.now();
+      const held = [...b.entries()].filter(([k]) => /\|deal-hand/.test(k));
+      for (const [k] of held) b.delete(k);
+      const r = w.KCTFeedback.test.playBeats({ v: 1, version: w.__ver, replay: false, beats: [{ beat: 'deal', key: 'ag1', at: t0 + 300, you: true, cards: 1 }] });
+      for (const [k, v] of held) b.set(k, v);
+      w.__send([], {});
+      await new Promise((res) => setTimeout(res, 450));
+      return { first: r[0].sound, played: w.__starts.length - s0 };
+    });
+    expect('a beat still rendering asks again just before it is due, and plays once ready', again.first === 'again' && again.played === 1, again);
     await wait(200);
 
     /* Fall, and its Showdown voice. */

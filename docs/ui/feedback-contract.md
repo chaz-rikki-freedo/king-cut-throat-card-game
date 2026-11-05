@@ -209,7 +209,8 @@ The module sends events on `document` too. The game listens, and never depends o
 
 | Event | When | Detail | What the game does |
 |---|---|---|---|
-| `kct:feedback-ready` | Once, after the module adds its listener | `v` | Shows the **Sound and touch** card if `v` matches, then sends `theme` and `speed` |
+| `kct:feedback-ready` | Once, after the module adds its listener | `v`, `sound` | Shows the **Sound and touch** card if `v` matches, then sends `theme` and `speed`. `sound: true` means a deal's sounds are on their way (see [Sounds ready](#sounds-ready)). |
+| `kct:feedback-sounds` | Once, when a deal's sounds are rendered (Classic) | `v`, `ready: 'deal'` | Stops holding a first deal (see [Sounds ready](#sounds-ready)) |
 | `kct:feedback-log` | Something the Event log should record | `v`, `kind`, `data` | Passes it to the game's logger as `Logger.log('FEEDBACK_' + kind, data)`. The logger records it only while the Event log is on. |
 
 Log kinds:
@@ -223,6 +224,22 @@ Log kinds:
 
 - The module never writes to the console for any of these, so a local copy without `feedback/` stays clean.
 - The game ignores a kind it doesn't know.
+
+### Sounds ready
+
+The module renders its sounds in the background after it loads, a few seconds in all on a phone. A game's first deal
+can come sooner, and a beat whose sound isn't rendered would be dropped. So:
+
+1. **The module renders a deal's sounds first:** every preset whose name starts with `deal` or `kitty`, then the rest.
+   When those are ready, it sends `kct:feedback-sounds`.
+2. **The game holds a first deal for them:** when `kct:feedback-ready` said `sound: true` and `kct:feedback-sounds`
+   hasn't come yet, the first deal of the visit starts once they are ready, at most `SOUND_HOLD_MS` (1,500 ms) late
+   (`Moments.soundWait`, which Fx's deal clock reads). With Sound off, without the module, or once the sounds are
+   ready, nothing waits.
+3. **A beat asks again:** a beat whose sound is still rendering, with its time still ahead, is decided again
+   `RETRY_AHEAD_MS` (40 ms) before it is due, once. A cancel clears that timer like any other.
+
+Adding `sound` and the new event changes no moment's shape, so `v` stays.
 
 ## Versioning
 
