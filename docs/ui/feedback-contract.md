@@ -47,7 +47,8 @@ The game sends one `CustomEvent` on `document`, named `kct:moment`, for each **b
 document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
   v: 1,                    // the contract version
   version: 1834,           // the game state version, for stale checks
-  at: performance.now(),   // when the batch was sent
+  at: performance.now(),   // when the player sees it: now, or a beat still ahead
+  beat: true,              // optional: timed to a beat, whose sounds the beats play
   anchor: 'sweep',         // when the player sees it: see Anchors
   replay: false,           // true in the replay viewer
   moments: [
@@ -64,18 +65,37 @@ document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
 
 ### Anchors
 
-A batch is sent at its **screen time**, the moment the player sees it, from the call site for its anchor. The module never schedules a moment itself.
+A batch is sent from the call site for its anchor, and its `at` is its **screen time**, the moment the player sees it. With motion on, a `land` or `sweep` batch is sent as its motion starts, with `at` set to its [beat](#beats) still ahead, and `beat: true`. The module schedules it for `at` (see [Feedback: Scheduling](feedback.md#scheduling)).
 
-| Anchor | Where the game sends the batch |
-|---|---|
-| `land` | `act()`, one motion step (`Fx.step()`) after the action, when the cards land |
-| `sweep` | Held from `TRICK_WON`, and sent in the next `act()`, the one that leaves Trick end, when the sweep is drawn |
-| `result` | The release in `holdResult()` |
-| `gameOver` | `showGameOver` |
-| `tap` | At once, in the tap's handler |
+| Anchor | Where the game sends the batch | `at` with motion on |
+|---|---|---|
+| `land` | The draw that shows the action | The draw's latest `card` beat; the draw plus one motion step (`Fx.step()`) when it has none |
+| `sweep` | Held from `TRICK_WON`, and sent in the next draw, the one that leaves Trick end, when the sweep is drawn | The `sweep` beat |
+| `result` | The release in `holdResult()` | Now |
+| `gameOver` | `showGameOver` | Now |
+| `tap` | At once, in the tap's handler | Now |
 
 - **A game that ends mid-trick.** When a King point reaches 10, there is no next `act()` to send the held `sweep` batch. The game moves that trick's `trickWon` and `king` moments into the `gameOver` batch instead.
-- **Reduced motion.** The system's reduced-motion setting turns off the motion, so screen time is the same as engine time and batches are sent at once.
+- **Reduced motion.** The system's reduced-motion setting turns off the motion, so screen time is the same as engine time, batches are sent at once, and there are no beats.
+
+## Beats
+
+Fx reports the contact time of each motion, a **beat**, and the game sends the new beats of each draw in one message on the same event, with no `moments` and no `control`:
+
+```js
+document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
+  v: 1, version: 1834, replay: false,
+  beats: [
+    { beat: 'deal', key: 'deal|3|1|0', at: 18250.4, seat: 1, you: false, cards: 3 },
+    { beat: 'deal', key: 'deal|3|2|0', at: 18349.4, seat: 2, you: false, cards: 3 }
+  ]
+} }));
+```
+
+- `beat` is a name from the [beat list](feedback.md#beat-list), `at` is in `performance.now()` time, and `key` is unique for the game. The other fields are public facts.
+- A beat is sent once, by the draw that starts its motion. A redraw that resumes the motion sends nothing.
+- The [sending gates](#sending-gates) apply as for a `land` batch. Without motion, Fx makes no beats.
+- An older module reads a beats message as a batch with no moments and plays nothing. Beats are open-ended like moment types: the module ignores a beat it doesn't know.
 
 ## Moments
 
@@ -207,7 +227,7 @@ Log kinds:
 ## Versioning
 
 - `v` is on every batch and on `kct:feedback-ready`.
-- **`v` changes only when an existing moment changes shape:** a field renamed, removed or given a new meaning, or a control message changed. Adding a type or a field leaves `v` as it is.
+- **`v` changes only when an existing moment changes shape:** a field renamed, removed or given a new meaning, or a control message changed. Adding a type or a field leaves `v` as it is. Beats, `beat: true` and an `at` still ahead are additions, so `v` stays 1.
 - If the module's `v` doesn't match the game's, the module ignores every batch and leaves the card hidden. A mismatched pair is silent, never wrong.
 
 ## Other listeners
@@ -220,6 +240,7 @@ Log kinds:
 - `Moments.build(events, view)`: a pure function from an action's events and the View for your seat to moments, with their anchors and derived facts.
 - `Moments.send(anchor, moments)` and `Moments.control(name, data)`: send a batch or a control message.
 - `Moments.load()`: adds the module's script when the browser is idle.
+- **Beats (phase 6):** `Fx.beats()` returns the beats that the last `Fx.after` started, each once. `Moments.observe` sends them as one beats message and times the draw's `land` and `sweep` batches to them.
 - Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, the hand's card handler, Skip ▶, the speed picker, the Felt tiles, **Reset this tab**, and every place that cancels.
 - Settings markup: the hidden **Sound and touch** heading and the empty `#setFeedback` card.
 - A `kct:feedback-log` listener that passes each message to `Logger.log`.
@@ -231,6 +252,7 @@ Log kinds:
 | `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the sending gates send nothing |
 | The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files; a `v` mismatch keeps the module silent; an unknown type or field is ignored; each log kind reaches the game's logger |
 | Erase and backup | T1 | `resets.js`: **Progress + settings** clears the three `kct.feedback.` keys, and the choices that erase progress only keep them. `backup-ui.js`: a backup carries them and a restore brings them back. |
+| Beats | T1 | `tests/feedback.js`: see [Feedback: Tests](feedback.md#tests) |
 | The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
 
 The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md` list the new area.

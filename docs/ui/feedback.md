@@ -10,6 +10,8 @@
 > | 3 | The wiring: the game loads the module, shows its card and writes its log; the service worker caches it; `tools/publish.sh` publishes it | Built |
 > | 4 | Moments of interest and derived events, measured with `tests/interest.js` | Built |
 > | 5 | [Variety](#variety): stakes, variants, escalation, novelty, layering, parameters | Built |
+> | 6 | [Beats](#beats), the game's side: Fx reports each motion's contact time, and batches are timed to them | Spec |
+> | 7 | Beats, the module's side: [scheduling](#scheduling) on the audio clock, [beat presets](#beat-presets) | Spec |
 >
 > The remaining choices are listed in [Open items](#open-items).
 
@@ -34,6 +36,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 | **Layer** | One extra part added on top of a batch's main cue. |
 | **Moment of interest** | A rare situation with a cue of its own, above the ordinary cue for that moment. |
 | **Stakes** | How tense the game is at a batch: Calm, Close, Match point or Decider. |
+| **Beat** | The moment a motion makes contact, such as a card landing in a trick, known ahead of time from Fx. See [Beats](#beats). |
 
 ## Principles
 
@@ -79,9 +82,10 @@ The module adds these rows to **Settings → Table**, under the heading **Sound 
 |---|---|---|
 | **Engine time** | `act()` applies an action and its events exist. | `act()` in section 8 |
 | **Screen time** | The player sees the result: a card lands, a trick is swept, a result shows. | The end of an `Fx` motion, the release of `holdResult()`, and the wait before `showGameOver` |
+| **Beat time** | A motion makes contact. Known ahead of time, so a part can be scheduled for it. | Each `Fx` motion's start and duration, see [Beats](#beats) |
 | **Tap time** | The player taps something. | Input handlers in section 8 |
 
-The game sends each batch at its screen time, or at tap time for a tap (see [Feedback contract: Anchors](feedback-contract.md#anchors)). Every part of a cue starts then, so they land together.
+The game sends each batch at its screen time, or at tap time for a tap (see [Feedback contract: Anchors](feedback-contract.md#anchors)). With motion on, a `land` or `sweep` batch is timed to its [beat](#moments-timed-to-beats) instead. Every part of a cue starts at the batch's `at`, so they land together.
 
 Pacing by speed, from `DELAYS` and `Fx.STEP`, in milliseconds:
 
@@ -93,6 +97,89 @@ Pacing by speed, from `DELAYS` and `Fx.STEP`, in milliseconds:
 | Instant | 0 | 0 | 0 | 0 | 0 |
 
 At Fast, a bot card can land every 220 ms. That suits a short sound, but it is too often for vibration.
+
+## Beats
+
+A **beat** is the moment a motion makes contact: a dealt packet reaches a hand, a trick card lands in its slot, a trick starts to sweep to its winner. Fx knows each beat ahead of time, because every motion is a Web Animations API animation with a start and a duration that Fx works out (`startAt(animation, start, now)`). So the sounds of the table follow the animations themselves, not the draw that starts them.
+
+Beats split the work two ways:
+
+- **Beats decide when, and what the table sounds like.** Each beat plays its own [beat sound](#beat-presets): one per packet in a deal, one per card in a trick, one per sweep.
+- **Moments decide what it means.** A King point, a result or a moment of interest still comes from the [rule table](#rule-table). Its batch is timed to the beat it belongs to, so a King point sounds as its trick starts to sweep.
+
+Without motion (speed Instant, or the system's reduced-motion setting), there are no beats. The moments then play the ordinary card sounds themselves, as before.
+
+### Beat list
+
+`at` is in `performance.now()` time. `t` is one motion step (`Fx.step()`: 616, 396 or 250 ms). Every beat has a `key`, unique for the game, so a redraw that resumes a motion never sends its beat twice.
+
+| Beat | Motion (Fx) | `at` | Facts | Sound |
+|---|---|---|---|---|
+| `deal` | `dealHand`: a packet reaches a player | The packet's first card lands: the deal's start, plus the card's delay, plus `t` | `seat`, `you`, `cards` | `deal-hand` to you, `deal` to a bot |
+| `deal` (Showdown) | `dealHand`: the mediator deals one card | The card lands | `seat`, `you`, `cards: 1`, `showdown: true` | `deal-snap` |
+| `kitty` | `kittyDeal`: the kitty packet lands under the dealer | The last kitty card lands | `seat` (the dealer) | `kitty-set` |
+| `turnUp` | `kittyDeal`: the dealer turns the top card up | Halfway through the turn, when the card is edge-on | None | `flip` |
+| `tuck` | `tuckTurned`: in round 2, the turned card slides out and back under the kitty | The slide's start | None | `tuck` |
+| `toss` | `transitions`, bid won: kitty cards fly to the receiver | The first card leaves | `seat` (the receiver), `you`, `cards` | `toss` |
+| `sink` | `sink`: cards drop through the table (the kitty's rest, an exchange or a Showdown discard) | The drop starts | `seat`, `you`, `cards` | `sink` |
+| `discard` | Discards land on the outside pile: yours as cards, a bot's layer sliding in from its seat | The player's last card lands, or the layer arrives | `seat`, `you` | `discard` |
+| `pileSink` | `transitions`: the full outside pile drops through the table | The drop starts | None | `pile-sink` |
+| `card` | `animateTrick`: a trick card lands in its slot | The slide ends: its start plus `t` | `seat`, `you`, `showdown` | `card-play` from you, `card-slide-in` from a bot |
+| `sweep` | `transitions`: the trick flies to its winner's trick circles | The sweep's start | `seat` (the winner), `you`, `showdown` | `trick-you` or `trick-bot` |
+| `collect` | `transitions`: a thrown-in hand goes back to the dealer | The collect's start | `seat` (the dealer) | `collect` |
+| `handClose` | `slideHand`: your hand closes up or makes room | The slide's start, only when a card moves | None | `hand-close`, at half gain |
+
+Facts follow the [public-facts principle](#principles): a beat names seats and counts, never a card that someone holds unseen. A `card` beat doesn't name its card; the `cardPlayed` moment does.
+
+### Moments timed to beats
+
+The game sets a batch's `at` from the beat it belongs to, so the meaning and the motion land together:
+
+| Anchor | `at` | Before beats |
+|---|---|---|
+| `land` | The latest `card` beat of the same draw | The draw, plus one motion step |
+| `sweep` | The `sweep` beat of the same draw | The draw |
+| `result`, `gameOver`, `tap` | Unchanged | Unchanged |
+
+A batch timed to a beat carries `beat: true`. In that batch, the module leaves out the sounds that the beats already play (the cues marked **Beat** in the [cue table](#cue-table)). Their vibration and parallax still play. A batch without `beat: true` plays every part, so motion turned off still sounds as before.
+
+### Scheduling
+
+A part whose `at` is still ahead is scheduled, not delayed:
+
+- **Sound:** started with `source.start(when)`, where `when` is `audioContext.currentTime + (at − performance.now()) / 1000 − outputLatency`. The audio clock places it on the frame the card lands, which `setTimeout` can't do. `outputLatency` is the device's output delay, 0 when the browser doesn't report it.
+- **Vibration and parallax:** a timer for `at`. A vibration is short, so a few milliseconds of timer drift don't show.
+- **Too far ahead:** a part more than `MAX_AHEAD_MS` ahead is dropped. Nothing waits for long.
+- **Cancelled:** a `cancel` message, a hidden tab or Sound turned Off stops every scheduled sound and clears every timer.
+
+This keeps [Drop, never wait](#principles): a part is scheduled only for a time the game already knows, and a late one is still dropped.
+
+### Beat dropping
+
+A beat sound goes through the [dropping](#dropping) checks with its own gap, `GAP_BEAT_MS`, and the lowest rank, so a moment's sound always wins. Beats share `MAX_VOICES` with the moments' sounds. Beats play only on the sound channel: they never vibrate or move.
+
+### Beat presets
+
+New presets in Classic, from the lab archetypes that had no use. Each uses the lab's default seed for its row (`hashString('<family>-<archetype>')`), so it matches the lab's default variant. The other palettes play them in their own tone and timbre.
+
+| Name | Beat | Preset | Seed |
+|---|---|---|---|
+| `deal-hand` | A packet reaches your hand | `deal` 1: Into hand | 526455189 |
+| `deal-snap` | One Showdown card | `deal` 3: Quick snap | 492899951 |
+| `kitty-set` | The kitty packet | `confirm` 1: Pack set down | 959104853 |
+| `tuck` | The turned card tucked | `slide` 2: Two-step nudge | 1911560857 |
+| `toss` | Kitty cards to the receiver | `deal` 2: Long toss | 476122332 |
+| `sink` | Cards drop through the table | `play` 1: Soft place | 2152542497 |
+| `pile-sink` | The outside pile drops | `collect` 2: Scoop | 4245462482 |
+| `card-slide-in` | A bot's trick card | `play` 3: Place and skid | 2118987259 |
+| `collect` | A thrown-in hand | `collect` 1: Stack and square | 4228684863 |
+| `hand-close` | Your hand closes up | `slide` 1: Long drag | 1861228000 |
+
+The beats also reuse `deal`, `flip`, `discard`, `card-play`, `trick-you` and `trick-bot`, with their variants.
+
+Still unused after this: all of `select` (A: card selection, since a card pick vibrates without sound), `play` 2 (Corner first), `slide` 3 (Pivot turn), `shuffle` 1 to 3, and `reveal` 1 to 3.
+
+**Your own picks.** The presets above are the lab's default rows. To use the variants you chose in the lab, export the library: its `manifest.json` lists each variant's family, archetype and seed, which drop straight into `palettes.js`.
 
 ## Cues
 
@@ -149,15 +236,17 @@ Tap batches hold one moment each, so their rules need no rank.
 | `handLoss` | None | `hand-loss` | None |
 | `kingYou` | `[35, 60, 35]` | `king-you` | None |
 | `kingBot` | None | `king-bot` | None |
-| `trickYou` | `[35]` | `trick-you` | None |
-| `trickBot` | None | `trick-bot` | None |
+| `trickYou` | `[35]` | `trick-you` (**Beat**) | None |
+| `trickBot` | None | `trick-bot` (**Beat**) | None |
 | `trumpNamed` | None | `trump-named` | None |
-| `cardPlayed` | None | `card-play` | None |
-| `deal` | None | `deal` | None |
-| `flip` | None | `flip` | None |
-| `discard` | None | `discard` | None |
+| `cardPlayed` | None | `card-play` (**Beat**) | None |
+| `deal` | None | `deal` (**Beat**) | None |
+| `flip` | None | `flip` (**Beat**) | None |
+| `discard` | None | `discard` (**Beat**) | None |
 | `pick` | `[8]` | None | None |
 | `skip` | `[20]` | None | None |
+
+**Beat** marks a sound that the [beats](#beats) play when the batch carries `beat: true`. The cue's other parts still play.
 
 Parallax motion names are placeholders until #185 defines the motions. Several rules can share one response: `showdownMediated` reuses `showdown-win`.
 
@@ -399,7 +488,7 @@ Each part carries its batch's `at` time. When it is due, it goes through these c
 5. **Too many sounds.** `MAX_VOICES` sounds are already playing. Drop it.
 6. Otherwise, play it once. Nothing is kept for a retry.
 
-A `cancel` message, or the tab becoming hidden, clears every armed part and stops any sound scheduled but not yet started.
+A part whose `at` is still ahead is [scheduled](#scheduling) for it, and the checks above run when it arrives. A `cancel` message, or the tab becoming hidden, clears every armed part and stops any sound scheduled but not yet started. Beat sounds have their own gap, see [Beat dropping](#beat-dropping).
 
 ## Sounds
 
@@ -506,7 +595,7 @@ The 17 presets that the Classic palette must have, in `feedback/palettes.js`. Th
 | `game-loss` | `gameLoss` | A bot wins the game | `result` 4: Settle | 1 to 2 s | 792 to 821 |
 | `wave-cleared` | `waveCleared` | You clear a wave | `result` 3: Fanfare and riffle | 1.5 to 2.5 s | 1024 to 1122 |
 
-Two measured lengths miss their targets: `deal` is one card, not a whole deal, and `hand-loss` is just short. Both are tuning items in [Open items](#open-items).
+`deal` is one card, so it misses the whole-deal target. With [beats](#beats), it plays once per packet, which suits one card. `hand-loss` is just short of its target, a tuning item in [Open items](#open-items).
 
 Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call use the lab's 8 card families. The 7 results use a ninth family, `result`, which the lab doesn't have yet: see [Result family](#result-family).
 
@@ -645,9 +734,15 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 7. It picks each part's [variant](#variants) and works out the [parameters](#parameters).
 8. Each channel takes its part. The [dropping](#dropping) checks run, and a part that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
-   - **Sound:** a buffer source, through a gain node (Half or Full), started on `audioContext.currentTime`.
+   - **Sound:** a buffer source, through a gain node (Half or Full), started at the batch's `at` on the audio clock (see [Scheduling](#scheduling)).
    - **Event parallax:** as #185 defines.
 9. Each channel records the time and rank, for its next gap check.
+
+### 4b. When beats arrive
+
+1. The sound [gates](#gates) run. Beats never vibrate or move.
+2. Each beat takes its sound from the [beat list](#beat-list), with its variant picked by its `key`.
+3. The [beat dropping](#beat-dropping) checks run, and a beat that passes is [scheduled](#scheduling) for its `at`.
 
 ### 5. Settings changes
 
@@ -694,6 +789,9 @@ All draft values, to tune once built.
 | `LEAD_FROM` | 7 | The score a new sole leader needs for a lead change to count |
 | `STREAK_MIN` | 4 | Your tricks in a row for a trick streak; it fires again every 3 more |
 | `COMEBACK_POINTS` | 4 | How far behind the leader a comeback win must have come from |
+| `MAX_AHEAD_MS` | 4000 | How far ahead a part may be scheduled. A deal's last packet, at Slow, is about 2.5 s ahead. |
+| `GAP_BEAT_MS` | 30 | The minimum time between two beat sounds |
+| `BEAT_GAIN` | 0.7 | The gain of every beat sound, under the moments' sounds |
 | `MEMORY_MAX` | 1000 | The most moments the module remembers. A hand sends about 35; check against the longest games in `gamelength.js`. |
 
 ## Tests
@@ -705,6 +803,8 @@ All draft values, to tune once built.
 | Variety | T1 | `tests/feedback.js`: the same batch gives the same variant every time; stakes from scores; escalation picks the right entry and never adds a channel that's off; novelty rotates, then falls back; at most one layer, never on a channel the main cue uses; parameters clamp, fall back on a bad value and never turn a channel on |
 | Sounds | T1 | `tests/feedback.js` with a fake synth: the fallbacks in order (palette, Classic, ordinary cue, nothing); Showdown versions from `showdownCalled` to `showdownScored`; a `theme` message switches palette; a missing `synth.js` or a failed render shows nothing and leaves the other parts playing |
 | `feedback/synth.js` | T1 | `tests/feedback.js`, in the browser: every preset in `palettes.js` renders, isn't silent, stays within its target length and `RENDER_BUDGET_MS`, and renders the same samples twice. The lab's own self-test checks are the model. |
+| Beats, the game's side | T1 | `tests/feedback.js`, in the real page: a hand gives one `deal` beat per packet, 21 `card` beats and 7 `sweep` beats; every key is unique and a redraw part way through sends none twice; a `land` batch's `at` equals its draw's latest `card` beat; reduced motion sends no beats and no `beat: true` |
+| Beats, the module's side | T1 | `tests/feedback.js`, with a fake `AudioContext` that records `start(when)`: a future `at` starts at the right audio time, less `outputLatency`; past `MAX_AHEAD_MS` it drops; `cancel` stops what is scheduled; with `beat: true` the **Beat** sounds stay silent and the vibration still plays; every beat preset renders |
 | Caching | T1 | `sw.js`: the three feedback files are precached apart from `ASSETS`, including an install where one fails |
 | Reset this tab | T1 | `resets.js` |
 | On a phone | By hand, once | Vibration patterns on Android, rendering time against `RENDER_BUDGET_MS`, and whether sound adds any delay at Fast |
@@ -732,6 +832,7 @@ The current decisions. Their history is in the commit log.
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
 | **Variety** | Stakes from public scores; variants picked by a hash, with no RNG or seed; escalation by stakes and counts; novelty per game; at most one layer; parameters that are clamped and pure |
+| **Beats** | Fx reports each motion's contact time ahead. Beats play the table's sounds, and moments are timed to them. Every sound is scheduled on the audio clock. Beats are sound only. |
 | **Parallax** | Event parallax is a channel of the module. Common parallax lives outside it and ignores moments. |
 
 ## Open items
@@ -740,7 +841,8 @@ The current decisions. Their history is in the commit log.
 |---|---|
 | Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
-| The `deal` sound: a whole deal is 300 to 600 ms, but `deal` 0 is one card (about 120 ms). Use a `shuffle` archetype, or a new deal archetype that plays several cards | Tuning in the lab |
+| Your own lab picks in place of the default rows | Export the lab's library; its `manifest.json` gives each preset |
+| Where vibration plays, now that beats give exact times | A later pass over the rule and cue tables |
 | `hand-loss` is about 370 ms, under its 400 ms target | Tuning in the lab |
 | Rendering time on a real phone | Measuring once `synth.js` exists |
 | Each palette's character and which presets it overrides | Designing the palettes in the artifact |
