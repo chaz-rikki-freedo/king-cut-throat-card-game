@@ -1064,7 +1064,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'd0c0e0f', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: 'a229b74', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -4801,7 +4801,7 @@ const Fx = (() => {
   const PL = Engine.C.PLAYERS, KITTY_SLOT = Engine.C.KITTY_AFTER * PL;
   const PACKETS = Engine.C.DEAL_PACKETS.reduce(( out, n, r) => { const card = out.length ? out[out.length - 1][0] + out[out.length - 1][1] : 0; out.push([card, n, r * PL + (r >= Engine.C.KITTY_AFTER ? 1 : 0)]); return out; }, []);
   function dealClock(key, now) {
-    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold), end: 0 };
+    if (handDeal.key !== key) handDeal = { key, t0: Math.max(now, dealHold, kittyHold, now + Moments.soundWait(now)), end: 0 };
     return handDeal.t0;
   }
   function kittyDeal(v, now) {
@@ -4948,6 +4948,7 @@ const Fx = (() => {
     if (last && last.handNumber === v.handNumber && !last.trump && v.trump) setTimeout(trumpLight, ms());
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
+    if (Depth.mode() === 'tilt') Depth.calm(busyFor(true));
     refreshCounts();
     clearTimeout(moveTimer);
     for (const e of qa('.table .seat.wait, .table .me.wait')) e.classList.remove('wait');
@@ -5105,6 +5106,15 @@ const Moments = (() => {
   }
   function tap(moment, version) { send('tap', [moment], { version }); }
   let loading = false;
+  const SOUND_HOLD_MS = 1500;
+  let soundsDue = false, soundsIn = false, holdUntil = 0;
+  document.addEventListener('kct:feedback-ready', e => { const d =  (e).detail; if (d && d.v === V && d.sound === true && !soundsIn) soundsDue = true; });
+  document.addEventListener('kct:feedback-sounds', e => { const d =  (e).detail; if (d && d.v === V) { soundsIn = true; soundsDue = false; } });
+  function soundWait(now) {
+    if (!soundsDue) return 0;
+    if (!holdUntil) holdUntil = now + SOUND_HOLD_MS;
+    return Math.max(0, holdUntil - now);
+  }
   function load() {
     if (loading) return;
     loading = true;
@@ -5116,7 +5126,7 @@ const Moments = (() => {
     };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
   }
-  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load });
+  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load, soundWait });
 })();
 const DEPTH =  (Object.freeze({
   trickTilt: { def: 22, min: 0, max: 40, step: 1, unit: 'deg', group: 'Played cards', name: 'Lean back' },
@@ -5149,6 +5159,7 @@ const DEPTH =  (Object.freeze({
   tiltHz: { def: 60, min: 10, max: 60, step: 5, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
   driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
   pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
+  motionCalm: { def: 0.33, min: 0, max: 1, step: 0.01, unit: '', group: 'Tilt input', name: 'During card motion', js: true },
   panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
   trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area', js: true },
   cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true }
@@ -5233,13 +5244,24 @@ const Depth = (() => {
     document[f]('visibilitychange', onVisible);
     if (!on) { level = null; rawAt = -1e9; ptrOn = false; hold = false; v = { x: 0, y: 0 }; paint(true); }
   }
+  let calmUntil = 0, calmTimer = 0;
+  function calm(ms) {
+    if (mode !== 'tilt' || !(ms > 0)) return;
+    const until = performance.now() + ms;
+    if (until <= calmUntil) return;
+    calmUntil = until;
+    clearTimeout(calmTimer);
+    calmTimer = setTimeout(kick, ms + 20);
+    kick();
+  }
   function target() {
     if (mode !== 'tilt' || preview || speed === 'instant' || document.hidden || covered() || matchMedia('(prefers-reduced-motion: reduce)').matches) return { x: 0, y: 0 };
+    const k = performance.now() < calmUntil ? num('motionCalm') : 1;
     if (level && performance.now() - rawAt < 600) {
       const dz = num('deadZone'), range = num('tiltRange');
-      return { x: shape(raw.x - level.x, dz, range), y: shape(raw.y - level.y, dz, range) };
+      return { x: k * shape(raw.x - level.x, dz, range), y: k * shape(raw.y - level.y, dz, range) };
     }
-    return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
+    return ptrOn && num('pointerOn') ? { x: k * ptr.x, y: k * ptr.y } : { x: 0, y: 0 };
   }
   function frame( t) {
     raf = 0;
@@ -5387,7 +5409,7 @@ const Depth = (() => {
   }
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
     on: () => document.documentElement.classList.contains('depth') && liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) > 0,
-    repaint, orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow,  vector: () => ({ x: v.x, y: v.y }),
+    repaint, calm, orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow,  vector: () => ({ x: v.x, y: v.y }),
      mode: () => mode,  num });
 })();
 const App = (() => {
@@ -9870,6 +9892,16 @@ const SelfTest = (() => {
       eq('a code that is not a code has no tally', [Tally.read('nope'), Tally.read(null)], [null, null]);
     });
     safeRun('moments', () => {
+      {
+        const ev = ( n,  d) => document.dispatchEvent(new CustomEvent(n, { detail: d }));
+        ev('kct:feedback-ready', { v: Moments.V, sound: true });
+        const t = performance.now(), w = [Moments.soundWait(t), Moments.soundWait(t + 1000), Moments.soundWait(t + 2000)];
+        ev('kct:feedback-sounds', { v: Moments.V, ready: 'deal' });
+        const after = Moments.soundWait(t + 500);
+        ev('kct:feedback-ready', { v: Moments.V, sound: true });
+        eq('a first deal waits for its sounds: up to 1.5 s, only while they render, never once they are ready',
+          [w[0], w[1], w[2], after, Moments.soundWait(t + 600)], [1500, 500, 0, 0, 0]);
+      }
       const cfgs = [PERSONA_BY_ID.lou, PERSONA_BY_ID.tex, PERSONA_BY_ID.kit].map(x => AI.personaConfig(x));
       const bad = [], counts = { cardPlayed: 0, CARD_PLAYED: 0, trickWon: 0, TRICK_WON: 0, SHOWDOWN_TRICK_WON: 0, king: 0, KING_SCORED: 0, showdownCalled: 0, SHOWDOWN_STARTED: 0, gameEnded: 0 };
       let scoreErr = 0, hiddenErr = 0, handSd = 0, games = 0;
