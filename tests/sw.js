@@ -18,6 +18,8 @@ let lastQuery = '';
 const ADBLOCK = '<script src="https://local.adguard.org/?type=content-script"></script><link type="text/css" rel="stylesheet" href="https://local.adguard.org/?type=css">';
 /* noSynth: feedback/synth.js answers 404, as when the optional module is incomplete. */
 let noSynth = false;
+/* fbVersion: feedback/feedback.js gains a marker, as when a publish changes the module with the page. */
+let fbVersion = 0, fbQuery = '';
 let failed = 0;
 function expect(name, ok, detail) {
   if (!ok) failed++;
@@ -36,6 +38,7 @@ const srv = http.createServer((req, res) => {
     if (serve === 'newest2') body = body.replace('<body>', '<body><!-- marker N4 -->');
     if (serve === 'newest3') body = body.replace('<body>', '<body><!-- marker N5 -->');
     if (serve === 'newest4') body = body.replace('<body>', '<body><!-- marker N6 -->');
+    if (serve === 'fbnew') body = body.replace('<body>', '<body><!-- a version with a new module -->');
     /* The newer version with a change inside the theme packs only: a <script> tag with attributes, but the game's own. */
     if (serve === 'theme') body = body.replace('"classic":{"name":"Classic"', '"classic":{"name":"Classic felt"');
     /* What an ad blocker that filters HTTPS (AdGuard) does to the page as it downloads. */
@@ -45,12 +48,15 @@ const srv = http.createServer((req, res) => {
     return;
   }
   if (noSynth && u === '/feedback/synth.js') { res.writeHead(404); res.end(); return; }
+  if (u === '/feedback/feedback.js') fbQuery = req.url.split('?')[1] || '';
   const file = path.join(ROOT, u);
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
-    res.end(u === '/sw.js' && swVersion ? data + '\n/* worker ' + swVersion + ' */\n' : data);
+    res.end(u === '/sw.js' && swVersion ? data + '\n/* worker ' + swVersion + ' */\n'
+      /* Like GitHub Pages' CDN, which keeps a file for minutes: the new module only for a request past it (?fresh=). */
+      : u === '/feedback/feedback.js' && fbVersion && /(^|&)fresh=/.test(fbQuery) ? data + '\n/* module ' + fbVersion + ' */\n' : data);
   });
 });
 
@@ -149,6 +155,19 @@ srv.listen(0, '127.0.0.1', async () => {
     r = await state();
     expect('a change in the theme packs alone is offered', r.game && r.pending && r.note, r);
     await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    await page.waitForTimeout(1500);
+    /* A publish that changes the feedback module with the page: the module waits with the page, and the first load
+       after the update runs the new one (before, it ran the cached old one until the next load). */
+    serve = 'fbnew'; fbVersion = 1;
+    await reload();
+    const waitingFb = await page.evaluate(async () => {
+      const hit = await (await caches.open('kct-pending')).match(new URL('./feedback/feedback.js', location.href).href);
+      return hit ? /\/\* module 1 \*\//.test(await hit.text()) : null;
+    });
+    expect('a new page waits with the feedback module published with it, fetched past the CDN', waitingFb === true && /^fresh=\d+$/.test(fbQuery), { waitingFb, fbQuery });
+    await Promise.all([page.waitForEvent('load'), page.evaluate(() => navigator.serviceWorker.controller.postMessage({ type: 'apply-update' }))]);
+    const ranFb = await page.evaluate(async () => /\/\* module 1 \*\//.test(await (await fetch('feedback/feedback.js')).text()));
+    expect('the first load after the update runs the new feedback module', ranFb === true, ranFb);
     await page.waitForTimeout(1500);
     /* Settings → Install → Check again also looks for a new version, past the CDN, and loads one it finds. Update now
        loads one the app's own check found. */
