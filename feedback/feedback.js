@@ -339,6 +339,20 @@ const BEAT_SOUNDS = {
   collect: () => 'collect',
   handClose: () => ({ sound: 'hand-close', gain: 0.5 }),
 };
+/* Beat ticks: the beats you feel (docs/ui/feedback.md, Beat ticks). A tick is a very short pulse at the beat's own time:
+   your card landing in its slot, and each packet dealt to your hand (in a Showdown deal, its first card only). */
+/** @type {Record<string, (b: any) => (number[] | null)>} */
+const BEAT_TICKS = {
+  card: (b) => (b.you ? [12] : null),
+  deal: (b) => (!b.you ? null : !b.showdown ? [10] : /\|0$/.test(String(b.key)) ? [10] : null),
+};
+/** A beat's tick, or null. Pure. @param {any} b @returns {number[] | null} */
+function beatTick(b) {
+  const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_TICKS, b.beat) ? BEAT_TICKS[b.beat] : null;
+  if (!f) return null;
+  try { const t = f(b); return isPattern(t) && t.length ? t : null; } catch (e) { return null; }
+}
+
 /* The usual card count of a gesture (cards that move together): its sound is designed for that many, and a beat
    with more or fewer is a little louder or softer (docs/ui/feedback.md, Card count). */
 /** @type {Record<string, number>} */
@@ -783,12 +797,12 @@ function play(batch) {
   return result;
 }
 
-/** Plays a beats message: each beat's sound at its own time (docs/ui/feedback.md, When beats arrive). Sound only.
-    Returns each beat's verdict, for tests. */
+/** Plays a beats message: each beat's sound, and its tick if it has one, at its own time (docs/ui/feedback.md,
+    When beats arrive). Returns each beat's verdict, for tests. */
 function playBeats(msg) {
   const now = performance.now();
   const allowed = channelsFor(msg, {
-    vibration: false, sound: settings.sound, replaySound: settings.replaySound, canVibrate: false, canSound,
+    vibration: settings.vibration, sound: settings.sound, replaySound: settings.replaySound, canVibrate, canSound,
     activated: state.activated || !!(navigator.userActivation && navigator.userActivation.hasBeenActive),
     hidden: document.hidden, instant: state.instant,
   });
@@ -796,15 +810,22 @@ function playBeats(msg) {
   const out = [];
   const list = msg.beats.filter((b) => b && typeof b.at === 'number').slice().sort((a, b) => a.at - b.at);
   for (const b of list) {
+    /* The tick: on the vibration channel's own dropper, at the lowest rank, so a moment's pattern always wins. */
+    const tick = beatTick(b);
+    let felt = 'none';
+    if (tick && allowed.vibrate) {
+      felt = drop.vibrate.decide({ at: b.at, now, rank: 99, stale });
+      if (felt === 'play' || felt === 'replace') later(b.at, () => vibrate(tick));
+    } else if (tick) felt = 'off';
     const bs = beatSound(b, (n) => !!bufferFor(n));
-    if (!bs) { out.push({ beat: b.beat, sound: 'unknown' }); continue; }
-    if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off' }); continue; }
+    if (!bs) { out.push({ beat: b.beat, sound: 'unknown', tick: felt }); continue; }
+    if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off', tick: felt }); continue; }
     const buffer = trainBuffer(bs.hits);
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
     /* A single hit plays at its own pitch; a train's hits are at theirs inside the mix. */
     const rate = bs.hits.length === 1 ? bs.hits[0].rate || 1 : 1;
     if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan);
-    out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain });
+    out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain, tick: felt });
   }
   return out;
 }
@@ -856,7 +877,7 @@ function onMoment(e) {
 
 /* ---- Settings rows (docs/ui/feedback-contract.md, The markup the module may use) ---- */
 const ROWS_HTML =
-  (canVibrate ? '<label class="set-row"><span class="set-text"><span class="set-name">Vibration</span><span class="set-desc">Short vibrations when you win a trick or a King point, pick a card, and at the end of a game.</span></span><input class="sw" type="checkbox" id="setFbVibration"></label>' : '') +
+  (canVibrate ? '<label class="set-row"><span class="set-text"><span class="set-name">Vibration</span><span class="set-desc">Short vibrations when you play a card, are dealt cards, pick a card, win a trick or a King point, and at the end of a game.</span></span><input class="sw" type="checkbox" id="setFbVibration"></label>' : '') +
   '<div class="set-row"><span class="set-text"><label class="set-name" for="setFbSound">Sound</label><span class="set-desc">Short sounds for cards, tricks and results. Half plays them at half volume.</span></span>' +
   '<select id="setFbSound"><option value="off">Off</option><option value="half">Half</option><option value="full">Full</option></select></div>' +
   '<label class="set-row" id="setFbReplayRow"><span class="set-text"><span class="set-name">Sound in replays</span><span class="set-desc">The replay viewer plays the same sounds, at the Sound level.</span></span><input class="sw" type="checkbox" id="setFbReplay"></label>';
@@ -906,7 +927,7 @@ const api = {
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
     STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, FULL_DB, HALF_DB, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
-    BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
+    BEAT_SOUNDS, beatSound, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
     timers: () => timers.size, bus: () => bus, whenRendered: () => renderQueue, memory: () => memory,
