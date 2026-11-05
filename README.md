@@ -119,7 +119,7 @@ A house rule is something the players at a real table agree on, such as keeping 
 
 ### Table: Theme
 
-The last settings in the Table tab.
+After House rules, in the Table tab.
 
 | Setting | What it does |
 |---|---|

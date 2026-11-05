@@ -65,8 +65,8 @@ const SEED = {
     await openTab('Table');
     const table = await step(`const p = q('#setPaneTable'), h = [...p.querySelectorAll('.set-head')];
       return { heads: h.map(x => x.textContent), reset: !!p.querySelector('#setTableDefaults [data-action="table-reset"]'), old: !!q('#setGameReset') };`);
-    expect('the Table tab: Table memory, House rules, Theme, then Table defaults with its Reset this tab',
-      table.heads.join('|') === 'Table memory|House rules|Theme|Table defaults' && table.reset && !table.old, table);
+    expect('the Table tab: Table memory, House rules, Theme, Sound and touch (the feedback module), then Table defaults with its Reset this tab',
+      table.heads.join('|') === 'Table memory|House rules|Theme|Sound and touch|Table defaults' && table.reset && !table.old, table);
 
     await page.click('#setFelt .felt-tile:has(input[value="winter"])');
     await page.click('label.set-row:has(#setColorBlind)');

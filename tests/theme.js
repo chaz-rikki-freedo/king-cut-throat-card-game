@@ -31,7 +31,7 @@ function expect(name, ok, detail) {
       return { heads, themeCard: !!pane.querySelector('#setTheme'),
         tiles: [...document.querySelectorAll('#setFelt .felt-tile')].map(t => t.textContent), packs: KCT.App.app ? Object.keys(window.kctTheme.packs.felts) : [] };
     `);
-    expect('Theme is the last setting in the Table tab, before its reset', first.heads.join('|') === 'Table memory|House rules|Theme|Table defaults' && first.themeCard, first);
+    expect('Theme comes after House rules, then Sound and touch (the feedback module), before the reset', first.heads.join('|') === 'Table memory|House rules|Theme|Sound and touch|Table defaults' && first.themeCard, first);
     expect('one tile for each felt: Classic and the four seasons', first.tiles.join('|') === 'Classic|Spring|Summer|Fall|Winter', first.tiles);
     const start = await now();
     expect('Classic is the default, with no color pack', start.tile === 'classic' && !start.cb && start.felt === '#155a36' && start.bar === '#0c3a22', start);
