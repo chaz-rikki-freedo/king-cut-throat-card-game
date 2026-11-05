@@ -89,7 +89,7 @@ const batchSrc = `
       };
     });
     const want = {
-      trickYou: 'trickYou', trickBot: 'trickBot', kingOverTrick: 'kingYou', botKing: 'kingBot', gameEndMidTrick: 'gameWin',
+      trickYou: 'trickYou', trickBot: 'trickBot', kingOverTrick: 'kingYou', botKing: 'kingBot', gameEndMidTrick: 'suddenDeathYou',
       gameLoss: 'gameLoss', wave: 'waveCleared', showdownOverHand: 'showdownCalledYou', showdownWatch: 'showdownCalledOther',
       showdownMediated: 'showdownMediated', showdownLoss: 'showdownLoss', skipMediate: 'skip', skipOther: null, pick: 'pick',
       unknownOnly: null, unknownWithKnown: 'deal', empty: null, junk: null,
@@ -104,7 +104,81 @@ const batchSrc = `
     expect('every rule names a cue', tables.missing.length === 0, tables.missing);
     expect('the rules are in rank order', tables.sorted);
     expect('every cue has a rule', tables.unused.length === 0, tables.unused);
-    expect('only your moments and results vibrate', tables.vibrating.every((k) => !/Bot$|Other$|^hand|^card|^deal|^flip|^discard|^trump/.test(k)), tables.vibrating);
+    /* A bot's moment never vibrates, except the end of your game (a loss is yours too). */
+    expect('only your moments and results vibrate', tables.vibrating.every((k) => !/(?<!suddenDeath)Bot$|Other$|^hand|^card|^deal|^flip|^discard|^trump/.test(k)), tables.vibrating);
+
+    console.log('Moments of interest and derived events');
+    const moi = await page.evaluate(() => {
+      const { cueFor, newMemory, derive } = /** @type {any} */ (window).KCTFeedback.core;
+      const c = (moments, you = 0) => { const r = cueFor({ moments }, { you }); return r ? r.name : null; };
+      const deal = { type: 'deal', showdown: false, handNumber: 1, bottom: 0 };
+      const types = (mem, moments) => derive(mem, { moments }).map((d) => d.type);
+      const r = {};
+      /* Lead changes: alone at the top, and only once the leader has 7. */
+      r.leadYou = c([{ type: 'king', seat: 0, you: true, scoresBefore: [6, 7, 2], scoresAfter: [7, 7, 2] }]);   // a tie: no
+      r.leadYou2 = c([{ type: 'king', seat: 0, you: true, scoresBefore: [7, 7, 2], scoresAfter: [8, 7, 2] }]);
+      r.leadEarly = c([{ type: 'king', seat: 0, you: true, scoresBefore: [4, 5, 2], scoresAfter: [5, 5, 2] }, { type: 'trickWon', seat: 0, you: true }]);
+      r.leadBot = c([{ type: 'handScored', winner: 1, you: false, outcome: 'CLEAR_WINNER', scoresBefore: [7, 7, 2], scoresAfter: [7, 8, 2] }]);
+      r.botsOnly = c([{ type: 'handScored', winner: 2, you: false, outcome: 'CLEAR_WINNER', scoresBefore: [3, 8, 7], scoresAfter: [3, 8, 8] }]);
+      r.sudden = c([{ type: 'gameEnded', you: true, byKing: true }]);
+      r.steal = c([{ type: 'handScored', winner: 0, you: true, outcome: 'NON_NAMER_SWEEP', scoresBefore: [1, 2, 3], scoresAfter: [4, 2, 3] }]);
+      r.perfect = c([{ type: 'handScored', winner: 0, you: true, outcome: 'NAMER_SWEEP', scoresBefore: [1, 2, 3], scoresAfter: [3, 2, 3] }]);
+      r.denial = c([{ type: 'handScored', winner: 0, you: true, outcome: 'CLEAR_WINNER', scoresBefore: [3, 9, 2], scoresAfter: [4, 9, 2] }]);
+      r.knocked = c([{ type: 'showdownScored', winner: 1, loser: 2, you: false, youMediate: true, tricks: [0, 3, 2], scoresBefore: [3, 5, 9], scoresAfter: [3, 6, 8] }]);
+      r.sweep = c([{ type: 'showdownScored', winner: 0, loser: 1, you: true, tricks: [5, 0, 0], scoresBefore: [3, 5, 2], scoresAfter: [4, 4, 2] }]);
+      r.finalWave = c([{ type: 'gameEnded', you: true }, { type: 'waveCleared', wave: 18, finalWave: true }]);
+      /* Derived events from the memory. */
+      let mem = newMemory(); types(mem, [deal]);
+      r.kingKilledTrump = types(mem, [{ type: 'cardPlayed', seat: 0, you: true, card: 'KS' }, { type: 'trickWon', seat: 1, you: false, card: 'JS', trump: 'S', trickNumber: 1, totalTricks: 7, tricksWon: [0, 1, 0] }]);
+      r.kingKilledOther = types(mem, [{ type: 'cardPlayed', seat: 0, you: true, card: 'KH' }, { type: 'trickWon', seat: 1, you: false, card: 'AH', trump: 'S', trickNumber: 2, totalTricks: 7, tricksWon: [0, 2, 0] }]);
+      mem = newMemory(); types(mem, [deal]);
+      const streak = [];
+      for (let n = 1; n <= 8; n++) streak.push(types(mem, [{ type: 'trickWon', seat: 0, you: true, trickNumber: n % 7 || 7, totalTricks: 7, showdown: false, tricksWon: [1, 0, 0] }]).includes('derived:trickStreak') ? n : 0);
+      r.streakAt = streak.filter(Boolean);
+      mem = newMemory(); types(mem, [deal]);
+      r.decider = types(mem, [{ type: 'trickWon', seat: 2, you: false, trickNumber: 7, totalTricks: 7, showdown: false, tricksWon: [3, 3, 1] }]);
+      r.deciderNotYou = types(mem, [{ type: 'trickWon', seat: 0, you: true, trickNumber: 7, totalTricks: 7, showdown: false, tricksWon: [1, 3, 3] }]);
+      r.decider321 = types(mem, [{ type: 'trickWon', seat: 1, you: false, trickNumber: 7, totalTricks: 7, showdown: false, tricksWon: [3, 3, 1] }]);
+      mem = newMemory(); types(mem, [deal]);
+      r.match1 = types(mem, [{ type: 'king', seat: 1, you: false, scoresBefore: [3, 8, 2], scoresAfter: [3, 9, 2] }]);
+      r.match2 = types(mem, [{ type: 'showdownScored', winner: 0, loser: 1, you: true, tricks: [3, 2, 0], scoresBefore: [3, 9, 2], scoresAfter: [4, 8, 2] }, { type: 'king', seat: 1, you: false, scoresBefore: [4, 8, 2], scoresAfter: [4, 9, 2] }]);
+      r.firstKing = types(mem, [{ type: 'king', seat: 0, you: true, scoresBefore: [4, 9, 2], scoresAfter: [5, 9, 2] }]);
+      r.secondKing = types(mem, [{ type: 'king', seat: 0, you: true, scoresBefore: [5, 9, 2], scoresAfter: [6, 9, 2] }]);
+      const partial = newMemory();   // a resumed game: the memory did not see the first deal
+      types(partial, [{ type: 'deal', showdown: false, handNumber: 4, bottom: 0 }]);
+      r.firstKingPartial = types(partial, [{ type: 'king', seat: 0, you: true, scoresBefore: [0, 0, 0], scoresAfter: [1, 0, 0] }]);
+      mem = newMemory(); types(mem, [deal]);
+      types(mem, [{ type: 'handScored', winner: 1, you: false, outcome: 'CLEAR_WINNER', scoresBefore: [0, 4, 0], scoresAfter: [0, 5, 0] }]);
+      r.comeback = types(mem, [{ type: 'gameEnded', winner: 0, you: true, scores: [10, 7, 2], byKing: false }]);
+      mem = newMemory(); types(mem, [deal]);
+      types(mem, [{ type: 'showdownScored', winner: 1, loser: 0, you: false, tricks: [2, 3, 0], scoresBefore: [1, 1, 0], scoresAfter: [0, 2, 0] }]);
+      r.revenge = types(mem, [{ type: 'showdownScored', winner: 0, loser: 1, you: true, tricks: [3, 2, 0], scoresBefore: [0, 2, 0], scoresAfter: [1, 1, 0] }]);
+      r.noChain = types(mem, [{ type: 'derived:matchPoint', seat: 0, you: true }]);
+      return r;
+    });
+    const has = (a, t) => Array.isArray(a) && a.includes(t);
+    expect('a tie for the lead is no lead change', moi.leadYou === 'kingYou', moi.leadYou);
+    expect('taking the lead alone at 8: leadYou', moi.leadYou2 === 'leadYou', moi.leadYou2);
+    expect('an early lead change (under 7) stays an ordinary King', moi.leadEarly === 'kingYou', moi.leadEarly);
+    expect('a bot taking the lead from you: leadBot', moi.leadBot === 'leadBot', moi.leadBot);
+    expect('two bots trading the lead while you trail: not yours', moi.botsOnly === 'handLoss', moi.botsOnly);
+    expect('the game ended on your King point: suddenDeathYou', moi.sudden === 'suddenDeathYou', moi.sudden);
+    expect('a sweep against the namer: stealYou', moi.steal === 'stealYou', moi.steal);
+    expect('your namer sweep: perfectHand', moi.perfect === 'perfectHand', moi.perfect);
+    expect('a win while a bot is at 9: denial', moi.denial === 'denial', moi.denial);
+    expect('a Showdown loss off 9: knockedBack', moi.knocked === 'knockedBack', moi.knocked);
+    expect('a 5-0 Showdown: showdownSweep', moi.sweep === 'showdownSweep', moi.sweep);
+    expect('the final wave outranks the wave and the win', moi.finalWave === 'finalWave', moi.finalWave);
+    expect('your King of trump beaten: kingKilled; another King: not', has(moi.kingKilledTrump, 'derived:kingKilled') && !has(moi.kingKilledOther, 'derived:kingKilled'), moi);
+    expect('a trick streak at 4 and 7 in a row', JSON.stringify(moi.streakAt) === '[4,7]', moi.streakAt);
+    expect('the decider: 3-3-0 before trick 7 with you on 3', has(moi.decider, 'derived:decider'), moi.decider);
+    expect('no decider when you aren\'t on 3', !has(moi.deciderNotYou, 'derived:decider'), moi.deciderNotYou);
+    expect('match point once per seat, even after dropping back', has(moi.match1, 'derived:matchPoint') && !has(moi.match2, 'derived:matchPoint'), moi);
+    expect('your first King of the game, once', has(moi.firstKing, 'derived:firstKing') && !has(moi.secondKing, 'derived:firstKing'), moi);
+    expect('no first King when the memory missed the start (a resume)', !has(moi.firstKingPartial, 'derived:firstKing'), moi.firstKingPartial);
+    expect('a win from 5 behind: comeback', has(moi.comeback, 'derived:comeback'), moi.comeback);
+    expect('beating the seat that won the last Showdown: revenge', has(moi.revenge, 'derived:revenge'), moi.revenge);
+    expect('a derived event never spawns another', moi.noChain.length === 0, moi.noChain);
 
     console.log('Gates');
     const gates = await page.evaluate(() => {
@@ -228,6 +302,16 @@ const batchSrc = `
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'showdownScored', youMediate: true, you: false }], { anchor: 'result' }));
     c1 = await counts();
     expect('Skip ▶, then the Showdown result at once: the result replaces the tap', c1.v === c0.v + 2 && JSON.stringify(c1.last) === '[60,40,60]', { c0, c1 });
+    await wait(200);
+
+    /* A moment of interest without its own preset plays the ordinary cue's sound, without a SOUND_MISSING line. */
+    c0 = await counts();
+    const logs0 = await page.evaluate(() => /** @type {any} */ (window).__logs.length);
+    await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'handScored', winner: 0, you: true, outcome: 'NON_NAMER_SWEEP', points: 3,
+      scoresBefore: [1, 2, 3], scoresAfter: [4, 2, 3] }], { anchor: 'result' }));
+    c1 = await counts();
+    const newLogs = await page.evaluate((n) => /** @type {any} */ (window).__logs.slice(n), logs0);
+    expect('a steal plays its pattern and the hand-win sound in place of its own, quietly', c1.s === c0.s + 1 && JSON.stringify(c1.last) === '[50,30,50,30,50,30,120]' && newLogs.length === 0, { c0, c1, newLogs });
     await wait(200);
 
     /* Fall, and its Showdown voice. */

@@ -85,7 +85,7 @@ Every moment carries `type`, plus `seat` and `you` where a seat is involved. **Y
 
 | `type` | Anchor | Engine source | Facts |
 |---|---|---|---|
-| `deal` | `land` | `DEAL`, `SHOWDOWN_DEAL` | `showdown` |
+| `deal` | `land` | `DEAL`, `SHOWDOWN_DEAL` | `showdown`, `handNumber` (the hand being dealt), `bottom` (the seat at the bottom: yours) |
 | `flip` | `land` | The kitty card turned up | `card` |
 | `discard` | `land` | `DISCARD`, `EXCHANGE_DISCARD`, `SHOWDOWN_DISCARD` | `seat`, `you`, `count` |
 | `trumpNamed` | `land` | An accept or a named suit | `seat`, `you`, `trump`, `round` |
