@@ -26,7 +26,8 @@ the hand's card handler, Skip ▶               listens for 'kct:moment'
 |---|---|
 | `index.html` | The game. A small `Moments` section builds and sends moments, and loads the module. |
 | `feedback/feedback.js` | The feedback module. See [Feedback](feedback.md). |
-| `feedback/sounds/*.wav` | The sound files. See [Feedback: Sound files](feedback.md#sound-files). |
+| `feedback/synth.js` | The sound generator. See [Feedback: Sounds](feedback.md#sounds). |
+| `feedback/palettes.js` | The sound presets for each theme palette. |
 
 ## Who owns what
 
@@ -35,8 +36,8 @@ the hand's card handler, Skip ▶               listens for 'kct:moment'
 | The moments and their facts | The rule table, the cue table and the moments of interest |
 | Screen time: when each batch is sent | Derived events and the module's memory |
 | The [sending gates](#sending-gates): when nothing is sent at all | Its own gates and the dropping rules |
-| The `cancel`, `reset` and `speed` messages | Variety: stakes, variants, escalation, novelty, layering, parameters |
-| An empty, hidden **Sound and touch** card in Settings → Table | The card's rows, its device keys and loading its sounds |
+| The `cancel`, `reset`, `speed` and `theme` messages | Variety: stakes, variants, escalation, novelty, layering, parameters |
+| An empty, hidden **Sound and touch** card in Settings → Table | The card's rows, its device keys, and making its sounds with `synth.js` |
 
 ## Batches
 
@@ -120,6 +121,7 @@ Sent on the same event, with `moments` empty and a `control` field:
 | `cancel` | A new state version, **Next hand**, Exit, a new game, a resume, a jump in the replay viewer. `scope: 'game'` for a new game, a resume or a jump; `scope: 'step'` otherwise. | Clears armed cues and stops sounds not yet started. With `scope: 'game'`, also clears its memory. |
 | `reset` | **Reset this tab** in Settings → Table | Sets its settings back to Off |
 | `speed` | The speed changes, with `speed: 'instant'` or another value | At Instant, cancels and stops a running pattern or motion |
+| `theme` | At load, after `kct:feedback-ready`, and on every felt change, with `felt: 'classic'`, `'spring'`, `'summer'`, `'fall'` or `'winter'` | Switches to that felt's [palette](feedback.md#theme-palettes) |
 
 ## Sending gates
 
@@ -168,7 +170,7 @@ The module's own gates are in [Feedback: Gates](feedback.md#gates).
 - `Moments.build(events, view)`: a pure function from an action's events and the View for your seat to moments, with their anchors and derived facts.
 - `Moments.send(anchor, moments)` and `Moments.control(name, data)`: send a batch or a control message.
 - `Moments.load()`: adds the module's script when the browser is idle.
-- Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, the hand's card handler, Skip ▶, the speed picker, **Reset this tab**, and every place that cancels.
+- Call sites: `act()` after `narrate`, the release in `holdResult()`, `showGameOver`, the hand's card handler, Skip ▶, the speed picker, the Felt tiles, **Reset this tab**, and every place that cancels.
 - Settings markup: the hidden **Sound and touch** heading and the empty `#setFeedback` card.
 
 ## Tests

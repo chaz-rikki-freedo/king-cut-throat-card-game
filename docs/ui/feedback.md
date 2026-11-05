@@ -16,7 +16,9 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 | **Derived event** | A moment the module creates itself from a pattern in earlier moments. For example `derived:trickStreak`. |
 | **Rule** | A row of the rule table: what a batch must match, and the cue it gets. |
 | **Cue** | A row of the cue table: what each channel does. |
-| **Part** | One channel's share of a cue: a vibration pattern, a sound file or a parallax motion. |
+| **Part** | One channel's share of a cue: a vibration pattern, a sound preset or a parallax motion. |
+| **Preset** | The settings that `synth.js` turns into one sound. |
+| **Palette** | The presets for one felt: Classic, Spring, Summer, Fall or Winter. |
 | **Channel** | Vibration, sound or event parallax. |
 | **Layer** | One extra part added on top of a batch's main cue. |
 | **Moment of interest** | A rare situation with a cue of its own, above the ordinary cue for that moment. |
@@ -31,14 +33,14 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 5. **Instant turns it all off.** At speed Instant, no vibration, sound or parallax plays, event or common. No setting overrides this, including **Sound in replays**.
 6. **The module is optional.** The game sends moments whether or not anything listens. Without the module, the game is silent and still, and nothing says so.
 7. **Public facts only.** Feedback never reveals a card someone holds unseen. Every moment, and so every cue, comes from what your seat can see.
-8. **Replays match.** The same game gives the same feedback, live or in the replay viewer. Nothing in the module is random.
+8. **Replays match.** The same game with the same settings gives the same feedback, live or in the replay viewer. Nothing in the module is random.
 
 ## Channels
 
 | Channel | API | Supported on | Notes |
 |---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome and Chrome-based browsers on Android, including the installed app | A new call replaces the pattern still running. Not on iPhone: no workarounds are used. |
-| Sound | Web Audio (`AudioContext`) | All supported browsers | Recorded WAV files in `feedback/sounds/`. Never `<audio>` elements. |
+| Sound | Web Audio (`AudioContext`) | All supported browsers | Made by `feedback/synth.js` from the presets of the current [theme palette](#theme-palettes). Never `<audio>` elements. |
 | Event parallax | Defined in #185 | Defined in #185 | Driven by the cue table, see [Parallax](#parallax). |
 
 Each channel plays its part on its own, under its own [gates](#gates) and [dropping](#dropping) rules, so a cue still works with any channel missing: with Sound off, the vibration and the motion still play; on an iPhone, the sound and the motion still play.
@@ -121,7 +123,7 @@ Tap batches hold one moment each, so their rules need no rank.
 
 ### Cue table
 
-| Cue | Vibration (Android) | Sound file | Event parallax |
+| Cue | Vibration (Android) | Sound preset | Event parallax |
 |---|---|---|---|
 | `waveCleared` | `[60, 40, 60, 40, 60, 40, 160]` | `wave-cleared` | `celebrate` (placeholder) |
 | `gameWin` | `[60, 40, 60, 40, 120]` | `game-win` | `celebrate` (placeholder) |
@@ -168,7 +170,7 @@ A *moment of interest* is a rare situation with its own rule, above the ordinary
 2. **The game derives what needs game knowledge.** Facts such as "the game ended on a King point" are worked out by the game and sent with the moment. The module never reads the game. It only remembers the moments it received, for [derived events](#derived-events).
 3. **The most specific match wins.** A moment of interest ranks above the ordinary rule for the same moment, and the dropping rules still apply.
 4. **Keep them rare.** A moment of interest that fires every game stops being special. Measure how often each one fires across many bot games (`tests/`) before giving it a cue.
-5. **A missing sound falls back.** Until a moment of interest's sound file exists, it plays the ordinary cue's sound with its own vibration and motion. A moment of interest is never quieter than the moment it replaces.
+5. **A missing sound falls back.** Until a moment of interest's preset exists, it plays the ordinary cue's sound with its own vibration and motion. A moment of interest is never quieter than the moment it replaces.
 
 ### Drama in the rules
 
@@ -232,7 +234,7 @@ The leaders are every seat with the top score. Settle these cases before buildin
    - **A pattern over time:** a [derived event](#derived-events).
    - **Game knowledge the moments don't carry:** a new fact the game sends, public only (see [Feedback contract: Moments](feedback-contract.md#moments)).
 3. Measure how often it fires.
-4. Add its rule row above the ordinary rule for that moment. If it needs its own response, add a cue row, and a sound file to [Sound files](#sound-files).
+4. Add its rule row above the ordinary rule for that moment. If it needs its own response, add a cue row, and a preset to [Sounds](#sounds).
 
 ## Derived events
 
@@ -281,7 +283,7 @@ trickYou: {
 - **The pick is a hash** of the cue's name, the batch's state `version` and its facts. The same game gives the same picks; different games give different ones.
 - **No random number generator, and no seed.** Drawing from the game's RNG would change every deal, and the seed would reveal the deal.
 - **Each part picks on its own,** so 3 sounds and 2 patterns give 6 combinations.
-- A missing variant file is skipped silently, and the module picks from the rest.
+- A missing variant preset is skipped silently, and the module picks from the rest.
 
 ### Escalation
 
@@ -364,7 +366,7 @@ The game sends nothing at all in some situations, such as at Instant or during a
 Each part carries its batch's `at` time. When it is due, it goes through these checks in order:
 
 1. **Stale.** The state version changed, the tab is hidden or another tab is more current. Drop it.
-2. **Not ready.** Its sound is missing, failed to load or isn't decoded yet. Drop the sound; the other parts still play.
+2. **Not ready.** Its sound, after the [fallbacks](#fallbacks), hasn't rendered yet or failed. Drop the sound; the other parts still play.
 3. **Late.** More than `LATE_MS` past its moment. Drop it.
 4. **Too soon.** Less than the channel's minimum gap (`GAP_VIBRATE_MS`, `GAP_SOUND_MS`) since its last part. Drop it, unless it ranks higher, in which case it replaces the last one. A card pick ignores this gap.
 5. **Too many sounds.** `MAX_VOICES` sounds are already playing. Drop it.
@@ -372,81 +374,149 @@ Each part carries its batch's `at` time. When it is due, it goes through these c
 
 A `cancel` message, or the tab becoming hidden, clears every armed part and stops any sound scheduled but not yet started.
 
-## Sound files
+## Sounds
 
-The 17 **required** files are the full set for ordinary play. **Optional** files add moments of interest and variants. Every file is skipped silently if it's missing.
+The module makes its sounds itself, with the sound generator, instead of loading recorded files. Each sound is a **preset**: a small set of settings that `feedback/synth.js` turns into audio.
 
-### Required
+### How sounds are made
 
-| File | Cues | Plays | Length |
-|---|---|---|---|
-| `card-play.wav` | `cardPlayed` | Each card that lands in a trick, any seat. The most frequent sound: keep it quiet. | 80 to 150 ms |
-| `deal.wav` | `deal` | Once for each deal and Showdown deal | 300 to 600 ms |
-| `flip.wav` | `flip` | The kitty card turned up | 100 to 200 ms |
-| `discard.wav` | `discard` | Cards reaching the outside pile or the kitty | 100 to 200 ms |
-| `trump-named.wav` | `trumpNamed` | Trump accepted or named | 200 to 400 ms |
-| `trick-you.wav` | `trickYou` | You win a trick | 150 to 300 ms |
-| `trick-bot.wav` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | 150 to 300 ms |
-| `king-you.wav` | `kingYou` | Your King point | 250 to 500 ms |
-| `king-bot.wav` | `kingBot` | A bot's King point. Distinct from `king-you`. | 250 to 500 ms |
-| `hand-win.wav` | `handWin` | You win the hand | 400 to 800 ms |
-| `hand-loss.wav` | `handLoss` | A bot wins the hand | 400 to 800 ms |
-| `showdown-called.wav` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | 500 to 1000 ms |
-| `showdown-win.wav` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | 400 to 800 ms |
-| `showdown-loss.wav` | `showdownLoss` | You lose the Showdown | 400 to 800 ms |
-| `game-win.wav` | `gameWin` | You win the game | 1 to 2 s |
-| `game-loss.wav` | `gameLoss` | A bot wins the game | 1 to 2 s |
-| `wave-cleared.wav` | `waveCleared` | You clear a wave | 1.5 to 2.5 s |
+The generator is the **Card Sound Lab** artifact. It synthesizes physical card sounds with Web Audio in an `OfflineAudioContext`, at 48 kHz mono, from a few primitives: edge ticks, cardstock slaps, air cushions, paper friction and riffle trains. It then trims each sound, fades it, and normalizes it to −18 LUFS (with a small offset per family) under a −1 dBFS peak ceiling. It is plain JavaScript with no dependencies.
 
-### Optional: moments of interest
+A **preset** is three values, as the lab defines a variant:
 
-One file per candidate cue, added once its moment of interest is settled. Until then, the moment plays the ordinary cue's sound ([Rules](#rules), rule 5).
+```js
+{ family: 'play', archetype: 0, seed: 2718281828 }   // "B · Card played", "Firm place"
+```
 
-| File | Moment of interest | Length |
+The seed derives every design setting and every noise detail, so a preset is a few bytes and renders the same sound every time in the same browser. (Browser engines can differ slightly in their filters, so two browsers may differ by a few 16-bit steps.)
+
+The lab's 8 families, each with 4 archetypes:
+
+| Family | Lab title | Archetypes |
 |---|---|---|
-| `lead-you.wav`, `lead-bot.wav` | Lead change | 400 to 800 ms |
-| `match-point-you.wav`, `match-point-bot.wav` | Match point | 500 to 1000 ms |
-| `sudden-death-you.wav`, `sudden-death-bot.wav` | Sudden death | 1 to 2 s |
-| `steal-you.wav`, `steal-bot.wav` | Steal | 500 to 1000 ms |
-| `decider.wav` | The decider | 300 to 600 ms |
-| `king-killed.wav` | King killed | 250 to 500 ms |
-| `denial.wav` | Denial | 400 to 800 ms |
-| `knocked-back.wav` | Knocked back | 400 to 800 ms |
-| `showdown-sweep.wav` | Showdown sweep | 500 to 1000 ms |
-| `perfect-hand.wav` | Perfect hand | 500 to 1000 ms |
-| `streak.wav` | Trick streak | 200 to 400 ms |
-| `comeback.wav` | Comeback win | 1.5 to 2.5 s |
-| `revenge.wav` | Revenge | 400 to 800 ms |
-| `joker-win.wav` | Joker win | 250 to 500 ms |
-| `last-trick.wav` | Last trick | 200 to 400 ms |
-| `first-king.wav` | First King | 250 to 500 ms |
-| `final-wave.wav` | Final wave | 2 to 3 s |
+| `select` | A · Card selection | Pinch lift, Fan pull, Fingertip tap, Edge flick |
+| `play` | B · Card played | Firm place, Soft place, Corner first, Place and skid |
+| `deal` | C · Card dealt | Flick to table, Into hand, Long toss, Quick snap |
+| `slide` | D · Card slide | Short push, Long drag, Two-step nudge, Pivot turn |
+| `shuffle` | E · Card shuffle | Riffle, Riffle and bridge, Overhand, Table wash |
+| `reveal` | F · Card turn / reveal | Flip over, Slow peel, Snap flip, Slide and turn |
+| `collect` | G · Trick collection | Sweep together, Stack and square, Scoop, Quick gather |
+| `confirm` | H · Game-state confirmation | Deck knock, Pack set down, Thumb strum, Square and tap |
 
-### Optional: variants
+| File | Holds |
+|---|---|
+| `feedback/synth.js` | The lab's synthesis core: its constants, random number generator, primitives, families, `renderRaw` and the finishing steps (trim, fades, loudness and peak). Not its interface, analysis, WAV encoding or ZIP export. About 25 to 30 KB. |
+| `feedback/palettes.js` | The presets, grouped into [theme palettes](#theme-palettes). Data only: the family, archetype and seed of each sound, copied from the lab. |
+| `feedback/feedback.js` | Decides which sound plays and when. It names sounds by their preset name and never makes audio itself. |
 
-A variant adds a number to the base name: `trick-you-2.wav`, `trick-you-3.wav`. A stakes version adds `-tense`: `trick-you-tense.wav`. The cue table names which variants a cue uses.
+- **Rendering at idle.** When the browser is idle after the module loads, and only while Sound isn't Off, the module renders each preset of the current palette into a buffer, one at a time, never during a game moment. Rendering needs no tap.
+- **Silent when missing.** If `synth.js` or `palettes.js` is missing, or a preset fails to render, that sound is skipped: no notice, no toast, no Settings text and nothing in the console. Vibration and event parallax still play. The Event log, when on, records one `SOUND_MISSING` line for each sound, once a page load.
+- **Kept in memory.** Rendered buffers stay in memory for the page load. A palette change renders the new palette's presets the same way.
 
-### File format
+### Theme palettes
 
-- Mono, 16-bit PCM, 22,050 Hz.
-- No silence at the start, so the sound lines up with the moment. Trim the tail to where it fades out.
-- Peaks at about −3 dBFS. Keep the levels matched, so no sound jumps out at Full.
-- One second at this format is about 44 KB. The 17 required files come to roughly 0.5 to 0.7 MB.
+Each **Felt** in **Settings → Table → Theme** has a palette: its own sound for each preset. Sound follows the felt, with no setting of its own.
 
-### Where the files live
+| Felt | Palette | Character (draft) |
+|---|---|---|
+| **Classic** | `classic` | The base set: every required preset. Crisp and woody. |
+| **Spring** | `spring` | Light and bright |
+| **Summer** | `summer` | Open and airy |
+| **Fall** | `fall` | Warm and low. Its Showdown voice matches the navy Showdown felt. |
+| **Winter** | `winter` | Glassy and clear |
 
-- The files are in `feedback/sounds/`, and `tools/publish.sh` adds `feedback` to the files it publishes.
-- **Missing files are silent:** no notice, no toast, no Settings text and nothing in the console. The Event log, when on, records one `SOUND_MISSING` line for each file, once a page load.
-- **Offline, in two steps.** Until all 17 required files exist, the service worker caches each file in `feedback/` the first time it loads. Once they all exist, it precaches them and `feedback.js` at install, from a `SOUNDS` list in `sw.js`. Optional files stay on runtime caching.
-- **Feedback never breaks the install.** Each file in `feedback/` is fetched on its own, apart from `ASSETS`. A file that fails is skipped and left to runtime caching.
-- A file that changes is picked up by the service worker's update check, the same as the icons.
+- **Classic is the base.** Every other palette overrides only the presets it changes, and inherits the rest from Classic **preset by preset**. A palette can start with its 3 or 4 most distinctive sounds.
+- **A palette is a choice of presets.** Each palette picks its own archetypes and seeds within the same families, so Winter's card play is still a card played, with a different hand and table.
+- **A palette changes how a role sounds, never what it means.** Your trick always sounds like your trick, in that palette's voice.
+- **Showdown voice.** A palette can have Showdown versions of its presets, named with `-showdown`, such as `card-play-showdown`. They play from `showdownCalled` to `showdownScored`. Fall uses them to match its navy Showdown felt. A missing Showdown version uses the ordinary preset.
+- **The game tells the module the felt** with the `theme` control message, at load and on every change (see [Feedback contract: Control messages](feedback-contract.md#control-messages)).
+- **Color-blind safe colors** don't affect sound.
+- **Event parallax** can be themed the same way, such as drifting petals for Spring. The motions belong to #185.
+- **The replay viewer** uses your current felt's palette, the same way it shows your current felt.
+
+### Fallbacks
+
+When a sound is asked for, the module looks for it in this order, and plays the first one that has rendered:
+
+1. The current palette's preset, or its Showdown version during a Showdown.
+2. Classic's preset with the same name.
+3. For a moment of interest or a variant: the ordinary cue's preset ([Moments of interest: Rules](#rules), rule 5).
+4. Nothing: the sound is skipped, and the other parts still play.
+
+### Required presets
+
+The 17 presets that the Classic palette must have. They are the full set for ordinary play. **Lab family** is the closest family in the lab today.
+
+| Preset | Cues | Plays | Lab family | Length |
+|---|---|---|---|---|
+| `card-play` | `cardPlayed` | Each card that lands in a trick, any seat. The most frequent sound: keep it quiet. | `play` | 80 to 150 ms |
+| `deal` | `deal` | Once for each deal and Showdown deal | `shuffle` or `deal` | 300 to 600 ms |
+| `flip` | `flip` | The kitty card turned up | `reveal` | 100 to 200 ms |
+| `discard` | `discard` | Cards reaching the outside pile or the kitty | `slide` | 100 to 200 ms |
+| `trump-named` | `trumpNamed` | Trump accepted or named | `confirm` | 200 to 400 ms |
+| `trick-you` | `trickYou` | You win a trick | `collect` | 150 to 300 ms |
+| `trick-bot` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | `collect`, softer archetype | 150 to 300 ms |
+| `king-you` | `kingYou` | Your King point | `confirm` | 250 to 500 ms |
+| `king-bot` | `kingBot` | A bot's King point. Distinct from `king-you`. | `confirm`, other archetype | 250 to 500 ms |
+| `hand-win` | `handWin` | You win the hand | **Missing** | 400 to 800 ms |
+| `hand-loss` | `handLoss` | A bot wins the hand | **Missing** | 400 to 800 ms |
+| `showdown-called` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | `shuffle` | 500 to 1000 ms |
+| `showdown-win` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | **Missing** | 400 to 800 ms |
+| `showdown-loss` | `showdownLoss` | You lose the Showdown | **Missing** | 400 to 800 ms |
+| `game-win` | `gameWin` | You win the game | **Missing** | 1 to 2 s |
+| `game-loss` | `gameLoss` | A bot wins the game | **Missing** | 1 to 2 s |
+| `wave-cleared` | `waveCleared` | You clear a wave | **Missing** | 1.5 to 2.5 s |
+
+**The lab covers 10 of the 17.** Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call map onto its card families. The 7 result sounds have no family yet: hand, Showdown and game wins and losses, and the cleared wave. They need to say *you won* or *you lost* rather than *a card moved*, and some need more than the lab's limit of just under 1 second. See [Open items](#open-items).
+
+### Optional presets: moments of interest
+
+One preset per candidate cue, added once its moment of interest is settled. Until then, the moment plays the ordinary cue's sound.
+
+| Preset | Moment of interest | Length |
+|---|---|---|
+| `lead-you`, `lead-bot` | Lead change | 400 to 800 ms |
+| `match-point-you`, `match-point-bot` | Match point | 500 to 1000 ms |
+| `sudden-death-you`, `sudden-death-bot` | Sudden death | 1 to 2 s |
+| `steal-you`, `steal-bot` | Steal | 500 to 1000 ms |
+| `decider` | The decider | 300 to 600 ms |
+| `king-killed` | King killed | 250 to 500 ms |
+| `denial` | Denial | 400 to 800 ms |
+| `knocked-back` | Knocked back | 400 to 800 ms |
+| `showdown-sweep` | Showdown sweep | 500 to 1000 ms |
+| `perfect-hand` | Perfect hand | 500 to 1000 ms |
+| `streak` | Trick streak | 200 to 400 ms |
+| `comeback` | Comeback win | 1.5 to 2.5 s |
+| `revenge` | Revenge | 400 to 800 ms |
+| `joker-win` | Joker win | 250 to 500 ms |
+| `last-trick` | Last trick | 200 to 400 ms |
+| `first-king` | First King | 250 to 500 ms |
+| `final-wave` | Final wave | 2 to 3 s |
+
+### Optional presets: variants
+
+A variant adds a number to the base name: `trick-you-2`, `trick-you-3`. A stakes version adds `-tense`: `trick-you-tense`. The cue table names which variants a cue uses. A variant is usually its base preset with one or two settings changed.
+
+### Sound guidelines
+
+- No silence at the start, so the sound lines up with the moment. A fade-out tail, not a cut.
+- Matched levels, peaking at about −3 dBFS, so no sound jumps out at Full.
+- The lengths in the tables are targets for the presets. The lab caps a sound at 0.98 s, so longer targets need a new family or a higher cap.
+- The lab already applies the level guideline: it normalizes every sound to −18 LUFS with a −1 dBFS ceiling.
+
+### Offline
+
+- `feedback/feedback.js`, `feedback/synth.js` and `feedback/palettes.js` are precached by the service worker at install, from a `FEEDBACK` list in `sw.js`, apart from `ASSETS`.
+- **Feedback never breaks the install.** Each file is fetched on its own. A file that fails is skipped and left to runtime caching.
+- `tools/publish.sh` adds `feedback` to the files it publishes. A changed file is picked up by the service worker's update check, the same as the icons.
 
 ## Performance
 
 - The module loads when the browser is idle, so it never delays the page or the first table. Nothing in the interface waits for it or for its sounds.
 - Vibration costs microseconds on the main thread. The device does the vibrating.
 - Sound plays on the audio thread. A busy main thread can only delay when a sound starts, and `LATE_MS` drops a sound that starts too late.
-- The sounds load only while Sound isn't Off, one at a time, never during a game moment. Decoding uses an `OfflineAudioContext`, so it needs no tap. A file that fails is not fetched again on that page load.
+- The sounds render only while Sound isn't Off, one preset at a time, never during a game moment. Rendering uses an `OfflineAudioContext`, so it needs no tap. A preset that fails isn't tried again on that page load.
+- **Measured:** in headless Chromium on a server, the lab rendered all 32 of its archetypes in 751 ms: 22 ms each at the median, 61 ms at most. A phone is slower, so each render runs in its own idle slot, and no single render may take more than `RENDER_BUDGET_MS`. Required presets render first, then the optional ones the cue table names.
 - The playing `AudioContext` is created or resumed on the first tap.
 - Sounds are scheduled on `audioContext.currentTime`, not on extra `setTimeout`s.
 
@@ -460,12 +530,13 @@ The module's side, from loading to a cue playing. The game's side, building and 
 2. The module reads its three device keys, adds its `kct:moment` and first-tap listeners, and sends `kct:feedback-ready`.
 3. Once the game shows the **Sound and touch** card, the module fills in its rows.
 
-### 2. Loading the sounds
+### 2. Making the sounds
 
-1. Right after it loads, and only if Sound isn't Off, the module starts loading the required sounds, then the optional ones its cue table names.
-2. It loads them **one at a time**: download from `feedback/sounds/`, then decode with an `OfflineAudioContext`.
-3. A file that fails is marked missing, silently. It isn't tried again on that page load.
-4. When Sound changes from Off to Half or Full, loading starts then, if it hasn't already.
+1. Right after it loads, the module loads `synth.js` and `palettes.js` when the browser is idle.
+2. Only if Sound isn't Off, it renders the current palette's presets **one at a time**: the required presets first, then the optional ones its cue table names. Each render runs on an `OfflineAudioContext`.
+3. A file or preset that fails is marked missing, silently, and isn't tried again on that page load.
+4. When Sound changes from Off to Half or Full, rendering starts then, if it hasn't already.
+5. On a `theme` message for a new felt, the module renders that palette's presets the same way. Until each one is ready, the [fallbacks](#fallbacks) apply.
 
 ### 3. The first tap
 
@@ -494,6 +565,7 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 | Sound from Off to Half or Full | Loading starts if it hasn't, and the playing `AudioContext` is created or resumed. |
 | Vibration off | `navigator.vibrate(0)` stops a pattern that is running. |
 | `reset` message | All three settings go to Off, with the effects above. |
+| `theme` message | The module switches palette and renders the new presets at idle. |
 | `speed` message, Instant | The module cancels and stops a running pattern or motion. |
 
 ## Code
@@ -504,7 +576,9 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 - `cueFor(batch, memory)`: a pure function from a batch to its main cue, its layer and each part's variant and parameters.
 - It checks its [gates](#gates), applies the [dropping](#dropping) rules, and plays.
 - It builds and handles the rows in `#setFeedback`, and keeps its own device keys.
-- Elsewhere: `sw.js` caches `feedback/`, `tools/publish.sh` publishes it, and `README.md` describes it as an optional add-on to the one-file game. The game's code is in the [Feedback contract](feedback-contract.md#code-in-indexhtml).
+- `feedback/synth.js`: `render(preset, params)` returns a promise of an audio buffer. Pure apart from Web Audio: the same preset gives the same sound.
+- `feedback/palettes.js`: the presets, as data, grouped by palette. No code.
+- Elsewhere: `sw.js` precaches the three files, `tools/publish.sh` publishes them, and `README.md` describes it as an optional add-on to the one-file game. The game's code is in the [Feedback contract](feedback-contract.md#code-in-indexhtml).
 
 ## Constants
 
@@ -522,6 +596,7 @@ All draft values, to tune once built.
 | `STAKES_CLOSE` | 7 | The score that makes the stakes Close |
 | `STAKES_MATCH` | 9 | The score that makes the stakes Match point: one below the winning score |
 | `NOVELTY_HANDS` | 3 | How many hands a special cue waits before it can repeat its version |
+| `RENDER_BUDGET_MS` | 150 | The most time one preset's render may take on a mid-range phone. A slower preset is a design problem to fix in the lab. |
 | `MEMORY_MAX` | 1000 | The most moments the module remembers. A hand sends about 35; check against the longest games in `gamelength.js`. |
 
 ## Tests
@@ -531,10 +606,11 @@ All draft values, to tune once built.
 | `feedback/feedback.js` | T1 | A new `tests/feedback.js` script: rule ranks, cue parts, seat rules, the gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext`. `typecheck.js` checks the file too. |
 | Derived events | T1 | `tests/feedback.js`: each pattern completes on the right sequence and not on a near miss; a gap breaks it; the memory clears on `cancel` with `scope: 'game'`; a derived event never spawns another |
 | Variety | T1 | `tests/feedback.js`: the same batch gives the same variant every time; stakes from scores; escalation picks the right entry and never adds a channel that's off; novelty rotates, then falls back; at most one layer, never on a channel the main cue uses; parameters clamp, fall back on a bad value and never turn a channel on |
-| Missing files | T1 | `tests/feedback.js`: a failed fetch or decode drops the sound, shows nothing, and leaves the other parts playing; a moment of interest without its file falls back to the ordinary sound |
-| Caching | T1 | `sw.js`: runtime caching of `feedback/`, then the precache, including an install where one file fails |
+| Sounds | T1 | `tests/feedback.js` with a fake synth: the fallbacks in order (palette, Classic, ordinary cue, nothing); Showdown versions from `showdownCalled` to `showdownScored`; a `theme` message switches palette; a missing `synth.js` or a failed render shows nothing and leaves the other parts playing |
+| `feedback/synth.js` | T1 | `tests/feedback.js`, in the browser: every preset in `palettes.js` renders, isn't silent, stays within its target length and `RENDER_BUDGET_MS`, and renders the same samples twice. The lab's own self-test checks are the model. |
+| Caching | T1 | `sw.js`: the three feedback files are precached apart from `ASSETS`, including an install where one fails |
 | Reset this tab | T1 | `resets.js` |
-| On a phone | By hand, once | Vibration patterns on Android, and whether sound adds any delay at Fast |
+| On a phone | By hand, once | Vibration patterns on Android, rendering time against `RENDER_BUDGET_MS`, and whether sound adds any delay at Fast |
 
 The game's side has its own tests, in the [Feedback contract](feedback-contract.md#tests). `CLAUDE.md` and `tests/README.md` list the new script.
 
@@ -552,7 +628,8 @@ The current decisions. Their history is in the commit log.
 | **Taps** | Picking a card vibrates, with no sound |
 | **Speed Instant** | Turns off vibration, sound and parallax, event and common, with no override |
 | **Replay viewer** | No vibration. Sound only with Sound in replays on. |
-| **Sound files** | Recorded WAV files in `feedback/sounds/`, supplied separately, silent when missing, loaded when the browser is idle while Sound isn't Off, cached as played and then precached once the 17 required files exist |
+| **Sounds** | Made at run time by `feedback/synth.js`, the Card Sound Lab's synthesis core, from presets (family, archetype, seed) in `feedback/palettes.js`, rendered when the browser is idle while Sound isn't Off, silent when missing, precached with the module |
+| **Theme palettes** | Each felt has a palette. Classic is the base; the others override preset by preset. A palette can have a Showdown voice. Sound follows the felt, with no setting. |
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
 | **Variety** | Stakes from public scores; variants picked by a hash, with no RNG or seed; escalation by stakes and counts; novelty per game; at most one layer; parameters that are clamped and pure |
@@ -566,4 +643,8 @@ The current decisions. Their history is in the commit log.
 | The comeback size and the streak length | [Candidates](#candidates), by measuring |
 | Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
+| Sounds for the 7 results (hand, Showdown and game wins and losses, wave cleared): new families in the lab, such as a deck slam or chips, or a tonal family, and whether their length may pass 0.98 s | Designing in the lab |
+| Rendering time on a real phone | Measuring once `synth.js` exists |
+| Each palette's character and which presets it overrides | Designing the palettes in the artifact |
+| Whether the seed picks an optional extra for each game, within the palette | A later decision: a 3-bit value from the game, never the seed |
 | Every value in [Constants](#constants) | Tuning, once built |
