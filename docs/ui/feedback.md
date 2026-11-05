@@ -426,7 +426,19 @@ Each **Felt** in **Settings → Table → Theme** has a palette: its own sound f
 | **Winter** | `winter` | Glassy and clear |
 
 - **Classic is the base.** Every other palette overrides only the presets it changes, and inherits the rest from Classic **preset by preset**. A palette can start with its 3 or 4 most distinctive sounds.
-- **A palette is a choice of presets.** Each palette picks its own archetypes and seeds within the same families, so Winter's card play is still a card played, with a different hand and table.
+- **A palette has a timbre for the card families.** The timbre is a set of small multipliers on the synth's primitives, applied once where a family calls them. Every preset keeps its family, archetype and seed, and every palette uses the same presets by default; only their character changes. A palette can still override a preset outright.
+
+  | Palette | Character | Timbre (multipliers; `bright` is added) |
+  |---|---|---|
+  | `classic` | The original lab: neutral | All 1, `bright` 0 |
+  | `spring` | Lighter and quicker | `center` 1.05, `edge` 1.03, `bright` +0.04, `body` 0.9, `thump` 0.75, `decay` 0.92, `air` 0.85, `rub` 1.06, `grain` 1.1 |
+  | `summer` | Airy and open | `center` 1.03, `bright` +0.05, `body` 0.9, `thump` 0.9, `decay` 1.1, `air` 1.35, `rubGain` 0.9, `grain` 0.95 |
+  | `fall` | Warm and low | `center` 0.88, `edge` 0.92, `bright` −0.15, `body` 1.2, `thump` 1.3, `thumpFreq` 0.9, `decay` 1.1, `rub` 0.9, `grain` 0.85 |
+  | `fall`, Showdown voice | Darker still | `center` 0.82, `edge` 0.88, `bright` −0.22, `body` 1.3, `thump` 1.45, `thumpFreq` 0.85, `decay` 1.2, `rub` 0.85, `grain` 0.8 |
+  | `winter` | Crisp and clear | `center` 1.06, `edge` 1.04, `bright` +0.04, `body` 0.9, `thump` 0.65, `thumpFreq` 1.1, `decay` 0.85, `air` 0.8, `rub` 1.08, `rubGain` 0.9, `grain` 1.2 |
+
+  The timbre reaches the slap (centre, brightness, body, table thump), the edge and the riffle (band and decay), the air (level and band) and the friction (band, level and grain). The result family's knocks use the slap too, so they follow the timbre; its tones follow the palette's key and partials.
+- **Tested** in the lab copy, *Card Sound Lab: Palettes*, in headless Chromium: all 37 variants pass the lab's checks in all 6 palettes, with no warnings, and Classic matches the original lab within 1 sample step (the same as the original against itself). The first Spring and Winter timbres cut `body` too far and made two sounds too bright for the lab's high-band check; keeping `body` at 0.9 fixed it.
 - **A palette changes how a role sounds, never what it means.** Your trick always sounds like your trick, in that palette's voice.
 - **Showdown voice.** A palette can have Showdown versions of its presets, named with `-showdown`, such as `card-play-showdown`. They play from `showdownCalled` to `showdownScored`. Fall uses them to match its navy Showdown felt. A missing Showdown version uses the ordinary preset.
 - **The game tells the module the felt** with the `theme` control message, at load and on every change (see [Feedback contract: Control messages](feedback-contract.md#control-messages)).
@@ -681,7 +693,7 @@ The current decisions. Their history is in the commit log.
 | **Replay viewer** | No vibration. Sound only with Sound in replays on. |
 | **Sounds** | Made at run time by `feedback/synth.js`, the Card Sound Lab's synthesis core, from presets (family, archetype, seed) in `feedback/palettes.js`, rendered when the browser is idle while Sound isn't Off, silent when missing, precached with the module |
 | **Result sounds** | A ninth, tonal family, `result`: a card knock that resolves into tones, with 5 archetypes, a key per palette, and lengths up to 2.5 s |
-| **Theme palettes** | Each felt has a palette. Classic is the base; the others override preset by preset. A palette can have a Showdown voice. Sound follows the felt, with no setting. |
+| **Theme palettes** | Each felt has a palette: a timbre for the card families, and a key and partials for the result tones. Classic is the base and neutral; the others share its presets and can override them. A palette can have a Showdown voice. Sound follows the felt, with no setting. |
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
 | **Variety** | Stakes from public scores; variants picked by a hash, with no RNG or seed; escalation by stakes and counts; novelty per game; at most one layer; parameters that are clamped and pure |
