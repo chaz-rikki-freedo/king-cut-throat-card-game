@@ -197,6 +197,7 @@ Log kinds:
 | `SOUND_MISSING` | A sound has no rendered preset after the fallbacks, once a page load for each sound | `{ name, palette }` |
 | `RENDER_FAILED` | A preset threw while rendering | `{ name, palette, error }` |
 | `FILE_MISSING` | `synth.js` or `palettes.js` failed to load | `{ file }` |
+| `RENDER_SLOW` | A preset took longer than `RENDER_BUDGET_MS` to render | `{ name, palette, ms }` |
 
 - The module never writes to the console for any of these, so a local copy without `feedback/` stays clean.
 - The game ignores a kind it doesn't know.

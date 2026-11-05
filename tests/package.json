@@ -5,7 +5,7 @@
   "scripts": {
     "t0": "node typecheck.js && node palette.js",
     "t1": "node typecheck.js && node palette.js && node selftest.js",
-    "t2": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node stress.js all 4",
+    "t2": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node feedback.js && node stress.js all 4",
     "t3": "npm test",
     "typecheck": "node typecheck.js",
     "selftest": "node selftest.js",
@@ -17,7 +17,8 @@
     "dynamic": "node dynamic.js",
     "watch": "node watch.js",
     "forced": "node forced.js",
-    "test": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node watch.js && node profile.js && node forced.js && node backup-ui.js && node theme.js && node resets.js && node settings.js && node restart.js && node stress.js all 4"
+    "feedback": "node feedback.js",
+    "test": "node typecheck.js && node palette.js && node selftest.js && node sw.js && node forfeit.js && node scenarios.js && node dynamic.js && node watch.js && node profile.js && node forced.js && node feedback.js && node backup-ui.js && node theme.js && node resets.js && node settings.js && node restart.js && node stress.js all 4"
   },
   "devDependencies": {
     "playwright": "^1.64.0",
