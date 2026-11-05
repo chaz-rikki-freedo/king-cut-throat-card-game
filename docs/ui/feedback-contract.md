@@ -86,13 +86,13 @@ Fx reports the contact time of each motion, a **beat**, and the game sends the n
 document.dispatchEvent(new CustomEvent('kct:moment', { detail: {
   v: 1, version: 1834, replay: false,
   beats: [
-    { beat: 'deal', key: 'deal|3|1|0', at: 18250.4, seat: 1, you: false, cards: 3 },
-    { beat: 'deal', key: 'deal|3|2|0', at: 18349.4, seat: 2, you: false, cards: 3 }
+    { beat: 'deal', key: 'deal|3|1|0', at: 18250.4, seat: 1, you: false, cards: 3, spread: 19.8 },
+    { beat: 'deal', key: 'deal|3|2|0', at: 18349.4, seat: 2, you: false, cards: 3, spread: 19.8 }
   ]
 } }));
 ```
 
-- `beat` is a name from the [beat list](feedback.md#beat-list), `at` is in `performance.now()` time, and `key` is unique for the game. The other fields are public facts.
+- `beat` is a name from the [beat list](feedback.md#beat-list), `at` is in `performance.now()` time, and `key` is unique for the game. The other fields are public facts. `cards` is how many cards the motion moves, and `spread` the ms between their landings when they land one after another (see [Feedback: Card count](feedback.md#card-count)).
 - A beat is sent once, by the draw that starts its motion. A redraw that resumes the motion sends nothing.
 - The [sending gates](#sending-gates) apply as for a `land` batch. Without motion, Fx makes no beats.
 - An older module reads a beats message as a batch with no moments and plays nothing. Beats are open-ended like moment types: the module ignores a beat it doesn't know.

@@ -129,7 +129,22 @@ Without motion (speed Instant, or the system's reduced-motion setting), there ar
 | `collect` | `transitions`: a thrown-in hand goes back to the dealer | The collect's start | `seat` (the dealer) | `collect` |
 | `handClose` | `slideHand`: your hand closes up or makes room | The slide's start, only when a card moves | None | `hand-close`, at half gain |
 
+Every beat also carries `cards`, how many cards the motion moves, and a beat whose cards land one after another carries `spread`, the time between their landings in ms. See [Card count](#card-count).
+
 Facts follow the [public-facts principle](#principles): a beat names seats and counts, never a card that someone holds unseen. A `card` beat doesn't name its card; the `cardPlayed` moment does.
+
+### Card count
+
+A beat sounds as many cards as it moves, timed as Fx moves them. Two kinds:
+
+| Kind | Beats | `spread` from Fx | Sound |
+|---|---|---|---|
+| **Train**: cards land one after another | `deal`, `discard` (your cards, or backs at the pile's end), `toss`, `sink` | A deal packet: `PACKET_CARD × t` (about 20 ms at Normal). Discards: 70 ms. Tossed and sunk cards: 80 ms. | One hit per card, `spread` apart, up to `TRAIN_MAX`. The hits take the beat's variants in turn, from the one its `key` picks, and each is `TRAIN_FALL` as loud as the one before. |
+| **Gesture**: cards move together | `sweep`, `collect`, `pileSink`, `kitty`, a bot's discard layer, `handClose` | None | One sound. Its gain moves by `GESTURE_STEP` for each card above or below its usual count, within 0.8 to 1.2. A 2-card Showdown sweep is softer than a 3-card trick. |
+
+- **One voice.** A train is mixed into one buffer when it is first needed, and kept for its palette, sounds and spread, so a 4-card packet costs what one card does. A palette that finishes rendering clears the kept mixes.
+- **The ceiling.** Overlapping hits can add up, so a mix whose peak passes −1 dBFS is scaled back under it.
+- **Usual counts** (`GESTURE_CARDS`): a sweep 3, the kitty 3, a discard layer 3, the outside pile 9, a thrown-in hand 21 and your hand 7.
 
 ### Moments timed to beats
 
@@ -794,6 +809,9 @@ All draft values, to tune once built.
 | `COMEBACK_POINTS` | 4 | How far behind the leader a comeback win must have come from |
 | `MAX_AHEAD_MS` | 4000 | How far ahead a part may be scheduled. A deal's last packet, at Slow, is about 2.5 s ahead. |
 | `GAP_BEAT_MS` | 30 | The minimum time between two beat sounds |
+| `TRAIN_MAX` | 6 | The most hits in a train |
+| `TRAIN_FALL` | 0.88 | Each later hit in a train, against the one before |
+| `GESTURE_STEP` | 0.06 | A gesture's gain step for its card count |
 | `BEAT_GAIN` | 0.7 | The gain of every beat sound, under the moments' sounds |
 | `MEMORY_MAX` | 1000 | The most moments the module remembers. A hand sends about 35; check against the longest games in `gamelength.js`. |
 

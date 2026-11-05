@@ -31,6 +31,9 @@ const RENDER_BUDGET_MS = 150;
 const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
 const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
 const BEAT_GAIN = 0.7;         // beat sounds sit under the moments' sounds
+const TRAIN_MAX = 6;           // the most cards a train mixes; more add nothing you can hear
+const TRAIN_FALL = 0.88;       // each later card in a train, against the one before
+const GESTURE_STEP = 0.06;     // a gesture's gain per card above or below its usual count
 
 /* ---- Moments of interest (docs/ui/feedback.md): settled definitions ---- */
 const STREAK_MIN = 4;          // tricks in a row, across hands, for a trick streak (then every 3 more)
@@ -321,9 +324,19 @@ const BEAT_SOUNDS = {
   collect: () => 'collect',
   handClose: () => ({ sound: 'hand-close', gain: 0.5 }),
 };
+/* The usual card count of a gesture (cards that move together): its sound is designed for that many, and a beat
+   with more or fewer is a little louder or softer (docs/ui/feedback.md, Card count). */
+/** @type {Record<string, number>} */
+const GESTURE_CARDS = { sweep: 3, collect: 21, pileSink: 9, discard: 3, handClose: 7, kitty: 3 };
+/* The beats whose sound is one card's: with a spread, each card gets its own hit. The others are gestures. */
+const TRAIN_BEATS = new Set(['deal', 'discard', 'toss', 'sink']);
 /**
- * A beat's sound: its name (a variant picked by the key, skipping one that isn't ready) and gain. Pure.
- * @param {any} b @param {(name: string) => boolean} [has] @returns {{ sound: string, gain: number } | null}
+ * A beat's sound, for its card count (docs/ui/feedback.md, Card count). Pure.
+ * - A train (cards that land one after another, `spread` ms apart): one hit per card, up to TRAIN_MAX, each a
+ *   variant in turn from the one the key picks, each later one TRAIN_FALL softer.
+ * - A gesture (cards that move together, no spread): one sound, its gain set by the count against GESTURE_CARDS.
+ * @param {any} b @param {(name: string) => boolean} [has]
+ * @returns {{ sound: string, gain: number, hits: { sound: string, offset: number, gain: number }[] } | null}
  */
 function beatSound(b, has) {
   const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_SOUNDS, b.beat) ? BEAT_SOUNDS[b.beat] : null;
@@ -332,7 +345,19 @@ function beatSound(b, has) {
   const spec = typeof r === 'object' && !Array.isArray(r) ? r : { sound: r, gain: 1 };
   const all = [].concat(spec.sound || []), ready = all.filter((n) => !has || has(n));
   const list = ready.length ? ready : all;
-  return list.length ? { sound: pick(list, String(b.key)), gain: spec.gain } : null;
+  if (!list.length) return null;
+  const first = pick(list, String(b.key)), at0 = list.indexOf(first);
+  const n = Number.isFinite(b.cards) ? Math.max(1, Math.min(TRAIN_MAX, Math.round(b.cards))) : 1;
+  const spread = Number.isFinite(b.spread) && b.spread > 0 ? Math.min(400, b.spread) : 0;
+  if (spread && n > 1 && TRAIN_BEATS.has(b.beat)) {
+    const hits = [];
+    for (let i = 0; i < n; i++) hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) });
+    return { sound: first, gain: spec.gain, hits };
+  }
+  const usual = GESTURE_CARDS[b.beat];
+  const count = Number.isFinite(b.cards) ? b.cards : usual || 1;
+  const size = usual ? Math.max(0.8, Math.min(1.2, 1 + GESTURE_STEP * (count - usual) / Math.max(1, usual / 3))) : 1;
+  return { sound: first, gain: spec.gain * size, hits: [{ sound: first, offset: 0, gain: 1 }] };
 }
 
 function entryAt(table, level) {
@@ -529,6 +554,7 @@ function renderPalette(felt, showdown) {
         const ms = performance.now() - t0;
         if (ms > RENDER_BUDGET_MS) log('RENDER_SLOW', { name, palette: felt, ms: Math.round(ms) });
         buffers.set(key, toBuffer(out));
+        trains.clear();   // a train may have mixed a fallback that this render replaces
       } catch (e) {
         buffers.set(key, null);
         logOnce('RENDER_FAILED', key, { name, palette: felt, error: String(e && e.message || e) });
@@ -543,6 +569,32 @@ function renderCurrent() {
   if (state.felt !== 'classic') renderPalette(state.felt, false);
   const P = /** @type {any} */ (window).KCTPalettes;
   if (P && P.palettes[state.felt] && P.palettes[state.felt].showdown) renderPalette(state.felt, true);
+}
+
+/* ---- Card trains: one hit per card, mixed into one buffer (one voice), kept by palette, sounds and spread ---- */
+/** @type {Map<string, any>} */
+const trains = new Map();
+/** The buffer for a beat's hits: the single buffer for one hit, else the mix. Null when a hit's sound isn't ready. */
+function trainBuffer(hits) {
+  if (hits.length === 1) return bufferFor(hits[0].sound);
+  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset).join(',');
+  if (trains.has(key)) return trains.get(key);
+  const parts = hits.map((h) => ({ h, b: bufferFor(h.sound) }));
+  if (parts.some((x) => !x.b)) return null;
+  const rate = parts[0].b.sampleRate;
+  const len = Math.max(...parts.map((x) => Math.round(x.h.offset / 1000 * rate) + x.b.length));
+  const mix = new Float32Array(len);
+  for (const { h, b } of parts) {
+    const d = b.getChannelData(0), o = Math.round(h.offset / 1000 * rate);
+    for (let i = 0; i < d.length; i++) mix[o + i] += d[i] * h.gain;
+  }
+  /* Overlapping hits can add up past the ceiling: bring the peak back under it. */
+  let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(mix[i]));
+  if (peak > 0.89) for (let i = 0; i < len; i++) mix[i] *= 0.89 / peak;
+  const out = toBuffer({ samples: mix, sampleRate: rate });
+  if (trains.size > 96) trains.clear();
+  trains.set(key, out);
+  return out;
 }
 
 /* ---- The sound channel ---- */
@@ -687,10 +739,10 @@ function playBeats(msg) {
     const bs = beatSound(b, (n) => !!bufferFor(n));
     if (!bs) { out.push({ beat: b.beat, sound: 'unknown' }); continue; }
     if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off' }); continue; }
-    const buffer = bufferFor(bs.sound);
+    const buffer = trainBuffer(bs.hits);
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
     if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, 1, b.at, true);
-    out.push({ beat: b.beat, sound: v, name: bs.sound });
+    out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain });
   }
   return out;
 }
@@ -792,7 +844,7 @@ const api = {
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
     STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
-    BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN }),
+    BEAT_SOUNDS, beatSound, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
     timers: () => timers.size, whenRendered: () => renderQueue, memory: () => memory,
