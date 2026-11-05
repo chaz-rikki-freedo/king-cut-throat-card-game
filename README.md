@@ -128,9 +128,21 @@ The last settings in the Table tab.
 
 The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the Classic felt never flashes first.
 
+### Table: Sound and touch
+
+The optional feedback module (`feedback/`, see **Install and offline play**) adds this card once it has loaded. Without the module, the card stays hidden.
+
+| Setting | What it does |
+|---|---|
+| **Vibration** | Off by default. Short vibrations when you win a trick or a King point, pick a card, and at the end of a game. Shown only where the device can vibrate (Android): an iPhone has no vibration for web pages. |
+| **Sound** | **Off** (the default), **Half** or **Full**. Short sounds for cards, tricks and results, made in the browser from the theme's palette, so each felt has its own sound. |
+| **Sound in replays** | Off by default, shown while Sound isn't Off. The replay viewer plays the same sounds. |
+
+At speed **Instant**, nothing plays. The three settings are kept on the device, go with a backup, and are erased by **Progress + settings**.
+
 ### Table: Reset this tab
 
-**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Standard**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on; they apply from your next game) and the theme to Classic, with Color-blind safe colors off. Your progress stays.
+**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Standard**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on; they apply from your next game) and the theme to Classic, with Color-blind safe colors off. With the feedback module loaded, Vibration, Sound and Sound in replays turn off too. Your progress stays.
 
 Under it, the Table tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
 
@@ -502,6 +514,7 @@ The game is a PWA (installable web app). On GitHub Pages (HTTPS), the browser of
 | `manifest.webmanifest` | App name, colors and icons. `background_color` and `theme_color` are both a neutral near-black (`#0c0c0c`). Android paints the manifest's `theme_color` behind the gesture bar of the installed app, and a manifest cannot follow the felt, so a neutral suits every felt. The page's `theme-color` meta tag still follows the felt for the status bar. |
 | `sw.js` | Service worker: offline play and the update prompt. |
 | `icons/` | `icon.svg` and `icon-maskable.svg` are the sources of the PNG icons. |
+| `feedback/` | The optional feedback module: `feedback.js` (when to vibrate or play a sound), `synth.js` (the sound generator, from the Card Sound Lab) and `palettes.js` (each felt's sounds). The game loads it when the browser is idle and plays silent without it: a copy with only `index.html` is the whole game. The service worker caches each file on its own, so a missing one never stops the install. Spec: [docs/ui/feedback.md](docs/ui/feedback.md). |
 
 **Updates.** The app opens from its cache, then checks the network for a changed `index.html`, past the host's CDN copy (GitHub Pages keeps one for a few minutes), so a new version is found on the first open after it is published. It checks again each time it comes back to the screen (at most once every 5 minutes), because an installed app often resumes from the background without opening the page again. A page that loads but is not the game, such as a Wi-Fi sign-in page, is never offered. When it finds one, it says so quietly, with nothing popping up: a gold dot shows on the Settings button (in the header and on the menu) and on the **Tools** tab. Settings then opens on **Tools**, where **Install** says **Update found**, with **Update now**. **Update now** loads it at once, also in the middle of a game (each move is saved). While the app stays on the screen, it also looks every hour. To look right away, select **Check again**. Each check also compares the page on the screen with the cached page, by a fingerprint the service worker puts on the page it serves, so an app left open on an older version is offered the update too, as when the phone cleared the app's cache while it stayed open (Android can do so when the storage is not persistent) and the next check saved the new version. A player never needs to close the app to update it. A new version needs no version number: publish the changed `index.html`. To see which build is loaded, look at the line at the bottom of **Settings**, for example `Build edf93c8 · 2026-10-12`: the `main` commit and its date. A copy that was not published (a local file or a test run) shows `Build dev`. The check ignores changes that ad blockers make to the page, such as removed `<link>` tags, so turning one on or off is not a new version. Change `sw.js` only to change how caching works. A changed `sw.js` needs no restart either: each time the app comes back to the screen, it also asks the browser for `sw.js`, and a new one takes over the open app and then looks for a new page. The manifest and icons also open from the cache, and the app fetches them again in the background each time, so a changed icon arrives on the next load.
 
@@ -518,7 +531,7 @@ tools/publish.sh --dry-run "0.6.35: the build shows in Settings"   # check first
 tools/publish.sh "0.6.35: the build shows in Settings"
 ```
 
-The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/` and `.nojekyll` from `origin/main` to `gh-pages`. It writes the short `main` commit and that commit's date into the `BUILD` constant in the published `index.html`, removes every comment from the published `index.html` (HTML, CSS and JavaScript, with `tools/strip-comments.js` from `main`; the code itself is not changed), commits as `Publish 0.6.35 (main edf93c8): the build shows in Settings` and pushes. The source on `main` keeps its comments. Keep `BUILD` at `{ commit: 'dev', date: '' }` on `main`: the script stops if it does not find that line. `BUILD` is not related to `RULES_VERSION` or the replay-code `VERSION`. Every version the app uses is listed in [docs/versions.md](docs/versions.md).
+The script copies `index.html`, `manifest.webmanifest`, `sw.js`, `icons/`, `feedback/` and `.nojekyll` from `origin/main` to `gh-pages`. It writes the short `main` commit and that commit's date into the `BUILD` constant in the published `index.html`, removes every comment from the published `index.html` (HTML, CSS and JavaScript, with `tools/strip-comments.js` from `main`; the code itself is not changed), commits as `Publish 0.6.35 (main edf93c8): the build shows in Settings` and pushes. The source on `main` keeps its comments. Keep `BUILD` at `{ commit: 'dev', date: '' }` on `main`: the script stops if it does not find that line. `BUILD` is not related to `RULES_VERSION` or the replay-code `VERSION`. Every version the app uses is listed in [docs/versions.md](docs/versions.md).
 
 ## Tests
 

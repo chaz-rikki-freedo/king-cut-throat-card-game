@@ -173,7 +173,7 @@ const batchSrc = `
       replayHidden: /** @type {HTMLElement} */ (document.getElementById('setFbReplayRow')).hidden,
       contexts: /** @type {any} */ (window).__contexts,
     }));
-    expect('the rows write kct.feedback. keys', after.keys['kct.feedback.sound'] === 'full' && after.keys['kct.feedback.vibration'] === 'on' && Object.keys(after.keys).every((k) => k.startsWith('kct.feedback.')), after.keys);
+    expect('the rows write kct.feedback. keys, as JSON', after.keys['kct.feedback.sound'] === '"full"' && after.keys['kct.feedback.vibration'] === 'true' && Object.keys(after.keys).every((k) => k.startsWith('kct.feedback.')), after.keys);
     expect('Sound in replays shows once Sound is on', after.replayHidden === false);
     expect('one playing AudioContext, made after the tap', after.contexts === 1, after.contexts);
 
@@ -338,14 +338,71 @@ const batchSrc = `
       return { moves: a.state.version - v0, sent: w.__batches.filter((b) => !b.control).length - before };
     });
     expect('at Instant the game sends no batches', instant.moves > 10 && instant.sent === 0, instant);
+    /* Phase 3: the game loads the module at idle and shows its card once it is ready. */
+    const wired = await gp.evaluate(async () => {
+      const w = /** @type {any} */ (window), card = document.getElementById('setFeedback');
+      for (let i = 0; i < 100 && (card.hidden || !document.getElementById('setFbSound')); i++) await new Promise((r) => setTimeout(r, 50));
+      const ctl = w.__batches.filter((b) => b.control);
+      return {
+        loaded: !!w.KCTFeedback, cardShown: !card.hidden && !document.getElementById('setFeedbackHead').hidden, rows: !!document.getElementById('setFbSound'),
+        theme: ctl.some((b) => b.control === 'theme' && b.felt === w.KCT.App.app.ui.felt), speedAfterReady: ctl.some((b) => b.control === 'speed'),
+        resetDesc: document.getElementById('setTableResetDesc').textContent,
+      };
+    });
+    expect('the game loads feedback/feedback.js at idle', wired.loaded, wired);
+    expect('the Sound and touch card shows once the module is ready, with its rows', wired.cardShown && wired.rows, wired);
+    expect('the game tells the ready module the felt and the speed', wired.theme && wired.speedAfterReady, wired);
+    expect('Reset this tab names Sound and touch while the module is loaded', /Sound and touch/.test(wired.resetDesc), wired.resetDesc);
+    const keys = await gp.evaluate(async () => {
+      const { Backup } = /** @type {any} */ (window).KCT;
+      const sel = /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound'));
+      sel.value = 'half'; sel.dispatchEvent(new Event('change'));
+      const env = Backup.create(localStorage);
+      const backedUp = env.data['kct.feedback.sound'] === '"half"';
+      Backup.wipe(localStorage);
+      const erased = localStorage.getItem('kct.feedback.sound') === null;
+      Backup.apply(localStorage, env);
+      const restored = localStorage.getItem('kct.feedback.sound') === '"half"';
+      return { backedUp, erased, restored };
+    });
+    expect('a backup carries the module\'s settings, an erase of every kct. key clears them, and a restore brings them back', keys.backedUp && keys.erased && keys.restored, keys);
+    /* Reset this tab, through the game: the module's settings go Off. */
+    const tabReset = await gp.evaluate(() => { /** @type {any} */ (window).KCT.App.tableReset(); return { sound: localStorage.getItem('kct.feedback.sound'), row: /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound')).value }; });
+    expect('Reset this tab turns the module\'s settings Off', tabReset.sound === null && tabReset.row === 'off', tabReset);
     expect('no page errors in the game', gErrors.length === 0, gErrors);
     await g.close();
+
+    /* The game without its module, and with a module that lacks synth.js. */
+    console.log('The game without the module');
+    for (const which of ['feedback.js', 'synth.js']) {
+      const c = await browser.newContext({ serviceWorkers: 'block' });
+      await c.route('**/feedback/' + which, (route) => route.fulfill({ status: 404, body: '' }));
+      const pg = await c.newPage();
+      const errs = [];
+      pg.on('pageerror', (e) => errs.push(String(e)));
+      /* Playwright's own note about the blocked service worker isn't the game's. */
+      pg.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/Failed to load resource|Service Worker registration blocked by Playwright/.test(m.text())) errs.push(m.type() + ': ' + m.text()); });
+      await pg.goto(server.url + '?settings=1');
+      await pg.waitForTimeout(2500);
+      const r = await pg.evaluate(() => ({
+        loaded: !!(/** @type {any} */ (window).KCTFeedback), cardHidden: document.getElementById('setFeedback').hidden && document.getElementById('setFeedbackHead').hidden,
+        resetDesc: document.getElementById('setTableResetDesc').textContent,
+        logged: /** @type {any} */ (window).KCT.Logger.lines.filter((l) => / FEEDBACK_/.test(l)).map((l) => l.split(' ')[1]),
+      }));
+      if (which === 'feedback.js') {
+        expect('no feedback.js: the card stays hidden and Reset this tab doesn\'t name it', !r.loaded && r.cardHidden && !/Sound and touch/.test(r.resetDesc), r);
+      } else {
+        expect('no synth.js: the card still shows, and the Event log records FEEDBACK_FILE_MISSING', r.loaded && !r.cardHidden && r.logged.includes('FEEDBACK_FILE_MISSING'), r);
+      }
+      expect('no page errors or console messages without ' + which, errs.length === 0, errs);
+      await c.close();
+    }
 
     /* ---------- Missing files ---------- */
     console.log('Missing files');
     const ctx2 = await browser.newContext({ serviceWorkers: 'block' });
     await ctx2.addInitScript(stubs);
-    await ctx2.addInitScript(() => { localStorage.setItem('kct.feedback.sound', 'full'); });
+    await ctx2.addInitScript(() => { localStorage.setItem('kct.feedback.sound', '"full"'); });
     await ctx2.route('**/feedback/synth.js', (route) => route.fulfill({ status: 404, body: '' }));
     const p2 = await ctx2.newPage();
     const errors2 = [];

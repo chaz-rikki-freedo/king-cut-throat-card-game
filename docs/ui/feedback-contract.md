@@ -173,9 +173,11 @@ The module's three settings use `localStorage` keys with the game's `kct.` prefi
 
 | Setting | Key | Values |
 |---|---|---|
-| Vibration | `kct.feedback.vibration` | `on`, or absent for Off |
-| Sound | `kct.feedback.sound` | `half` or `full`, or absent for Off |
-| Sound in replays | `kct.feedback.replaySound` | `on`, or absent for Off |
+| Vibration | `kct.feedback.vibration` | `true`, or absent for Off |
+| Sound | `kct.feedback.sound` | `"half"` or `"full"`, or absent for Off |
+| Sound in replays | `kct.feedback.replaySound` | `true`, or absent for Off |
+
+- **Every value is JSON,** like every other `kct.` key. A restore checks that each value parses and refuses the whole backup if one doesn't, so a plain-text value would break every backup that holds it.
 
 - **Erase covers them.** **Progress + settings** and **Everything + game files** in **Settings → Tools → Your data** already erase every `kct.` key and reload the page, so the module's settings go to Off with the rest. The choices that erase progress only leave them as they are, as they leave every other setting. No message is needed.
 - **In a backup.** A backup holds every `kct.` key (`index.html`, section 5e), so these go with it, like the felt and every other setting. Restoring on another device brings the Vibration and Sound choices along. A device without vibration simply hides that row.
@@ -214,7 +216,7 @@ Log kinds:
 
 ## Code in `index.html`
 
-- **Built (phase 2):** section 7c, `Moments`, after section 7b (`Fx`), with its own banner and `Tests:` line. `Moments.build` (pure), `Moments.observe` (called by the Controller's `draw` after each render, which sends each batch at its screen time), `Moments.gameOver` (from `showGameOver`), `Moments.tap`, `Moments.control` and `Moments.reset` (a new game, a resume, the replay viewer opened, jumped or closed). Not yet: `Moments.load`, the Settings card and the log listener (phase 3).
+- **Built (phase 2):** section 7c, `Moments`, after section 7b (`Fx`), with its own banner and `Tests:` line. `Moments.build` (pure), `Moments.observe` (called by the Controller's `draw` after each render, which sends each batch at its screen time), `Moments.gameOver` (from `showGameOver`), `Moments.tap`, `Moments.control` and `Moments.reset` (a new game, a resume, the replay viewer opened, jumped or closed). **Built (phase 3):** `Moments.load`, the hidden **Sound and touch** heading and card, the `kct:feedback-ready` and `kct:feedback-log` listeners in the Controller, and the **Reset this tab** text that names the module while it's loaded.
 - `Moments.build(events, view)`: a pure function from an action's events and the View for your seat to moments, with their anchors and derived facts.
 - `Moments.send(anchor, moments)` and `Moments.control(name, data)`: send a batch or a control message.
 - `Moments.load()`: adds the module's script when the browser is idle.
