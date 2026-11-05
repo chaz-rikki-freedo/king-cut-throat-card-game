@@ -609,6 +609,16 @@ const batchSrc = `
     const batches = await gp.evaluate(() => /** @type {any} */ (window).__batches);
     const ANCHOR = await gp.evaluate(() => /** @type {any} */ (window).KCT.Moments.ANCHOR);
     const data = batches.filter((b) => !b.control && !b.beats);
+    /* The module drops a batch older than the newest version it has heard (stale), so no batch may follow a message with a
+       newer version: a held sweep or result goes out before the beats of the draw that releases it. */
+    {
+      let top = -1; const behind = [];
+      for (const b of batches) {
+        if (b.moments && b.moments.length && !b.control && typeof b.version === 'number' && b.version < top) behind.push({ anchor: b.anchor, version: b.version, top, types: b.moments.map((m) => m.type) });
+        if (typeof b.version === 'number') top = Math.max(top, b.version);
+      }
+      expect('no batch reaches the module older than a message before it, so none is dropped as stale', behind.length === 0, behind.slice(0, 3));
+    }
     const beatMsgs = batches.filter((b) => b.beats);
     const types = data.flatMap((b) => b.moments.map((m) => m.type));
     expect('the first hand plays through', played.hand >= 2, played);
