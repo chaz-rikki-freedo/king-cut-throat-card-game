@@ -1038,12 +1038,11 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
 @keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
-/* Tilt (html.tilt): the script writes each moving plane's translate on that element alone (Depth's paint), tiltHz
-   times a second and only when it moves half a pixel: the panels, the trick area, each played card's slot (a higher
+/* Tilt (html.tilt): the script writes each moving plane's translate on that element alone (Depth's paint), on the
+   screen's frames (tiltHz a second) and only when it moves a quarter pixel: the panels, the trick area, each played card's slot (a higher
    card shifts more) and your hand. Each is its own layer, so a move costs no style for the rest of the table, no
-   paint and no raster. No transition: the shifts are a few pixels, so the steps don't show, and a running transition
-   would cost the page every frame. Shadows stay. */
-.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot,.tilt .table .hand{will-change:translate}
+   paint and no raster. No transition or animation: either costs the page more than a write each frame. Shadows stay. */
+.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot.win{will-change:translate}
 /* '!dev parallax': the tuning panel, a strip of two rows over the header (your hand and the trick stay in view), for
    the tab. Folded, only its Depth tab shows, in the bottom right corner, clear of the menu button. */
 .depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
@@ -6635,17 +6634,17 @@ const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
   tiltRange: { def: 12, min: 3, max: 45, step: 1, unit: '°', group: 'Tilt input', name: 'Full tilt', js: true },
   deadZone: { def: 1.5, min: 0, max: 10, step: 0.25, unit: '°', group: 'Tilt input', name: 'Dead zone', js: true },
   smoothMs: { def: 140, min: 0, max: 600, step: 10, unit: 'ms', group: 'Tilt input', name: 'Smoothing', js: true },
-  /* How often a second the page moves the planes (each frame would cost the page 4 times as much). */
-  tiltHz: { def: 15, min: 5, max: 60, step: 1, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
+  /* How often a second the page moves the planes, on the screen's frames: 60 is every frame and smooth; 30 costs about
+     a third less and steps a little. */
+  tiltHz: { def: 60, min: 10, max: 60, step: 5, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
   driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
   pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
   /* Tilt: each plane's shift at full tilt, over its parent's. A negative value moves it the other way. The table
-     itself stays. A played card shifts cardShift over the trick area at its height (trickZ), and more for a higher
-     card: the winner, at winZ, shifts cardShift × winZ / trickZ. */
+     itself stays, and your hand moves with its panel. The played cards shift cardShift over the trick area, and the
+     winner, higher, shifts cardShift × winZ / trickZ. */
   panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
   trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area', js: true },
-  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true },
-  handShift: { def: 0.1, min: -0.5, max: 0.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Your hand', js: true }
+  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true }
 }));
 const Depth = (() => {
   const KEY = 'kct-depth', MODES = ['off', 'still', 'tilt'];
@@ -6757,11 +6756,14 @@ const Depth = (() => {
     }
     return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
   }
-  /** One tick (tiltHz a second, not every frame): a step toward the target, given to the planes. It stops once the
-      table rests where it should. */
-  function frame() {
+  /** One step toward the target, given to the planes, on the screen's own frames (a timer drifts against them, and
+      the planes would step unevenly). Below 60 a second, frames are skipped evenly. It stops once the table rests
+      where it should. */
+  function frame(/** @type {number} */ t) {
     raf = 0;
-    const t = performance.now(), dt = last ? Math.min(250, t - last) : 1000 / num('tiltHz');
+    const every = 1000 / num('tiltHz') - 4;
+    if (last && t - last < every) { raf = requestAnimationFrame(frame); return; }
+    const dt = last ? Math.min(250, t - last) : 1000 / num('tiltHz');
     last = t;
     if (!hold) {
       const g = target(), tau = num('smoothMs');
@@ -6769,7 +6771,7 @@ const Depth = (() => {
       if (Math.abs(v.x - g.x) < 0.002) v.x = g.x;
       if (Math.abs(v.y - g.y) < 0.002) v.y = g.y;
       paint();
-      if (v.x !== g.x || v.y !== g.y) { raf = setTimeout(frame, 1000 / num('tiltHz')); return; }
+      if (v.x !== g.x || v.y !== g.y) { raf = requestAnimationFrame(frame); return; }
     }
     last = 0;
   }
@@ -6781,9 +6783,9 @@ const Depth = (() => {
   function planes() {
     const tz = num('trickZ') || 1, out = /** @type {[Element, number][]} */ ([]);
     for (const id of ['seat1', 'seat2', 'seat0']) { const e = document.getElementById(id); if (e) out.push([e, num('panelShift')]); }
-    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift')]);
-    for (const sl of document.querySelectorAll('#center .trick .slot')) out.push([sl, num('cardShift') * (sl.classList.contains('win') ? num('winZ') / tz : 1)]);
-    const h = document.querySelector('#seat0 .hand'); if (h) out.push([h, num('handShift')]);
+    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift') + num('cardShift')]);
+    /* Only the winner, higher than the rest, shifts more: every layer moved costs the frame. */
+    const w = document.querySelector('#center .trick .slot.win'); if (w) out.push([w, num('cardShift') * (num('winZ') / tz - 1)]);
     return out;
   }
   /** @param {boolean} [force] write even when the vector is unchanged (the table was redrawn) */
@@ -6801,7 +6803,7 @@ const Depth = (() => {
   /** After each draw: the redrawn trick and hand take the present shift. */
   function repaint() { if (mode === 'tilt' && (shown.x || shown.y)) paint(true); }
   /** Starts the frames if they are stopped. */
-  function kick() { if (!raf) raf = setTimeout(frame, 0); }
+  function kick() { if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   /** Makes the present angle level (the panel's Level). */
   function levelNow() { if (performance.now() - rawAt < 600) level = { x: raw.x, y: raw.y }; kick(); }
   /** iOS asks before a page reads the sensor, and only from a tap. needsAsk: the browser asks. */
