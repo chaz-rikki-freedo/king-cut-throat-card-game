@@ -1002,6 +1002,8 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
   .about-card{padding:1.5rem 1rem 1rem}
   .about-title{font-size:1.875rem}
 }
+/* A card's height is a length the table's motion can animate (Fx: a played card's rise, a won trick's lift). */
+@property --lift{syntax:'<length>';inherits:false;initial-value:0px}
 /* Table depth (DEPTH, section 7d), under html.depth: Settings → Table → Table depth set to Still. Off leaves the rules
    above as they are. Each card has a height (--lift, rem over the felt) and its shadow comes from that height
    (--dp-drop); the light is fixed. Only transform and box-shadow change, so no card moves its place or its tap area. */
@@ -1021,7 +1023,8 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .trick{perspective:var(--dp-perspective)}
 .depth .trick .slot .card{--lift:var(--dp-trick-z);box-shadow:var(--dp-drop)}
 .depth .trick .slot.win .card{--lift:var(--dp-win-z)}
-.depth .trick .slot-0 .card,.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift,var(--dp-trick-z)))}
+.depth .trick .slot-0 .card{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--lift))}
+.depth .trick .slot-0 .empty{transform:rotateX(var(--dp-trick-tilt)) translateZ(var(--dp-trick-z))}
 .depth .trick .slot-1 .card{--sx:calc(var(--dp-side-shadow-x) * -1);transform:rotateX(var(--dp-trick-tilt)) rotateY(var(--dp-side-turn)) rotateZ(calc(var(--dp-side-roll) * -1)) translateZ(var(--lift))}
 .depth .trick .slot-2 .card{--sx:var(--dp-side-shadow-x);transform:rotateX(var(--dp-trick-tilt)) rotateY(calc(var(--dp-side-turn) * -1)) rotateZ(var(--dp-side-roll)) translateZ(var(--lift))}
 .depth .trick .slot .card.trump{box-shadow:inset 0 0 0 0.125rem var(--gold),var(--dp-drop)}
@@ -1031,6 +1034,10 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .table .seat,.depth .table .me{--dp-panel:calc(var(--dp-vx,0) * var(--dp-shadow-shift) * var(--dp-panel-lift) * -1) calc((var(--dp-shadow-reach) - var(--dp-vy,0) * var(--dp-shadow-shift)) * var(--dp-panel-lift)) calc(var(--dp-shadow-base) + var(--dp-shadow-blur) * var(--dp-panel-lift)) rgba(0,0,0,.35);box-shadow:var(--dp-panel)}
 .depth .table .seat.turn,.depth .table .me.turn{box-shadow:0 0 0 0.1875rem rgba(242,193,78,.25),var(--dp-panel)}
 .depth .table .seat.turn.wait,.depth .table .me.turn.wait{box-shadow:var(--dp-panel)}
+/* When trump is known, a light passes once over each trump in your hand and the turned-up card (Fx adds .sheen). */
+.depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
+@keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
 /* Tilt (html.tilt): each plane shifts by its own amount of one vector (--dp-vx, --dp-vy on #table, -1 to 1), and the
    played cards are seen from a viewpoint that moves with it, so a higher card shifts more. The felt and the info strip
    stay. translate, not transform, so the planes' own transforms (and Fx's) are left alone. */
@@ -5725,7 +5732,10 @@ const Render = (() => {
    first showed, so a redraw part way through resumes it. A count (the
    Outside cell, a trick circle) changes when its cards arrive. Reads the
    View only, plus what it saw on screen. Speed Instant, or the system's
-   reduced-motion setting, turns all of it off.
+   reduced-motion setting, turns all of it off. With Table depth (7d), a
+   played card rises on its way, a won trick's cards lift as they sweep,
+   and a light passes over the trumps when trump is known: height only
+   (arc, trumpLight), never time, so the beats keep their times.
    Each motion that makes contact also records a beat: its name, a key
    unique for the game, its contact time (at, performance.now() time) and
    public facts. beats() hands over the beats the last after() started, each
@@ -5850,6 +5860,30 @@ const Fx = (() => {
   }
   /* A card (or a stack) flies to a target and shrinks away. A target out of view (a page scrolled, or pushed down by
      a summary): the card ends at the window's edge on that side, never off screen. */
+  /** Table depth's height for a card in motion: its --lift rises by up (rem) at the peak (0 to 1 of the time) and comes
+      back down, or stays up when away (the card leaves the table), and it grows by grow with it. Separate animations
+      on --lift and scale, so the motion's own transform and times stay. None without depth or motion.
+      @param {HTMLElement | null} el @param {number} t ms @param {number} up @param {number} grow @param {number} peak
+      @param {number} [delay] @param {boolean} [away] @returns {Animation[]} */
+  function arc(el, t, up, grow, peak, delay = 0, away = false) {
+    if (!el || !t || !Depth.on() || (!up && !grow)) return [];
+    const base = getComputedStyle(el).getPropertyValue('--lift').trim() || '0px', top = 'calc(' + base + ' + ' + up + 'rem)';
+    const out = [];
+    if (up) out.push(el.animate([{ '--lift': base }, { '--lift': top, offset: peak }, { '--lift': away ? top : base }], { duration: t, delay, easing: 'ease-in-out' }));
+    if (grow) out.push(el.animate([{ scale: '1' }, { scale: String(1 + grow), offset: peak }, { scale: '1' }], { duration: t, delay, easing: 'ease-in-out' }));
+    return out;
+  }
+  /** Table depth: a light passes over each trump in your hand and over the turned-up card, once, when trump is known. */
+  function trumpLight() {
+    const d = Depth.num('sheenMs');
+    if (!d || !ms() || !Depth.on()) return;
+    for (const c of qa('#hand .card.trump, #center .kpile .card:not(.back)')) {
+      c.classList.remove('sheen');
+      void c.offsetWidth;
+      c.classList.add('sheen');
+      setTimeout(() => c.classList.remove('sheen'), d + 50);
+    }
+  }
   function fly(el, to, t, delay = 0, turn = 0) {
     const m = 16, [sx, sy] = center(el), [cx, cy] = center(to), from = getComputedStyle(el).transform;
     const tx = Math.min(innerWidth - m, Math.max(m, cx)), ty = Math.min(innerHeight - m, Math.max(m, cy));
@@ -5978,7 +6012,10 @@ const Fx = (() => {
         if (to) {
           pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150, label: o.label });
           beat('sweep', 'sweep|' + pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), performance.now(), Object.assign(who(p), { showdown: !!o.trick.sd, cards: qa('.slot .card[data-card]', g).length }));
-          done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
+          done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; }
+            /* Table depth: each card lifts off the felt as it goes (Depth, 7d). */
+            arc(/** @type {HTMLElement} */ (q('.card[data-card]', sl)), t * 1.3, Depth.num('sweepArc'), 0, 0.3, i * 60, true);
+            return fly(sl, to, t, i * 60); }).filter(Boolean));
         } else g.remove();
       }
     }
@@ -6237,6 +6274,8 @@ const Fx = (() => {
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
         startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
           { duration: t, easing: 'ease-out', fill: 'backwards' }), slotStart[id], now);
+        /* Table depth: the card rises on its way and comes down onto the trick; its shadow follows (Depth, 7d). */
+        for (const a of arc(card, t, Depth.num('playArc'), Depth.num('playGrow'), 0.45)) startAt(a, slotStart[id], now);
         /* A bot's seat lies over the table while its card slides out from under it. */
         if (!from) { seat.classList.add('rise'); clearTimeout(riseTimer[p]); riseTimer[p] = setTimeout(() => { const s = q('#seat' + p); if (s) s.classList.remove('rise'); }, t - e); }
       }
@@ -6284,6 +6323,8 @@ const Fx = (() => {
     /* The empty outside pile's outline shows once the deal, the kitty's packet with it, has landed. */
     const ep = q('#center .outpile.empty'), wait = handDeal.key === String(v.handNumber) ? handDeal.end - now : 0;
     if (ep && ms() && wait > 0) ep.animate([{ opacity: 0 }, { opacity: 0, offset: wait / (wait + 200) }, { opacity: 1 }], { duration: wait + 200 });
+    /* Trump just became known in this hand: Table depth's light, once the cards have landed. */
+    if (last && last.handNumber === v.handNumber && !last.trump && v.trump) setTimeout(trumpLight, ms());
     prev = { hand: v.handNumber, phase: v.phase, counts: v.handCounts.slice() };
     last = v;
     refreshCounts();
@@ -6544,8 +6585,9 @@ const Moments = (() => {
    rests at 0 at Instant, with reduced motion, while a menu, Settings or a
    dialog covers the table, and while you touch the table, so a card never
    moves under your finger.
-   Motion (how fast a card lifts) stops at speed Instant, under the system's
-   reduced-motion setting, and at Fast when fastMotion is 0.
+   Motion (how fast a card lifts, and Fx's added height: a played card's
+   rise, a won trick's lift, the trump light) stops at speed Instant, under
+   the system's reduced-motion setting, and at Fast when fastMotion is 0.
    "!dev parallax" opens a tuning panel over the table, for the tab: its
    values last for the tab (sessionStorage 'kct-depth', never in a backup),
    and Copy gives them as JSON for DEPTH. "!dev reset:parallax" drops them.
@@ -6573,6 +6615,15 @@ const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
   shadowBase: { def: 0.25, min: 0, max: 1, step: 0.025, unit: 'rem', group: 'Shadows', name: 'Base blur' },
   shadowBlur: { def: 0.6, min: 0, max: 1.5, step: 0.05, unit: '', group: 'Shadows', name: 'Blur by height' },
   fastMotion: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Motion', name: 'Lift motion at Fast', js: true },
+  /* The table's motion (Fx), at its own times: depth adds height, never time. A played card rises on its way to the
+     trick (playArc over its height, at most at 45% of the slide) and grows a little with it (playGrow); a won trick's
+     cards lift off the felt before they sweep away (sweepArc); when trump is known, a light passes over each trump in
+     your hand and over the turned-up card (sheenMs, 0: none; sheen: its strength). */
+  playArc: { def: 2.5, min: 0, max: 6, step: 0.125, unit: 'rem', group: 'Motion', name: 'Played card rise', js: true },
+  playGrow: { def: 0.06, min: 0, max: 0.2, step: 0.01, unit: '', group: 'Motion', name: 'Played card grow', js: true },
+  sweepArc: { def: 1.5, min: 0, max: 4, step: 0.125, unit: 'rem', group: 'Motion', name: 'Won trick lift', js: true },
+  sheenMs: { def: 700, min: 0, max: 1500, step: 50, unit: 'ms', group: 'Motion', name: 'Trump light time' },
+  sheen: { def: 0.8, min: 0, max: 1, step: 0.05, unit: '', group: 'Motion', name: 'Trump light' },
   /* Tilt: how a tilt becomes the vector. A tilt of tiltRange degrees from level is full (1); the dead zone is cut off
      first, so a steady hand reads 0. */
   orientationOn: { def: 1, min: 0, max: 1, step: 1, unit: '', group: 'Tilt input', name: 'Device tilt', js: true },
@@ -6852,6 +6903,8 @@ const Depth = (() => {
     if (tab.open) panel(true); else apply();
   }
   return Object.freeze({ MODES, prop, vars, liftMs, setMode, motion, tune, resetTune, panel, json, init,
+    /** True while the table has depth and may move (Fx's motion adds height only then). */
+    on: () => document.documentElement.classList.contains('depth') && liftMs(speed, matchMedia('(prefers-reduced-motion: reduce)').matches) > 0,
     orient, shape, follow, needsAsk, ask, askOnTap, cancelAsk, gate, covers, level: levelNow, /** The vector shown. */ vector: () => ({ x: v.x, y: v.y }),
     /** The mode in use. */ mode: () => mode, /** The value in use. */ num });
 })();
@@ -11654,8 +11707,10 @@ const SelfTest = (() => {
       const was = Depth.mode(), html = document.documentElement;
       const cls = () => ['depth', 'tilt'].filter(c => html.classList.contains(c)).join(' ');
       const seen = [Depth.setMode('off'), cls(), Depth.setMode('still'), cls(), Depth.setMode('tilt'), cls(), Depth.setMode('sideways')];
+      Depth.setMode('off'); const onOff = Depth.on(); Depth.setMode('still'); Depth.motion('instant'); const onInstant = Depth.on(); Depth.motion('normal');
+      seen.push(String(onOff), String(onInstant));
       Depth.setMode(was);
-      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, and an unknown mode is Still', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still']);
+      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, an unknown mode is Still; the motion adds no height in Off or at Instant', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still', 'false', 'false']);
       /* Tilt's input: the screen's turn, the dead zone and the full tilt, and the smoothing. */
       eq('a reading turns with the screen: upright, and turned 90, 180 and 270 degrees',
         [0, 90, 180, 270, -90].map(a => Depth.orient(10, 4, a)), [{ x: 4, y: 10 }, { x: 10, y: -4 }, { x: -4, y: -10 }, { x: -10, y: 4 }, { x: -10, y: 4 }]);
