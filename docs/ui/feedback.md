@@ -1,6 +1,6 @@
 # Feedback: vibration, sound and event parallax
 
-> **Status: draft.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184), [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183) and the event part of [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185). Nothing is built yet. The remaining choices are listed in [Open items](#open-items).
+> **Status: being built, in phases.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184), [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183) and the event part of [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185). **Built:** `feedback/synth.js`, `feedback/palettes.js`, and phase 1 of `feedback/feedback.js` (the contract, settings rows, ordinary rule and cue tables, gates, dropping, rendering at idle, theme palettes), tested by `tests/feedback.js`. **Not yet:** the game's side (phase 2), wiring (phase 3), moments of interest and derived events (phase 4) and variety (phase 5). The remaining choices are listed in [Open items](#open-items).
 
 *Feedback* is what the game does besides drawing the table: a vibration, a sound or a parallax motion at a game moment. The game sends moments to an optional feedback module, and the module decides how to respond. This page defines the module: its cues, when each one plays, when nothing plays, and what is dropped when cues collide. How the game and the module talk is in the [Feedback contract](feedback-contract.md).
 
@@ -637,6 +637,7 @@ A one-time `pointerdown` listener runs on the first tap anywhere on the page. If
 ## Code
 
 - One file, `feedback/feedback.js`: no build step and no dependencies. It reads nothing from the game except batches and control messages.
+- **Phase 1, built:** `KCTFeedback.core` holds the pure parts for tests (`RULES`, `CUES`, `cueFor`, `channelsFor`, `makeDropper`). Event parallax is a hook, `KCTFeedback.parallax`, that #185 can set to receive motion names. Each render waits for an idle slot, with a 250 ms timeout, so a busy page still renders its sounds soon after load.
 - Named constants: the rule table, the cue table, the derived-event patterns, and the values in [Constants](#constants).
 - `derive(memory, batch)`: a pure function from the memory and a new batch to the derived events it completes.
 - `cueFor(batch, memory)`: a pure function from a batch to its main cue, its layer and each part's variant and parameters.

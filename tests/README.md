@@ -21,7 +21,7 @@ Run the lowest tier that covers a change. The tiers, and which tier each part of
 |---|---|---|---|
 | T0 | `npm run t0` | `typecheck.js` and `palette.js` | about 5 s |
 | T1 | `npm run t1 -- <area>` | T0 and the self-test areas named (all of them with none), then the one UI script for the screen changed | 10 to 40 s |
-| T2 | `npm run t2` | The Checks workflow: T1 with every area, `sw.js`, `forfeit.js` and `stress.js all 4` | about 1 min |
+| T2 | `npm run t2` | The Checks workflow: T1 with every area, `sw.js`, `forfeit.js`, `feedback.js` and `stress.js all 4` | about 1 min |
 | T3 | `npm run t3` | `npm test` | several minutes |
 
 `node selftest.js --list` lists the self-test areas and the groups: `rules`, `ai`, `data` and `ui`.
@@ -45,6 +45,7 @@ Run the lowest tier that covers a change. The tiers, and which tier each part of
 | `node theme.js` | Theme through the real controls: the Felt tiles (in the Table tab, before its reset), the Color-blind safe colors switch over a felt, the browser bar color, the theme kept and applied again by the head script on a reload, Classic bringing back every default, and an unknown saved theme falling back to Classic. | about 10 s |
 | `node profile.js` | Your profile and the games kept: each mode keeps its last 50, the Games list holds every game kept with its count, the chart reads the latest 20, and a streak that reaches games a mode dropped reads N+. | about 3 s |
 | `node watch.js` | The replay viewer through the real controls: **Watch** at the end of a game, Previous hand, Back, Forward, Next hand (a redeal is the same hand) and Play, a discard raised before it goes, watching from West's and East's seats, the end result, Exit back to the results with the game and its log as they were, the Watch icon in Your profile and Escape, the `?replay=` link (used once; a bad code opens the menu with a note), and the controls on the table. | about 30 s |
+| `node feedback.js` | The optional feedback module (`feedback/`), on a harness page (`tests/page/feedback.html`) with vibration and the playing audio stubbed and rendering real: the rule table's cue for each kind of batch, the gates, the dropping rules, the Settings rows and their `kct.feedback.` keys, every required preset rendering in Classic and in Fall with its Showdown voice, playing (your trick, a bot's, the replay viewer, a late batch, another `v`, Instant, Skip ▶ then the result), reset, and a missing `synth.js` (logged, silent, no console messages). | about 15 s |
 | `node dynamic.js rates 80 4` | Not a default check. Bot games that measure Dynamic's fast path: how often it catches a player who throws away their best cards within 3 visible hands, and how often it fires for players at ladder rows 4, 6 and 8. Fails under an 80% catch rate or over 3% false alarms. | about 40 s |
 | `node stress.js all 4` | Every stress section, with small sizes, in 4 pages at a time. | about 10 s |
 | `node stress.js <section> <workers> '<json>'` | One stress section at full size (see below). | minutes |
