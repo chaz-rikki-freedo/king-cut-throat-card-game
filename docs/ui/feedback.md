@@ -458,16 +458,64 @@ The 17 presets that the Classic palette must have. They are the full set for ord
 | `trick-bot` | `trickBot` | A bot wins a trick. Softer than `trick-you`. | `collect`, softer archetype | 150 to 300 ms |
 | `king-you` | `kingYou` | Your King point | `confirm` | 250 to 500 ms |
 | `king-bot` | `kingBot` | A bot's King point. Distinct from `king-you`. | `confirm`, other archetype | 250 to 500 ms |
-| `hand-win` | `handWin` | You win the hand | **Missing** | 400 to 800 ms |
-| `hand-loss` | `handLoss` | A bot wins the hand | **Missing** | 400 to 800 ms |
+| `hand-win` | `handWin` | You win the hand | `result`: Win rise, 2 notes | 400 to 800 ms |
+| `hand-loss` | `handLoss` | A bot wins the hand | `result`: Loss fall, 2 notes | 400 to 800 ms |
 | `showdown-called` | `showdownCalledYou`, `showdownCalledOther` | A Showdown is called | `shuffle` | 500 to 1000 ms |
-| `showdown-win` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | **Missing** | 400 to 800 ms |
-| `showdown-loss` | `showdownLoss` | You lose the Showdown | **Missing** | 400 to 800 ms |
-| `game-win` | `gameWin` | You win the game | **Missing** | 1 to 2 s |
-| `game-loss` | `gameLoss` | A bot wins the game | **Missing** | 1 to 2 s |
-| `wave-cleared` | `waveCleared` | You clear a wave | **Missing** | 1.5 to 2.5 s |
+| `showdown-win` | `showdownWin`, `showdownMediated` | You win the Showdown, or you mediate and it ends | `result`: Win rise, 3 notes | 400 to 800 ms |
+| `showdown-loss` | `showdownLoss` | You lose the Showdown | `result`: Loss fall, 3 notes | 400 to 800 ms |
+| `game-win` | `gameWin` | You win the game | `result`: Fanfare | 1 to 2 s |
+| `game-loss` | `gameLoss` | A bot wins the game | `result`: Settle | 1 to 2 s |
+| `wave-cleared` | `waveCleared` | You clear a wave | `result`: Fanfare, with a riffle tail | 1.5 to 2.5 s |
 
-**The lab covers 10 of the 17.** Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call map onto its card families. The 7 result sounds have no family yet: hand, Showdown and game wins and losses, and the cleared wave. They need to say *you won* or *you lost* rather than *a card moved*, and some need more than the lab's limit of just under 1 second. See [Open items](#open-items).
+Card play, the deal, the flip, discards, trump, tricks, King points and the Showdown call use the lab's 8 card families. The 7 results use a ninth family, `result`, which the lab doesn't have yet: see [Result family](#result-family).
+
+### Result family
+
+The 7 result sounds need to say *you won* or *you lost*, not *a card moved*, and some run longer than the lab's 0.98 s cap. A ninth family, **I · Result tones** (`result`), adds pitched sound while keeping the table's physical character: each result starts with a card knock and resolves into tones.
+
+**A new primitive, `chime`.** A short stack of sine partials built on the lab's existing `tone()`, with a shared envelope:
+
+```js
+voice.chime(t, { freq: 523.25, partials: [1, 2, 3], weights: [1, 0.35, 0.12], attack: 0.004, decay: 0.45, gain: 0.8 })
+```
+
+- Whole-number `partials` give a warm, woody tone. Bell-like ratios, such as `[1, 2.76, 5.4]`, give a glassy one.
+- Every note runs through the lab's master bus: the 70 Hz high-pass, the 7.5 kHz low-pass and the faint table reflection.
+
+**Four archetypes:**
+
+| Archetype | Shape | Used for |
+|---|---|---|
+| **Win rise** | A light knock, then 2 or 3 notes rising by step or by a third, the last one held | `hand-win` (2 notes), `showdown-win` (3 notes) |
+| **Loss fall** | A soft knock, then 2 or 3 notes falling, slower and lower, the last one short | `hand-loss` (2 notes), `showdown-loss` (3 notes) |
+| **Fanfare** | A deck knock, then a quick 3- or 4-note rising arpeggio into a held chord. Wave cleared adds a riffle tail from the `shuffle` primitives. | `game-win`, `wave-cleared` |
+| **Settle** | The pack set down, then one low note with a long, even decay | `game-loss` |
+
+**Design rules:**
+
+- **Every palette has a key.** All result notes come from that palette's scale, so results that come close together, such as a hand win then the game win, sound related and never clash.
+- **Not by pitch alone.** A win has more notes and a brighter tone, and a loss has fewer, longer and lower ones, so the difference survives hearing loss in either range and a small phone speaker.
+- **Rarer means longer.** A hand result is 0.4 to 0.8 s, a Showdown result 0.5 to 1 s, and a game end or a cleared wave 1 to 2.5 s.
+- **The same loudness rules** as the other families: −18 LUFS with a family offset of about −1 dB, under the −1 dBFS ceiling. Results stand out by shape and length, not by volume.
+- **Seeded like the others.** The seed sets the exact notes within the archetype's shape, the timing and the partial weights, so a preset is still family, archetype and seed.
+
+**Palettes:** each palette sets the family's key, register and partials:
+
+| Palette | Key and register | Partials |
+|---|---|---|
+| `classic` | Major, middle register | Warm, whole-number |
+| `spring` | Major, one step higher | Light: fewer upper partials |
+| `summer` | Open fifths, middle register | Soft and round |
+| `fall` | Major, lower register. Its Showdown voice is minor. | Warm, with a touch of the third partial |
+| `winter` | Major, higher register | Bell-like ratios |
+
+**What the lab needs:**
+
+1. The `chime` primitive in `createVoice`.
+2. The `result` family, with its 4 archetypes, their base settings and a `perform` function, like the other 8.
+3. **A length limit per family:** `maxSeconds` and `renderSeconds` on each family, in place of the global `MAX_DURATION_SECONDS` and `RENDER_SECONDS`. The card families keep 0.98 s and 0.96 s; `result` gets 2.5 s and 2.6 s.
+4. **Palette settings** passed into `perform`, such as the key, the register and the partials, so one preset renders in each palette's voice. The card families can ignore them.
+5. The lab's self-test extended to the new family: not silent, within its length, and the same samples twice.
 
 ### Optional presets: moments of interest
 
@@ -501,7 +549,7 @@ A variant adds a number to the base name: `trick-you-2`, `trick-you-3`. A stakes
 
 - No silence at the start, so the sound lines up with the moment. A fade-out tail, not a cut.
 - Matched levels, peaking at about −3 dBFS, so no sound jumps out at Full.
-- The lengths in the tables are targets for the presets. The lab caps a sound at 0.98 s, so longer targets need a new family or a higher cap.
+- The lengths in the tables are targets for the presets. The card families are capped at 0.98 s, and `result` at 2.5 s.
 - The lab already applies the level guideline: it normalizes every sound to −18 LUFS with a −1 dBFS ceiling.
 
 ### Offline
@@ -629,6 +677,7 @@ The current decisions. Their history is in the commit log.
 | **Speed Instant** | Turns off vibration, sound and parallax, event and common, with no override |
 | **Replay viewer** | No vibration. Sound only with Sound in replays on. |
 | **Sounds** | Made at run time by `feedback/synth.js`, the Card Sound Lab's synthesis core, from presets (family, archetype, seed) in `feedback/palettes.js`, rendered when the browser is idle while Sound isn't Off, silent when missing, precached with the module |
+| **Result sounds** | A ninth, tonal family, `result`: a card knock that resolves into tones, with 4 archetypes, a key per palette, and lengths up to 2.5 s |
 | **Theme palettes** | Each felt has a palette. Classic is the base; the others override preset by preset. A palette can have a Showdown voice. Sound follows the felt, with no setting. |
 | **Moments of interest** | Rare situations with their own rule above the ordinary one, measured before they get a cue, falling back to the ordinary sound until their file exists |
 | **Derived events** | `derived:` events from patterns in a short, public-only memory of the current game |
@@ -643,7 +692,7 @@ The current decisions. Their history is in the commit log.
 | The comeback size and the streak length | [Candidates](#candidates), by measuring |
 | Whether playing a card in your hand vibrates on Android, like picking one | A rule row and a cue row |
 | The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
-| Sounds for the 7 results (hand, Showdown and game wins and losses, wave cleared): new families in the lab, such as a deck slam or chips, or a tonal family, and whether their length may pass 0.98 s | Designing in the lab |
+| The `result` family's base settings, and each palette's key and partials | Building the family in the lab |
 | Rendering time on a real phone | Measuring once `synth.js` exists |
 | Each palette's character and which presets it overrides | Designing the palettes in the artifact |
 | Whether the seed picks an optional extra for each game, within the palette | A later decision: a 3-bit value from the game, never the seed |
