@@ -16,6 +16,8 @@ let swVersion = 0;
 /* The query of the last index.html request: every check asks past the CDN with ?fresh=. */
 let lastQuery = '';
 const ADBLOCK = '<script src="https://local.adguard.org/?type=content-script"></script><link type="text/css" rel="stylesheet" href="https://local.adguard.org/?type=css">';
+/* noSynth: feedback/synth.js answers 404, as when the optional module is incomplete. */
+let noSynth = false;
 let failed = 0;
 function expect(name, ok, detail) {
   if (!ok) failed++;
@@ -42,6 +44,7 @@ const srv = http.createServer((req, res) => {
     res.end(body);
     return;
   }
+  if (noSynth && u === '/feedback/synth.js') { res.writeHead(404); res.end(); return; }
   const file = path.join(ROOT, u);
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
@@ -86,6 +89,26 @@ srv.listen(0, '127.0.0.1', async () => {
     await reload();
     let r = await state();
     expect('the worker controls the page, with no update waiting', r.game && r.controlled && !r.pending && !r.note, r);
+    /* The optional feedback module: each file cached on its own, and a missing one never stops the install. */
+    const feedbackCached = (pg) => pg.evaluate(async () => {
+      const c = await caches.open('kct-shell');
+      return Promise.all(['feedback.js', 'synth.js', 'palettes.js'].map(async (f) => !!(await c.match(new URL('./feedback/' + f, location.href).href))));
+    });
+    const fbFiles = await feedbackCached(page);
+    expect('the worker caches the feedback module\'s three files', fbFiles.every(Boolean), fbFiles);
+    {
+      noSynth = true;
+      const other = await (await browser.newContext()).newPage();
+      await other.goto(url);
+      await other.evaluate(() => navigator.serviceWorker.ready);
+      await other.reload(); await other.waitForTimeout(1500);
+      const ok = await other.evaluate(() => ({ game: !!window.KCT, controlled: !!navigator.serviceWorker.controller }));
+      const cached = await feedbackCached(other);
+      expect('a missing feedback file: the worker still installs and controls the page', ok.game && ok.controlled, ok);
+      expect('a missing feedback file: the others are cached and the missing one is not', cached[0] && !cached[1] && cached[2], cached);
+      await other.context().close();
+      noSynth = false;
+    }
     const inApp = await selfTests(page);
     expect('the in-app self-tests: service worker and airplane mode pass', inApp === true, inApp);
     /* Android never asks for the Apple icon, so only a page open can save a lost copy again. */

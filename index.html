@@ -1151,9 +1151,12 @@ window.kctTheme = (() => {
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
       </div>
+      <!-- The optional feedback module (feedback/feedback.js) fills this card and shows it once it has loaded. -->
+      <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
+      <div class="set-card" id="setFeedback" hidden></div>
       <h3 class="set-head">Table defaults</h3>
       <div class="set-card" id="setTableDefaults">
-        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc">Table memory, House rules and Theme go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc" id="setTableResetDesc">Table memory, House rules and Theme go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
       </div>
       <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
@@ -6224,7 +6227,9 @@ const Fx = (() => {
    at Instant, during a skip (but the Showdown result), for a jump in the
    replay viewer, or for a draw with no new events (a resume, a redraw).
    Without a listener every event goes nowhere: the game never waits for,
-   or reads, a reply.
+   or reads, a reply. load() adds feedback/feedback.js when the browser is
+   idle; the Controller shows its Settings card on kct:feedback-ready and
+   writes its kct:feedback-log messages to the Event log.
    Tests: T2. selftest.js moments; feedback.js. A change to a moment's shape changes V (and the module's).
    --------------------------------------------------------------------- */
 const Moments = (() => {
@@ -6364,7 +6369,22 @@ const Moments = (() => {
   /** A tap of your own: at once. @param {any} moment @param {number} version */
   function tap(moment, version) { send('tap', [moment], { version }); }
 
-  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap });
+  /* Loads the optional module when the browser is idle: a classic script, since a page opened from file:// blocks
+     module imports. A missing file fails without a word (the browser's developer tools may list the request). */
+  let loading = false;
+  function load() {
+    if (loading) return;
+    loading = true;
+    const go = () => {
+      const s = document.createElement('script');
+      s.src = 'feedback/feedback.js';
+      s.onerror = () => { s.remove(); };
+      document.head.appendChild(s);
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 }); else setTimeout(go, 500);
+  }
+
+  return Object.freeze({ V, ANCHOR, build, send, control, reset, observe, gameOver, tap, load });
 })();
 
 
@@ -6876,7 +6896,7 @@ const App = (() => {
   async function askTableReset() {
     if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off. ' +
       'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
-      'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+      (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
     tableReset();
   }
   /** Console: KCT.App.tableReset(), with no question. Table memory, House rules and Theme go back to their defaults. */
@@ -9862,7 +9882,28 @@ const App = (() => {
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
   }
 
+  /* The feedback module, once it says it is ready with the same contract version: its Settings card shows, it hears the
+     felt and the speed, and Reset this tab names it. Its log messages go to the Event log. */
+  let feedbackOn = false;
+  function feedbackReady(/** @type {Event} */ e) {
+    const d = /** @type {CustomEvent} */ (e).detail;
+    if (!d || d.v !== Moments.V || feedbackOn) return;
+    feedbackOn = true;
+    $('setFeedbackHead').hidden = false;
+    $('setFeedback').hidden = false;
+    $('setTableResetDesc').textContent = 'Table memory, House rules, Theme and Sound and touch go back to their defaults. Your progress stays.';
+    Moments.control('theme', { felt: app.ui.felt });
+    Moments.control('speed', { speed: app.ui.speed });
+  }
+  function feedbackLog(/** @type {Event} */ e) {
+    const d = /** @type {CustomEvent} */ (e).detail;
+    if (d && d.v === Moments.V && typeof d.kind === 'string' && /^[A-Z_]+$/.test(d.kind)) Logger.log('FEEDBACK_' + d.kind, d.data && typeof d.data === 'object' ? d.data : {});
+  }
+
   function init() {
+    document.addEventListener('kct:feedback-ready', feedbackReady);
+    document.addEventListener('kct:feedback-log', feedbackLog);
+    Moments.load();
     SuitText.watch(document.body);
     $('setBuild').textContent = $('aboutBuild').textContent = 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : '');
     if (Dev.fauxApplied(PAGE_VERSION)) for (const id of ['setBuild', 'aboutBuild']) $(id).insertAdjacentHTML('beforeend', FAUX_DOT);

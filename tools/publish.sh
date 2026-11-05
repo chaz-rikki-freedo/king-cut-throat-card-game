@@ -20,7 +20,7 @@ git fetch -q origin main gh-pages
 
 commit=$(git rev-parse --short origin/main)
 date=$(git log -1 --format=%cs origin/main)
-files="index.html manifest.webmanifest sw.js icons .nojekyll"
+files="index.html manifest.webmanifest sw.js icons feedback .nojekyll"
 
 work=$(mktemp -d)
 trap 'git worktree remove --force "$work" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT

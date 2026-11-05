@@ -142,16 +142,17 @@ function makeDropper(gapMs) {
 
 /* ---- Device settings (docs/ui/feedback-contract.md, Device keys) ---- */
 const KEYS = { vibration: 'kct.feedback.vibration', sound: 'kct.feedback.sound', replaySound: 'kct.feedback.replaySound' };
-const read = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* not kept */ } };
+/* Values are JSON, like every kct. key: a backup checks that each value parses, and refuses the whole backup otherwise. */
+const read = (k) => { try { const t = localStorage.getItem(k); return t === null ? null : JSON.parse(t); } catch (e) { return null; } };
+const write = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* not kept */ } };
 const settings = {
-  get vibration() { return read(KEYS.vibration) === 'on'; },
-  set vibration(on) { write(KEYS.vibration, on ? 'on' : null); },
+  get vibration() { return read(KEYS.vibration) === true; },
+  set vibration(on) { write(KEYS.vibration, on ? true : null); },
   /** @returns {string} 'off', 'half' or 'full' */
   get sound() { const s = read(KEYS.sound); return s === 'half' || s === 'full' ? s : 'off'; },
   set sound(level) { write(KEYS.sound, level === 'half' || level === 'full' ? level : null); },
-  get replaySound() { return read(KEYS.replaySound) === 'on'; },
-  set replaySound(on) { write(KEYS.replaySound, on ? 'on' : null); },
+  get replaySound() { return read(KEYS.replaySound) === true; },
+  set replaySound(on) { write(KEYS.replaySound, on ? true : null); },
 };
 
 /* ---- State ---- */
