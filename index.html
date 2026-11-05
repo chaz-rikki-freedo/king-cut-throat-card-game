@@ -860,7 +860,7 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
 @keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
-.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot,.tilt .table .hand{will-change:translate}
+.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot.win{will-change:translate}
 .depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
 .depth-dev .dd-row{display:flex;align-items:center;gap:0.375rem;min-height:1.875rem}
 .depth-dev .btn{min-height:1.75rem;padding:0 0.5rem;font-size:0.75rem}
@@ -1064,7 +1064,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: '8301d7a', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: 'd0c0e0f', date: '2026-11-05' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5146,13 +5146,12 @@ const DEPTH =  (Object.freeze({
   tiltRange: { def: 12, min: 3, max: 45, step: 1, unit: '°', group: 'Tilt input', name: 'Full tilt', js: true },
   deadZone: { def: 1.5, min: 0, max: 10, step: 0.25, unit: '°', group: 'Tilt input', name: 'Dead zone', js: true },
   smoothMs: { def: 140, min: 0, max: 600, step: 10, unit: 'ms', group: 'Tilt input', name: 'Smoothing', js: true },
-  tiltHz: { def: 15, min: 5, max: 60, step: 1, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
+  tiltHz: { def: 60, min: 10, max: 60, step: 5, unit: 'Hz', group: 'Tilt input', name: 'Updates a second', js: true },
   driftSec: { def: 4, min: 0.5, max: 30, step: 0.5, unit: 's', group: 'Tilt input', name: 'Re-level time', js: true },
   pointerRange: { def: 1, min: 0, max: 2, step: 0.05, unit: '', group: 'Tilt input', name: 'Mouse strength', js: true },
   panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
   trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area', js: true },
-  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true },
-  handShift: { def: 0.1, min: -0.5, max: 0.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Your hand', js: true }
+  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true }
 }));
 const Depth = (() => {
   const KEY = 'kct-depth', MODES = ['off', 'still', 'tilt'];
@@ -5242,9 +5241,11 @@ const Depth = (() => {
     }
     return ptrOn && num('pointerOn') ? ptr : { x: 0, y: 0 };
   }
-  function frame() {
+  function frame( t) {
     raf = 0;
-    const t = performance.now(), dt = last ? Math.min(250, t - last) : 1000 / num('tiltHz');
+    const every = 1000 / num('tiltHz') - 4;
+    if (last && t - last < every) { raf = requestAnimationFrame(frame); return; }
+    const dt = last ? Math.min(250, t - last) : 1000 / num('tiltHz');
     last = t;
     if (!hold) {
       const g = target(), tau = num('smoothMs');
@@ -5252,7 +5253,7 @@ const Depth = (() => {
       if (Math.abs(v.x - g.x) < 0.002) v.x = g.x;
       if (Math.abs(v.y - g.y) < 0.002) v.y = g.y;
       paint();
-      if (v.x !== g.x || v.y !== g.y) { raf = setTimeout(frame, 1000 / num('tiltHz')); return; }
+      if (v.x !== g.x || v.y !== g.y) { raf = requestAnimationFrame(frame); return; }
     }
     last = 0;
   }
@@ -5260,9 +5261,8 @@ const Depth = (() => {
   function planes() {
     const tz = num('trickZ') || 1, out =  ([]);
     for (const id of ['seat1', 'seat2', 'seat0']) { const e = document.getElementById(id); if (e) out.push([e, num('panelShift')]); }
-    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift')]);
-    for (const sl of document.querySelectorAll('#center .trick .slot')) out.push([sl, num('cardShift') * (sl.classList.contains('win') ? num('winZ') / tz : 1)]);
-    const h = document.querySelector('#seat0 .hand'); if (h) out.push([h, num('handShift')]);
+    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift') + num('cardShift')]);
+    const w = document.querySelector('#center .trick .slot.win'); if (w) out.push([w, num('cardShift') * (num('winZ') / tz - 1)]);
     return out;
   }
   function paint(force) {
@@ -5276,7 +5276,7 @@ const Depth = (() => {
     }
   }
   function repaint() { if (mode === 'tilt' && (shown.x || shown.y)) paint(true); }
-  function kick() { if (!raf) raf = setTimeout(frame, 0); }
+  function kick() { if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   function levelNow() { if (performance.now() - rawAt < 600) level = { x: raw.x, y: raw.y }; kick(); }
   const needsAsk = () => typeof DeviceOrientationEvent !== 'undefined' && typeof  (DeviceOrientationEvent).requestPermission === 'function';
   function ask() {
