@@ -81,9 +81,9 @@ The game's side of the contract. Every moment carries `type`, and `seat` and `yo
 | `discard` | `land` | `DISCARD`, `EXCHANGE_DISCARD`, `SHOWDOWN_DISCARD` | `seat`, `you`, `count` |
 | `trumpNamed` | `land` | An accept or a named suit | `seat`, `you`, `trump`, `round` |
 | `cardPlayed` | `land` | `CARD_PLAYED` | `seat`, `you`, `card`, `showdown` |
-| `trickWon` | `sweep` | `TRICK_WON`, `SHOWDOWN_TRICK_WON` | `seat`, `you`, `card`, `trump`, `trickNumber`, `totalTricks`, `showdown` |
+| `trickWon` | `sweep` | `TRICK_WON`, `SHOWDOWN_TRICK_WON` | `seat`, `you`, `card`, `trump`, `trickNumber`, `totalTricks`, `showdown`, `tricksWon` (each seat's count after this trick, as the circles show), `caller` |
 | `king` | `sweep` | `KING_SCORED` | `seat`, `you`, `card`, `showdown`, `scoresBefore`, `scoresAfter` |
-| `handScored` | `result` | `HAND_SCORED` | `winner`, `you`, `outcome`, `scoresBefore`, `scoresAfter` |
+| `handScored` | `result` | `HAND_SCORED` | `winner`, `you`, `outcome`, `points`, `caller`, `tricks`, `scoresBefore`, `scoresAfter` |
 | `showdownCalled` | `result` | `SHOWDOWN_STARTED` | `players`, `mediator`, `youPlay`, `youMediate` |
 | `showdownScored` | `result` | `SHOWDOWN_SCORED` | `winner`, `loser`, `you`, `youMediate`, `tricks`, `scoresBefore`, `scoresAfter` |
 | `gameEnded` | `gameOver` | `GAME_ENDED` | `winner`, `you`, `scores`, `mode`, `byKing` (derived) |
@@ -338,6 +338,12 @@ Every moment that changes a score carries `scoresBefore` and `scoresAfter`, with
 | `derived:kingThenLead` | `king` | The `king` moment and the scores before it | A King point that also changes the lead, see [Lead change](#lead-change) | Candidate, derived |
 | `derived:pressure` | The `king` or `handScored` cue | `scoresAfter` over the game | A bot reaches 9 while you're behind, the first time this game | Candidate, derived |
 | `derived:revenge` | The `showdownScored` cue | The module's memory of `showdownScored` | You win a Showdown against the seat that won the previous one | Candidate, derived |
+| `derived:matchPoint` | The `king` or `handScored` cue | `scoresAfter` over the game | A seat reaches 9 for the first time this game. Two cues: you, or a bot. | Candidate, derived, see [Drama](#drama-in-the-rules) |
+| A steal | The `handScored` cue | `outcome`, `you` | A sweep by a seat other than the namer (+3) | Candidate, see [Drama](#drama-in-the-rules) |
+| `derived:decider` | The `trickWon` cue at trick 7 | `tricksWon` at trick 6 | Trick 7 decides between a clear win and a Showdown | Candidate, derived, see [Drama](#drama-in-the-rules) |
+| `derived:kingKilled` | The `trickWon` cue | Your `cardPlayed` King and the trick's winner | A King you played loses its trick | Candidate, derived, see [Drama](#drama-in-the-rules) |
+| A denial | The `handScored` or `showdownScored` cue | `you`, `scoresBefore` | You win a hand or a Showdown while a bot is at 9 | Candidate, see [Drama](#drama-in-the-rules) |
+| Knocked back | The `showdownScored` cue | `scoresBefore`, `scoresAfter` | A Showdown loss takes a seat off 9 | Candidate, see [Drama](#drama-in-the-rules) |
 
 ### Lead change
 
@@ -363,6 +369,102 @@ The leaders are every seat with the top score. Settle these cases before buildin
    - **From game knowledge the moments don't carry:** a new fact the game sends. Public only.
 3. Measure how often it fires.
 4. Add its rule row, above the ordinary rule for that moment. If it needs its own response, add a cue row: a sound file (see [Sound files](#sound-files)), a vibration pattern, an event parallax motion, or any mix.
+
+## Variety
+
+The rule table and the cue table on their own give the same response to the same situation every time. Three additions make feedback vary and build with the game, while staying predictable for tests and replays:
+
+- **Variants:** a cue can have several versions of each part.
+- **Novelty:** a special cue that played recently gives way to another version, or to the ordinary cue.
+- **Escalation:** the stakes of the moment pick a stronger or a quieter version.
+
+They are all data in the cue table plus a few lines in `cueFor`. None of them changes the game or the contract, apart from the public facts listed in [Drama in the rules](#drama-in-the-rules).
+
+### Drama in the rules
+
+Where the game's rules create tension, read from the Engine's scoring (`index.html`, section 4):
+
+| Rule | Why it creates drama |
+|---|---|
+| The game ends the moment a seat reaches 10, even mid-trick | Any King point or hand point can end the game at once. A seat at 9 makes every trick dangerous. |
+| Each King that wins a trick scores +1 | A King is a point waiting to happen, and a King beaten by a trump or a higher card is a point lost in plain view. |
+| The hand winner scores 1, a namer sweep 2, a sweep by anyone else 3 | Sweeping the namer in their own trump is the biggest single hand result and a reversal. A hand can be worth up to 7 points with Kings (README, **Length of a game**). |
+| A 3–3–1 split starts a Showdown; the 1-trick seat mediates | The last trick of a hand can decide between a clear win and a Showdown. The counts are public: they're the circles. |
+| Showdown: winner +1, loser −1 (not below 0) | The only rule that takes points away, so a Showdown can knock a leader off match point. |
+| Games last about 10 hands (6 to 14 in nine games out of ten) | Tension can build over a game. Early hands are calm, late hands are tight. |
+
+From these, the moments most likely to feel dramatic:
+
+| Drama | Detected by | Source |
+|---|---|---|
+| **Match point:** a seat reaches 9 for the first time this game | `scoresAfter` | Derived: `derived:matchPoint`, with `you` or a bot |
+| **Sudden death:** the game ends mid-trick on a King point | `gameEnded.byKing` | One moment |
+| **Steal:** a sweep by a seat other than the namer (+3) | `handScored.outcome === 'NON_NAMER_SWEEP'` | One moment, `you` or a bot |
+| **The decider:** the last trick decides between a clear win and a Showdown | `trickWon.tricksWon` at trick 6 of 7: one result of trick 7 makes 3–3–1 | Derived: `derived:decider`, armed after trick 6, resolved at trick 7 |
+| **King killed:** a King you played loses its trick | The memory's `cardPlayed` (yours, a King) and the trick's `trickWon` (another seat) | Derived: `derived:kingKilled` |
+| **Denial:** you win a hand or a Showdown while a bot is at 9 | `scoresBefore`, `you` | One moment |
+| **Knocked back:** a Showdown loss takes a seat off 9 | `showdownScored`, `scoresBefore` and `scoresAfter` | One moment |
+| **Lead change, comeback, streak, perfect hand** | See [Moments of interest](#moments-of-interest) | |
+
+How often each one fires is a guess until it's measured. Measure each with the bot games in `tests/` before it gets a special cue (rule 4 in [Moments of interest](#moments-of-interest)).
+
+### Stakes
+
+The module works out the **stakes** of each batch from public scores only, as a level from 0 to 3:
+
+| Level | Name | When |
+|---|---|---|
+| 0 | **Calm** | No seat above 6 |
+| 1 | **Close** | A seat at 7 or 8 |
+| 2 | **Match point** | A seat at 9 |
+| 3 | **Decider** | A seat at 9, and this moment can end the game: a King point for that seat, or the hand result |
+
+The cut-offs are draft values (`STAKES_CLOSE`, `STAKES_MATCH`), to tune once the bot games show how often each level comes up.
+
+### Variants
+
+A cue's part can be a list rather than one value:
+
+```js
+trickYou: {
+  sound:   ['trick-you', 'trick-you-2', 'trick-you-3'],
+  vibrate: [[35]],
+  parallax: null,
+  stakes: { 2: { sound: ['trick-you-tense'] }, 3: { sound: ['trick-you-tense'], vibrate: [[35, 40, 35]] } }
+}
+```
+
+- **Picking a variant is deterministic.** The module hashes the cue's name, the batch's state `version` and the batch's facts, and uses the hash to pick from each list. The same game gives the same picks, so a replay sounds the same as the live game. Different games give different picks.
+- **No random number generator, and no seed.** The game's RNG must not be used: drawing from it would change every deal. The game's seed must not be sent either: it would reveal the deal, which breaks the public-facts rule.
+- **Each part picks on its own,** so a cue with 3 sounds and 2 patterns has 6 combinations.
+- Variant sound files follow the base name with a number: `trick-you-2.wav`. A missing variant is skipped silently, like any missing file, and the module picks from the rest.
+
+### Escalation
+
+Two things can escalate a cue:
+
+1. **Stakes.** A cue row can have a `stakes` entry for levels 1 to 3. The highest entry at or below the current level replaces the matching parts. Parts it doesn't name stay as they are. So a trick won at match point can sound tense while its vibration stays the same.
+2. **Counts.** A derived event that counts, such as `derived:trickStreak`, passes its count to the cue. A cue row can have a `count` entry, such as `{ 3: …, 5: … }`, chosen the same way: a streak of 5 plays the stronger version.
+
+Escalation never adds a channel the player turned off, and never breaks the dropping rules. At the Decider level, `GAP_SOUND_MS` and `GAP_VIBRATE_MS` still apply.
+
+### Novelty
+
+The module's memory records when each **special** cue last played (a moment of interest, a derived event or an escalated version), counted in hands:
+
+1. A special cue that played within the last `NOVELTY_HANDS` hands picks a variant it hasn't used this game.
+2. If it has no unused variant, it falls back to the ordinary cue for that moment.
+3. Ordinary cues are exempt: a card sound plays every time.
+
+Novelty memory is per game, cleared with the rest of the memory. A replay of one game then matches the live game exactly. Novelty across games would make replays differ.
+
+### Constants
+
+| Constant | Draft value | Meaning |
+|---|---|---|
+| `STAKES_CLOSE` | 7 | The score that makes the stakes Close |
+| `STAKES_MATCH` | 9 | The score that makes the stakes Match point. One below the winning score. |
+| `NOVELTY_HANDS` | 3 | How many hands a special cue waits before it can repeat its version |
 
 ## Gates
 
@@ -509,7 +611,8 @@ Once the service worker has cached the files, they load from the device in a few
 1. The module's [gates](#gates) run. A batch that fails one is dropped.
 2. Unknown types and fields are ignored. The batch is added to the module's memory, and any pattern it completes adds a derived event to the batch.
 3. The [rule table](#rule-table) picks one cue for the batch: the first match in rank order, so moments of interest and derived events come first.
-   Each channel then takes its part from the [cue table](#cue-table).
+   The module works out the [stakes](#stakes), applies [escalation](#escalation) and [novelty](#novelty), and picks each part's [variant](#variants).
+   Each channel then takes its part from the result.
 4. The [dropping](#dropping) checks run in order: stale, not ready, late, too soon, too many sounds.
 5. A cue that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
@@ -551,7 +654,7 @@ A `cancel` with `scope: 'game'` (a new game, a resume, a jump in the replay view
 ### In `feedback/feedback.js`
 
 - One file, no build step, no dependencies. It reads nothing from the game except batches and control messages.
-- The rule table, the cue table, the derived-event patterns, the dropping limits and `MEMORY_MAX` are named constants. The cue table holds each cue's vibration pattern, sound file and event parallax motion.
+- The rule table, the cue table, the derived-event patterns, the dropping limits, the stakes and novelty limits, and `MEMORY_MAX` are named constants. The cue table holds each cue's vibration pattern, sound file and event parallax motion.
 - `derive(memory, batch)`: a pure function from the memory and a new batch to the derived events it completes. Its tests feed it sequences of batches.
 - `cueFor(batch)`: a pure function from a batch to at most one cue for each channel. Its tests feed it batches.
 - It checks the [gates](#gates) it owns, applies the dropping rules, and plays.
@@ -570,6 +673,7 @@ A `cancel` with `scope: 'game'` (a new game, a resume, a jump in the replay view
 | `Moments` in `index.html` | T1 | A new `moments` area in `selftest.js`: each Engine event gives the right moments and anchors; no moment carries a fact the View doesn't show; the game gates send nothing |
 | `feedback/feedback.js` | T1 | A new `tests/feedback.js` script: cue ranks, moments of interest, seat rules, module gates, and dropping with a fake clock and stubbed `navigator.vibrate` and `AudioContext`. `typecheck.js` checks the file too. |
 | The contract | T1 | `tests/feedback.js`: the moment types and fields match between the two files, a `v` mismatch keeps the module silent, and an unknown type or field is ignored |
+| Variety | T1 | `tests/feedback.js`: the same batch gives the same variant every time; stakes levels from scores; escalation picks the right entry and never adds a channel that's off; novelty rotates, then falls back; a missing variant is skipped |
 | Derived events | T1 | `tests/feedback.js`: each pattern completes on the right sequence and not on a near miss; a gap (a skip) breaks it; the memory clears on `cancel` with `scope: 'game'`; a derived event never spawns another |
 | The Settings card | T1 | `settings.js`: hidden without the module, filled in with it |
 | Runtime caching of `feedback/` in `sw.js`, then the precache | T1 | `sw.js`, including an install where one feedback file fails to load |
@@ -610,3 +714,7 @@ The `Moments` banner gets a `Tests:` line, and `CLAUDE.md` and `tests/README.md`
 | 25 | Derived events | The module may create `derived:` events from patterns in the moments it received, kept in a short, public-only memory of the current game |
 | 26 | Parallax | **Event parallax** is a channel of the feedback module and shares its rule table. **Common parallax** lives outside it and ignores moments. Both stop at Instant. |
 | 27 | Cue tables | Two tables: a rule table for when (first match wins) and a cue table for what, with a column for each channel: vibration, sound and event parallax |
+| 28 | Variants | A cue's parts can be lists. The pick is a hash of the cue, the state version and the facts: no RNG, no seed. |
+| 29 | Escalation | Stakes from public scores (Calm, Close, Match point, Decider) and counts from derived events pick stronger versions |
+| 30 | Novelty | A special cue that played in the last `NOVELTY_HANDS` hands uses an unused variant or the ordinary cue. Per game, so replays match. |
+| 31 | Drama | Match point, sudden death, steal, the decider, King killed, denial and knocked back join the candidates, each measured before it gets a cue |
