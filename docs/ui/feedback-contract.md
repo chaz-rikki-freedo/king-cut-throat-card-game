@@ -214,7 +214,7 @@ Log kinds:
 
 ## Code in `index.html`
 
-- A new section, `Moments`, after section 7b (`Fx`), with its own banner and `Tests:` line.
+- **Built (phase 2):** section 7c, `Moments`, after section 7b (`Fx`), with its own banner and `Tests:` line. `Moments.build` (pure), `Moments.observe` (called by the Controller's `draw` after each render, which sends each batch at its screen time), `Moments.gameOver` (from `showGameOver`), `Moments.tap`, `Moments.control` and `Moments.reset` (a new game, a resume, the replay viewer opened, jumped or closed). Not yet: `Moments.load`, the Settings card and the log listener (phase 3).
 - `Moments.build(events, view)`: a pure function from an action's events and the View for your seat to moments, with their anchors and derived facts.
 - `Moments.send(anchor, moments)` and `Moments.control(name, data)`: send a batch or a control message.
 - `Moments.load()`: adds the module's script when the browser is idle.
