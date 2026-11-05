@@ -14,12 +14,16 @@
    The manifest and icons are served from the cache too, and each request also
    fetches them in the background, so a changed icon arrives on the next load.
    Each page open and "check-update" also saves again any of them missing from the cache: Android never
-   asks for the Apple icon, so a lost copy of it would otherwise stay lost. */
+   asks for the Apple icon, so a lost copy of it would otherwise stay lost.
+   The optional feedback module (feedback/*.js) is cached the same way, but each file on its own: a missing one
+   never stops the install, and the game plays silent without it (docs/ui/feedback.md, Offline). */
 'use strict';
 const SHELL = 'kct-shell', PENDING = 'kct-pending';
 const PAGE = new URL('./index.html', self.registration.scope).href;
 const ROOT = new URL('./', self.registration.scope).href;
 const ASSETS = ['./manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png']
+  .map(u => new URL(u, self.registration.scope).href);
+const OPTIONAL = ['./feedback/feedback.js', './feedback/synth.js', './feedback/palettes.js']
   .map(u => new URL(u, self.registration.scope).href);
 
 /* A new worker keeps the cached page: it takes over pages that are already open (skipWaiting, then clients.claim),
@@ -30,13 +34,15 @@ self.addEventListener('install', ev => {
     const shell = await caches.open(SHELL);
     const urls = (await shell.match(PAGE)) ? ASSETS : [PAGE, ...ASSETS];
     await shell.addAll(urls.map(u => new Request(u, { cache: 'reload' })));
+    /* One at a time, and never fatal: refreshAsset caches a file only when it loads. */
+    for (const u of OPTIONAL) await refreshAsset(u);
     await self.skipWaiting();
   })());
 });
 /* Removes files that this version no longer caches, such as an icon taken off the ASSETS list.
    Only this app's own cache is cleaned: other project pages on the same github.io origin share the cache storage. */
 self.addEventListener('activate', ev => ev.waitUntil((async () => {
-  const keep = new Set([PAGE, ...ASSETS]);
+  const keep = new Set([PAGE, ...ASSETS, ...OPTIONAL]);
   const shell = await caches.open(SHELL);
   for (const req of await shell.keys()) if (!keep.has(req.url)) await shell.delete(req);
   await self.clients.claim();
@@ -52,7 +58,7 @@ self.addEventListener('fetch', ev => {
     ev.waitUntil(Promise.all([checkPage(), refill()]));
     return;
   }
-  const asset = ASSETS.find(u => isSame(u, req.url));
+  const asset = ASSETS.find(u => isSame(u, req.url)) || OPTIONAL.find(u => isSame(u, req.url));
   if (asset) {
     const fresh = refreshAsset(asset);
     ev.respondWith(caches.match(asset).then(hit => hit || fresh.then(res => res || fetch(req))));
@@ -73,7 +79,7 @@ async function refreshAsset(url) {
 /* Saves again the manifest and icons missing from the cache. Offline it saves nothing. */
 async function refill() {
   const shell = await caches.open(SHELL);
-  for (const u of ASSETS) if (!await shell.match(u)) await refreshAsset(u);
+  for (const u of ASSETS.concat(OPTIONAL)) if (!await shell.match(u)) await refreshAsset(u);
 }
 
 async function cachedPage(req) {
