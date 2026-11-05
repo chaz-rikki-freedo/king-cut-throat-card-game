@@ -491,9 +491,11 @@ const batchSrc = `
         loaded: !!w.KCTFeedback, cardShown: !card.hidden && !document.getElementById('setFeedbackHead').hidden, rows: !!document.getElementById('setFbSound'),
         theme: ctl.some((b) => b.control === 'theme' && b.felt === w.KCT.App.app.ui.felt), speedAfterReady: ctl.some((b) => b.control === 'speed'),
         resetDesc: document.getElementById('setTableResetDesc').textContent,
+        replayShownWhileOff: getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('setFbReplayRow'))).display !== 'none',
       };
     });
     expect('the game loads feedback/feedback.js at idle', wired.loaded, wired);
+    expect('in the game\'s Settings, Sound in replays stays out of sight while Sound is Off', !wired.replayShownWhileOff, wired);
     expect('the Sound and touch card shows once the module is ready, with its rows', wired.cardShown && wired.rows, wired);
     expect('the game tells the ready module the felt and the speed', wired.theme && wired.speedAfterReady, wired);
     expect('Reset this tab names Sound and touch while the module is loaded', /Sound and touch/.test(wired.resetDesc), wired.resetDesc);

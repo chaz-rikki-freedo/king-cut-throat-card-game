@@ -435,6 +435,7 @@ body.set-open{overflow:hidden}
 .settings .set-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s4);padding:0.875rem 0;border-bottom:1px solid var(--set-line);min-height:3.75rem}
 .settings .set-card > :last-child{border-bottom:0}
 .settings label.set-row{cursor:pointer}
+.settings .set-row[hidden]{display:none}
 .settings .set-row-wide{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--s2)}
 /* Theme → Felt: one tile per felt pack, a radio each, drawn in that felt. */
 .settings .felt-grid{grid-column:1 / -1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s2)}
