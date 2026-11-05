@@ -40,20 +40,34 @@ it back to Still.
 
 ## Tilt
 
-Tilt turns the device's angle, or the mouse's place on a computer, into one vector from -1 to 1 on each axis. The
-script writes the vector on `#table` as `--dp-vx` and `--dp-vy`, and each plane moves by its own share of it:
+Tilt turns the device's angle, or the mouse's place on a computer, into one vector from -1 to 1 on each axis. Each
+plane moves by its own share of it, over its parent's:
 
 | Plane | At full tilt | Value |
 |---|---|---|
 | Table and info strip | Stay | None |
 | Panels | Shift | `panelShift` |
 | Trick area | Shift | `trickShift` |
-| Played cards | Seen from a viewpoint that moves, so a higher card shifts more and the trick seems to turn slightly | `viewShift` |
+| Played cards | Shift over the trick area; a higher card shifts more (the winner: `cardShift × winZ / trickZ`) | `cardShift` |
 | Your hand | Shift, on top of its panel's | `handShift` |
-| Shadows | Move opposite the tilt, as if the light stays fixed | `shadowShift` |
 
-A negative value moves a plane the other way. The planes move with `translate`, not `transform`, so their own
-transforms and the table's motion (FX) are left alone.
+A negative value moves a plane the other way. Shadows stay as they are.
+
+### Cost
+
+Tilt has to stay cheap on a phone, so each frame touches as little as possible:
+
+- The script writes each plane's `translate` on that element alone (`#seat1`, `#seat2`, `#seat0`, the trick, each
+  slot and your hand), never a custom property on an ancestor, which would restyle the whole table.
+- Each plane is its own layer (`will-change: translate`), so a move needs no paint and no raster.
+- The planes move `tiltHz` times a second (15), not every frame, and a plane that moved less than half a pixel isn't
+  touched. There's no transition: the shifts are a few pixels, so the steps don't show, and a running transition
+  would cost the page every frame.
+- Shadows don't follow the tilt: a changing shadow repaints its card.
+- FX's wait for a still table (`busyFor`) ignores `box-shadow` transitions, so a shadow never holds up your turn.
+
+Measured in Chromium with the CPU slowed 4 times, over 3 s of steady small tilts on your turn: style, layout, paint and
+commit fell from about 2,550 ms to about 240 ms, raster from about 900 ms to 0, and paints from 576 to 30.
 
 How a reading becomes the vector:
 
@@ -63,7 +77,7 @@ How a reading becomes the vector:
 2. **Dead zone and full tilt.** A tilt within `deadZone` degrees of level reads 0, so a steady hand keeps the table
    still. At `tiltRange` degrees, the tilt is full.
 3. **Smoothing.** The table follows the vector over `smoothMs`, which also removes sensor jitter.
-4. **Rest.** The vector eases back to 0, and the frames stop, when:
+4. **Rest.** The vector eases back to 0, and the updates stop, when:
    - the sensor stops,
    - speed is Instant or the system asks for reduced motion,
    - a menu, Settings or a dialog covers the table,
@@ -92,7 +106,7 @@ None of it runs in Off, at Instant, with reduced motion, or at Fast when `fastMo
 
 ## Rules for the code
 
-- Change only `transform`, `translate`, `perspective-origin` and `box-shadow`. No card moves its place in the layout,
+- Change only `transform`, `translate` and `box-shadow`. No card moves its place in the layout,
   and in Tilt the hand holds still under a finger.
 - Read every number from `DEPTH`. The CSS reads them as `--dp-*` custom properties under `html.depth` (and
   `html.tilt`). A value marked `js` is read by the script only. The `depth`

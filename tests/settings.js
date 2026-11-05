@@ -59,7 +59,7 @@ function expect(name, ok, detail) {
        Instant bring it back to rest; Still stops it. (Chromium answers the motion question at once.) */
     await set('setDepth', 'tilt');
     const t = await step(`
-      const vec = () => +q('#table').style.getPropertyValue('--dp-vx') || 0;
+      const vec = () => Math.round(KCT.Depth.vector().x * 1000) / 1000;
       const tilt = g => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 40, gamma: g }));
       const roll = async (g, n) => { for (let i = 0; i < n; i++) { tilt(g); await sleep(25); } };
       const out = { saved: JSON.parse(localStorage.getItem('kct.settings')).depth, cls: document.documentElement.classList.contains('tilt') };
