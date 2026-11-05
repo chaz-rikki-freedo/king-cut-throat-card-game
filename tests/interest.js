@@ -3,7 +3,9 @@
    rare (docs/ui/feedback.md, Moments of interest, rule 4). Plays games in the page with three personalities, from the
    bottom seat, turns each action's events into moments (KCT.Moments.build), groups them into batches by anchor as the
    game sends them, and runs the module's own derive, cueFor and compose (KCTFeedback.core), so novelty counts. Prints each cue's rate per game,
-   and how many special cues and how many vibrations a game gives the player.
+   and how many special cues and how many vibrations a game gives the player. Then the repeat count for trick cards
+   (docs/ui/feedback.md, Variation within a game): how often a card's sound comes back within 3 plays of itself, the
+   same take with the same tone (within 0.5 dB), against the variants and no tone before phase 8.
    Usage: node interest.js [games=200] [--json] */
 'use strict';
 const { serve, launch, openPage } = require('./lib/browser');
@@ -22,6 +24,19 @@ const json = args.includes('--json');
       const { Engine, AI, Moments, buildView, PERSONAS } = /** @type {any} */ (window).KCT;
       const F = /** @type {any} */ (window).KCTFeedback.core;
       const count = {}, perGame = { special: [], vibrate: [], youVibrateSpecial: [] };
+      /* Repeat count: each stream (your cards, the bots' cards) keeps its last 3 plays. */
+      const OLD = { you: ['card-play', 'card-play-2', 'card-play-3'], bot: ['card-slide-in'] };
+      const rep = { you: { n: 0, now: 0, before: 0 }, bot: { n: 0, now: 0, before: 0 } };
+      const recent = { you: { now: [], before: [] }, bot: { now: [], before: [] } };
+      const R = /** @type {any} */ (window).KCT.Rules;
+      const hear = (who, now, before) => {
+        const r = rep[who], q = recent[who];
+        r.n++;
+        if (q.now.some((x) => x.sound === now.sound && Math.abs(x.tone - now.tone) < 0.5)) r.now++;
+        if (q.before.includes(before)) r.before++;
+        q.now.push(now); q.before.push(before);
+        if (q.now.length > 3) { q.now.shift(); q.before.shift(); }
+      };
       const ids = PERSONAS.map((p) => p.id);
       let hands = 0, done = 0;
       for (let gi = 0; gi < n; gi++) {
@@ -52,6 +67,14 @@ const json = args.includes('--json');
           const res = Engine.dispatch(g, a);
           if (!res.ok) break;
           if (res.events.some((e) => e.type === 'HAND_SCORED')) hands++;
+          for (const e of res.events) {
+            if (e.type !== 'CARD_PLAYED') continue;
+            const sd = !!(g.showdown && g.showdown.active), you = e.player === 0, c = R.card(e.card);
+            const key = 'card|' + g.handNumber + '|' + (sd ? 'sd' : '') + '|' + g.trickNumber + '|' + e.player + e.card;
+            const bs = F.beatSound({ beat: 'card', key, you, seat: e.player, cards: 1, high: !!c && (c.isJoker || c.rank === 'A' || c.rank === 'K') });
+            const old = you ? OLD.you : OLD.bot;
+            hear(you ? 'you' : 'bot', { sound: bs.sound, tone: bs.hits[0].tone }, old[F.hash(key) % old.length]);
+          }
           const ms = Moments.build(res.events, buildView(g, 0), { mode: 'free' });
           const by = (an) => ms.filter((m) => Moments.ANCHOR[m.type] === an);
           if (heldSweep.length && !by('gameOver').length) { run({ moments: heldSweep }); heldSweep = []; }
@@ -67,7 +90,7 @@ const json = args.includes('--json');
       const pct = (a, q) => a.slice().sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(q * a.length))];
       return { games: n, finished: done, hands, count, special: { avg: avg(perGame.special), p90: pct(perGame.special, 0.9) },
         vibrate: { avg: avg(perGame.vibrate) }, youVibrateSpecial: { avg: avg(perGame.youVibrateSpecial), p90: pct(perGame.youVibrateSpecial, 0.9) },
-        specials: Object.keys(F.CUES).filter((k) => F.CUES[k].special) };
+        specials: Object.keys(F.CUES).filter((k) => F.CUES[k].special), rep };
     }, games);
     if (json) { console.log(JSON.stringify(r, null, 2)); return; }
     console.log(`${r.games} bot games (${r.finished} finished), ${r.hands} hands, from the bottom seat.\n`);
@@ -78,6 +101,10 @@ const json = args.includes('--json');
     console.log(`\nSpecial cues per game: ${r.special.avg.toFixed(2)} on average, ${r.special.p90} at the 90th percentile.`);
     console.log(`Special cues that vibrate for you, per game: ${r.youVibrateSpecial.avg.toFixed(2)} on average, ${r.youVibrateSpecial.p90} at the 90th percentile.`);
     console.log(`All vibrating cues per game: ${r.vibrate.avg.toFixed(1)}.`);
+    const pc = (x, k) => (100 * x[k] / Math.max(1, x.n)).toFixed(1) + '%';
+    console.log('\nRepeat count: a trick card\'s sound back within 3 plays of itself (same take, tone within 0.5 dB).');
+    console.log(`  Your cards (${r.rep.you.n}):    ${pc(r.rep.you, 'now')} now, ${pc(r.rep.you, 'before')} before phase 8 (3 takes, no tone).`);
+    console.log(`  Bots' cards (${r.rep.bot.n}):  ${pc(r.rep.bot, 'now')} now, ${pc(r.rep.bot, 'before')} before phase 8 (1 take, no tone).`);
   } finally {
     await browser.close();
     server.close();

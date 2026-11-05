@@ -40,6 +40,17 @@ const JITTER_DB = 1.5;         // each hit's gain varies within this, by a hash 
 const JITTER_RATE = 0.02;      // and its pitch, within this fraction
 const DISTANCE_DB = -2;        // a bot's table sounds sit behind yours
 const PAN = { 0: 0, 1: -0.35, 2: 0.35 };   // by place on the table: you, the left seat, the right seat
+/* ---- Variation within a game (docs/ui/feedback.md, Variation within a game) ---- */
+const CONTEXT_MAX_DB = 2.5;    // the most a card's context moves its gain, either way
+const TONE_JITTER_DB = 2;      // how far a hit's brightness (a high shelf at SHELF_HZ) varies, either way
+/* A trick card's context: gain (dB), pitch (rate offset) and brightness (shelf dB), added up for each fact that holds. */
+const CONTEXT = [
+  { when: (b) => b.trump === true, db: 1.5, rate: -0.02, shelf: 0 },     // a trump lands with weight
+  { when: (b) => b.high === true, db: 0, rate: 0, shelf: 1 },            // an Ace or a King snaps
+  { when: (b) => b.lead === true, db: 0.5, rate: 0, shelf: 0 },          // a firm opening
+  { when: (b) => b.last === true, db: 1, rate: 0, shelf: 0 },            // it completes the trick
+  { when: (b) => b.follow === false, db: -1.5, rate: 0.01, shelf: 0 },   // a slough, thrown away lightly
+];
 const RENDER_BUDGET_MS = 150;
 const MAX_AHEAD_MS = 4000;     // how far ahead a part may be scheduled
 const GAP_BEAT_MS = 30;        // the minimum time between two beat sounds
@@ -160,11 +171,11 @@ const CUES = {
                          stakes: { 2: { vibrate: [45, 50, 45] }, 3: { vibrate: [55, 40, 55, 40, 55] } } },
   kingBot:             { vibrate: null, sound: ['king-bot', 'king-bot-2'], parallax: null },
   /* beat: in a batch timed to a beat (beat: true), the beats play this sound, and the cue keeps its other parts. */
-  trickYou:            { vibrate: [35], sound: ['trick-you', 'trick-you-2'], parallax: null, stakes: { 3: { vibrate: [35, 40, 35] } }, beat: true },
-  trickBot:            { vibrate: null, sound: ['trick-bot', 'trick-bot-2'], parallax: null, beat: true },
+  trickYou:            { vibrate: [35], sound: ['trick-you', 'trick-you-2', 'trick-you-3', 'trick-you-4'], parallax: null, stakes: { 3: { vibrate: [35, 40, 35] } }, beat: true },
+  trickBot:            { vibrate: null, sound: ['trick-bot', 'trick-bot-2', 'trick-bot-3', 'trick-bot-4'], parallax: null, beat: true },
   trumpNamed:          { vibrate: null, sound: 'trump-named', parallax: null },
-  cardPlayed:          { vibrate: null, sound: ['card-play', 'card-play-2', 'card-play-3'], parallax: null, beat: true },
-  deal:                { vibrate: null, sound: ['deal', 'deal-2'], parallax: null, beat: true },
+  cardPlayed:          { vibrate: null, sound: ['card-play', 'card-play-2', 'card-play-3', 'card-play-4', 'card-play-5', 'card-play-6', 'card-play-7', 'card-play-8'], parallax: null, beat: true },
+  deal:                { vibrate: null, sound: ['deal', 'deal-2', 'deal-3', 'deal-4'], parallax: null, beat: true },
   flip:                { vibrate: null, sound: 'flip', parallax: null, beat: true },
   discard:             { vibrate: null, sound: ['discard', 'discard-2'], parallax: null, beat: true },
   pick:                { vibrate: [8], sound: null, parallax: null, noGap: true },
@@ -314,6 +325,18 @@ function pick(list, key) { return Array.isArray(list) && list.length ? list[hash
 const isPattern = (v) => Array.isArray(v) && v.every((x) => typeof x === 'number');
 /** A number in [-1, 1] from a key: the same key, the same number, so a replay sounds the same. */
 const unit = (key) => (hash(key) / 0xffffffff) * 2 - 1;
+/**
+ * A card beat's context (docs/ui/feedback.md, Context): its gain in dB (clamped to CONTEXT_MAX_DB), a pitch offset
+ * and a brightness in dB. Zero for any other beat, or a card beat without the facts. Pure.
+ * @param {any} b @returns {{ db: number, rate: number, shelf: number }}
+ */
+function contextOf(b) {
+  const out = { db: 0, rate: 0, shelf: 0 };
+  if (!b || b.beat !== 'card') return out;
+  for (const c of CONTEXT) { let on = false; try { on = !!c.when(b); } catch (e) { on = false; } if (on) { out.db += c.db; out.rate += c.rate; out.shelf += c.shelf; } }
+  out.db = Math.max(-CONTEXT_MAX_DB, Math.min(CONTEXT_MAX_DB, out.db));
+  return out;
+}
 const clamp = (x, [lo, hi]) => Math.max(lo, Math.min(hi, x));
 /** A parameter's value: a number, or a function of the moment; clamped; its default when it fails. */
 function param(p, m, c, name, dflt) {
@@ -326,7 +349,7 @@ function param(p, m, c, name, dflt) {
    A beat this table doesn't name plays nothing. */
 /** @type {Record<string, (b: any) => (string | string[] | { sound: string | string[], gain: number })>} */
 const BEAT_SOUNDS = {
-  deal: (b) => (b.showdown ? 'deal-snap' : b.you ? 'deal-hand' : ['deal', 'deal-2']),
+  deal: (b) => (b.showdown ? 'deal-snap' : b.you ? ['deal-hand', 'deal-hand-2', 'deal-hand-3', 'deal-hand-4'] : ['deal', 'deal-2', 'deal-3', 'deal-4']),
   kitty: () => 'kitty-set',
   turnUp: () => 'flip',
   tuck: () => 'tuck',
@@ -334,8 +357,9 @@ const BEAT_SOUNDS = {
   sink: () => 'sink',
   discard: () => ['discard', 'discard-2'],
   pileSink: () => 'pile-sink',
-  card: (b) => (b.you ? ['card-play', 'card-play-2', 'card-play-3'] : 'card-slide-in'),
-  sweep: (b) => (b.you ? ['trick-you', 'trick-you-2'] : ['trick-bot', 'trick-bot-2']),
+  card: (b) => (b.you ? ['card-play', 'card-play-2', 'card-play-3', 'card-play-4', 'card-play-5', 'card-play-6', 'card-play-7', 'card-play-8']
+    : ['card-slide-in', 'card-slide-in-2', 'card-slide-in-3', 'card-slide-in-4']),
+  sweep: (b) => (b.you ? ['trick-you', 'trick-you-2', 'trick-you-3', 'trick-you-4'] : ['trick-bot', 'trick-bot-2', 'trick-bot-3', 'trick-bot-4']),
   collect: () => 'collect',
   handClose: () => ({ sound: 'hand-close', gain: 0.5 }),
 };
@@ -365,7 +389,7 @@ const TRAIN_BEATS = new Set(['deal', 'discard', 'toss', 'sink']);
  *   variant in turn from the one the key picks, each later one TRAIN_FALL softer.
  * - A gesture (cards that move together, no spread): one sound, its gain set by the count against GESTURE_CARDS.
  * @param {any} b @param {(name: string) => boolean} [has]
- * @returns {{ sound: string, gain: number, pan: number, hits: { sound: string, offset: number, gain: number, rate: number }[] } | null}
+ * @returns {{ sound: string, gain: number, pan: number, hits: { sound: string, offset: number, gain: number, rate: number, tone: number }[] } | null}
  */
 function beatSound(b, has) {
   const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_SOUNDS, b.beat) ? BEAT_SOUNDS[b.beat] : null;
@@ -382,16 +406,17 @@ function beatSound(b, has) {
     const hits = [];
     for (let i = 0; i < n; i++) {
       const k = String(b.key) + '|' + i;
-      hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) * dbToGain(JITTER_DB * unit(k + 'g')), rate: 1 + JITTER_RATE * unit(k + 'r') });
+      hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) * dbToGain(JITTER_DB * unit(k + 'g')), rate: 1 + JITTER_RATE * unit(k + 'r'),
+        tone: TONE_JITTER_DB * unit(k + 't') });
     }
     return Object.assign({ sound: first, gain: spec.gain * placeGain(b), hits }, { pan: panOf(b) });
   }
   const usual = GESTURE_CARDS[b.beat];
   const count = Number.isFinite(b.cards) ? b.cards : usual || 1;
   const size = usual ? Math.max(0.8, Math.min(1.2, 1 + GESTURE_STEP * (count - usual) / Math.max(1, usual / 3))) : 1;
-  const k = String(b.key) + '|0';
-  return { sound: first, gain: spec.gain * size * placeGain(b) * dbToGain(JITTER_DB * unit(k + 'g')), pan: panOf(b),
-    hits: [{ sound: first, offset: 0, gain: 1, rate: 1 + JITTER_RATE * unit(k + 'r') }] };
+  const k = String(b.key) + '|0', cx = contextOf(b);
+  return { sound: first, gain: spec.gain * size * placeGain(b) * dbToGain(JITTER_DB * unit(k + 'g') + cx.db), pan: panOf(b),
+    hits: [{ sound: first, offset: 0, gain: 1, rate: (1 + JITTER_RATE * unit(k + 'r')) * (1 + cx.rate), tone: TONE_JITTER_DB * unit(k + 't') + cx.shelf }] };
 }
 /** A beat's distance: a bot's motion is DISTANCE_DB behind yours; one with no seat (the pile) sits between. */
 function placeGain(b) { return b && b.you === false && typeof b.seat === 'number' ? dbToGain(DISTANCE_DB) : 1; }
@@ -615,7 +640,7 @@ const trains = new Map();
 /** The buffer for a beat's hits: the single buffer for one hit, else the mix. Null when a hit's sound isn't ready. */
 function trainBuffer(hits) {
   if (hits.length === 1) return bufferFor(hits[0].sound);
-  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset + '*' + h.gain.toFixed(3) + '^' + (h.rate || 1).toFixed(4)).join(',');
+  const key = state.felt + (state.showdown ? '/sd' : '') + '|' + hits.map((h) => h.sound + '@' + h.offset + '*' + h.gain.toFixed(3) + '^' + (h.rate || 1).toFixed(4) + '~' + (h.tone || 0).toFixed(2)).join(',');
   if (trains.has(key)) return trains.get(key);
   const parts = hits.map((h) => ({ h, b: bufferFor(h.sound) }));
   if (parts.some((x) => !x.b)) return null;
@@ -624,9 +649,18 @@ function trainBuffer(hits) {
   const lenOf = (x) => Math.floor((x.b.length - 1) / (x.h.rate || 1));
   const len = Math.max(...parts.map((x) => Math.round(x.h.offset / 1000 * rate) + lenOf(x) + 1));
   const mix = new Float32Array(len);
+  /* Each hit's tone: a one-pole high shelf at SHELF_HZ (the part above it scaled by the tone's gain), as the voice's
+     filter would do for a single hit. */
+  const a = Math.exp(-2 * Math.PI * SHELF_HZ / rate);
   for (const x of parts) {
     const { h, b } = x, d = b.getChannelData(0), o = Math.round(h.offset / 1000 * rate), r = h.rate || 1, n = lenOf(x);
-    for (let i = 0; i <= n; i++) { const p = i * r, j = Math.floor(p), f = p - j; mix[o + i] += (d[j] + ((d[j + 1] || 0) - d[j]) * f) * h.gain; }
+    const k = dbToGain(h.tone || 0) - 1;
+    let lp = 0;
+    for (let i = 0; i <= n; i++) {
+      const p = i * r, j = Math.floor(p), f = p - j, v = d[j] + ((d[j + 1] || 0) - d[j]) * f;
+      lp = (1 - a) * v + a * lp;
+      mix[o + i] += (v + k * (v - lp)) * h.gain;
+    }
   }
   /* Overlapping hits can add up past the ceiling: bring the peak back under it. */
   let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(mix[i]));
@@ -725,7 +759,7 @@ function toBuffer(out) {
  * @param {any} buffer @param {boolean} replace stop the last moment sound first @param {number} [gainParam]
  * @param {number} [rate] @param {number} [at] @param {boolean} [isBeat] a beat's sound, never replaced
  */
-function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false, pan = 0) {
+function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false, pan = 0, tone = 0) {
   const ctx = ensureAudio();
   if (!ctx) return false;
   if (replace && lastMoment) { try { lastMoment.stop(); } catch (e) { /* already ended */ } }
@@ -734,7 +768,10 @@ function playSound(buffer, replace, gainParam = 1, rate = 1, at, isBeat = false,
   if (src.playbackRate) src.playbackRate.value = rate;
   const gain = ctx.createGain();
   gain.gain.value = gainParam;
-  src.connect(gain);
+  /* A single hit's tone: its own high shelf, at most MAX_VOICES at a time. */
+  if (tone && typeof ctx.createBiquadFilter === 'function') {
+    try { const f = ctx.createBiquadFilter(); f.type = 'highshelf'; f.frequency.value = SHELF_HZ; f.gain.value = tone; src.connect(f); f.connect(gain); } catch (e) { src.connect(gain); }
+  } else src.connect(gain);
   let out = gain;
   if (pan && typeof ctx.createStereoPanner === 'function') {
     try { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); gain.connect(p); out = p; } catch (e) { /* centered */ }
@@ -823,8 +860,8 @@ function playBeats(msg) {
     const buffer = trainBuffer(bs.hits);
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
     /* A single hit plays at its own pitch; a train's hits are at theirs inside the mix. */
-    const rate = bs.hits.length === 1 ? bs.hits[0].rate || 1 : 1;
-    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan);
+    const one = bs.hits.length === 1, rate = one ? bs.hits[0].rate || 1 : 1, tone = one ? bs.hits[0].tone || 0 : 0;
+    if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan, tone);
     out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain, tick: felt });
   }
   return out;
@@ -927,7 +964,7 @@ const api = {
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
     STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, FULL_GAIN, HALF_GAIN, FULL_DB, HALF_DB, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
-    BEAT_SOUNDS, beatSound, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS }),
+    BEAT_SOUNDS, beatSound, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS, CONTEXT, CONTEXT_MAX_DB, TONE_JITTER_DB, contextOf }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
     timers: () => timers.size, bus: () => bus, whenRendered: () => renderQueue, memory: () => memory,
