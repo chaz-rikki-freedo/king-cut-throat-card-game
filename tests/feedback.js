@@ -440,7 +440,8 @@ const batchSrc = `
     });
     const batches = await gp.evaluate(() => /** @type {any} */ (window).__batches);
     const ANCHOR = await gp.evaluate(() => /** @type {any} */ (window).KCT.Moments.ANCHOR);
-    const data = batches.filter((b) => !b.control);
+    const data = batches.filter((b) => !b.control && !b.beats);
+    const beatMsgs = batches.filter((b) => b.beats);
     const types = data.flatMap((b) => b.moments.map((m) => m.type));
     expect('the first hand plays through', played.hand >= 2, played);
     expect('every batch has v 1 and its moments their own anchor', data.length > 0 && data.every((b) => b.v === 1 && b.moments.every((m) => ANCHOR[m.type] === b.anchor)),
@@ -463,8 +464,28 @@ const batchSrc = `
     const lastSweep = data.reduce((k, b, i) => (b.anchor === 'sweep' ? i : k), -1);
     const result = at((m) => m.type === 'handScored' || m.type === 'showdownCalled');
     expect('the result comes after the last sweep', result > lastSweep, { lastSweep, result });
-    const landGaps = data.filter((b) => b.anchor === 'land' && b.moments.some((m) => m.type === 'cardPlayed')).map((b) => b.got - b.at);
-    expect('a card\'s batch is sent once it lands, not before', landGaps.every((d) => d >= -1 && d < 300), landGaps.filter((d) => d < -1 || d >= 300).slice(0, 5));
+    /* With motion on, a card's batch goes out with its draw, timed to the card's beat: the landing, one motion step on. */
+    const cardLand = data.filter((b) => b.anchor === 'land' && b.moments.some((m) => m.type === 'cardPlayed'));
+    const beatAt = new Set(beatMsgs.flatMap((m) => m.beats.filter((x) => x.beat === 'card').map((x) => x.at)));
+    expect('a card\'s batch is timed to its card beat, and carries beat: true', cardLand.length === 21 && cardLand.every((b) => b.beat === true && beatAt.has(b.at)),
+      cardLand.filter((b) => !b.beat || !beatAt.has(b.at)).slice(0, 3).map((b) => ({ at: b.at, beat: b.beat })));
+    const ahead = cardLand.map((b) => b.at - b.got);
+    expect('a card\'s beat is one motion step (Fast: 250 ms) after its draw', ahead.every((d) => d > 200 && d < 300), ahead.filter((d) => d <= 200 || d >= 300).slice(0, 5));
+    /* The beats of one hand. */
+    const beats = beatMsgs.flatMap((m) => m.beats.map((x) => Object.assign({ v: m.v, got: m.got }, x)));
+    /* The test plays hand 1; hand 2's deal starts in its last wait. A key's second part is its hand (sweep: 'sweep|pip<hand>'). */
+    const nb = (name) => beats.filter((x) => x.beat === name && /^[a-zA-Z]+\|(pip)?1\b/.test(x.key)).length;
+    const beatKeys = beats.map((x) => x.key);
+    expect('beats messages have v 1, no moments and no control', beatMsgs.length > 0 && beatMsgs.every((m) => m.v === 1 && !m.moments && !m.control));
+    expect('one hand: 9 deal beats (3 packets to each player), 21 card beats and 7 sweep beats', nb('deal') === 9 && nb('card') === 21 && nb('sweep') === 7, { deal: nb('deal'), card: nb('card'), sweep: nb('sweep') });
+    expect('one hand: a kitty beat, and a discard beat for each player', nb('kitty') === 1 && nb('discard') === 3, { kitty: nb('kitty'), discard: nb('discard') });
+    expect('every beat key is sent once', new Set(beatKeys).size === beatKeys.length, beatKeys.filter((k, i) => beatKeys.indexOf(k) !== i).slice(0, 5));
+    expect('no beat is in the past when sent, by more than a frame', beats.every((x) => x.at >= x.got - 20), beats.filter((x) => x.at < x.got - 20).slice(0, 3));
+    expect('beats carry public facts only: no card names', beats.every((x) => !('card' in x)));
+    const sweepB = data.filter((b) => b.anchor === 'sweep');
+    expect('a sweep batch is timed to its sweep beat, and carries beat: true', sweepB.length > 0 && sweepB.every((b) => b.beat === true && beats.some((x) => x.beat === 'sweep' && x.at === b.at)));
+    const trumpB = data.filter((b) => b.moments.some((m) => m.type === 'trumpNamed') && !b.moments.some((m) => ['cardPlayed', 'deal', 'flip', 'discard', 'trickWon'].includes(m.type)));
+    expect('a batch with no table moment (trump named) has no beat flag', trumpB.length > 0 && trumpB.every((b) => !b.beat), trumpB.map((b) => b.beat));
     const hidden = data.flatMap((b) => b.moments.filter((m) => m.card && !b.faceUp.includes(m.card)).map((m) => m.type + ' ' + m.card));
     expect('every card in a moment is face up on the table when it is sent: nothing hidden', hidden.length === 0, hidden.slice(0, 5));
     /* Instant: nothing more is sent. */
@@ -472,7 +493,7 @@ const batchSrc = `
       const { App, Engine, AI } = /** @type {any} */ (window).KCT, a = App.app, w = /** @type {any} */ (window);
       const sel = /** @type {HTMLSelectElement} */ (document.getElementById('speedSel'));
       sel.value = 'instant'; sel.dispatchEvent(new Event('change'));
-      const before = w.__batches.filter((b) => !b.control).length, v0 = a.state.version;
+      const before = w.__batches.filter((b) => !b.control).length, v0 = a.state.version;   // beats too
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       for (let i = 0; i < 400 && !a.state.gameOver && a.state.version < v0 + 40; i++) {
         const st = a.state, ac = Engine.actors(st);
@@ -482,6 +503,29 @@ const batchSrc = `
       return { moves: a.state.version - v0, sent: w.__batches.filter((b) => !b.control).length - before };
     });
     expect('at Instant the game sends no batches', instant.moves > 10 && instant.sent === 0, instant);
+    /* Reduced motion: no motion, so no beats, and the batches play every part themselves (no beat: true). */
+    {
+      const rm = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce' });
+      await rm.addInitScript(() => { const w = /** @type {any} */ (window); w.__b = []; document.addEventListener('kct:moment', (e) => w.__b.push(/** @type {CustomEvent} */ (e).detail)); });
+      const rp = await rm.newPage();
+      await rp.goto(server.url);
+      await rp.waitForFunction(() => /** @type {any} */ (window).KCT && /** @type {any} */ (window).KCT.App.app.ui);
+      const r = await rp.evaluate(async () => {
+        const w = /** @type {any} */ (window), { App, Engine, AI } = w.KCT, a = App.app;
+        App.newGame(4242, 1);
+        const sleep = (ms) => new Promise((res) => setTimeout(res, ms)), t0 = performance.now();
+        while (performance.now() - t0 < 20000 && a.state.trickNumber < 3 && !a.state.gameOver) {
+          const st = a.state, ac = Engine.actors(st);
+          if (ac.includes(0)) App.act(AI.fastAction(st, 0)); else if (!ac.length && !a.timerFn) { const x = Engine.systemAction(st); if (x) App.act(x); }
+          await sleep(30);
+        }
+        await sleep(500);
+        const d = w.__b.filter((b) => !b.control);
+        return { batches: d.filter((b) => b.moments && b.moments.length).length, beats: d.filter((b) => b.beats).length, flagged: d.filter((b) => b.beat).length };
+      });
+      expect('reduced motion: batches but no beats, and no batch carries beat: true', r.batches > 10 && r.beats === 0 && r.flagged === 0, r);
+      await rm.close();
+    }
     /* Phase 3: the game loads the module at idle and shows its card once it is ready. */
     const wired = await gp.evaluate(async () => {
       const w = /** @type {any} */ (window), card = document.getElementById('setFeedback');

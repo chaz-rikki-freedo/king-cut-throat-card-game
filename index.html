@@ -5668,7 +5668,11 @@ const Render = (() => {
    Outside cell, a trick circle) changes when its cards arrive. Reads the
    View only, plus what it saw on screen. Speed Instant, or the system's
    reduced-motion setting, turns all of it off.
-   Tests: T1. selftest.js interface; forced.js (plays through the controls once motion draws them).
+   Each motion that makes contact also records a beat: its name, a key
+   unique for the game, its contact time (at, performance.now() time) and
+   public facts. beats() hands over the beats the last after() started, each
+   once, for Moments to send (docs/ui/feedback.md, Beats).
+   Tests: T1. selftest.js interface; forced.js (plays through the controls once motion draws them); feedback.js (beats).
    --------------------------------------------------------------------- */
 const Fx = (() => {
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
@@ -5700,6 +5704,19 @@ const Fx = (() => {
   const slotFrom = {};
   let moveTimer = 0, cueKey = ''; const riseTimer = {};
   let tuckStart = { hand: -1, t0: 0 };
+  /* Beats: each once (by key) for the game; out holds the ones the current after() started. */
+  /** @type {any[]} */
+  let beatsOut = [];
+  const beatKeys = new Set();
+  /** @param {string} name @param {string} key @param {number} at @param {Record<string, any>} [facts] */
+  function beat(name, key, at, facts) {
+    if (beatKeys.has(key)) return;
+    beatKeys.add(key);
+    beatsOut.push(Object.assign({ beat: name, key, at: Math.round(at * 10) / 10 }, facts || {}));
+  }
+  const who = (/** @type {number} */ p) => ({ seat: p, you: p === me });
+  /* The moment a sink() starts to drop, from its start (t: one motion step; travel: it slides to a target first). */
+  const sinkDrop = (/** @type {number} */ t, /** @type {boolean} */ travel) => (travel ? t * 0.7 : 0) + t * 1.3 * 0.3;
 
   /* The order in which the players discarded this hand, as seen: the pile is built in that order. */
   function discardOrder(v) {
@@ -5871,6 +5888,7 @@ const Fx = (() => {
     // A thrown-in hand (no trump named, or a Joker void): every card goes back to the dealer, who deals again.
     if ((before.phase === P.ABANDONED || before.phase === P.JOKER_VOID) && v.phase !== before.phase) {
       const to = q('#seat' + v.dealer); if (!to) return;
+      beat('collect', 'collect|' + before.hand + '|' + v.dealer, performance.now(), { seat: v.dealer });
       o.hand.forEach((x, i) => { const g = place(x.k); done(g, [fly(g, to, t, i * 25)]); });
       if (o.kpile) { const g = place(o.kpile); done(g, [fly(g, to, t)]); }
       for (const p of [0, 1, 2]) if (p !== me && before.counts[p]) for (let i = 0; i < 3; i++) { const g = backAt(p, i - 1, 12); done(g, [fly(g, to, t, i * 40)]); }
@@ -5886,6 +5904,7 @@ const Fx = (() => {
         const to = p >= 0 && (q('#seat' + p + ' .tpips') || q('#seat' + p));
         if (to) {
           pending.set(pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), { kind: 'pip', p, until: performance.now() + t * 1.3 + 150, label: o.label });
+          beat('sweep', 'sweep|' + pipKey(o.trick.hand, o.trick.sd, cardIds(o.trick.el)), performance.now(), Object.assign(who(p), { showdown: !!o.trick.sd }));
           done(g, qa('.slot', g).map((sl, i) => { if (!q('.card[data-card]', sl)) { sl.style.visibility = 'hidden'; return null; } return fly(sl, to, t, i * 60); }).filter(Boolean));
         } else g.remove();
       }
@@ -5897,6 +5916,10 @@ const Fx = (() => {
       const g = place(o.kpile), cards = qa('.card', g), turned = cards.find(c => !c.classList.contains('back')) || cards[cards.length - 1], r1 = (Engine.trumpCall(v.bidLog) || { round: 0 }).round === 1;
       const recv = seatOf(v.receiver);
       expect('kitty' + v.handNumber, { kind: 'out', n: r1 ? 2 : 1, until: performance.now() + t * 1.8 + 160 });
+      const flies = cards.map((c, i) => ({ c, i, fly: (c === turned) === r1 })), now0 = performance.now();
+      const tossed = flies.filter(x => x.fly), sunk = flies.filter(x => !x.fly);
+      if (tossed.length) beat('toss', 'toss|' + v.handNumber, now0 + tossed[0].i * 80, Object.assign(who(v.receiver), { cards: tossed.length }));
+      if (sunk.length) beat('sink', 'sink|kitty|' + v.handNumber, now0 + t * 0.5 + sunk[0].i * 80 + sinkDrop(t, false), { seat: v.dealer, you: v.dealer === me, cards: sunk.length });
       done(g, cards.map((c, i) => (c === turned) === r1 ? fly(c, recv, t, i * 80, TILT[pos(v.receiver)]) : sink(c, t, t * 0.5 + i * 80)));
     }
     // Your discard: your cards fly from your hand onto the pile. When the last discard ends the phase, any discards
@@ -5921,11 +5944,13 @@ const Fx = (() => {
         const at = n * gap;
         pending.set('pile' + v.handNumber + '|' + p, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: now + at + t });
         if (layer) setTimeout(() => { layer.style.visibility = ''; }, at + t);
+        beat('discard', 'discard|' + v.handNumber + '|' + p, now + at + 2 * 70 + t * 0.85, who(p));
         if (p === me) { mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, g, t, at + i * 70)]); }); return; }
         for (let i = 0; i < 3; i++) { const c = backAt(p, i - 1, 12); done(c, [land(c, g, t, at + i * 70)]); }
       });
       const wait = Math.max(until - now, missing.length ? t + (missing.length - 1) * gap : 0);
       done(g, [sink(g, t, wait)]);
+      beat('pileSink', 'pileSink|' + v.handNumber, now + wait + sinkDrop(t, false));
       kittyHold = now + wait + t * 0.9;
       /* The kitty lay beside the pile: it stays where it was until the pile has left, then slides to the middle. */
       if (o.kpile) kittySlide = { x: o.kpile.r.left + scrollX, y: o.kpile.r.top + scrollY, t0: now, hold: kittyHold - now, hand: v.handNumber };
@@ -5933,6 +5958,7 @@ const Fx = (() => {
       const hold = dealWait(String(v.handNumber));
       mine.forEach((x, i) => { const c = place(x.k); c.classList.remove('selected'); done(c, [land(c, pileNow, t, hold + i * 70)]); });
       mineLand = { hand: v.handNumber, idx: discarders.indexOf(me), t0: performance.now() + hold };
+      beat('discard', 'discard|' + v.handNumber + '|' + me, mineLand.t0 + (mine.length - 1) * 70 + t * 0.85, who(me));
       expect('pile' + v.handNumber + '|' + me, { kind: 'out', n: Engine.C.INITIAL_DISCARD, until: mineLand.t0 + t });
       holdMyLayer(v, performance.now());
     }
@@ -5944,6 +5970,7 @@ const Fx = (() => {
       for (const p of [0, 1, 2]) {
         const k = before.counts[p] - v.handCounts[p]; if (k <= 0) continue;
         expect('ex' + v.handNumber + v.phase + '|' + p, { kind: 'out', n: k, until: performance.now() + hold + t * 2 + 80 * k });
+        beat('sink', 'sink|' + v.handNumber + before.phase + '|' + p, performance.now() + hold + sinkDrop(t, true), Object.assign(who(p), { cards: k }));
         if (p === me) { o.hand.filter(x => !ids.has(x.id)).forEach((x, i) => { const g = place(x.k); g.classList.remove('selected'); done(g, [sink(g, t, hold + i * 80, mid, (i - (k - 1) / 2) * 14)]); }); continue; }
         if (hold) { heldBacks[p] = { n: k, until: performance.now() + hold }; holdBacks(); }
         for (let i = 0; i < k; i++) {
@@ -5991,6 +6018,7 @@ const Fx = (() => {
         if (row) { for (let k = 0; k < 3; k++) row.insertAdjacentHTML('beforeend', '<span class="mini-back held"></span>'); setTimeout(() => qa('#seat' + p + ' .mini-back.held').forEach(x => x.remove()), -e + 32); }
       }
       if (!t || e >= t) return;
+      beat('discard', 'discard|' + v.handNumber + '|' + p, layerStart[i] + t, who(p));
       if (e < 0) el.animate([{ opacity: 0 }, { opacity: 0 }], { duration: -e });
       el.style.setProperty('--ms', t + 'ms');
       for (const x of [el, ...el.children]) x.style.animationDelay = -e + 'ms';
@@ -6038,6 +6066,7 @@ const Fx = (() => {
     if (up && !turnStart) turnStart = Math.max(now, dealStart + flight + t * 0.4, kittyHold + t);
     if (elapsed < flight) {
       if (now < dealStart) kp.animate([{ opacity: 0 }, { opacity: 0 }], { duration: dealStart - now });
+      beat('kitty', 'kitty|' + k, dealStart + flight, { seat: v.dealer });
       const [dx, dy] = center(q('#seat' + v.dealer));
       cards.forEach((c, i) => { const [cx, cy] = center(c);
         startAt(c.animate([{ transform: 'translate(' + (dx - cx) + 'px,' + (dy - cy) + 'px) rotate(' + TILT[pos(v.dealer)] + 'deg)' }, { transform: 'none' }],
@@ -6046,6 +6075,7 @@ const Fx = (() => {
     const turned = now - turnStart;
     if (up && turned < t * 0.8) {
       if (turned < t * 0.4) top.insertAdjacentHTML('beforeend', '<div class="kback"></div>');
+      beat('turnUp', 'turnUp|' + k, turnStart + t * 0.4);
       startAt(top.animate([{ transform: 'none' }, { transform: 'scaleX(0)' }, { transform: 'none' }], { duration: t * 0.8, easing: 'ease-in-out' }), turnStart, now);
       setTimeout(() => { const b = q('.kback', top); if (b) b.remove(); }, Math.max(0, t * 0.4 - turned));
     }
@@ -6061,6 +6091,7 @@ const Fx = (() => {
     if (prev && prev.hand === v.handNumber && prev.phase === Engine.P.BID1 && tuckStart.hand !== v.handNumber) tuckStart = { hand: v.handNumber, t0: now };
     const e = now - tuckStart.t0, move = t * 1.6, dur = move + t, f = move / dur;
     if (!t || tuckStart.hand !== v.handNumber || e >= dur) return;
+    beat('tuck', 'tuck|' + v.handNumber, tuckStart.t0);
     const cards = qa('.card', card.parentElement), w = card.offsetWidth;
     const from = 'translateX(' + cards[cards.length - 1].offsetLeft + 'px)', out = 'translateX(' + -w * 1.1 + 'px)';
     startAt(card.animate([
@@ -6090,6 +6121,12 @@ const Fx = (() => {
     const last = Math.max(...hands.map((h, j) => h.length ? delay(h.length - 1, j) : 0));
     handDeal.end = Math.max(handDeal.end, handDeal.t0 + t + last);
     if (!t || !from || e > t + last) return;
+    /* One beat per packet a player receives (per card in a Showdown deal): when its first card lands. */
+    hands.forEach((cards, j) => {
+      const p = order[j];
+      if (sd) { cards.forEach((_, i) => beat('deal', 'deal|' + key + '|' + p + '|' + i, handDeal.t0 + delay(i, j) + t, Object.assign(who(p), { cards: 1, showdown: true }))); return; }
+      for (const [first, n] of PACKETS) if (cards.length > first) beat('deal', 'deal|' + key + '|' + p + '|' + first, handDeal.t0 + delay(first, j) + t, Object.assign(who(p), { cards: Math.min(n, cards.length - first) }));
+    });
     const [fx, fy] = center(from);
     hands.forEach((cards, j) => cards.forEach((c, i) => { const [cx, cy] = center(c);
       startAt(c.animate([{ transform: 'translate(' + (fx - cx) + 'px,' + (fy - cy) + 'px) scale(.5)', opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }],
@@ -6122,6 +6159,7 @@ const Fx = (() => {
       const from = slotFrom[id];
       const slides = !!t && e < t && !!(seat || from);
       if (slides) {
+        beat('card', 'card|' + key + '|' + id, slotStart[id] + t, Object.assign(who(+p), { showdown: !!(v.showdown && v.showdown.active) }));
         const start = from ? 'translate(' + (from.left + from.width / 2 - cx) + 'px,' + (from.top + from.height / 2 - cy) + 'px) scale(' + (from.width / cw).toFixed(3) + ') '
           : 'translate(' + (seatAt[0] - cx) + 'px,' + (seatAt[1] - cy) + 'px) ';
         startAt(card.animate([{ transform: (start + rest).trim(), opacity: from ? 1 : 0.4 }, { transform: (isWin ? lifted : rest) || 'none', opacity: 1 }],
@@ -6144,10 +6182,12 @@ const Fx = (() => {
     if (!t || !was) return;
     const cards = qa('#hand .card[data-card]');
     if (cards.length === was.size && cards.every(c => was.has(c.dataset.card))) return;
+    let moved = false;
     for (const c of cards) {
       const r0 = was.get(c.dataset.card); if (!r0) continue;
       const r = c.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+      if (!moved) { moved = true; beat('handClose', 'handClose|' + [...was.keys()].sort().join() + '>' + cards.map(x => x.dataset.card).sort().join(), performance.now()); }
       c.animate([{ translate: dx + 'px ' + dy + 'px' }, { translate: '0 0' }], { duration: t * 0.6, easing: 'ease-out' });
     }
   }
@@ -6156,6 +6196,7 @@ const Fx = (() => {
   function after(v, ui) {
     me = v.seat;
     speed = ui.speed;
+    beatsOut = [];
     const now = performance.now();
     discardLayers(v, now);
     holdBacks();
@@ -6215,10 +6256,14 @@ const Fx = (() => {
     pending.clear(); clearTimeout(countTimer);
     prev = out = last = mineLand = handAt = null; tuckStart = { hand: -1, t0: 0 }; handDeal = { key: '', t0: 0, end: 0 }; dealHold = kittyHold = 0;
     discardHand = -1; discarders = []; dealKey = ''; turnStart = 0; kittySlide = null; trickKey = ''; layerStart.length = 0;
+    beatsOut = []; beatKeys.clear();
     for (const o of [slotStart, winStart, heldBacks, slotFrom]) for (const k in o) delete o[k];
   }
 
-  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms });
+  /** The beats the last after() started, each once; handed over once. */
+  function beats() { const b = beatsOut; beatsOut = []; return b; }
+
+  return Object.freeze({ discardOrder, capture, after, reset, busyFor, step: ms, beats });
 })();
 
 /* ---------------------------------------------------------------------
@@ -6228,7 +6273,8 @@ const Fx = (() => {
    bottom, never from the full state, and never the seed. observe() runs at
    each table draw (Controller draw) and sends each batch at its screen time:
    'land' one motion step after the cards are drawn, 'sweep' when the next
-   table (the trick swept) is drawn, 'result' when the result shows (after
+   table (the trick swept) is drawn (with motion on, both are sent at the
+   draw, timed to the beats that Fx.beats() hands over, which go out too), 'result' when the result shows (after
    holdResult), 'gameOver' from showGameOver, 'tap' at once. Nothing is sent
    at Instant, during a skip (but the Showdown result), for a jump in the
    replay viewer, or for a draw with no new events (a resume, a redraw).
@@ -6313,11 +6359,15 @@ const Moments = (() => {
   function emit(detail) {
     try { document.dispatchEvent(new CustomEvent('kct:moment', { detail })); } catch (e) { /* no listener can break the game */ }
   }
-  /** @param {string} anchor @param {any[]} moments @param {{ version: number, replay?: boolean, at?: number }} o */
+  /** beat: the batch is timed to a beat, whose sounds the beats play.
+      @param {string} anchor @param {any[]} moments @param {{ version: number, replay?: boolean, at?: number, beat?: boolean }} o */
   function send(anchor, moments, o) {
     if (!moments.length) return;
-    emit({ v: V, version: o.version, at: o.at !== undefined ? o.at : performance.now(), anchor, replay: !!o.replay, moments });
+    emit(Object.assign({ v: V, version: o.version, at: o.at !== undefined ? o.at : performance.now(), anchor, replay: !!o.replay }, o.beat ? { beat: true } : {}, { moments }));
   }
+  /* The beats that play the table sound of each moment type (docs/ui/feedback.md, Beats). */
+  /** @type {Record<string, string[]>} */
+  const OWN = { cardPlayed: ['card'], deal: ['deal', 'kitty'], flip: ['turnUp'], discard: ['discard', 'sink'], trickWon: ['sweep'] };
   /** A control message: cancel (scope 'game' or 'step'), reset, speed, theme. */
   function control(name, data) {
     emit(Object.assign({ v: V, version: observed, at: performance.now(), moments: [], control: name }, data || {}));
@@ -6341,10 +6391,16 @@ const Moments = (() => {
   function observe(events, v, o) {
     if (v.version < observed) reset();
     const now = performance.now();
+    /* The beats this draw's motions started (Fx.after ran just before): sent as one message, and the times the
+       draw's land and sweep batches are timed to. None at Instant or during a skip. */
+    const beats = o.instant || o.skipping ? [] : Fx.beats();
+    if (beats.length) emit({ v: V, version: v.version, replay: !!o.replay, beats });
+    const last = (/** @type {string} */ name) => beats.reduce((m, b) => (b.beat === name && (m === null || b.at > m) ? b.at : m), /** @type {number | null} */ (null));
+    const cardAt = last('card'), sweepAt = last('sweep');
     /* The swept trick is on the table once a later table is drawn. */
     const due = sweeps.filter(s => s.version < v.version);
     sweeps = sweeps.filter(s => s.version >= v.version);
-    for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: now });
+    for (const s of due) send('sweep', s.moments, { version: s.version, replay: s.replay, at: sweepAt !== null ? sweepAt : now, beat: sweepAt !== null });
     /* A held result shows on the next draw that does not hold. */
     if (!o.hold && results.length) { const r = results; results = []; for (const x of r) send('result', x.moments, { version: x.version, replay: x.replay, at: now }); }
     if (!events || !events.length || v.version <= observed) return;
@@ -6356,9 +6412,13 @@ const Moments = (() => {
     const by = (/** @type {string} */ a) => moments.filter(m => ANCHOR[m.type] === a);
     const at = { version: v.version, replay: o.replay };
     const land = by('land');
-    if (land.length) {
-      if (o.step > 0) { const g = gen; setTimeout(() => { if (g === gen) send('land', land, Object.assign({ at: now + o.step }, at)); }, o.step); }
-      else send('land', land, Object.assign({ at: now }, at));
+    /* Timed to the beats when each of its table moments has its beat in this draw: at the latest card's landing. */
+    const has = (/** @type {string} */ b) => beats.some(x => x.beat === b);
+    const timed = land.some(m => OWN[m.type]) && land.every(m => !OWN[m.type] || OWN[m.type].some(has));
+    if (land.length && timed && cardAt !== null) send('land', land, Object.assign({ at: cardAt, beat: true }, at));
+    else if (land.length) {
+      if (o.step > 0) { const g = gen; setTimeout(() => { if (g === gen) send('land', land, Object.assign({ at: now + o.step, beat: timed }, at)); }, o.step); }
+      else send('land', land, Object.assign({ at: now, beat: timed }, at));
     }
     const ends = by('gameOver');
     /* A game that ends mid-trick: there is no next table to sweep it, so its trick goes with the game's end. */
