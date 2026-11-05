@@ -48,8 +48,8 @@ plane moves by its own share of it, over its parent's:
 | Table and info strip | Stay | None |
 | Panels | Shift | `panelShift` |
 | Trick area | Shift | `trickShift` |
-| Played cards | Shift over the trick area; a higher card shifts more (the winner: `cardShift × winZ / trickZ`) | `cardShift` |
-| Your hand | Shift, on top of its panel's | `handShift` |
+| Played cards | Shift over the trick area; the winner, higher, shifts more (`cardShift × winZ / trickZ`) | `cardShift` |
+| Your hand | Moves with its panel | None |
 
 A negative value moves a plane the other way. Shadows stay as they are.
 
@@ -57,17 +57,27 @@ A negative value moves a plane the other way. Shadows stay as they are.
 
 Tilt has to stay cheap on a phone, so each frame touches as little as possible:
 
-- The script writes each plane's `translate` on that element alone (`#seat1`, `#seat2`, `#seat0`, the trick, each
-  slot and your hand), never a custom property on an ancestor, which would restyle the whole table.
+- The script writes each plane's `translate` on that element alone (`#seat1`, `#seat2`, `#seat0`, the trick, and
+  the winner's slot), never a custom property on an ancestor, which would restyle the whole table. Every layer moved
+  costs the frame, so your hand moves with its panel and the played cards with the trick area.
 - Each plane is its own layer (`will-change: translate`), so a move needs no paint and no raster.
-- The planes move `tiltHz` times a second (15), not every frame, and a plane that moved less than half a pixel isn't
-  touched. There's no transition: the shifts are a few pixels, so the steps don't show, and a running transition
-  would cost the page every frame.
+- The planes move on the screen's own frames, `tiltHz` times a second (60: every frame; a timer would drift against
+  the frames and step unevenly). A plane that moved less than half a pixel isn't touched.
+- No transition or animation carries a plane between updates: the browser ticks either on the page every frame,
+  which costs more than the write itself.
 - Shadows don't follow the tilt: a changing shadow repaints its card.
 - FX's wait for a still table (`busyFor`) ignores `box-shadow` transitions, so a shadow never holds up your turn.
 
-Measured in Chromium with the CPU slowed 4 times, over 3 s of steady small tilts on your turn: style, layout, paint and
-commit fell from about 2,550 ms to about 240 ms, raster from about 900 ms to 0, and paints from 576 to 30.
+Measured in Chromium with the CPU slowed 4 times, over 3 s of steady small tilts on your turn:
+
+| | First Tilt | 15 a second | 60 a second (now) |
+|---|---|---|---|
+| Style, layout, paint and commit | 2,553 ms | about 240 ms | about 445 ms |
+| Raster | 901 ms | 0 ms | 0 ms |
+| Paints | 576 | 30 | 0 |
+
+15 a second was cheapest but stepped visibly on a phone, so the default is every frame. 30 a second costs about
+340 ms.
 
 How a reading becomes the vector:
 
