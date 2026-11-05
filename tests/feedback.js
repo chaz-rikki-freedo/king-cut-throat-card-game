@@ -344,12 +344,12 @@ const batchSrc = `
       return { level: b && b.level.gain.value, filters: (w.__filters || []).map((f) => [f.type, f.frequency.value, f.gain.value]), comp: w.__comp && [w.__comp.threshold.value, w.__comp.ratio.value],
         full: w.KCTFeedback.core.FULL_GAIN, half: w.KCTFeedback.core.HALF_GAIN };
     });
-    expect('Full is -10 dB and Half -20 dB: Half sounds about half as loud as Full', Math.abs(mix.full - 0.3162) < 1e-3 && Math.abs(mix.half - 0.1) < 1e-9 && Math.abs(mix.level - mix.full) < 1e-9, mix);
+    expect('Full is -18 dB and Half -28 dB: Half sounds about half as loud as Full', Math.abs(mix.full - Math.pow(10, -18 / 20)) < 1e-9 && Math.abs(mix.half - Math.pow(10, -28 / 20)) < 1e-9 && Math.abs(mix.level - mix.full) < 1e-9, mix);
     expect('the master bus: a high shelf at 4.5 kHz (-5 dB), a low-pass at 9 kHz, and a soft limiter', JSON.stringify(mix.filters) === '[["highshelf",4500,-5],["lowpass",9000,0]]' && JSON.stringify(mix.comp) === '[-12,4]', mix);
     await page.selectOption('#setFbSound', 'half');
     const glide = await page.evaluate(() => { const g = /** @type {any} */ (window).__glides || []; return g[g.length - 1]; });
     await page.selectOption('#setFbSound', 'full');
-    expect('a level change glides the bus (no click) and reaches sounds already playing', glide && Math.abs(glide.v - 0.1) < 1e-9 && glide.c === 0.015, glide);
+    expect('a level change glides the bus (no click) and reaches sounds already playing', glide && Math.abs(glide.v - Math.pow(10, -28 / 20)) < 1e-9 && glide.c === 0.015, glide);
     await wait(200);
     c0 = await counts();
     await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 1, you: false }]));

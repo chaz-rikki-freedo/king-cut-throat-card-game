@@ -301,7 +301,7 @@ each sound → its gain (cue, beat, card count, variation, distance) → its pan
 
 | Stage | What it does | Why |
 |---|---|---|
-| **Level** | Full is `FULL_DB` (−10 dB) and Half is `HALF_DB` (−20 dB). | Loudness is heard in decibels: −10 dB sounds about half as loud. A gain of half (−6 dB) would sound about two thirds as loud. |
+| **Level** | Full is `FULL_DB` (−18 dB) and Half is `HALF_DB` (−28 dB). | Loudness is heard in decibels: −10 dB sounds about half as loud. A gain of half (−6 dB) would sound about two thirds as loud. |
 | **Level glide** | A Settings change glides to the new level in about 50 ms (`setTargetAtTime`). | It reaches sounds already playing, with no click. |
 | **Tone** | A high shelf at `SHELF_HZ` (−5 dB) and a gentle low-pass at `LOWPASS_HZ`. | The cards' contact, grain and air bands sit at 3 to 6 kHz. At a phone speaker's level, they sound harsh and gritty. |
 | **Limiter** | A soft compressor: threshold −12 dB, knee 12 dB, ratio 4, attack 3 ms, release 150 ms. | Stacked sounds, such as a train over a King point, never clip. Clipping is heard as grit. |
@@ -830,8 +830,8 @@ All draft values, to tune once built.
 | `GAP_VIBRATE_MS` | 150 | The minimum time between two vibrations. A card pick ignores it. |
 | `GAP_SOUND_MS` | 60 | The minimum time between two sounds |
 | `MAX_VOICES` | 4 | The most sounds that play at once |
-| `FULL_DB` | −10 | The volume for Full (gain 0.32): about half as loud as the rendered level, which was too loud on a phone |
-| `HALF_DB` | −20 | The volume for Half (gain 0.10): about half as loud as Full |
+| `FULL_DB` | −18 | The volume for Full (gain 0.13). −10 was still too loud on a phone. |
+| `HALF_DB` | −28 | The volume for Half (gain 0.04): about half as loud as Full |
 | `SHELF_HZ`, `SHELF_DB` | 4500, −5 | The master high shelf, which softens the cards' contact and grain bands |
 | `LOWPASS_HZ` | 9000 | The master low-pass |
 | `JITTER_DB` | 1.5 | How far a hit's gain varies, either way |
