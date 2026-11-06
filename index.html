@@ -722,12 +722,17 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .backs.tappable:hover{outline:1px solid rgba(255,255,255,.35);outline-offset:0.125rem}
 .tagbox .tag.tappable:focus-visible,.sscore.tappable:focus-visible,.backs.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 .tagbox .tag.open,.sscore.open,.backs.open{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.panel p{margin:0.25rem 0;line-height:1.4}
+.panel p{margin:0.25rem 0;line-height:1.4;text-wrap:pretty}
 .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .panel .pnote{color:var(--muted);font-size:0.75rem}
-.panel .pswitch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0.75rem;margin:0.5rem 0 0.125rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
-.panel .pswitch b{display:block}
-.panel .pswitch span span{display:block;color:var(--muted);font-size:0.75rem;line-height:1.35}
+.panel .pcheck{display:grid;grid-template-columns:1rem minmax(0,1fr);column-gap:0.5rem;align-items:center;margin:0.625rem 0 0;padding-top:0.625rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
+.panel .pcheck input{appearance:none;-webkit-appearance:none;width:1rem;height:1rem;margin:0;border-radius:0.25rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.panel .pcheck input:checked{background:var(--gold);border-color:var(--gold)}
+.panel .pcheck input:checked::before{content:'';position:absolute;left:0.3125rem;top:0.125rem;width:0.25rem;height:0.5rem;border:solid var(--gold-ink);border-width:0 0.125rem 0.125rem 0;transform:rotate(45deg)}
+.panel .pcheck input:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.panel .pcheck b{font-weight:600;line-height:1.25}
+.panel .pcheck:hover input:not(:checked){border-color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.panel .pcheck input{transition:none}}
 .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   .sscore{font-size:1.375rem!important}
@@ -1077,7 +1082,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'ce8aed1', date: '2026-11-05' });
+const BUILD = Object.freeze({ commit: 'a5c9b9e', date: '2026-11-06' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -6279,8 +6284,8 @@ const App = (() => {
           if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
           return [title, dl(rows)];
         }
-        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pswitch"><span><b>Forced plays</b><span>' + FORCED_DESC + '</span></span>' +
-          '<input class="sw" type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '></label>'];
+        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pcheck"><input type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '>' +
+          '<b>Auto-play single options</b></label>'];
         return [title, p1(text)];
       }
     }
