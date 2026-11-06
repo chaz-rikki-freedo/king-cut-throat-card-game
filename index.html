@@ -989,6 +989,7 @@ window.kctTheme = (() => {
     <h2 class="set-title" id="setTitle">Settings</h2>
     <div class="set-tabs" role="tablist" aria-label="Settings sections">
       <button class="set-tab" type="button" role="tab" id="setTabTable" aria-controls="setPaneTable" data-action="set-tab" data-tab="Table">Table</button>
+      <button class="set-tab" type="button" role="tab" id="setTabLook" aria-controls="setPaneLook" data-action="set-tab" data-tab="Look">Look</button>
       <button class="set-tab" type="button" role="tab" id="setTabBots" aria-controls="setPaneBots" data-action="set-tab" data-tab="Bots">Bots</button>
       <button class="set-tab" type="button" role="tab" id="setTabTools" aria-controls="setPaneTools" data-action="set-tab" data-tab="Tools">Tools</button>
     </div>
@@ -1028,6 +1029,13 @@ window.kctTheme = (() => {
         <label class="set-row"><span class="set-text"><span class="set-name">Polite Play</span><span class="set-desc">Won tricks stay face up, as at a real table: a click on trick circles shows them. Off: you remember them. Applies from your next game.</span></span><input class="sw" type="checkbox" id="setPolitePlay"></label>
         <p class="k-hint rule-note set-note" id="setPoliteNow" hidden></p>
       </div>
+      <h3 class="set-head">Table defaults</h3>
+      <div class="set-card" id="setTableDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc" id="setTableResetDesc">Table memory and House rules go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
+      </div>
+      <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
+    </section>
+    <section class="set-pane" id="setPaneLook" role="tabpanel" aria-labelledby="setTabLook" hidden>
       <h3 class="set-head">Theme</h3>
       <div class="set-card" id="setTheme">
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
@@ -1038,11 +1046,10 @@ window.kctTheme = (() => {
         <p class="k-hint set-note" id="setDepthNote" hidden></p>
       </div>      <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
       <div class="set-card" id="setFeedback" hidden></div>
-      <h3 class="set-head">Table defaults</h3>
-      <div class="set-card" id="setTableDefaults">
-        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc" id="setTableResetDesc">Table memory, House rules and Theme go back to their defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="table-reset">Reset…</button></div>
+      <h3 class="set-head">Look defaults</h3>
+      <div class="set-card" id="setLookDefaults">
+        <div class="set-row"><span class="set-text"><span class="set-name">Reset this tab</span><span class="set-desc" id="setLookResetDesc">Theme goes back to its defaults. Your progress stays.</span></span><button class="btn" type="button" data-action="look-reset">Reset…</button></div>
       </div>
-      <p class="k-hint set-note set-copy" id="setCopy">© 2009–2026 C.R.F.Barr. All rights reserved.</p>
     </section>
     <section class="set-pane" id="setPaneBots" role="tabpanel" aria-labelledby="setTabBots" hidden>
       <div class="set-intro"><p class="set-lead">Choose who sits in each seat and how each bot plays.</p>
@@ -1084,7 +1091,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'db4b79e', date: '2026-11-06' });
+const BUILD = Object.freeze({ commit: '2d82288', date: '2026-11-06' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5471,7 +5478,7 @@ const Depth = (() => {
     const off =  (el.querySelector('[data-dd="off"]'));
     off.checked = preview || mode === 'off';
     off.disabled = mode === 'off';
-    off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Table.' : 'The classic table, to compare. The setting stays.';
+    off.parentElement.title = mode === 'off' ? 'Table depth is Off in Settings → Look.' : 'The classic table, to compare. The setting stays.';
      (el.querySelector('[data-dd="level"]')).hidden = mode !== 'tilt';
   }
   const json = () => JSON.stringify(Object.fromEntries(keys.map(k => [k, num(k)])));
@@ -5881,19 +5888,31 @@ const App = (() => {
   }
   const AFTER = '<p>The page reloads. There is no undo.</p>';
   async function askTableReset() {
-    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Full help and the felt to Winter, with Color-blind safe colors and Table depth off. ' +
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Full help. ' +
       'Mediator picks the Showdown lead turns on, Polite Play turns off, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
-      (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+      'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
     tableReset();
   }
   function tableReset() {
     Logger.log('TABLE_RESET', {});
-    Moments.control('reset');
     setMemoryAll(MEMORY_DEFAULT);
     Object.assign(app.houseRules, HOUSE_DEFAULTS);
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setPolitePlay').checked = app.houseRules.politePlay;
+    closePanel();
+    saveSettings();
+    draw([]);
+    return true;
+  }
+  async function askLookReset() {
+    if (!await ask({ title: 'Reset the Look tab?', text: '<p>The felt goes back to Winter, with Color-blind safe colors and Table depth off. ' +
+      (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
+    lookReset();
+  }
+  function lookReset() {
+    Logger.log('LOOK_RESET', {});
+    Moments.control('reset');
     setTheme(Theme.defaultFelt, '');
     setDepth(DEPTH_DEFAULT);
     closePanel();
@@ -7963,6 +7982,7 @@ const App = (() => {
       case 'backup-save': saveBackup(); break;
       case 'backup-restore': $('backupFile').click(); break;
       case 'table-reset': askTableReset(); break;
+      case 'look-reset': askLookReset(); break;
       case 'client-reset': askClientReset($('setClientReset').value); break;
       case 'toggle-autoplay': toggleAutoplay(); break;
       case 'toggle-settings': openSettings($('settingsPanel').hidden); break;
@@ -7983,7 +8003,7 @@ const App = (() => {
       default: break;
     }
   }
-  const SET_TABS = ['Table', 'Bots', 'Tools'];
+  const SET_TABS = ['Table', 'Look', 'Bots', 'Tools'];
   function showSettingsTab(name, focus) {
     const tab = SET_TABS.includes(name) ? name : 'Table';
     for (const t of SET_TABS) {
@@ -8437,7 +8457,7 @@ const App = (() => {
     feedbackOn = true;
     $('setFeedbackHead').hidden = false;
     $('setFeedback').hidden = false;
-    $('setTableResetDesc').textContent = 'Table memory, House rules, Theme and Sound and touch go back to their defaults. Your progress stays.';
+    $('setLookResetDesc').textContent = 'Theme, and Sound and touch, go back to their defaults. Your progress stays.';
     Moments.control('theme', { felt: app.ui.felt });
     Moments.control('speed', { speed: app.ui.speed });
   }
@@ -8626,7 +8646,7 @@ const App = (() => {
   }
   function resetResults() { stats.reset(); replays.clear(); Logger.log('RESULTS_RESET'); }
   const statsAPI = Object.freeze(Object.assign({}, stats, { reset: resetResults }));
-  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount, forcedCard };
+  return { init, newGame, act, skip, app, enterIdle, readCode, resumeGame, showMenu, slots, stats: statsAPI, replays, profile, replayCode, botConfig, runReview, habits, explain, setSeat, dynamicTable, backup, tableReset, lookReset, clientReset, infoPanel, gameOn, inWaves, waveCounts, forfeitWave, houseNotes, beatenCount, forcedCard };
 })();
 const SelfTest = (() => {
   const R = Rules, P = Engine.P;
@@ -9606,7 +9626,7 @@ const SelfTest = (() => {
           [0, 1, 2].map(p => panel.querySelectorAll('#setSeat' + p + ' [data-field]').length), [21, 21, 21]);
         check('each seat is a collapsed group of collapsed groups', [0, 1, 2].every(p => { const d = document.getElementById('setSeat' + p); return !!d && d.tagName === 'DETAILS' && d.querySelectorAll('details.seat-sub').length === 4; }));
         const tabs = [...panel.querySelectorAll('.set-tab')];
-        check('three settings tabs, each with its pane', tabs.length === 3 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
+        check('four settings tabs, each with its pane', tabs.length === 4 && tabs.every(t => !!document.getElementById(t.getAttribute('aria-controls') || '')));
         const build = document.getElementById('setBuild');
         check('the settings footer names the build', !!build && build.textContent === 'Build ' + BUILD.commit + (BUILD.date ? ' · ' + BUILD.date : ''));
         const kept = { enabled: Logger.enabled, lines: Logger.lines, listeners: Logger.listeners, t0: Logger.t0 };

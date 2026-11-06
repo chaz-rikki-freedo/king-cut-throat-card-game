@@ -1,6 +1,6 @@
 /* King Cut-Throat: feedback/palettes.js, the sound presets for each theme palette.
 
-   Data only. Each palette belongs to a Felt (Settings → Table → Theme) and has:
+   Data only. Each palette belongs to a Felt (Settings → Look → Theme) and has:
    - tone:    the result family's key (root frequency, scale in semitones) and note partials.
    - timbre:  multipliers on the card families' primitives (bright is added). Classic is neutral.
    - presets: sounds by name. A preset is the Card Sound Lab's identity of a sound: family, archetype
