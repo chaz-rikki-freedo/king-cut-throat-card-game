@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Every setting through the real controls: each control changes what it names, is kept (or, for the ones kept for one
-   page load, is not), shows the same after a reload, and a new game takes it. Table tab: Table memory, House rules,
-   Theme (with Table depth). Bots tab: AI can play your seat, every control of every seat, Who sits in West and East, Reset this seat and
+   page load, is not), shows the same after a reload, and a new game takes it. Table tab: Table memory, House rules.
+   Look tab: Theme (with Table depth). Bots tab: AI can play your seat, every control of every seat, Who sits in West and East, Reset this seat and
    Reset this tab.
    Tools tab: Event log, Clear log, Self-tests. resets.js, theme.js, backup-ui.js and sw.js go deeper on their own
    parts. Exit code 1 on a failed check. */
@@ -33,7 +33,7 @@ function expect(name, ok, detail) {
   const newFree = () => step(`KCT.App.newGame(4242); await sleep(50); const s = app.state;
     return { mediatorLead: s.mediatorLead, jokerFlip: s.jokerFlip || '', politeOff: !!s.politeOff, personas: app.ui.personas.slice(), tunes: app.ui.tunes.slice() };`);
   try {
-    console.log('Table tab');
+    console.log('Table and Look tabs');
     await tab('Table');
     /* The defaults on a new device: Help level Full help, Polite Play off, the Winter felt and Table depth off. */
     const defaults = () => step(`return { felt: (q('#setFelt input:checked') || {}).value, bg: getComputedStyle(document.documentElement).getPropertyValue('--felt').trim(),
@@ -46,7 +46,7 @@ function expect(name, ok, detail) {
     await step(`localStorage.setItem('kct.settings', JSON.stringify({ felt: 'classic', colors: 'colorblind', depth: 'still', politePlay: true, mediatorLead: false, jokerFlip: 'H',
       memory: { trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true } })); return 1;`);
     await reload();
-    await tab('Table');
+    await tab('Look');
     const m = Object.assign(await defaults(), { saved: await saved() });
     expect('old saved settings take the new defaults, and keep the rest',
       m.felt === 'winter' && m.bg !== '#155a36' && m.preset === 'full' && !m.polite && m.depth === 'off' && !m.cls &&
@@ -57,7 +57,7 @@ function expect(name, ok, detail) {
     expect('a choice made after the new defaults is kept: they apply once', (await saved()).felt === 'classic' && (await step(`return app.ui.felt;`)) === 'classic');
     await step(`localStorage.removeItem('kct.settings'); return 1;`);
     await reload();
-    await tab('Table');
+    await tab('Look');
     for (const f of ['spring', 'summer', 'fall', 'winter', 'classic']) {
       await page.click('#setFelt .felt-tile:has(input[value="' + f + '"])');
       expect('Felt ' + f + ' is kept', (await saved()).felt === f);
@@ -112,7 +112,7 @@ function expect(name, ok, detail) {
       t.saved === 'tilt' && t.cls && t.moved > 0.2 && t.settings === 0 && t.instant === 0, t);
     expect('Table depth Tilt: a hand that never holds still doesn\'t hold up your turn (the cues show within 1.5 s)', t.cueWait >= 0 && t.cueWait < 1500, t);
     expect('Table depth Tilt: while a card flies, the tilt eases down (to a third)', !!t.calm && t.calm[0] > 0.2 && t.calm[1] < t.calm[0] * 0.7, t);
-    await tab('Table');
+    await tab('Look');
     await set('setDepth', 'still');
     await tab('Table');
 
@@ -242,7 +242,7 @@ function expect(name, ok, detail) {
     expect('Bots → Reset this tab resets every seat, and is kept', all.seats.every(x => x.who === '' && x.tune === null) && all.saved.every(x => x.who === '' && x.tune === null), all);
 
     console.log('Kept after a reload');
-    await tab('Table');
+    await tab('Look');
     await page.click('#setFelt .felt-tile:has(input[value="fall"])');
     await set('setMemKings', true);
     await set('setMediatorLead', false);

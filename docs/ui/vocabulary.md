@@ -287,18 +287,18 @@ Instances:
 | Replace-game confirm | "Start a new Waves game?" or "Start a new Free play game?" | Start new game / Keep it |
 | Discard-game confirm | "Discard your Waves game?" or "Discard your Free play game?" | Discard / Keep it |
 | Seat hand-over confirm | "Let the AI play your seat?" | Let the AI play / Keep my seat |
-| Tab reset confirm | "Reset the Table tab?" or "Reset the Bots tab?" | Reset / Cancel |
+| Tab reset confirm | "Reset the Table tab?", "Reset the Look tab?" or "Reset the Bots tab?" | Reset / Cancel |
 | Erase confirm | "Erase Waves progress?", "Erase all progress?" and so on | Erase … / Cancel |
 
 ## 5. Settings panel
 
 Panel: `#settingsPanel`. Opens from the settings button. The class `.set-off` dims a group that does not apply (in Waves, or with personalities on).
 
-Three tabs, `.set-tab` with `data-tab`: **Table** (`#setTabTable`, `#setPaneTable`), **Bots** (`#setTabBots`) and **Tools** (`#setTabTools`). The Table tab was called Game; a saved `kct.setTab` of `"Game"` opens Table.
+Four tabs, `.set-tab` with `data-tab`: **Table** (`#setTabTable`, `#setPaneTable`), **Look** (`#setTabLook`, `#setPaneLook`), **Bots** (`#setTabBots`) and **Tools** (`#setTabTools`). The Table tab was called Game; a saved `kct.setTab` of `"Game"` opens Table.
 
 Two rules keep the controls apart:
 
-- **Reset or Erase.** **Reset this tab** ends the Table and Bots tabs: it sets that tab's settings back to their defaults, at once, and keeps all progress. **Erase**, in Tools → Your data, is the only control that deletes progress, and it reloads the page. No other control resets or deletes more than one setting.
+- **Reset or Erase.** **Reset this tab** ends the Table, Look and Bots tabs: it sets that tab's settings back to their defaults, at once, and keeps all progress. **Erase**, in Tools → Your data, is the only control that deletes progress, and it reloads the page. No other control resets or deletes more than one setting.
 - **House rule or Table memory.** A house rule is what the players at a real table agree on, such as Polite Play: won tricks kept face up, so anyone may count them. Table memory helps with what the rules make you remember yourself, such as your own discards: you may not look in the pile, because it holds other players' discards too. A house rule applies from your next game; a Table memory aid applies at once.
 
 | Term | Code anchor | Kind | What it is |
@@ -311,17 +311,25 @@ Two rules keep the controls apart:
 
 ### 5.0 Table tab
 
-`#setPaneTable`. In order: **Table memory** (`#setInterface`: Help level `#setMemPreset`, then the aids), **House rules** (`#setHouseRules`), **Theme** (`#setTheme`, below) and **Table defaults**.
+`#setPaneTable`. In order: **Table memory** (`#setInterface`: Help level `#setMemPreset`, then the aids), **House rules** (`#setHouseRules`) and **Table defaults**.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
 | House rule switches | `#setMediatorLead`, `#setJokerFlip`, `#setPolitePlay` | C | Each applies from your next game: the game, its save and its replay code keep the rules it started with. |
 | House rule notes | `#setMediatorNow`, `#setJokerNow`, `#setPoliteNow` | D | "This game started with …": shown while the running game's rule differs from the setting. |
-| Table reset | `#setTableDefaults`, `table-reset` | C | **Reset this tab**: Table memory, House rules and Theme back to their defaults, after a confirm. Progress stays. |
+| Table reset | `#setTableDefaults`, `table-reset` | C | **Reset this tab**: Table memory and House rules back to their defaults, after a confirm. Progress stays. |
 
-### 5.0.1 Theme section
+### 5.0.1 Look tab
 
-`#setTheme`, the last settings card of the Table tab, before Table defaults.
+`#setPaneLook`. In order: **Theme** (`#setTheme`, below), **Sound and touch** (`#setFeedback`, filled by the feedback module, hidden without it) and **Look defaults**.
+
+| Term | Code anchor | Kind | What it is |
+|---|---|---|---|
+| Look reset | `#setLookDefaults`, `look-reset` | C | **Reset this tab**: Theme, and Sound and touch, back to their defaults, after a confirm. Progress stays. |
+
+### 5.0.2 Theme section
+
+`#setTheme`, the first card of the Look tab.
 
 | Term | Code anchor | Kind | What it is |
 |---|---|---|---|
