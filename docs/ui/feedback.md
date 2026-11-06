@@ -144,7 +144,9 @@ A beat sounds as many cards as it moves, timed as Fx moves them. Two kinds:
 | **Train**: cards land one after another | `deal`, `discard` (your cards, or backs at the pile's end), `toss`, `sink` | A deal packet: `PACKET_CARD × t` (about 20 ms at Normal). Discards: 70 ms. Tossed and sunk cards: 80 ms. | One hit per card, `spread` apart, up to `TRAIN_MAX`. The hits take the beat's variants in turn, from the one its `key` picks, and each is `TRAIN_FALL` as loud as the one before. |
 | **Gesture**: cards move together | `sweep`, `collect`, `pileSink`, `kitty`, a bot's discard layer, `handClose` | None | One sound. Its gain moves by `GESTURE_STEP` for each card above or below its usual count, within 0.8 to 1.2. A 2-card Showdown sweep is softer than a 3-card trick. |
 
-- **One voice.** A train is mixed into one buffer when it is first needed, and kept for its palette, sounds and spread, so a 4-card packet costs what one card does. A palette that finishes rendering clears the kept mixes.
+- **One voice.** A train is mixed into one buffer and kept for its palette, sounds and spread, so a 4-card packet costs what one card does. A sound that finishes rendering clears only the kept mixes that use it.
+- **Combination sounds, made ahead.** Once the sounds have rendered, the module mixes the trains a hand plays (`TRAIN_WARM`), one mix per task: a deal's packets of 3 and 4 cards at Fast, Normal and Slow, to you and to a bot, with each variant first, and discards, tosses and sinks of 2 and 3 cards. A deal's mixes come right after a deal's sounds, before the rest, and before `kct:feedback-sounds`. So a deal plays ready sounds, as single cards do, and mixes nothing at the moment it starts, when the card motion and Tilt need the page. A train outside the set is mixed when it plays, as before.
+- **Measured:** in Chromium with the CPU slowed 4 times, a deal's beats message cost 27 to 125 ms of main-thread time when its 10 packets were mixed as it arrived. With the mixes made ahead, it costs 4 to 6 ms.
 - **The ceiling.** Overlapping hits can add up, so a mix whose peak passes −1 dBFS is scaled back under it.
 - **Usual counts** (`GESTURE_CARDS`): a sweep 3, the kitty 3, a discard layer 3, the outside pile 9, a thrown-in hand 21 and your hand 7.
 
@@ -307,7 +309,7 @@ each sound → its gain (cue, beat, card count, variation, distance) → its pan
 | **Level glide** | A Settings change glides to the new level in about 50 ms (`setTargetAtTime`). | It reaches sounds already playing, with no click. |
 | **Tone** | A high shelf at `SHELF_HZ` (−5 dB) and a gentle low-pass at `LOWPASS_HZ`. | The cards' contact, grain and air bands sit at 3 to 6 kHz. At a phone speaker's level, they sound harsh and gritty. |
 | **Limiter** | A soft compressor: threshold −12 dB, knee 12 dB, ratio 4, attack 3 ms, release 150 ms. | Stacked sounds, such as a train over a King point, never clip. Clipping is heard as grit. |
-| **Variation** | Each hit's gain varies within ±`JITTER_DB` and its pitch within ±`JITTER_RATE`, by a hash of its beat's key. | No two cards land with the same force. A train's hits each take their own value inside its mix. The same key always gives the same value, so a replay sounds the same ([principle 8](#principles)). |
+| **Variation** | Each hit's gain varies within ±`JITTER_DB` and its pitch within ±`JITTER_RATE`, by a hash of its beat's key. A train's hits each take their own value inside its mix, from its first variant and their places, so the mix can be made ahead. The beat's key then varies the whole train's gain and pitch, as it plays. | No two cards land with the same force. The same key always gives the same value, so a replay sounds the same ([principle 8](#principles)). |
 | **Distance** | A bot's table sounds are `DISTANCE_DB` (−2 dB) behind yours. | Your own play sits in front. |
 | **Pan** | By the beat's `place`: the left seat left, the right seat right, yours in the middle. | Heard with headphones or stereo speakers. A browser without `StereoPannerNode` plays it in the middle. |
 
@@ -815,6 +817,11 @@ A variant adds a number to the base name: `trick-you-2`, `trick-you-3`. A stakes
 - `tools/publish.sh` adds `feedback` to the files it publishes.
 - **The module goes with the page.** When the update check finds a new page, it also fetches the three files, past the CDN (a `?fresh=` query, as for the page), into the waiting cache. Applying the update moves them in with the page, so the first load after an update runs the module published with that page. Before, the cached module ran until a later load, and the background refresh could get GitHub Pages' old copy for up to 10 minutes.
 - Each load also refreshes the three files in the background, past the CDN.
+
+### On a device
+
+When a sound plays in a desktop browser but not on a phone, the sound readout (`!dev sound`) shows each beat's verdict
+on the phone itself. See [the contract: Sound readout](feedback-contract.md#sound-readout).
 
 ## Performance
 

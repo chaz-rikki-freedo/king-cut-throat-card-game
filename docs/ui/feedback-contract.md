@@ -241,6 +241,34 @@ can come sooner, and a beat whose sound isn't rendered would be dropped. So:
 
 Adding `sound` and the new event changes no moment's shape, so `v` stays.
 
+### Sound readout
+
+When a sound doesn't play on a device, the sound readout shows where it stops, on that device.
+
+1. In the menu, type `!dev sound` in **Load a code**, and then select **Load**.
+2. Play a hand with Sound on. A small panel at the bottom left lists what the module did with each message.
+3. Select **Copy** to copy it all, with the browser's user agent, and paste it in a report. Select **▾** to fold the
+   panel to its state line. The **✕** closes it. It stays for the tab, also after a reload.
+
+The module offers two things for it. Neither changes what plays, and the game never depends on them.
+
+| Member | What it is |
+|---|---|
+| `KCTFeedback.trace` | A hook, `null` until a listener sets it, called as `trace(kind, record)`. `'beats'` after each beats message (and each retry): `{ retry, beats: [{ beat, cards, ahead, sound }] }`, with `ahead` in ms and `sound` the beat's verdict. `'moment'` after each batch: `{ anchor, beat, types, ahead, cue, sound }`. |
+| `KCTFeedback.status()` | The sound channel's state: `canSound`, `sound` (the level), `activated` (a tap came), `context` (the `AudioContext`'s state, or `none`), `rate`, `latency` (ms), `ready` and `failed` (rendered sounds), `dealReady`, `felt`, `voices`, and `trains`, `warm` and `mixed` (the kept train mixes, and how many trains played a mix made ahead or one mixed as they played). |
+
+How to read a line:
+
+| Line | Meaning |
+|---|---|
+| `beats deal×3 +383 play, …` | A beats message: each beat, its cards, how far ahead it was, and its verdict ([Feedback: Dropping](feedback.md#dropping)). `again` means its sound was still rendering, and a `retry` line follows. |
+| `land (beat) cardPlayed → cardPlayed by beats` | A batch timed to a beat: the beats play its sound. |
+| `result handScored → handLoss play` | A batch and the cue it played. |
+| `log RENDER_FAILED {…}` | A [log message](#messages-from-the-module). |
+
+The state line gives the `AudioContext`'s state and rate, the rendered sounds, whether a tap came, whether the system
+reduces motion (then the table has no motion and so no beats), and the game's speed and Table depth.
+
 ## Versioning
 
 - `v` is on every batch and on `kct:feedback-ready`.

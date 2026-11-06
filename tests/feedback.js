@@ -458,6 +458,17 @@ const batchSrc = `
       const st = w.__starts.slice(s0);
       return { n: st.length, len: st.length ? st[0].length : 0, one };
     });
+    /* Combination sounds: a deal's packets are mixed ahead, so a deal plays ready sounds and mixes nothing. */
+    const warm = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), F = w.KCTFeedback;
+      await F.test.whenRendered(); await new Promise((r) => setTimeout(r, 1500));
+      const s0 = F.status(), t0 = performance.now();
+      F.test.playBeats({ v: 1, version: w.__ver, replay: false, beats: [0, 1, 2, 3].map((i) => ({ beat: 'deal', key: 'wm|' + i, at: t0 + 100 + i * 99, you: i % 2 === 0, seat: i % 3, cards: 3 + (i % 2), spread: 19.8 })) });
+      const s1 = F.status();
+      await new Promise((r) => setTimeout(r, 900));   // its sounds and ticks are past before the next check
+      return { kept: s0.trains, warm: s1.warm - s0.warm, mixed: s1.mixed - s0.mixed, sets: F.core.TRAIN_WARM.length };
+    });
+    expect('combination sounds: a deal\'s packets play mixes made ahead, none mixed as they play', warm.kept >= 48 && warm.warm === 4 && warm.mixed === 0, warm);
     expect('card count: a train is one sound, as long as one card plus its spread (each hit within 2% of its pitch)', train.n === 1 && train.len <= train.one * 1.03 + 0.06 * 48000 + 50 && train.len > 0.06 * 48000, train);
     /* Realism: each hit varies a little, by its key (so a replay is the same); a bot's sounds sit behind yours and to its side. */
     const real = await page.evaluate(() => {
