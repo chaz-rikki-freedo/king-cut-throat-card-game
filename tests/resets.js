@@ -68,9 +68,9 @@ const SEED = {
     expect('the Table tab: Table memory, House rules, Theme, Sound and touch (the feedback module), then Table defaults with its Reset this tab',
       table.heads.join('|') === 'Table memory|House rules|Theme|Sound and touch|Table defaults' && table.reset && !table.old, table);
 
-    await page.click('#setFelt .felt-tile:has(input[value="winter"])');
+    await page.click('#setFelt .felt-tile:has(input[value="spring"])');
     await page.click('label.set-row:has(#setColorBlind)');
-    await page.selectOption('#setDepth', 'off');
+    await page.selectOption('#setDepth', 'still');
     await step(`q('#setMemEach').open = true; q('#setMemAdds').open = true; q('#setMemShows').open = true; return 1;`);
     await page.click('label.set-row:has(#setMemTrumps)');
     await page.click('label.set-row:has(#setMemVoids)');
@@ -78,21 +78,21 @@ const SEED = {
     await page.selectOption('#setJokerFlip', 'H');
     await page.click('label.set-row:has(#setPolitePlay)');
     const changed = json(await stored(), 'kct.settings');
-    expect('the settings are changed first', changed.felt === 'winter' && changed.depth === 'off' && changed.memory.trumps && !changed.mediatorLead && changed.jokerFlip === 'H' && !changed.politePlay, changed);
+    expect('the settings are changed first', changed.felt === 'spring' && changed.depth === 'still' && !changed.memory.trumps && !changed.memory.voids && !changed.mediatorLead && changed.jokerFlip === 'H' && changed.politePlay, changed);
 
     a = await press('table-reset');
     expect('Reset asks first, on Cancel, with a red button', a.open && a.title === 'Reset the Table tab?' && a.danger && a.focus === 'ask-cancel', a);
     await page.click('[data-action="ask-cancel"]');
-    expect('Cancel changes nothing', json(await stored(), 'kct.settings').felt === 'winter');
+    expect('Cancel changes nothing', json(await stored(), 'kct.settings').felt === 'spring');
     await press('table-reset');
     await page.click('[data-action="ask-ok"]');
     let s = await step(`return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, depth: q('#setDepth').value, cls: document.documentElement.classList.contains('depth'), preset: q('#setMemPreset').value,
       ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value, pp: q('#setPolitePlay').checked, saved: JSON.parse(localStorage.getItem('kct.settings')) };`);
-    expect('Theme goes back to Classic, color pack off, Table depth Still, at once', s.felt === 'classic' && !s.cb && s.saved.felt === 'classic' && s.saved.colors === '' &&
-      s.depth === 'still' && s.cls && s.saved.depth === 'still', s);
-    expect('Table memory goes back to Standard', s.preset === 'standard' &&
-      JSON.stringify(s.saved.memory) === JSON.stringify({ trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true }), s.saved.memory);
-    expect('House rules go back to their defaults', s.ml && s.jf === '' && s.pp && s.saved.mediatorLead && s.saved.jokerFlip === '' && s.saved.politePlay, s);
+    expect('Theme goes back to Winter, color pack off, Table depth Off, at once', s.felt === 'winter' && !s.cb && s.saved.felt === 'winter' && s.saved.colors === '' &&
+      s.depth === 'off' && !s.cls && s.saved.depth === 'off', s);
+    expect('Table memory goes back to Full help', s.preset === 'full' &&
+      JSON.stringify(s.saved.memory) === JSON.stringify({ trumps: true, kings: true, turned: true, voids: true, showTurned: true, showDiscards: true, showPlays: true }), s.saved.memory);
+    expect('House rules go back to their defaults', s.ml && s.jf === '' && !s.pp && s.saved.mediatorLead && s.saved.jokerFlip === '' && s.saved.politePlay === false, s);
     let d = await stored();
     expect('progress stays', json(d, 'kct.waves').unlocked === 4 && json(d, 'kct.replays').length === 3, d['kct.waves']);
 

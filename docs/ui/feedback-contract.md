@@ -1,6 +1,6 @@
 # Feedback contract
 
-> **Status: draft.** Nothing is built yet. Companion to [Feedback](feedback.md), which covers what the module does with the moments.
+> **Status: built.** Companion to [Feedback](feedback.md), which covers what the module does with the moments.
 
 This page defines how the game and the optional feedback module talk to each other: what the game sends, when it sends it, and how the module loads. Both sides must match it exactly. Change it rarely, and when an existing moment changes shape, change `v` (see [Versioning](#versioning)).
 
@@ -277,7 +277,7 @@ reduces motion (then the table has no motion and so no beats), and the game's sp
 
 ## Other listeners
 
-`kct:moment` is open to any optional listener, and each one ignores what it doesn't use. A listener outside `feedback/` doesn't share the module's rule table, so it can't take part in a combined cue. Common parallax ([#185](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185)) doesn't listen at all (see [Feedback: Parallax](feedback.md#parallax)).
+`kct:moment` is open to any optional listener, and each one ignores what it doesn't use. A listener outside `feedback/` doesn't share the module's rule table, so it can't take part in a combined cue. Common parallax ([Table depth](depth.md)) doesn't listen at all (see [Feedback: Parallax](feedback.md#parallax)).
 
 ## Code in `index.html`
 

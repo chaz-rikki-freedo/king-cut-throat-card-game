@@ -100,7 +100,7 @@ A theme pack gives new values to tokens. The game's packs are JSON in the head o
 
 | Kind | Sets | In Settings | Check |
 |---|---|---|---|
-| **Felt** | Surfaces: `--page`, `--felt`, `--felt-edge`, the Showdown felt, `--sheet`, `--muted`, and the Settings surfaces (`--set-*`). | **Felt** tiles: Classic (no tokens: the defaults), Spring, Summer, Fall, Winter. | A felt may keep a known problem of the defaults only when it changes neither color of the pair. Every contrast pair must pass on its surfaces. |
+| **Felt** | Surfaces: `--page`, `--felt`, `--felt-edge`, the Showdown felt, `--sheet`, `--muted`, and the Settings surfaces (`--set-*`). | **Felt** tiles: Classic (no tokens: the base tokens), Spring, Summer, Fall, Winter (the default felt). | A felt may keep a known problem of the defaults only when it changes neither color of the pair. Every contrast pair must pass on its surfaces. |
 | **Color** | Names, mode chips, the selection. | **Color-blind safe colors**, over any felt. | Strict: with each felt, no problem at all, known or not. |
 
 `node palette.js` checks every felt alone and every felt with every color pack, and fails on a token that does not exist or a value that is not a color. The pack colors are not stray colors. A small script in the head (`#themeBoot`) applies the saved packs before the page draws: it sets each token on `:root` and `<meta name="theme-color">` to the felt edge.

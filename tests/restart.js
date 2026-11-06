@@ -135,7 +135,7 @@ const SEATS = [
       return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, mem: q('#setMemPreset').value,
         ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value, pp: q('#setPolitePlay').checked, log: q('#setEnable').checked,
         seats: app.seats.every(s => s.who === '' && s.tune === null), free: !!A.slots.get('free'), waves: !!A.slots.get('waves') };`);
-    expect('the defaults stay after a restart', again.felt === 'classic' && !again.cb && again.mem === 'standard' && again.ml && again.jf === '' && again.pp && !again.log && again.seats, again);
+    expect('the defaults stay after a restart', again.felt === 'winter' && !again.cb && again.mem === 'full' && again.ml && again.jf === '' && !again.pp && !again.log && again.seats, again);
     expect('the saved games are still there', again.free && again.waves, again);
 
     expect('no page errors', errors.length === 0, errors);

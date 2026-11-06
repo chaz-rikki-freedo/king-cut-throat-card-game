@@ -21,6 +21,7 @@ The log keeps its last 1,500 lines, so a very long log loses that line. After **
 | Save format | `SAVE_FORMAT` in `index.html` | 1 | The unfinished game kept for each mode (`kct.slots`). A save in another format is dropped, and the app says so once. | A saved Engine state from an older app can't be resumed. |
 | Backup version | `Backup.VERSION` in `index.html` | 1 | The backup envelope (`format: 'kct-backup'`) and its code prefix, `KCTS1-`. See [backup.md](backup.md). A backup newer than the app is refused. | The envelope changes. The data inside it is the `kct.` keys as stored, so it doesn't need its own version. |
 | Profile version | `Dynamic.PROFILE_VERSION` in `index.html`, kept as `v` in `kct.profile` | 1 | The Dynamic mode profile. A profile with another `v` starts again from blank. | The profile's fields change meaning. |
+| Settings defaults | `defaults` in the theme boot script (`window.kctTheme.defaults`) in `index.html`, kept as `defaults` in `kct.settings` | 2 | Which defaults the saved settings were made under. Settings with another value (or none) take the current defaults once, on the next load, and are saved with the current value. Version 2: Help level **Full help**, Polite Play off, the Winter felt and Table depth Off. Every other setting is kept. A backup restored from before version 2 takes them too. | A default changes and must reach players who already have saved settings. A new default that should reach new players only needs no change. |
 | Build | `BUILD` in `index.html` | `dev` on `main` | The published copy: the `main` commit and its date. `tools/publish.sh` writes it, and Settings and About show it. The service worker uses it to tell the game page from other pages. | Never by hand. The publish script sets it. |
 
 ## Release number
@@ -34,7 +35,7 @@ A release number such as `0.6.35` appears only in the publish commit message on 
 | Seed | A plain 32-bit number, 0 to 4294967295, with no format of its own. What a seed produces depends on the Engine version. |
 | Random-number generator | mulberry32, in `RNG`. A change to it, or to how the Engine draws from it, raises the Engine version. |
 | `state.version` | A step counter in each game, not a format: it goes up by one with each action. |
-| Settings, wave progress, results, replay list | `kct.settings`, `kct.waves`, `kct.stats` and `kct.replays` have no version. The app checks each value when it loads and drops what doesn't make sense. |
+| Settings, wave progress, results, replay list | `kct.settings`, `kct.waves`, `kct.stats` and `kct.replays` have no format version. The app checks each value when it loads and drops what doesn't make sense. (`kct.settings` has a defaults version: see above.) |
 | Service worker cache | No number by design. A changed page on the server is the new version (see the comment at the top of `sw.js`). |
 | Web app manifest | No version field. The browser checks it again on its own. |
 

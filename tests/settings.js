@@ -35,6 +35,29 @@ function expect(name, ok, detail) {
   try {
     console.log('Table tab');
     await tab('Table');
+    /* The defaults on a new device: Help level Full help, Polite Play off, the Winter felt and Table depth off. */
+    const defaults = () => step(`return { felt: (q('#setFelt input:checked') || {}).value, bg: getComputedStyle(document.documentElement).getPropertyValue('--felt').trim(),
+      preset: q('#setMemPreset').value, polite: q('#setPolitePlay').checked, depth: q('#setDepth').value, cls: document.documentElement.classList.contains('depth'),
+      name: q('label[for="setDepth"]').textContent };`);
+    const d = await defaults();
+    expect('defaults: Full help, Polite Play off, Winter felt, Table depth (beta) Off',
+      d.felt === 'winter' && d.bg === '#2d4560' && d.preset === 'full' && !d.polite && d.depth === 'off' && !d.cls && d.name === 'Table depth (beta)', d);
+    /* Settings saved under the old defaults take the new ones once, on the next load, and are saved as current. */
+    await step(`localStorage.setItem('kct.settings', JSON.stringify({ felt: 'classic', colors: 'colorblind', depth: 'still', politePlay: true, mediatorLead: false, jokerFlip: 'H',
+      memory: { trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true } })); return 1;`);
+    await reload();
+    await tab('Table');
+    const m = Object.assign(await defaults(), { saved: await saved() });
+    expect('old saved settings take the new defaults, and keep the rest',
+      m.felt === 'winter' && m.bg !== '#155a36' && m.preset === 'full' && !m.polite && m.depth === 'off' && !m.cls &&
+      m.saved.defaults === 2 && m.saved.felt === 'winter' && m.saved.depth === 'off' && m.saved.politePlay === false && Object.values(m.saved.memory).every(x => x) &&
+      m.saved.colors === 'colorblind' && m.saved.mediatorLead === false && m.saved.jokerFlip === 'H', m);
+    await page.click('#setFelt .felt-tile:has(input[value="classic"])');
+    await reload();
+    expect('a choice made after the new defaults is kept: they apply once', (await saved()).felt === 'classic' && (await step(`return app.ui.felt;`)) === 'classic');
+    await step(`localStorage.removeItem('kct.settings'); return 1;`);
+    await reload();
+    await tab('Table');
     for (const f of ['spring', 'summer', 'fall', 'winter', 'classic']) {
       await page.click('#setFelt .felt-tile:has(input[value="' + f + '"])');
       expect('Felt ' + f + ' is kept', (await saved()).felt === f);
@@ -43,18 +66,18 @@ function expect(name, ok, detail) {
     expect('Color-blind safe colors on is kept', (await saved()).colors === 'colorblind');
     await set('setColorBlind', false);
     expect('Color-blind safe colors off is kept', (await saved()).colors === '');
-    /* Table depth: Still (the default) puts the depth class on the page, Off takes it away; each is kept, and shows the
-       same after a reload. */
+    /* Table depth: Off (the default) has no depth class, Still puts it on the page; each is kept, and shows the same
+       after a reload. */
     const depth = () => step(`return { cls: document.documentElement.classList.contains('depth'), sel: q('#setDepth').value };`);
     const d0 = await depth();
-    await set('setDepth', 'off');
+    await set('setDepth', 'still');
     const d1 = Object.assign(await depth(), { saved: (await saved()).depth });
     await reload();
     const d2 = await depth();
-    await set('setDepth', 'still');
+    await set('setDepth', 'off');
     const d3 = Object.assign(await depth(), { saved: (await saved()).depth });
-    expect('Table depth: Still by default, Off and Still each kept and shown after a reload',
-      d0.cls && d0.sel === 'still' && !d1.cls && d1.saved === 'off' && !d2.cls && d2.sel === 'off' && d3.cls && d3.saved === 'still', [d0, d1, d2, d3]);
+    expect('Table depth: Off by default, Still and Off each kept and shown after a reload',
+      !d0.cls && d0.sel === 'off' && d1.cls && d1.saved === 'still' && d2.cls && d2.sel === 'still' && !d3.cls && d3.saved === 'off', [d0, d1, d2, d3]);
     /* Tilt: kept; a device tilt moves the table's vector while the table shows; Settings over the table and speed
        Instant bring it back to rest; Still stops it. (Chromium answers the motion question at once.) */
     await set('setDepth', 'tilt');
@@ -93,6 +116,8 @@ function expect(name, ok, detail) {
     await set('setDepth', 'still');
     await tab('Table');
 
+    /* The memory checks start from Standard (the default is Full help, checked above). */
+    await set('setMemPreset', 'standard');
     const mem = { setMemTrumps: 'trumps', setMemKings: 'kings', setMemTurned: 'turned', setMemVoids: 'voids' };
     for (const [id, key] of Object.entries(mem)) {
       await set(id, true);
@@ -114,7 +139,7 @@ function expect(name, ok, detail) {
     }
     const memState = () => step(`return { sw: ` + JSON.stringify(Object.keys(mem).concat(Object.keys(shows))) + `.map(id => q('#' + id).checked).join(), all: q('#setMemAll').checked, mixed: q('#setMemAll').indeterminate, preset: q('#setMemPreset').value, sum: q('#setMemSum').textContent };`);
     let ms = await memState();
-    expect('Table memory starts at Standard: All aids is mixed, 3 of 7 on', ms.preset === 'standard' && ms.sw === 'false,false,false,false,true,true,true' && ms.mixed && ms.sum === '3 of 7 on', ms);
+    expect('Help level Standard: All aids is mixed, 3 of 7 on', ms.preset === 'standard' && ms.sw === 'false,false,false,false,true,true,true' && ms.mixed && ms.sum === '3 of 7 on', ms);
     await set('setMemPreset', 'real');
     ms = await memState();
     expect('Help level Real table turns every aid off', ms.sw === 'false,false,false,false,false,false,false' && !ms.all && !ms.mixed && Object.values((await saved()).memory).every(x => x === false), ms);
@@ -150,16 +175,16 @@ function expect(name, ok, detail) {
     const note = await step(`return { shown: !q('#setMediatorNow').hidden, text: q('#setMediatorNow').textContent };`);
     expect('a house rule changed mid-game: the note says the game keeps its rule', note.shown && note.text.length > 0, note);
     await set('setMediatorLead', true);
+    await set('setPolitePlay', true);
+    g = await newFree();
+    expect('Polite Play on: kept, and a new game takes it', (await saved()).politePlay === true && g.politeOff === false, g);
+    await tab('Table');
     await set('setPolitePlay', false);
     s = await saved();
     const pp = await step(`return { game: !!app.state.politeOff, note: q('#setPoliteNow').hidden ? '' : q('#setPoliteNow').textContent };`);
     expect('Polite Play off: kept, and the running game keeps Polite Play on, as the note says', s.politePlay === false && !pp.game && /started with Polite Play on/.test(pp.note), [s.politePlay, pp]);
     g = await newFree();
     expect('Polite Play off: a new game takes it', g.politeOff === true, g);
-    await tab('Table');
-    await set('setPolitePlay', true);
-    g = await newFree();
-    expect('Polite Play on: a new game takes it', g.politeOff === false, g);
 
     console.log('Bots tab');
     await tab('Bots');

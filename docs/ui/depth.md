@@ -42,16 +42,17 @@ band. No other shading is needed.
 
 ## The setting
 
-Settings → Table → Theme → **Table depth**:
+Settings → Table → Theme → **Table depth (beta)**:
 
-- **Still** (the default): the depth rules apply. A card in your hand lifts while you touch it. With a mouse, it
+- **Off** (the default): the classic table, exactly as before Table depth.
+- **Still**: the depth rules apply. A card in your hand lifts while you touch it. With a mouse, it
   lifts while the pointer is over it.
 - **Tilt**: everything in Still, and the table also shifts a little as you tilt your phone. On a computer, the mouse
   gives the same input. See [Tilt](#tilt).
-- **Off**: the classic table, exactly as before Table depth.
 
 The setting is kept with the other settings (`kct.settings`, `depth`), so a backup holds it. **Reset this tab** sets
-it back to Still.
+it back to Off. Settings saved before Off became the default (defaults version 2) changed to Off once, on their next
+load; see [Versions](../versions.md).
 
 ## Tilt
 
@@ -180,5 +181,19 @@ Tuned values last for the tab only (sessionStorage `kct-depth`), and a backup ne
 | 1 (done, PR #308) | `DEPTH`, the Still and Off setting, heights and shadows, the touch lift, and the tuning panel. |
 | 2 (done, PR #309) | Tilt: device orientation and the mouse, opt-in, with the planes and shadows above. |
 | 3 (done, PR #310) | Motion: a played card's rise, a won trick's lift and the trump light. |
-| 4 (this) | Light before movement: the felt's light, the focus (the trick's winner) with its own light, and the planes at rest. |
-| 5 | Event depth: the feedback module's parallax channel (`KCTFeedback.parallax`), so a moment's motion lands on its beat. |
+| 4 (done, PR #316) | Light before movement: the felt's light, the focus (the trick's winner) with its own light, and the planes at rest. |
+| 5 | Event depth: the feedback module's parallax channel (`KCTFeedback.parallax`), so a moment's motion lands on its beat. The motions, their settings, their dropping rule and how they avoid cards in flight (`Fx.busyFor()`) are defined here. |
+| 6 | Common parallax off the table: the drifting kings, crowns and pips on the About card and the menu (`.about-kings`). See [Off the table](#off-the-table). |
+
+This page now holds the remaining work from [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185), which is closed.
+
+### Off the table
+
+Step 6 follows the table's rules: it stops in Off, at Instant and with reduced motion, it moves layers with `transform`
+only, it runs on animation frames and pauses while the page is hidden, and the text and the card stay still. In addition:
+
+- **The menu's layers.** `.menu-stage .about-kings` is `position: fixed` behind a card with a backdrop filter. A moving
+  layer must not break that, or the floating versions pill on **Load a code**.
+- **Device tilt.** iOS asks permission for device orientation, so pointer or scroll input may be the default, with
+  tilt as an option.
+

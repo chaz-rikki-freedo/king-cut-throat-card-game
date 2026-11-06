@@ -96,7 +96,7 @@ Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the
 
 | Setting | What it does |
 |---|---|
-| **Help level** | **Standard** by default. Picks every Table memory aid at once: **Full help** (every aid on), **Standard** (the four popup aids off, the three table aids on: the table as it was before these settings) or **Real table** (every aid off: you remember it all, as at a real table). Any other mix reads **Custom**. |
+| **Help level** | **Full help** by default. Picks every Table memory aid at once: **Full help** (every aid on), **Standard** (the four popup aids off, the three table aids on: the table as it was before these settings) or **Real table** (every aid off: you remember it all, as at a real table). Any other mix reads **Custom**. |
 | **Each aid** | A collapsed group, with how many aids are on. **All aids** turns every aid on or off at once; with some on, its knob waits halfway. Under it, two collapsed groups of switches. |
 | **Added to popups** | Four switches, each off in Standard. Each adds to the popups one fact that every player at the table has seen this hand, never a card someone holds unseen. **Trumps played**: the Trump popup marks each trump, highest first: yours are tinted green, and the ones played, discarded by you or on the outside pile are dimmed, with **Played** or **Discarded** beside them. The turned-up card says **Turned** (or **Turned, Played**) wherever it is. A trump with no mark and no note is not seen yet. **Kings not played**: the Hand popup lists the four Kings the same way, the trump King first. **Turned card**: who took the turned-up card and whether they have played it. **Voids**: a bot's hand of backs shows the suits it has shown void in. With a switch off, its popup names the switch. |
 | **Shown on the table** | Three switches, each on in Standard. Off, you remember it yourself. **Turned-up card**: off, once the bidding ends the **Turned up** cell goes, the popups say "the turned-up card" instead of showing it, the Trump list drops its **Turned** note, and the Latest Scroll hides the lines that name it. While the bidding decides, the card shows as always. **Your discards**: off, the Outside popup and the Kitty tag's popup give how many you discarded, not which, and the Showdown's Outside cell shows backs. **Plays in the Latest Scroll**: off, the Latest Scroll hides each card played; bids, trick winners and scores stay. The lines are only hidden: they stay in the save, and come back when the switch is on. |
@@ -111,7 +111,7 @@ The House rules card starts with a short note: changes apply from your next game
 |---|---|
 | **Mediator picks the Showdown lead** | On by default. After the Showdown discards, the mediator picks which Showdown player leads the first trick. A bot mediator picks by its personality (see **Opponents**). Off: the Showdown player who won the latest main trick leads. A game keeps the rule it started with: a change applies from your next game, and the Settings panel and the Showdown summary say so while the running game differs. |
 | **Turned-up Joker** | **Redeal** by default: when the dealer turns up the Joker, the hand is void and the same dealer deals again. Set a suit (**Spades**, **Hearts**, **Diamonds** or **Clubs**) or **Random**, to save a deal: the Joker then offers that suit for trump, as if a card of that suit was turned up. **Random** draws the suit when the Joker is turned up. Bidding goes on as usual: accept that suit in round 1 (the Joker goes to the player left of the namer), or pass, and the suit is blocked in round 2. Only in that hand, the Joker shows its suit under its corner star; it is still the Best Bower in every suit. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
-| **Polite Play** | On by default. A click on a player's trick circles shows the tricks they won this hand, as at a real table where each player keeps the tricks they won face up. Off: the circles only count, and you keep track of the tricks yourself. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
+| **Polite Play** | Off by default. On, a click on a player's trick circles shows the tricks they won this hand, as at a real table where each player keeps the tricks they won face up. Off: the circles only count, and you keep track of the tricks yourself. A game keeps the rule it started with: a change applies from your next game, and the Settings panel says so while the running game differs. |
 
 All three settings are kept after a reload, and each applies from your next game: a game keeps the house rules it started with, and so does its replay code.
 
@@ -123,10 +123,11 @@ After House rules, in the Table tab.
 
 | Setting | What it does |
 |---|---|
-| **Felt** | The color of the table, the page and the panels: **Classic** (the green felt, the default), **Spring** (lilac), **Summer** (sea teal), **Fall** (russet, with a navy Showdown felt) or **Winter** (slate). Each tile shows its felt. The change is at once, and the browser bar takes the felt's color. |
+| **Felt** | The color of the table, the page and the panels: **Classic** (the green felt), **Spring** (lilac), **Summer** (sea teal), **Fall** (russet, with a navy Showdown felt) or **Winter** (slate, the default). Each tile shows its felt. The change is at once, and the browser bar takes the felt's color. |
 | **Color-blind safe colors** | Off by default. On, the names, the mode chips and the selection take colors that stay apart with red-green color blindness (deuteranopia and protanopia), with any felt. The bots and the modes change color; their names and labels do not change. |
+| **Table depth (beta)** | **Off** by default: the classic flat table. **Still**: each card casts a shadow from its height over the felt, and a card in your hand lifts as you touch it. **Tilt**: Still, and the table also shifts a little as you tilt your phone, or with the mouse. See [Table depth](docs/ui/depth.md). |
 
-The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the Classic felt never flashes first.
+The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the default felt never flashes first.
 
 ### Table: Sound and touch
 
@@ -142,7 +143,7 @@ At speed **Instant**, nothing plays. The three settings are kept on the device, 
 
 ### Table: Reset this tab
 
-**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Standard**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play on; they apply from your next game) and the theme to Classic, with Color-blind safe colors off. With the feedback module loaded, Vibration, Sound and Sound in replays turn off too. Your progress stays.
+**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Full help**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play off; they apply from your next game) and the theme to Winter, with Color-blind safe colors and Table depth off. With the feedback module loaded, Vibration, Sound and Sound in replays turn off too. Your progress stays.
 
 Under it, the Table tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
 

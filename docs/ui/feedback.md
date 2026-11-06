@@ -1,6 +1,6 @@
 # Feedback: vibration, sound and event parallax
 
-> **Status: being built, in phases.** Planning for [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184), [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183) and the event part of [#185 Parallax](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/185).
+> **Status: vibration and sound are built.** They close [#184 Haptics](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/184) and [#183 Sound effects](https://github.com/chaz-rikki-freedo/king-cut-throat-card-game/issues/183). Event parallax is step 5 of [Table depth: Next steps](depth.md#next-steps).
 >
 > | Phase | What | State |
 > |---|---|---|
@@ -56,7 +56,7 @@ Moment names come from [Game moments](moments.md). Area and part names come from
 |---|---|---|---|
 | Vibration | `navigator.vibrate(pattern)` | Chrome and Chrome-based browsers on Android, including the installed app | A new call replaces the pattern still running. Not on iPhone: no workarounds are used. |
 | Sound | Web Audio (`AudioContext`) | All supported browsers | Made by `feedback/synth.js` from the presets of the current [theme palette](#theme-palettes). Never `<audio>` elements. |
-| Event parallax | Defined in #185 | Defined in #185 | Driven by the cue table, see [Parallax](#parallax). |
+| Event parallax | See [Table depth: Next steps](depth.md#next-steps) | See [Table depth: Next steps](depth.md#next-steps) | Driven by the cue table, see [Parallax](#parallax). |
 
 Each channel plays its part on its own, under its own [gates](#gates) and [dropping](#dropping) rules, so a cue still works with any channel missing: with Sound off, the vibration and the motion still play; on an iPhone, the sound and the motion still play.
 
@@ -76,7 +76,7 @@ The module adds these rows to **Settings → Table**, under the heading **Sound 
 - All three are kept on the device only: one `localStorage` key each, read inside `try`, the same way as the Awards switch. The keys start with `kct.` (see [Feedback contract: Device keys](feedback-contract.md#device-keys)), so **Progress + settings** in **Erase** clears them with the rest, and a backup carries them like every other setting. They are not part of `saveSettings()` or a game save.
 - The rows use the game's own Settings markup and add no CSS (see [Feedback contract: The markup the module may use](feedback-contract.md#the-markup-the-module-may-use)).
 - **Reset this tab** sets all three back to Off.
-- Event parallax settings belong to #185.
+- Event parallax settings belong to [Table depth: Next steps](depth.md#next-steps).
 
 ## Timing
 
@@ -282,7 +282,7 @@ Tap batches hold one moment each, so their rules need no rank.
 
 **Beat** marks a sound that the [beats](#beats) play when the batch carries `beat: true`. The cue's other parts still play.
 
-Parallax motion names are placeholders until #185 defines the motions. Several rules can share one response: `showdownMediated` reuses `showdown-win`.
+Parallax motion names are placeholders until [Table depth: Next steps](depth.md#next-steps) defines the motions. Several rules can share one response: `showdownMediated` reuses `showdown-win`.
 
 ### Cue rules
 
@@ -581,12 +581,12 @@ Parallax comes in two kinds:
 | Kind | What it is | Where it lives | Driven by |
 |---|---|---|---|
 | **Event parallax** | A short motion at a game moment, such as a lift of the table at match point | The module, as its third channel | The rule table and cue table, like vibration and sound |
-| **Common parallax** | Ambient parallax unrelated to game moments, such as depth in the menu or the felt | Outside the module, under #185 | Its own inputs. It never reads moments. |
+| **Common parallax** | Ambient parallax unrelated to game moments, such as depth in the menu or the felt | Outside the module, in [Table depth](depth.md) | Its own inputs. It never reads moments. |
 
 - Event parallax follows everything on this page: the gates, dropping, variety, and silence when the module is missing.
 - Common parallax works without the module. Removing `feedback/` stops event parallax only.
 - Both stop at Instant (principle 5) and respect the system's reduced-motion setting.
-- The motions, their settings, their dropping rule and how they avoid cards in flight (`Fx.busyFor()`) belong to #185's spec.
+- The motions, their settings, their dropping rule and how they avoid cards in flight (`Fx.busyFor()`) belong to [Table depth: Next steps](depth.md#next-steps).
 
 ## Gates
 
@@ -596,7 +596,7 @@ The game sends nothing at all in some situations, such as at Instant or during a
 |---|---|---|
 | The contract versions don't match | `v` | Every batch is ignored. |
 | The channel's setting is off | Its `localStorage` key | Sound: the level is Off. |
-| The channel isn't supported | `typeof navigator.vibrate`, `window.AudioContext` | Event parallax: see #185. |
+| The channel isn't supported | `typeof navigator.vibrate`, `window.AudioContext` | Event parallax: see [Table depth: Next steps](depth.md#next-steps). |
 | No tap yet on this page load | `navigator.userActivation.hasBeenActive` | Browsers block sound and vibration until then. If the property is missing, those channels stay quiet. |
 | The replay viewer | The batch's `replay` | No vibration. Sound plays only with **Sound in replays** on. |
 | The tab is hidden | `document.hidden` | |
@@ -684,7 +684,7 @@ Each **Felt** in **Settings → Table → Theme** has a palette: its own sound f
 - **Showdown voice.** A palette can have Showdown versions of its presets, named with `-showdown`, such as `card-play-showdown`. They play from `showdownCalled` to `showdownScored`. Fall uses them to match its navy Showdown felt. A missing Showdown version uses the ordinary preset.
 - **The game tells the module the felt** with the `theme` control message, at load and on every change (see [Feedback contract: Control messages](feedback-contract.md#control-messages)).
 - **Color-blind safe colors** don't affect sound.
-- **Event parallax** can be themed the same way, such as drifting petals for Spring. The motions belong to #185.
+- **Event parallax** can be themed the same way, such as drifting petals for Spring. The motions belong to [Table depth: Next steps](depth.md#next-steps).
 - **The replay viewer** uses your current felt's palette, the same way it shows your current felt.
 
 ### Fallbacks
@@ -881,7 +881,7 @@ Replacing stops the old context's voices and closes it. The sounds are `AudioBuf
 8. Each channel takes its part. The [dropping](#dropping) checks run, and a part that passes plays once:
    - **Vibration:** `navigator.vibrate(pattern)`.
    - **Sound:** a buffer source, through the master bus at the Sound level, started at the batch's `at` on the audio clock (see [Scheduling](#scheduling)).
-   - **Event parallax:** as #185 defines.
+   - **Event parallax:** as [Table depth: Next steps](depth.md#next-steps) defines.
 9. Each channel records the time and rank, for its next gap check.
 
 ### 4b. When beats arrive
@@ -904,7 +904,7 @@ Replacing stops the old context's voices and closes it. The sounds are `AudioBuf
 ## Code
 
 - One file, `feedback/feedback.js`: no build step and no dependencies. It reads nothing from the game except batches and control messages.
-- **Phase 1, built:** `KCTFeedback.core` holds the pure parts for tests (`RULES`, `CUES`, `cueFor`, `channelsFor`, `makeDropper`). Event parallax is a hook, `KCTFeedback.parallax`, that #185 can set to receive motion names. Each render waits for an idle slot, with a 250 ms timeout, so a busy page still renders its sounds soon after load.
+- **Phase 1, built:** `KCTFeedback.core` holds the pure parts for tests (`RULES`, `CUES`, `cueFor`, `channelsFor`, `makeDropper`). Event parallax is a hook, `KCTFeedback.parallax`, that Table depth's step 5 can set to receive motion names. Each render waits for an idle slot, with a 250 ms timeout, so a busy page still renders its sounds soon after load.
 - Named constants: the rule table, the cue table, the derived-event patterns, and the values in [Constants](#constants).
 - `derive(memory, batch)`: a pure function from the memory and a new batch to the derived events it completes.
 - `cueFor(batch, memory)`: a pure function from a batch to its main cue, its layer and each part's variant and parameters.
@@ -998,7 +998,7 @@ The current decisions. Their history is in the commit log.
 
 | Item | Where it gets settled |
 |---|---|
-| The parallax motions, their settings, their dropping rule and their timing with `Fx` | #185's spec |
+| The parallax motions, their settings, their dropping rule and their timing with `Fx` | [Table depth: Next steps](depth.md#next-steps), step 5 |
 | Your own lab picks in place of the default rows | Export the lab's library; its `manifest.json` gives each preset |
 | Where vibration plays, now that beats give exact times | A later pass over the rule and cue tables |
 | `hand-loss` is about 370 ms, under its 400 ms target | Tuning in the lab |
