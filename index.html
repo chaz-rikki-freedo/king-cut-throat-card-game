@@ -8115,7 +8115,7 @@ const App = (() => {
         }
         /* Forced plays: a checkbox under the text, while you play a game (not in the replay viewer). */
         if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pcheck"><input type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '>' +
-          '<b>Auto-play your only legal card</b></label>'];
+          '<b>Auto-play single options</b></label>'];
         return [title, p1(text)];
       }
     }
