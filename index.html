@@ -6332,7 +6332,8 @@ const Fx = (() => {
   }
 
   /* Your hand closes up when a card leaves it, or makes room when one arrives: each card that stays slides from
-     where it was. A redraw that only selects cards moves nothing here. */
+     where it was. A redraw that only selects cards moves nothing here. Only room made for arriving cards is heard: a
+     card that leaves has its own sound (its card or discard beat), as a bot's does. */
   function slideHand(t) {
     const was = handAt;
     if (!t || !was) return;
@@ -6343,7 +6344,7 @@ const Fx = (() => {
       const r0 = was.get(c.dataset.card); if (!r0) continue;
       const r = c.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-      if (!moved) { moved = true; beat('handClose', 'handClose|' + [...was.keys()].sort().join() + '>' + cards.map(x => x.dataset.card).sort().join(), performance.now(), { cards: cards.length }); }
+      if (!moved && cards.length > was.size) { moved = true; beat('handClose', 'handClose|' + [...was.keys()].sort().join() + '>' + cards.map(x => x.dataset.card).sort().join(), performance.now(), { cards: cards.length }); }
       c.animate([{ translate: dx + 'px ' + dy + 'px' }, { translate: '0 0' }], { duration: t * 0.6, easing: 'ease-out' });
     }
   }
