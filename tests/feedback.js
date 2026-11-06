@@ -647,6 +647,22 @@ const batchSrc = `
     });
     expect('cancel: a scheduled beat sound stops, and a vibration still ahead never plays', cancelled.scheduled === 1 && cancelled.stopped === 1 && cancelled.timers === 1 && cancelled.after === 0 && cancelled.vib === 0, cancelled);
     await wait(200);
+    /* A new game counts its versions again from the start: a cancel with scope 'game' forgets the newest version heard,
+       so the new game's messages play. A step keeps it, so an older message is still stale. */
+    const newGame = await page.evaluate(async () => {
+      const w = /** @type {any} */ (window), F = w.KCTFeedback, t0 = performance.now();
+      const beat = (version, key, at) => F.test.playBeats({ v: 1, version, replay: false, beats: [{ beat: 'sweep', key, at, you: true }] })[0].sound;
+      const high = w.__ver + 500;
+      w.__control('cancel', { scope: 'step', version: high });
+      w.__control('cancel', { scope: 'step', version: high });
+      const step = beat(2, 'ng1', t0 + 20);
+      w.__control('cancel', { scope: 'game', version: -1 });
+      const game = beat(2, 'ng2', t0 + 120);
+      await new Promise((r) => setTimeout(r, 250));
+      return { high, step, game, version: F.test.state.version };
+    });
+    expect('a new game (cancel, scope game) forgets the old game\'s version: its first messages play, not stale; a step keeps it', newGame.step === 'stale' && newGame.game === 'play' && newGame.version === -1, newGame);
+    await wait(200);
     /* A beat whose sound is still rendering, with its time ahead, asks again just before it is due: rendered by then, it
        plays, even after a newer message. */
     const again = await page.evaluate(async () => {
