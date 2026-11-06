@@ -75,7 +75,7 @@ No Copy code and no paste box: a full backup is about 16 KB of text, too long to
 
 **Settings → Table → Theme**, the last settings of the Table tab (it was the first setting of the Game tab when built), saved in `kct.settings` (`felt`, `colors`):
 
-- **Felt:** a tile for each felt pack, drawn in that felt: Classic (the default green), Spring (lilac), Summer (sea teal), Fall (russet, with a navy Showdown felt) and Winter (slate). A felt sets the surface tokens: the page, the felt, its edge, the panels (`--sheet`), the muted text and the Settings surfaces (`--set-*`).
+- **Felt:** a tile for each felt pack, drawn in that felt: Classic (the base green), Spring (lilac), Summer (sea teal), Fall (russet, with a navy Showdown felt) and Winter (slate, the default). A felt sets the surface tokens: the page, the felt, its edge, the panels (`--sheet`), the muted text and the Settings surfaces (`--set-*`).
 - **Color-blind safe colors:** a switch that lays the `colorblind` color pack over any felt. It sets the names, the mode chips and the selection so that no pair collides with deuteranopia or protanopia; with it on, none of the known color-blind problems remain.
 - The packs are JSON in the head (`#themePacks`). A small script there (`#themeBoot`) applies the saved theme before the page draws and sets `<meta name="theme-color">`; the game script calls the same `apply`.
 - `palette.js` checks every felt, alone and with every color pack, in CI (see [colors.md](colors.md#theme-packs)).

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Theme (docs/ui/plan.md, phase 5), through the real controls in Settings → Table: the felt tiles and the
    Color-blind safe colors switch. Each choice sets the tokens at once and is kept, and the head script applies it
-   again on a reload, before the game starts. An unknown saved theme falls back to Classic. Exit code 1 on a failed
+   again on a reload, before the game starts. An unknown saved theme falls back to the default felt, Winter. Exit code 1 on a failed
    check. tests/palette.js checks the colors of every pack. */
 'use strict';
 const { serve, launch, openPage, run } = require('./lib/browser');
@@ -34,16 +34,16 @@ function expect(name, ok, detail) {
     expect('Theme comes after House rules, then Sound and touch (the feedback module), before the reset', first.heads.join('|') === 'Table memory|House rules|Theme|Sound and touch|Table defaults' && first.themeCard, first);
     expect('one tile for each felt: Classic and the four seasons', first.tiles.join('|') === 'Classic|Spring|Summer|Fall|Winter', first.tiles);
     const start = await now();
-    expect('Classic is the default, with no color pack', start.tile === 'classic' && !start.cb && start.felt === '#155a36' && start.bar === '#0c3a22', start);
+    expect('Winter is the default, with no color pack', start.tile === 'winter' && !start.cb && start.felt === '#2d4560' && start.bar === '#1d2f43', start);
 
     console.log('Pick a felt');
-    await page.click('#setFelt .felt-tile:has(input[value="winter"])');
+    await page.click('#setFelt .felt-tile:has(input[value="summer"])');
     let t = await now();
-    expect('Winter sets the felt and the browser bar at once', t.felt === '#2d4560' && t.bar === '#1d2f43' && t.tile === 'winter', t);
-    expect('the choice is kept in the settings', t.saved.felt === 'winter' && t.saved.colors === '', t.saved);
+    expect('Summer sets the felt and the browser bar at once', t.felt === '#0e5566' && t.bar === '#093a47' && t.tile === 'summer', t);
+    expect('the choice is kept in the settings', t.saved.felt === 'summer' && t.saved.colors === '', t.saved);
     await page.click('#setFelt .felt-tile:has(input[value="fall"])');
     t = await now();
-    expect('Fall replaces Winter', t.felt === '#6b3a1c' && t.tile === 'fall', t);
+    expect('Fall replaces Summer', t.felt === '#6b3a1c' && t.tile === 'fall', t);
     const sd = await step(`return getComputedStyle(document.documentElement).getPropertyValue('--felt-showdown').trim().toLowerCase();`);
     expect('Fall has its own Showdown felt', sd === '#283a6b', sd);
 
@@ -64,7 +64,7 @@ function expect(name, ok, detail) {
     await page.click('label.set-row:has(#setColorBlind)');
     await page.click('#setFelt .felt-tile:has(input[value="classic"])');
     t = await now();
-    expect('Classic with the switch off brings back every default', t.felt === '#155a36' && t.vex === '#ff7a7a' && t.bar === '#0c3a22' && t.saved.felt === 'classic' && t.saved.colors === '', t);
+    expect('Classic with the switch off brings back the base tokens', t.felt === '#155a36' && t.vex === '#ff7a7a' && t.bar === '#0c3a22' && t.saved.felt === 'classic' && t.saved.colors === '', t);
     const inline = await step(`
       const p = window.kctTheme.packs, names = new Set([...Object.values(p.felts), ...Object.values(p.colors)].flatMap(x => Object.keys(x.tokens)));
       return [...names].filter(k => document.documentElement.style.getPropertyValue(k));
@@ -87,7 +87,7 @@ function expect(name, ok, detail) {
     await step(`const s = JSON.parse(localStorage.getItem('kct.settings')); s.felt = 'mars'; s.colors = 'neon'; localStorage.setItem('kct.settings', JSON.stringify(s)); return 1;`);
     await page.reload();
     t = await now();
-    expect('falls back to Classic, with no color pack', t.felt === '#155a36' && t.vex === '#ff7a7a' && t.tile === 'classic' && !t.cb, t);
+    expect('falls back to Winter, the default, with no color pack', t.felt === '#2d4560' && t.vex === '#ff7a7a' && t.tile === 'winter' && !t.cb, t);
 
     expect('no page errors', errors.length === 0, errors);
   } catch (e) {

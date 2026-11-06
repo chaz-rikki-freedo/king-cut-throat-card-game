@@ -42,16 +42,17 @@ band. No other shading is needed.
 
 ## The setting
 
-Settings → Table → Theme → **Table depth**:
+Settings → Table → Theme → **Table depth (beta)**:
 
-- **Still** (the default): the depth rules apply. A card in your hand lifts while you touch it. With a mouse, it
+- **Off** (the default): the classic table, exactly as before Table depth.
+- **Still**: the depth rules apply. A card in your hand lifts while you touch it. With a mouse, it
   lifts while the pointer is over it.
 - **Tilt**: everything in Still, and the table also shifts a little as you tilt your phone. On a computer, the mouse
   gives the same input. See [Tilt](#tilt).
-- **Off**: the classic table, exactly as before Table depth.
 
 The setting is kept with the other settings (`kct.settings`, `depth`), so a backup holds it. **Reset this tab** sets
-it back to Still.
+it back to Off. Settings saved before Off became the default (defaults version 2) changed to Off once, on their next
+load; see [Versions](../versions.md).
 
 ## Tilt
 
