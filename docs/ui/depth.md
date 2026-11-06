@@ -20,10 +20,25 @@ casts comes from that height. It changes how the table looks, never how the game
 | Panels | The seats and your panel | `panelLift` |
 | Played cards | The trick | `trickZ`, and `winZ` for the winner |
 | Your hand | Your cards | `handRest`, more as you touch or select one |
-| Light | The shadows of everything above | From each height |
+| Light | The shadows of everything above, and a soft light on the felt | From each height; `light` |
+| Focus | The trick's winner, the card that matters now | `winZ`, and its own light (`glint`) |
 
 The light is fixed above the table. A shadow falls `shadowReach × height` below its card and blurs
 `shadowBase + shadowBlur × height`, so a higher card casts a longer, softer shadow.
+
+### Light before movement
+
+Depth points at what matters; it doesn't decorate. The table, the panels and the trick area read as physical through
+light, and they barely move. Movement and the strongest light go to the focus:
+
+- **Common depth** (the table): a soft key light on the felt (`light`). In Tilt it slides a little (`lightShift`).
+- **The focus** (the trick's winner): it rises (`winZ`), and it carries its own light, a soft band across its face
+  with a little shade away from it (`glint`). A white card shows light as shade, and the band brightens the ink it
+  crosses. At rest the band runs corner to corner, clear of the rank and suit. In Tilt the focus also shifts
+  (`focusShift`), leans (`focusTilt`, at most) and its band slides (`glintShift`).
+
+Cards are flat, so a card's light is one gradient: a tilt brightens or shades its whole face and slides one soft
+band. No other shading is needed.
 
 ## The setting
 
@@ -43,23 +58,28 @@ it back to Still.
 Tilt turns the device's angle, or the mouse's place on a computer, into one vector from -1 to 1 on each axis. Each
 plane moves by its own share of it, over its parent's:
 
-| Plane | At full tilt | Value |
+| Part | At full tilt | Value |
 |---|---|---|
 | Table and info strip | Stay | None |
-| Panels | Shift | `panelShift` |
-| Trick area | Shift | `trickShift` |
-| Played cards | Shift over the trick area; the winner, higher, shifts more (`cardShift × winZ / trickZ`) | `cardShift` |
-| Your hand | Moves with its panel | None |
+| The felt's light | Slides, in steps of `lightStep` px | `lightShift` |
+| Panels (your hand with yours) | Stay (0); a tuning can shift them | `panelShift` |
+| Trick area and its cards | Stay (0); a tuning can shift them | `trickShift` |
+| The focus (the trick's winner) | Shifts over the trick and leans | `focusShift`, `focusTilt` |
+| The focus's light | Slides across its face | `glintShift` |
 
-A negative value moves a plane the other way. Shadows stay as they are.
+A negative value moves a part the other way. Shadows stay as they are. A part with a shift of 0 is never written, and
+is its own layer only while a tuning gives it a shift (`html.dp-panels`, `html.dp-trick`).
 
 ### Cost
 
 Tilt has to stay cheap on a phone, so each frame touches as little as possible:
 
-- The script writes each plane's `translate` on that element alone (`#seat1`, `#seat2`, `#seat0`, the trick, and
-  the winner's slot), never a custom property on an ancestor, which would restyle the whole table. Every layer moved
-  costs the frame, so your hand moves with its panel and the played cards with the trick area.
+- The script writes each moving part's `translate` on that element alone (the felt's light, `#feltLight`; the
+  winner's slot and its glint), never a custom property on an ancestor, which would restyle the whole table. Every
+  layer moved costs the frame, so only the light and the focus move by default.
+- A large layer that moves makes the browser recheck what overlaps it, on every paint. The felt's light lies under
+  the whole table, so it moves in steps of `lightStep` (3 px): it is soft, so a step doesn't show, and it moves about
+  a sixth as often as at half pixels.
 - Each plane is its own layer (`will-change: translate`), so a move needs no paint and no raster.
 - The planes move on the screen's own frames, `tiltHz` times a second (60: every frame; a timer would drift against
   the frames and step unevenly). A plane that moved less than half a pixel isn't touched.
@@ -78,6 +98,15 @@ Measured in Chromium with the CPU slowed 4 times, over 3 s of steady small tilts
 
 15 a second was cheapest but stepped visibly on a phone, so the default is every frame. 30 a second costs about
 340 ms.
+
+Light before movement (step 4), measured the same way on another machine, three runs each (style, layout, paint and
+commit):
+
+| | Planes move (step 3) | Light and focus (step 4) |
+|---|---|---|
+| Style, layout, paint and commit | 298 to 310 ms | 216 to 240 ms |
+| The light moved at half pixels | | 346 to 368 ms |
+| The light still | | about 130 ms |
 
 How a reading becomes the vector:
 
@@ -150,4 +179,6 @@ Tuned values last for the tab only (sessionStorage `kct-depth`), and a backup ne
 |---|---|
 | 1 (done, PR #308) | `DEPTH`, the Still and Off setting, heights and shadows, the touch lift, and the tuning panel. |
 | 2 (done, PR #309) | Tilt: device orientation and the mouse, opt-in, with the planes and shadows above. |
-| 3 (this) | Motion: a played card's rise, a won trick's lift and the trump light. |
+| 3 (done, PR #310) | Motion: a played card's rise, a won trick's lift and the trump light. |
+| 4 (this) | Light before movement: the felt's light, the focus (the trick's winner) with its own light, and the planes at rest. |
+| 5 | Event depth: the feedback module's parallax channel (`KCTFeedback.parallax`), so a moment's motion lands on its beat. |
