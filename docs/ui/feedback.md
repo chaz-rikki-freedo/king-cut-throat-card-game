@@ -129,7 +129,7 @@ Without motion (speed Instant, or the system's reduced-motion setting), there ar
 | `card` | `animateTrick`: a trick card lands in its slot | The slide ends: its start plus `t` | `seat`, `you`, `showdown` | `card-play` from you, `card-slide-in` from a bot |
 | `sweep` | `transitions`: the trick flies to its winner's trick circles | The sweep's start | `seat` (the winner), `you`, `showdown` | `trick-you` or `trick-bot` |
 | `collect` | `transitions`: a thrown-in hand goes back to the dealer | The collect's start | `seat` (the dealer) | `collect` |
-| `handClose` | `slideHand`: your hand closes up or makes room | The slide's start, only when a card moves | None | `hand-close`, at half gain |
+| `handClose` | `slideHand`: your hand makes room for cards that arrive. A hand that closes up after a play or a discard is silent: the card's own beat is its sound, as for a bot. | The slide's start, only when a card moves | None | `hand-close`, at half gain |
 
 Every beat also carries `cards`, how many cards the motion moves, and a beat whose cards land one after another carries `spread`, the time between their landings in ms. See [Card count](#card-count).
 
@@ -205,7 +205,7 @@ New presets in Classic, from the lab archetypes that had no use. Each uses the l
 | `pile-sink` | The outside pile drops | `collect` 2: Scoop | 4245462482 | 264 to 276 |
 | `card-slide-in` | A bot's trick card | `play` 3: Place and skid | 2118987259 | 99 to 108 |
 | `collect` | A thrown-in hand | `collect` 1: Stack and square | 4228684863 | 329 to 345 |
-| `hand-close` | Your hand closes up | `slide` 1: Long drag | 1861228000 | 340 to 342 |
+| `hand-close` | Your hand makes room for arriving cards | `slide` 1: Long drag | 1861228000 | 340 to 342 |
 
 **Measured** is the rendered length across all 6 palettes and Fall's Showdown voice. The slowest render took 35 ms in headless Chromium.
 
