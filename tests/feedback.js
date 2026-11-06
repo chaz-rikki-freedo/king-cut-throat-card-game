@@ -26,10 +26,13 @@ function stubs() {
   document.addEventListener('kct:feedback-sounds', (e) => { w.__dealReady.push(/** @type {CustomEvent} */ (e).detail); });
   class FakeAudioContext {
     constructor() { w.__contexts++; this.state = 'running'; this.destination = {}; this.outputLatency = 0.02; }
-    /* A moving clock, as a real context has: seconds since the page loaded. */
-    get currentTime() { return performance.now() / 1000; }
+    /* A moving clock, as a real context has: seconds since the page loaded. frozen: a clock that stands still. */
+    get currentTime() { return typeof this.frozen === 'number' ? this.frozen : performance.now() / 1000; }
     resume() { this.state = 'running'; return Promise.resolve(); }
     suspend() { this.state = 'suspended'; return Promise.resolve(); }
+    close() { this.state = 'closed'; return Promise.resolve(); }
+    addEventListener(type, fn) { (this.on = this.on || {})[type] = fn; }
+    removeEventListener(type) { if (this.on) delete this.on[type]; }
     createGain() {
       const g = { gain: { value: 1, setTargetAtTime(v, t, c) { this.value = v; (w.__glides = w.__glides || []).push({ v, c }); } }, connect(n) { g.to = n; return n; } };
       (w.__gains = w.__gains || []).push(g.gain); return g;
@@ -406,6 +409,53 @@ const batchSrc = `
     c1 = await counts();
     const newLogs = await page.evaluate((n) => /** @type {any} */ (window).__logs.slice(n), logs0);
     expect('a steal plays its pattern and the hand-win sound in place of its own, quietly', c1.s === c0.s + 1 && JSON.stringify(c1.last) === '[50,30,50,30,50,30,120]' && newLogs.length === 0, { c0, c1, newLogs });
+    await wait(200);
+
+    /* ---------- Keeping the sound alive: a stopped context comes back at a tap ---------- */
+    console.log('Keeping the sound alive');
+    const tap = () => page.evaluate(() => document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    const ctxNow = () => page.evaluate(() => { const w = /** @type {any} */ (window), a = w.KCTFeedback.test.audio(); return { state: a && a.state, contexts: w.__contexts, revived: w.KCTFeedback.status().revived }; });
+    const plays = async () => { await wait(200); const a = await counts(); await page.evaluate(() => /** @type {any} */ (window).__send([{ type: 'trickWon', seat: 1, you: false }])); return (await counts()).s === a.s + 1; };
+    /* Interrupted (Safari: a call, the lock screen, another app's audio): the next tap resumes the same context. */
+    await page.evaluate(() => { /** @type {any} */ (window).KCTFeedback.test.audio().state = 'interrupted'; });
+    let k0 = await ctxNow();
+    await tap();
+    let k1 = await ctxNow();
+    expect('an interrupted context resumes at the next tap, the same context', k0.state === 'interrupted' && k1.state === 'running' && k1.contexts === k0.contexts, { k0, k1 });
+    expect('and sound plays again', await plays());
+    /* A context that won't resume: still stopped at a tap after REVIVE_GAP_MS, it is replaced by a new one. */
+    await page.evaluate(() => { const a = /** @type {any} */ (window).KCTFeedback.test.audio(); a.resume = () => new Promise(() => {}); a.state = 'interrupted'; });
+    k0 = await ctxNow();
+    await tap();
+    const kMid = await ctxNow();
+    await wait(600);
+    await tap();
+    k1 = await ctxNow();
+    expect('a context that won\'t resume is replaced at a later tap, and the readout counts it', kMid.contexts === k0.contexts && k1.contexts === k0.contexts + 1 && k1.state === 'running' && k1.revived === k0.revived + 1, { k0, kMid, k1 });
+    expect('and the new context plays', await plays());
+    /* A context that says running while its clock stands still: replaced once the clock has stood a second. */
+    await page.evaluate(() => { const a = /** @type {any} */ (window).KCTFeedback.test.audio(); a.frozen = a.currentTime; });
+    k0 = await ctxNow();
+    await tap();
+    await wait(1100);
+    await tap();
+    k1 = await ctxNow();
+    expect('a running context whose clock stands still is replaced at a tap', k1.contexts === k0.contexts + 1 && k1.revived === k0.revived + 1, { k0, k1 });
+    /* Closed: replaced at the next tap. A running context with a moving clock is left alone. */
+    await page.evaluate(() => /** @type {any} */ (window).KCTFeedback.test.audio().close());
+    k0 = await ctxNow();
+    await tap();
+    await wait(1100);
+    await tap();
+    k1 = await ctxNow();
+    expect('a closed context is replaced at the next tap; a healthy one is left alone', k1.contexts === k0.contexts + 1 && k1.state === 'running', { k0, k1 });
+    /* Chrome: the output device failed (an error event), though the context still says running. */
+    await page.evaluate(() => { const a = /** @type {any} */ (window).KCTFeedback.test.audio(); a.on.error(new Event('error')); });
+    k0 = await ctxNow();
+    await tap();
+    k1 = await ctxNow();
+    expect('after the context reports an error (its output device failed), the next tap replaces it', k0.state === 'running' && k1.contexts === k0.contexts + 1 && k1.revived === k0.revived + 1, { k0, k1 });
+    expect('and sound plays after all of it', await plays());
     await wait(200);
 
     /* ---------- Beats (phase 7): scheduling on the audio clock, and the beats' own sounds ---------- */

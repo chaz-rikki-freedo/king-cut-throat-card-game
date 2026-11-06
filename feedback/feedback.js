@@ -809,7 +809,7 @@ function setLevel() {
 function ensureAudio() {
   if (!canSound || settings.sound === 'off') return null;
   try {
-    if (!audio) audio = new AudioCtor();
+    if (!audio) { audio = new AudioCtor(); if (typeof audio.addEventListener === 'function') audio.addEventListener('error', onAudioError); }
     if (!bus) bus = buildBus(audio);
     if (audio.state === 'suspended' && typeof audio.resume === 'function') audio.resume();
   } catch (e) { audio = null; bus = null; }
@@ -960,7 +960,7 @@ function status() {
     context: audio ? audio.state : 'none', rate: audio ? audio.sampleRate : 0,
     latency: audio && typeof audio.outputLatency === 'number' ? Math.round(audio.outputLatency * 1000) : null,
     ready: all.filter(Boolean).length, failed: all.filter((b) => b === null).length, dealReady, felt: state.felt, voices: voices.length,
-    trains: trains.size, warm: trainUse.warm, mixed: trainUse.mixed,
+    trains: trains.size, warm: trainUse.warm, mixed: trainUse.mixed, revived,
   };
 }
 
@@ -1047,11 +1047,51 @@ function mountRows() {
   syncRows();
 }
 
-/* ---- The first tap ---- */
-function onFirstTap() {
-  state.activated = true;
+/* ---- Keeping the sound alive ----
+   A browser stops the audio context when the page hides, the phone locks, or a call, an alarm or another app takes
+   the audio (Safari calls that 'interrupted'), and it starts it again only from a tap. So every tap looks at it, at
+   the cost of one check: a stopped context resumes, inside the tap. One that is still stopped at the next tap, or
+   that says 'running' while its clock stands still (a phone can leave it so after an interruption), is replaced by a
+   new one, made inside that tap. Sounds are buffers that belong to no context, so nothing renders again.
+   Without this, the sound stopped for good until the app was closed. */
+const REVIVE_GAP_MS = 500;   // a context still stopped this long after a tap's resume is replaced at the next tap
+let revived = 0, resumeAt = 0, clockSeen = { t: -1, at: 0 }, failed = false;
+/* Chrome reports a failed output device (a Bluetooth headset gone, the audio service restarted) with an error event on
+   the context, which may still say 'running': the next tap replaces it. */
+const onAudioError = () => { failed = true; trace('audio', { action: 'error', why: 'device', context: audio ? audio.state : 'none' }); };
+/** Closes the context and makes a new one: the voices on the old one are gone. @param {string} why */
+function replaceAudio(why) {
+  const old = audio;
+  for (const v of voices) { try { v.src.stop(); } catch (e) { /* ended */ } }
+  voices.length = 0; lastMoment = null; audio = null; bus = null;
+  resumeAt = 0; clockSeen = { t: -1, at: 0 }; failed = false;
+  if (old && typeof old.removeEventListener === 'function') old.removeEventListener('error', onAudioError);
+  if (old && typeof old.close === 'function') { try { const p = old.close(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already closed */ } }
+  revived++;
   ensureAudio();
-  document.removeEventListener('pointerdown', onFirstTap, true);
+  trace('audio', { action: 'replaced', why, context: audio ? audio.state : 'none' });
+}
+/** Brings a stopped context back. gesture: called from a tap (the only place iOS lets it start). @param {boolean} gesture */
+function revive(gesture) {
+  if (!audio || settings.sound === 'off' || !canSound) return;
+  const st = audio.state;
+  if (st === 'closed' || failed) { if (gesture) replaceAudio(failed ? 'error' : 'closed'); return; }
+  if (st !== 'running') {
+    if (gesture && resumeAt && performance.now() - resumeAt > REVIVE_GAP_MS) { replaceAudio(st); return; }
+    try { const p = audio.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* the next tap replaces it */ }
+    if (gesture && !resumeAt) resumeAt = performance.now();
+    trace('audio', { action: 'resume', why: st, context: audio.state });
+    return;
+  }
+  resumeAt = 0;
+  const t = audio.currentTime, now = performance.now();
+  if (t !== clockSeen.t) { clockSeen = { t, at: now }; return; }
+  if (gesture && now - clockSeen.at > 1000) replaceAudio('stalled');
+}
+/* ---- Each tap ---- */
+function onTap() {
+  state.activated = true;
+  if (!audio) ensureAudio(); else revive(true);
 }
 
 /* ---- Start ---- */
@@ -1070,14 +1110,15 @@ const api = {
     BEAT_SOUNDS, beatSound, trainHits, TRAIN_WARM, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS, CONTEXT, CONTEXT_MAX_DB, TONE_JITTER_DB, contextOf }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
-    timers: () => timers.size, bus: () => bus, whenRendered: () => renderQueue, memory: () => memory,
+    timers: () => timers.size, bus: () => bus, audio: () => audio, revive, whenRendered: () => renderQueue, memory: () => memory,
     renderCurrent, mountRows,
   }),
 };
 /** @type {any} */ (window).KCTFeedback = api;
 document.addEventListener('kct:moment', onMoment);
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopScheduled(); });
-document.addEventListener('pointerdown', onFirstTap, true);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopScheduled(); else revive(false); });
+document.addEventListener('pointerdown', onTap, true);
+document.addEventListener('keydown', onTap, true);
 mountRows();
 idle(() => { loadLibs().then((ok) => { if (ok) renderCurrent(); }); });
 /* sound: the deal's sounds will come (Sound on, on a device that can play it): the game may hold a first deal for them. */
