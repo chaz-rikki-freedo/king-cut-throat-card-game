@@ -31,6 +31,8 @@ function stubs() {
     resume() { this.state = 'running'; return Promise.resolve(); }
     suspend() { this.state = 'suspended'; return Promise.resolve(); }
     close() { this.state = 'closed'; return Promise.resolve(); }
+    addEventListener(type, fn) { (this.on = this.on || {})[type] = fn; }
+    removeEventListener(type) { if (this.on) delete this.on[type]; }
     createGain() {
       const g = { gain: { value: 1, setTargetAtTime(v, t, c) { this.value = v; (w.__glides = w.__glides || []).push({ v, c }); } }, connect(n) { g.to = n; return n; } };
       (w.__gains = w.__gains || []).push(g.gain); return g;
@@ -447,6 +449,12 @@ const batchSrc = `
     await tap();
     k1 = await ctxNow();
     expect('a closed context is replaced at the next tap; a healthy one is left alone', k1.contexts === k0.contexts + 1 && k1.state === 'running', { k0, k1 });
+    /* Chrome: the output device failed (an error event), though the context still says running. */
+    await page.evaluate(() => { const a = /** @type {any} */ (window).KCTFeedback.test.audio(); a.on.error(new Event('error')); });
+    k0 = await ctxNow();
+    await tap();
+    k1 = await ctxNow();
+    expect('after the context reports an error (its output device failed), the next tap replaces it', k0.state === 'running' && k1.contexts === k0.contexts + 1 && k1.revived === k0.revived + 1, { k0, k1 });
     expect('and sound plays after all of it', await plays());
     await wait(200);
 

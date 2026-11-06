@@ -809,7 +809,7 @@ function setLevel() {
 function ensureAudio() {
   if (!canSound || settings.sound === 'off') return null;
   try {
-    if (!audio) audio = new AudioCtor();
+    if (!audio) { audio = new AudioCtor(); if (typeof audio.addEventListener === 'function') audio.addEventListener('error', onAudioError); }
     if (!bus) bus = buildBus(audio);
     if (audio.state === 'suspended' && typeof audio.resume === 'function') audio.resume();
   } catch (e) { audio = null; bus = null; }
@@ -1055,13 +1055,17 @@ function mountRows() {
    new one, made inside that tap. Sounds are buffers that belong to no context, so nothing renders again.
    Without this, the sound stopped for good until the app was closed. */
 const REVIVE_GAP_MS = 500;   // a context still stopped this long after a tap's resume is replaced at the next tap
-let revived = 0, resumeAt = 0, clockSeen = { t: -1, at: 0 };
+let revived = 0, resumeAt = 0, clockSeen = { t: -1, at: 0 }, failed = false;
+/* Chrome reports a failed output device (a Bluetooth headset gone, the audio service restarted) with an error event on
+   the context, which may still say 'running': the next tap replaces it. */
+const onAudioError = () => { failed = true; trace('audio', { action: 'error', why: 'device', context: audio ? audio.state : 'none' }); };
 /** Closes the context and makes a new one: the voices on the old one are gone. @param {string} why */
 function replaceAudio(why) {
   const old = audio;
   for (const v of voices) { try { v.src.stop(); } catch (e) { /* ended */ } }
   voices.length = 0; lastMoment = null; audio = null; bus = null;
-  resumeAt = 0; clockSeen = { t: -1, at: 0 };
+  resumeAt = 0; clockSeen = { t: -1, at: 0 }; failed = false;
+  if (old && typeof old.removeEventListener === 'function') old.removeEventListener('error', onAudioError);
   if (old && typeof old.close === 'function') { try { const p = old.close(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already closed */ } }
   revived++;
   ensureAudio();
@@ -1071,7 +1075,7 @@ function replaceAudio(why) {
 function revive(gesture) {
   if (!audio || settings.sound === 'off' || !canSound) return;
   const st = audio.state;
-  if (st === 'closed') { if (gesture) replaceAudio('closed'); return; }
+  if (st === 'closed' || failed) { if (gesture) replaceAudio(failed ? 'error' : 'closed'); return; }
   if (st !== 'running') {
     if (gesture && resumeAt && performance.now() - resumeAt > REVIVE_GAP_MS) { replaceAudio(st); return; }
     try { const p = audio.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* the next tap replaces it */ }

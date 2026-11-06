@@ -865,6 +865,7 @@ A `pointerdown` and `keydown` listener runs on every tap or key press anywhere o
 | Still stopped more than `REVIVE_GAP_MS` (500 ms) after that resume | Replaces it with a new context, made inside the tap |
 | Running, but its clock has stood still for more than 1 s (a phone can leave it so after an interruption) | Replaces it |
 | Closed | Replaces it |
+| It reported an `error` event: its output device failed, such as a Bluetooth headset that went away (Chrome) | Replaces it |
 
 Replacing stops the old context's voices and closes it. The sounds are `AudioBuffer`s that belong to no context, so nothing renders again. When the page shows again, the module also tries a resume without a tap, which works where the browser allows it. The sound readout (`!dev sound`) shows each resume and replacement as an `audio` line, and its state line counts the replacements (`revived`).
 
