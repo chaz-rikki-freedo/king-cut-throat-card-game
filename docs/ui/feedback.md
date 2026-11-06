@@ -62,7 +62,7 @@ Each channel plays its part on its own, under its own [gates](#gates) and [dropp
 
 ## Settings
 
-The module adds these rows to **Settings → Table**, under the heading **Sound and touch**, once it has loaded (see [Feedback contract: Settings in two files](feedback-contract.md#settings-in-two-files)).
+The module adds these rows to **Settings → Look**, under the heading **Sound and touch**, once it has loaded (see [Feedback contract: Settings in two files](feedback-contract.md#settings-in-two-files)).
 
 | Row | Control | Shown when | Default | Description text (draft) |
 |---|---|---|---|---|
@@ -656,7 +656,7 @@ The lab's 8 families, each with 4 archetypes:
 
 ### Theme palettes
 
-Each **Felt** in **Settings → Table → Theme** has a palette: its own sound for each preset. Sound follows the felt, with no setting of its own.
+Each **Felt** in **Settings → Look → Theme** has a palette: its own sound for each preset. Sound follows the felt, with no setting of its own.
 
 | Felt | Palette | Character (draft) |
 |---|---|---|

@@ -54,7 +54,7 @@ The app keeps these in the browser (`localStorage`), so a closed tab loses nothi
 
 - **One unfinished game per mode** (`kct.slots`), saved after every action, with its Latest Scroll (last 1500 lines). Starting a new game in a mode replaces that mode's game; the menu asks first if it has begun. A finished game is not kept.
 - **Wave progress** (`kct.waves`): open waves, cleared waves and tries per wave.
-- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, **Forced plays**, and the Table tab's settings. Speed and **AI can play your seat** are not kept: each load starts at Normal, with the switch off.
+- **Settings** (`kct.settings`): the seat settings (who sits in each seat, and each seat's changes), Logging, **Forced plays**, and the Table and Look tabs' settings. Speed and **AI can play your seat** are not kept: each load starts at Normal, with the switch off.
 - **Results** (`kct.stats`): played and won, per mode, per table (West/East), per opponent, and per opponent and per table in each mode. A game where the AI played your seat adds no results.
 
 - **Replay codes** (`kct.replays`): the last 50 finished games of each mode, plus the last 50 where the AI played your seat. A new game pushes out only the oldest of its own group, and each code is saved when the game ends, so there is nothing to copy (see **Replay a game**).
@@ -90,7 +90,7 @@ Click the mode in the header.
 
 ## Settings panel
 
-Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has three tabs: **Table**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **‹ Back** (top left) or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. **Table** and **Bots** each end with **Reset this tab**, which sets that tab's settings back to their defaults and keeps all progress; deleting progress is **Erase**, in **Tools → Your data**. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
+Click **Settings** (the sliders icon) in the header, or add `?settings=1` to the URL (this opens the Tools tab and turns on the event log). Settings fills the screen and has four tabs: **Table**, **Look**, **Bots** and **Tools**. Each setting is one row: its name and a one-line description, then its control. On/off settings are switches; a click anywhere on the row toggles one. **‹ Back** (top left) or **Esc** closes Settings, and the arrow keys move between the tabs. The tab you used last opens next time. **Table**, **Look** and **Bots** each end with **Reset this tab**, which sets that tab's settings back to their defaults and keeps all progress; deleting progress is **Erase**, in **Tools → Your data**. While Settings is open, the page behind it cannot be clicked or reached with Tab. A setting that does not apply at the moment is dimmed and cannot be changed, by click or keyboard.
 
 ### Table: Table memory
 
@@ -117,9 +117,9 @@ All three settings are kept after a reload, and each applies from your next game
 
 A house rule is something the players at a real table agree on, such as keeping won tricks face up. Table memory helps with what the rules make you remember yourself, such as your own discards, which you may not look at again because the pile holds other players' discards too.
 
-### Table: Theme
+### Look: Theme
 
-After House rules, in the Table tab.
+The first card of the Look tab.
 
 | Setting | What it does |
 |---|---|
@@ -129,7 +129,7 @@ After House rules, in the Table tab.
 
 The theme is kept with the settings (and so in a backup), and is applied before the page draws, so the default felt never flashes first.
 
-### Table: Sound and touch
+### Look: Sound and touch
 
 The optional feedback module (`feedback/`, see **Install and offline play**) adds this card once it has loaded. Without the module, the card stays hidden.
 
@@ -141,11 +141,13 @@ The optional feedback module (`feedback/`, see **Install and offline play**) add
 
 At speed **Instant**, nothing plays. The three settings are kept on the device, go with a backup, and are erased by **Progress + settings**.
 
-### Table: Reset this tab
+### Table and Look: Reset this tab
 
-**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Full help**, the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play off; they apply from your next game) and the theme to Winter, with Color-blind safe colors and Table depth off. With the feedback module loaded, Vibration, Sound and Sound in replays turn off too. Your progress stays.
+**Reset this tab**, at the bottom of the Table tab, asks first, then sets Table memory back to **Full help** and the house rules to their defaults (Mediator picks the Showdown lead on, Turned-up Joker **Redeal**, Polite Play off; they apply from your next game). Your progress stays.
 
 Under it, the Table tab ends with the copyright notice: **© 2009–2026 C.R.F.Barr. All rights reserved.** (see **License**).
+
+**Reset this tab**, at the bottom of the Look tab, asks first, then sets the theme back to Winter, with Color-blind safe colors and Table depth off. With the feedback module loaded, Vibration, Sound and Sound in replays turn off too. Your progress stays.
 
 ### Bots
 

@@ -848,7 +848,7 @@ const batchSrc = `
       return {
         loaded: !!w.KCTFeedback, cardShown: !card.hidden && !document.getElementById('setFeedbackHead').hidden, rows: !!document.getElementById('setFbSound'),
         theme: ctl.some((b) => b.control === 'theme' && b.felt === w.KCT.App.app.ui.felt), speedAfterReady: ctl.some((b) => b.control === 'speed'),
-        resetDesc: document.getElementById('setTableResetDesc').textContent,
+        resetDesc: document.getElementById('setLookResetDesc').textContent,
         replayShownWhileOff: getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('setFbReplayRow'))).display !== 'none',
       };
     });
@@ -856,7 +856,7 @@ const batchSrc = `
     expect('in the game\'s Settings, Sound in replays stays out of sight while Sound is Off', !wired.replayShownWhileOff, wired);
     expect('the Sound and touch card shows once the module is ready, with its rows', wired.cardShown && wired.rows, wired);
     expect('the game tells the ready module the felt and the speed', wired.theme && wired.speedAfterReady, wired);
-    expect('Reset this tab names Sound and touch while the module is loaded', /Sound and touch/.test(wired.resetDesc), wired.resetDesc);
+    expect('Look → Reset this tab names Sound and touch while the module is loaded', /Sound and touch/.test(wired.resetDesc), wired.resetDesc);
     const keys = await gp.evaluate(async () => {
       const { Backup } = /** @type {any} */ (window).KCT;
       const sel = /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound'));
@@ -871,8 +871,8 @@ const batchSrc = `
     });
     expect('a backup carries the module\'s settings, an erase of every kct. key clears them, and a restore brings them back', keys.backedUp && keys.erased && keys.restored, keys);
     /* Reset this tab, through the game: the module's settings go Off. */
-    const tabReset = await gp.evaluate(() => { /** @type {any} */ (window).KCT.App.tableReset(); return { sound: localStorage.getItem('kct.feedback.sound'), row: /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound')).value }; });
-    expect('Reset this tab turns the module\'s settings Off', tabReset.sound === null && tabReset.row === 'off', tabReset);
+    const tabReset = await gp.evaluate(() => { /** @type {any} */ (window).KCT.App.lookReset(); return { sound: localStorage.getItem('kct.feedback.sound'), row: /** @type {HTMLSelectElement} */ (document.getElementById('setFbSound')).value }; });
+    expect('Look → Reset this tab turns the module\'s settings Off', tabReset.sound === null && tabReset.row === 'off', tabReset);
     expect('no page errors in the game', gErrors.length === 0, gErrors);
     await g.close();
 
@@ -890,7 +890,7 @@ const batchSrc = `
       await pg.waitForTimeout(2500);
       const r = await pg.evaluate(() => ({
         loaded: !!(/** @type {any} */ (window).KCTFeedback), cardHidden: document.getElementById('setFeedback').hidden && document.getElementById('setFeedbackHead').hidden,
-        resetDesc: document.getElementById('setTableResetDesc').textContent,
+        resetDesc: document.getElementById('setLookResetDesc').textContent,
         logged: /** @type {any} */ (window).KCT.Logger.lines.filter((l) => / FEEDBACK_/.test(l)).map((l) => l.split(' ')[1]),
       }));
       if (which === 'feedback.js') {

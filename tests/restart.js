@@ -124,7 +124,7 @@ const SEATS = [
     await step(`
       click('[data-action="toggle-settings"]'); click('#setTabBots'); await sleep(20);
       click('[data-action="settings-reset"]'); await waitFor('#askLayer .modal'); click('[data-action="ask-ok"]'); await sleep(20);
-      KCT.App.tableReset();
+      KCT.App.tableReset(); KCT.App.lookReset();
       const e = q('#setEnable'); if (e.checked) e.click();
       return 1;`);
     await stop();

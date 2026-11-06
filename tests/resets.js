@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Resets through the real controls: Reset this tab in Settings → Bots and Settings → Table, and Erase in Settings →
+/* Resets through the real controls: Reset this tab in Settings → Bots, Settings → Table and Settings → Look, and Erase in Settings →
    Tools → Your data. Each asks first (Cancel focused, a red button). A tab reset applies at once and keeps all
    progress; Erase deletes stored data and reloads the page. Exit code 1 on a failed check. */
 'use strict';
@@ -65,34 +65,54 @@ const SEED = {
     await openTab('Table');
     const table = await step(`const p = q('#setPaneTable'), h = [...p.querySelectorAll('.set-head')];
       return { heads: h.map(x => x.textContent), reset: !!p.querySelector('#setTableDefaults [data-action="table-reset"]'), old: !!q('#setGameReset') };`);
-    expect('the Table tab: Table memory, House rules, Theme, Sound and touch (the feedback module), then Table defaults with its Reset this tab',
-      table.heads.join('|') === 'Table memory|House rules|Theme|Sound and touch|Table defaults' && table.reset && !table.old, table);
+    expect('the Table tab: Table memory, House rules, then Table defaults with its Reset this tab',
+      table.heads.join('|') === 'Table memory|House rules|Table defaults' && table.reset && !table.old, table);
 
-    await page.click('#setFelt .felt-tile:has(input[value="spring"])');
-    await page.click('label.set-row:has(#setColorBlind)');
-    await page.selectOption('#setDepth', 'still');
     await step(`q('#setMemEach').open = true; q('#setMemAdds').open = true; q('#setMemShows').open = true; return 1;`);
     await page.click('label.set-row:has(#setMemTrumps)');
     await page.click('label.set-row:has(#setMemVoids)');
     await page.click('label.set-row:has(#setMediatorLead)');
     await page.selectOption('#setJokerFlip', 'H');
     await page.click('label.set-row:has(#setPolitePlay)');
+    await openTab('Look');
+    const look = await step(`const p = q('#setPaneLook'), h = [...p.querySelectorAll('.set-head')];
+      return { heads: h.map(x => x.textContent), reset: !!p.querySelector('#setLookDefaults [data-action="look-reset"]') };`);
+    expect('the Look tab: Theme, Sound and touch (the feedback module), then Look defaults with its Reset this tab',
+      look.heads.join('|') === 'Theme|Sound and touch|Look defaults' && look.reset, look);
+    await page.click('#setFelt .felt-tile:has(input[value="spring"])');
+    await page.click('label.set-row:has(#setColorBlind)');
+    await page.selectOption('#setDepth', 'still');
     const changed = json(await stored(), 'kct.settings');
     expect('the settings are changed first', changed.felt === 'spring' && changed.depth === 'still' && !changed.memory.trumps && !changed.memory.voids && !changed.mediatorLead && changed.jokerFlip === 'H' && changed.politePlay, changed);
 
+    await openTab('Table');
     a = await press('table-reset');
     expect('Reset asks first, on Cancel, with a red button', a.open && a.title === 'Reset the Table tab?' && a.danger && a.focus === 'ask-cancel', a);
     await page.click('[data-action="ask-cancel"]');
-    expect('Cancel changes nothing', json(await stored(), 'kct.settings').felt === 'spring');
+    expect('Cancel changes nothing', !json(await stored(), 'kct.settings').mediatorLead);
     await press('table-reset');
     await page.click('[data-action="ask-ok"]');
-    let s = await step(`return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, depth: q('#setDepth').value, cls: document.documentElement.classList.contains('depth'), preset: q('#setMemPreset').value,
+    const readAll = () => step(`return { felt: q('#setFelt input:checked').value, cb: q('#setColorBlind').checked, depth: q('#setDepth').value, cls: document.documentElement.classList.contains('depth'), preset: q('#setMemPreset').value,
       ml: q('#setMediatorLead').checked, jf: q('#setJokerFlip').value, pp: q('#setPolitePlay').checked, saved: JSON.parse(localStorage.getItem('kct.settings')) };`);
-    expect('Theme goes back to Winter, color pack off, Table depth Off, at once', s.felt === 'winter' && !s.cb && s.saved.felt === 'winter' && s.saved.colors === '' &&
-      s.depth === 'off' && !s.cls && s.saved.depth === 'off', s);
+    let s = await readAll();
     expect('Table memory goes back to Full help', s.preset === 'full' &&
       JSON.stringify(s.saved.memory) === JSON.stringify({ trumps: true, kings: true, turned: true, voids: true, showTurned: true, showDiscards: true, showPlays: true }), s.saved.memory);
     expect('House rules go back to their defaults', s.ml && s.jf === '' && !s.pp && s.saved.mediatorLead && s.saved.jokerFlip === '' && s.saved.politePlay === false, s);
+    expect('the Look tab\'s settings stay', s.felt === 'spring' && s.cb && s.depth === 'still' && s.saved.felt === 'spring' && s.saved.depth === 'still', s);
+
+    console.log('Look → Reset this tab');
+    await page.selectOption('#setMemPreset', 'real');
+    await openTab('Look');
+    a = await press('look-reset');
+    expect('Reset asks first, on Cancel, with a red button', a.open && a.title === 'Reset the Look tab?' && a.danger && a.focus === 'ask-cancel', a);
+    await page.click('[data-action="ask-cancel"]');
+    expect('Cancel changes nothing', json(await stored(), 'kct.settings').felt === 'spring');
+    await press('look-reset');
+    await page.click('[data-action="ask-ok"]');
+    s = await readAll();
+    expect('Theme goes back to Winter, color pack off, Table depth Off, at once', s.felt === 'winter' && !s.cb && s.saved.felt === 'winter' && s.saved.colors === '' &&
+      s.depth === 'off' && !s.cls && s.saved.depth === 'off', s);
+    expect('the Table tab\'s settings stay', s.preset === 'real', s.preset);
     let d = await stored();
     expect('progress stays', json(d, 'kct.waves').unlocked === 4 && json(d, 'kct.replays').length === 3, d['kct.waves']);
 

@@ -37,7 +37,7 @@ the hand's card handler, Skip ▶               listens for 'kct:moment'
 | Screen time: when each batch is sent | Derived events and the module's memory |
 | The [sending gates](#sending-gates): when nothing is sent at all | Its own gates and the dropping rules |
 | The `cancel`, `reset`, `speed` and `theme` messages | Variety: stakes, variants, escalation, novelty, layering, parameters |
-| An empty, hidden **Sound and touch** card in Settings → Table | The card's rows, its device keys, and making its sounds with `synth.js` |
+| An empty, hidden **Sound and touch** card in Settings → Look | The card's rows, its device keys, and making its sounds with `synth.js` |
 
 ## Batches
 
@@ -139,7 +139,7 @@ Sent on the same event, with `moments` empty and a `control` field:
 | `control` | When the game sends it | What the module does |
 |---|---|---|
 | `cancel` | A new state version, **Next hand**, Exit, a new game, a resume, a jump in the replay viewer. `scope: 'game'` for a new game, a resume or a jump; `scope: 'step'` otherwise. | Clears armed cues and stops sounds not yet started. With `scope: 'game'`, also clears its memory. |
-| `reset` | **Reset this tab** in Settings → Table | Sets its settings back to Off |
+| `reset` | **Reset this tab** in Settings → Look | Sets its settings back to Off |
 | `speed` | The speed changes, with `speed: 'instant'` or another value | At Instant, cancels and stops a running pattern or motion |
 | `theme` | At load, after `kct:feedback-ready`, and on every felt change, with `felt: 'classic'`, `'spring'`, `'summer'`, `'fall'` or `'winter'` | Switches to that felt's [palette](feedback.md#theme-palettes) |
 
