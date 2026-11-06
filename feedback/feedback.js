@@ -394,7 +394,7 @@ const TRAIN_BEATS = new Set(['deal', 'discard', 'toss', 'sink']);
  *   variant in turn from the one the key picks, each later one TRAIN_FALL softer.
  * - A gesture (cards that move together, no spread): one sound, its gain set by the count against GESTURE_CARDS.
  * @param {any} b @param {(name: string) => boolean} [has]
- * @returns {{ sound: string, gain: number, pan: number, hits: { sound: string, offset: number, gain: number, rate: number, tone: number }[] } | null}
+ * @returns {{ sound: string, gain: number, pan: number, rate?: number, hits: { sound: string, offset: number, gain: number, rate: number, tone: number }[] } | null}
  */
 function beatSound(b, has) {
   const f = b && typeof b.beat === 'string' && Object.prototype.hasOwnProperty.call(BEAT_SOUNDS, b.beat) ? BEAT_SOUNDS[b.beat] : null;
@@ -408,13 +408,11 @@ function beatSound(b, has) {
   const n = Number.isFinite(b.cards) ? Math.max(1, Math.min(TRAIN_MAX, Math.round(b.cards))) : 1;
   const spread = Number.isFinite(b.spread) && b.spread > 0 ? Math.min(400, b.spread) : 0;
   if (spread && n > 1 && TRAIN_BEATS.has(b.beat)) {
-    const hits = [];
-    for (let i = 0; i < n; i++) {
-      const k = String(b.key) + '|' + i;
-      hits.push({ sound: list[(at0 + i) % list.length], offset: i * spread, gain: Math.pow(TRAIN_FALL, i) * dbToGain(JITTER_DB * unit(k + 'g')), rate: 1 + JITTER_RATE * unit(k + 'r'),
-        tone: TONE_JITTER_DB * unit(k + 't') });
-    }
-    return Object.assign({ sound: first, gain: spec.gain * placeGain(b), hits }, { pan: panOf(b) });
+    /* The hits come from the train's variants, count and spread alone, so its mix is made once (warmTrains); the beat's
+       key varies the whole sound, its pitch and level, on the audio thread. */
+    const k = String(b.key) + '|0';
+    return { sound: first, gain: spec.gain * placeGain(b) * dbToGain(JITTER_DB * unit(k + 'g')), pan: panOf(b), rate: 1 + JITTER_RATE * unit(k + 'r'),
+      hits: trainHits(list, at0, n, spread) };
   }
   const usual = GESTURE_CARDS[b.beat];
   const count = Number.isFinite(b.cards) ? b.cards : usual || 1;
@@ -422,6 +420,20 @@ function beatSound(b, has) {
   const k = String(b.key) + '|0', cx = contextOf(b);
   return { sound: first, gain: spec.gain * size * placeGain(b) * dbToGain(JITTER_DB * unit(k + 'g') + cx.db), pan: panOf(b),
     hits: [{ sound: first, offset: 0, gain: 1, rate: (1 + JITTER_RATE * unit(k + 'r')) * (1 + cx.rate), tone: TONE_JITTER_DB * unit(k + 't') + cx.shelf }] };
+}
+/**
+ * A train's hits: card i plays variant at0 + i, i × spread ms after the first, each TRAIN_FALL as loud as the one
+ * before, with a small variation of its own (from its variant and place, never the beat's key). Pure.
+ * @param {string[]} list @param {number} at0 @param {number} n @param {number} spread
+ */
+function trainHits(list, at0, n, spread) {
+  const hits = [];
+  for (let i = 0; i < n; i++) {
+    const sound = list[(at0 + i) % list.length], k = list[at0] + '|' + i;
+    hits.push({ sound, offset: i * spread, gain: Math.pow(TRAIN_FALL, i) * dbToGain(JITTER_DB * unit(k + 'g')), rate: 1 + JITTER_RATE * unit(k + 'r'),
+      tone: TONE_JITTER_DB * unit(k + 't') });
+  }
+  return hits;
 }
 /** A beat's distance: a bot's motion is DISTANCE_DB behind yours; one with no seat (the pile) sits between. */
 function placeGain(b) { return b && b.you === false && typeof b.seat === 'number' ? dbToGain(DISTANCE_DB) : 1; }
@@ -624,7 +636,8 @@ function renderPalette(felt, showdown) {
     const names = all.filter((n) => FIRST.test(n)).concat(all.filter((n) => !FIRST.test(n)));
     let first = names.findIndex((n) => !FIRST.test(n));
     for (const name of names) {
-      if (first === 0 && felt === 'classic' && !showdown) dealSoundsReady();
+      /* The deal's combination sounds too, before the rest: a first deal then mixes nothing. */
+      if (first === 0 && felt === 'classic' && !showdown) { await warmTrains('deal'); dealSoundsReady(); }
       first--;
       const key = keyOf(felt, showdown, name);
       if (buffers.has(key) || settings.sound === 'off') continue;
@@ -637,13 +650,14 @@ function renderPalette(felt, showdown) {
         const ms = performance.now() - t0;
         if (ms > RENDER_BUDGET_MS) log('RENDER_SLOW', { name, palette: felt, ms: Math.round(ms) });
         buffers.set(key, toBuffer(out));
-        trains.clear();   // a train may have mixed a fallback that this render replaces
+        dropTrains(name);   // a train may have mixed a fallback that this render replaces
       } catch (e) {
         buffers.set(key, null);
         logOnce('RENDER_FAILED', key, { name, palette: felt, error: String(e && e.message || e) });
       }
     }
     if (felt === 'classic' && !showdown) dealSoundsReady();
+    await warmTrains();
   }).catch(() => { /* a failed render never stops the queue */ });
   return renderQueue;
 }
@@ -687,9 +701,44 @@ function trainBuffer(hits) {
   let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(mix[i]));
   if (peak > 0.89) for (let i = 0; i < len; i++) mix[i] *= 0.89 / peak;
   const out = toBuffer({ samples: mix, sampleRate: rate });
-  if (trains.size > 96) trains.clear();
+  if (trains.size > TRAIN_CACHE) { trains.clear(); trainWarm = new WeakSet(); }
   trains.set(key, out);
   return out;
+}
+/* Combination sounds: the trains a hand plays, mixed ahead at idle, one in each idle slot, once the sounds they use are
+   rendered, so a deal's packets each play one ready sound, as a single card does, and nothing is mixed at the deal
+   (docs/ui/feedback.md, Card count). A train not here is mixed when it plays, as before. The spreads are the
+   table's: a deal packet's PACKET_CARD × the motion step at Fast, Normal and Slow; discards 70 ms; tossed and sunk
+   cards 80 ms. */
+const TRAIN_CACHE = 160;
+const TRAIN_WARM = [
+  { beat: 'deal', you: true, cards: [3, 4], spread: [12.5, 19.8, 30.8] },
+  { beat: 'deal', you: false, cards: [3, 4], spread: [12.5, 19.8, 30.8] },
+  { beat: 'discard', you: true, cards: [2, 3], spread: [70] },
+  { beat: 'toss', you: true, cards: [2, 3], spread: [80] },
+  { beat: 'sink', you: true, cards: [2, 3], spread: [80] },
+];
+let trainWarm = new WeakSet();
+/** Forgets the mixes that use a sound (by name, in any palette). @param {string} name */
+function dropTrains(name) {
+  for (const key of [...trains.keys()]) if (key.slice(key.indexOf('|') + 1).split(',').some((h) => h.slice(0, h.indexOf('@')) === name)) trains.delete(key);
+}
+const trainUse = { warm: 0, mixed: 0 };
+/** @param {string} [only] one beat's trains, such as 'deal' */
+async function warmTrains(only) {
+  if (settings.sound === 'off') return;
+  for (const w of TRAIN_WARM) {
+    if (only && w.beat !== only) continue;
+    let all; try { all = [].concat(BEAT_SOUNDS[w.beat]({ beat: w.beat, you: w.you }) || []); } catch (e) { continue; }
+    const list = all.filter((n) => !!bufferFor(n));
+    if (!list.length) continue;
+    for (let at0 = 0; at0 < list.length; at0++) for (const n of w.cards) for (const spread of w.spread) {
+      /* A mix takes a few ms: one a task, so the page's frames go on between them. */
+      await new Promise((r) => setTimeout(r, 0));
+      const b = trainBuffer(trainHits(list, at0, n, spread));
+      if (b) trainWarm.add(b);
+    }
+  }
 }
 
 /* ---- The sound channel ---- */
@@ -879,6 +928,7 @@ function playBeats(msg) {
     if (!bs) { out.push({ beat: b.beat, sound: 'unknown', tick: felt }); continue; }
     if (!allowed.sound) { out.push({ beat: b.beat, sound: 'off', tick: felt }); continue; }
     const buffer = trainBuffer(bs.hits);
+    if (bs.hits.length > 1) trainUse[buffer && trainWarm.has(buffer) ? 'warm' : 'mixed']++;
     /* Its sound is still rendering but its time is ahead: ask again just before it is due, once. */
     if (!buffer && !b.again && b.at - now > RETRY_AHEAD_MS) {
       /* No version: a cancel clears this timer (stopScheduled), and a newer message in the meantime must not drop it. */
@@ -888,7 +938,7 @@ function playBeats(msg) {
     }
     const v = drop.beat.decide({ at: b.at, now, rank: 99, stale, ready: !!buffer, voices: voicesAt(b.at) });
     /* A single hit plays at its own pitch; a train's hits are at theirs inside the mix. */
-    const one = bs.hits.length === 1, rate = one ? bs.hits[0].rate || 1 : 1, tone = one ? bs.hits[0].tone || 0 : 0;
+    const one = bs.hits.length === 1, rate = one ? bs.hits[0].rate || 1 : bs.rate || 1, tone = one ? bs.hits[0].tone || 0 : 0;
     if ((v === 'play' || v === 'replace') && buffer) playSound(buffer, false, BEAT_GAIN * bs.gain, rate, b.at, true, bs.pan, tone);
     out.push({ beat: b.beat, sound: v, name: bs.sound, hits: bs.hits.length, gain: bs.gain, tick: felt });
   }
@@ -910,6 +960,7 @@ function status() {
     context: audio ? audio.state : 'none', rate: audio ? audio.sampleRate : 0,
     latency: audio && typeof audio.outputLatency === 'number' ? Math.round(audio.outputLatency * 1000) : null,
     ready: all.filter(Boolean).length, failed: all.filter((b) => b === null).length, dealReady, felt: state.felt, voices: voices.length,
+    trains: trains.size, warm: trainUse.warm, mixed: trainUse.mixed,
   };
 }
 
@@ -1016,7 +1067,7 @@ const api = {
   core: Object.freeze({ RULES, CUES, LAYERS, cueFor, channelsFor, makeDropper, newMemory, derive, leadChange, soleLeader, stakesOf, compose, hash,
     STAKES_CLOSE, STAKES_MATCH, NOVELTY_HANDS, VIBRATE_MAX_MS, VIBRATE_TOTAL_MS,
     STREAK_MIN, COMEBACK_POINTS, LEAD_FROM, LEVEL_DB, LEVEL_ALIASES, levelOf, JITTER_DB, JITTER_RATE, DISTANCE_DB, PAN, LATE_MS, GAP_VIBRATE_MS, GAP_SOUND_MS, MAX_VOICES, KEYS,
-    BEAT_SOUNDS, beatSound, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS, CONTEXT, CONTEXT_MAX_DB, TONE_JITTER_DB, contextOf }),
+    BEAT_SOUNDS, beatSound, trainHits, TRAIN_WARM, BEAT_TICKS, beatTick, MAX_AHEAD_MS, GAP_BEAT_MS, BEAT_GAIN, TRAIN_MAX, TRAIN_FALL, GESTURE_CARDS, TRAIN_BEATS, CONTEXT, CONTEXT_MAX_DB, TONE_JITTER_DB, contextOf }),
   test: Object.freeze({
     play, playBeats, state, settings, buffers, voices: () => voices.length, scheduled: () => voices.map((v) => ({ start: v.start, end: v.end })),
     timers: () => timers.size, bus: () => bus, whenRendered: () => renderQueue, memory: () => memory,

@@ -255,7 +255,7 @@ The module offers two things for it. Neither changes what plays, and the game ne
 | Member | What it is |
 |---|---|
 | `KCTFeedback.trace` | A hook, `null` until a listener sets it, called as `trace(kind, record)`. `'beats'` after each beats message (and each retry): `{ retry, beats: [{ beat, cards, ahead, sound }] }`, with `ahead` in ms and `sound` the beat's verdict. `'moment'` after each batch: `{ anchor, beat, types, ahead, cue, sound }`. |
-| `KCTFeedback.status()` | The sound channel's state: `canSound`, `sound` (the level), `activated` (a tap came), `context` (the `AudioContext`'s state, or `none`), `rate`, `latency` (ms), `ready` and `failed` (rendered sounds), `dealReady`, `felt` and `voices`. |
+| `KCTFeedback.status()` | The sound channel's state: `canSound`, `sound` (the level), `activated` (a tap came), `context` (the `AudioContext`'s state, or `none`), `rate`, `latency` (ms), `ready` and `failed` (rendered sounds), `dealReady`, `felt`, `voices`, and `trains`, `warm` and `mixed` (the kept train mixes, and how many trains played a mix made ahead or one mixed as they played). |
 
 How to read a line:
 

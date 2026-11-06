@@ -6623,7 +6623,8 @@ const Moments = (() => {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'motion reduced' : 'motion on';
     if (!s) return 'Sound: no module · ' + reduced + ' · ' + readFacts();
     return 'Sound ' + s.sound + ' · context ' + s.context + (s.rate ? ' ' + s.rate + ' Hz' : '') + (s.latency !== null ? ' · latency ' + s.latency + ' ms' : '') +
-      ' · ' + s.ready + ' sounds' + (s.failed ? ', ' + s.failed + ' failed' : '') + (s.dealReady ? '' : ', deal rendering') + ' · ' + (s.activated ? 'tapped' : 'no tap yet') +
+      ' · ' + s.ready + ' sounds' + (s.failed ? ', ' + s.failed + ' failed' : '') + (s.dealReady ? '' : ', deal rendering') +
+      (typeof s.trains === 'number' ? ' · trains ' + s.trains + ' (' + s.warm + ' ready, ' + s.mixed + ' mixed)' : '') + ' · ' + (s.activated ? 'tapped' : 'no tap yet') +
       ' · ' + reduced + ' · ' + readFacts();
   }
   let read0 = 0;
