@@ -880,13 +880,19 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .backs.tappable:hover{outline:1px solid rgba(255,255,255,.35);outline-offset:0.125rem}
 .tagbox .tag.tappable:focus-visible,.sscore.tappable:focus-visible,.backs.tappable:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
 .tagbox .tag.open,.sscore.open,.backs.open{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.panel p{margin:0.25rem 0;line-height:1.4}
+.panel p{margin:0.25rem 0;line-height:1.4;text-wrap:pretty}
 .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .panel .pnote{color:var(--muted);font-size:0.75rem}
-/* A switch in a popup (Forced plays, in the Human tag's): its name and a line, then the switch. */
-.panel .pswitch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0.75rem;margin:0.5rem 0 0.125rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
-.panel .pswitch b{display:block}
-.panel .pswitch span span{display:block;color:var(--muted);font-size:0.75rem;line-height:1.35}
+/* A checkbox in a popup (Forced plays, in the Human tag's): past a rule, the box beside its name.
+   The box uses the Settings switch's colors, and gold with a mark when on. */
+.panel .pcheck{display:grid;grid-template-columns:1rem minmax(0,1fr);column-gap:0.5rem;align-items:center;margin:0.625rem 0 0;padding-top:0.625rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
+.panel .pcheck input{appearance:none;-webkit-appearance:none;width:1rem;height:1rem;margin:0;border-radius:0.25rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+.panel .pcheck input:checked{background:var(--gold);border-color:var(--gold)}
+.panel .pcheck input:checked::before{content:'';position:absolute;left:0.3125rem;top:0.125rem;width:0.25rem;height:0.5rem;border:solid var(--gold-ink);border-width:0 0.125rem 0.125rem 0;transform:rotate(45deg)}
+.panel .pcheck input:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
+.panel .pcheck b{font-weight:600;line-height:1.25}
+.panel .pcheck:hover input:not(:checked){border-color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.panel .pcheck input{transition:none}}
 .seat .seat-head .seat-name{flex:none;overflow:visible}
 @media (max-width:720px){
   .sscore{font-size:1.375rem!important}
@@ -8107,9 +8113,9 @@ const App = (() => {
           if (one && c && !now && mem.turned) rows.push(['Turned card', v.played.includes(c) ? 'Played' : you ? (inHand(c) ? 'In your hand' : 'Discarded') : 'Not played yet']);
           return [title, dl(rows)];
         }
-        /* Forced plays: a switch under the text, while you play a game (not in the replay viewer). */
-        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pswitch"><span><b>Forced plays</b><span>' + FORCED_DESC + '</span></span>' +
-          '<input class="sw" type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '></label>'];
+        /* Forced plays: a checkbox under the text, while you play a game (not in the replay viewer). */
+        if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pcheck"><input type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '>' +
+          '<b>Auto-play single options</b></label>'];
         return [title, p1(text)];
       }
     }
@@ -8186,7 +8192,7 @@ const App = (() => {
     } else draw([]);
   }
 
-  /* Forced plays: in a trick, your only legal card plays itself, after the AI's wait at this speed. Both switches (Your
+  /* Forced plays: in a trick, your only legal card plays itself, after the AI's wait at this speed. Both controls (Your
      seat, the Human tag's popup) show it. On while that card waits for you, it plays now; off during its wait, it waits for you. */
   const FORCED_DESC = 'When only one card is legal, it plays itself. Off: you play every card.';
   /** Your only legal card in this trick, or null: it is your turn to play and one card can follow. @param {GameState} st */

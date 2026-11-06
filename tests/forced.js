@@ -57,18 +57,18 @@ const PLAY = `
       expect('off: no forced card played itself', r.played === 0 && r.waited === r.seen, r);
       expect('off: no page errors', errors.length === 0, errors);
     }
-    /* The Human tag's popup has the switch; it changes the setting, the Settings row and what is kept. */
+    /* The Human tag's popup has the checkbox; it changes the setting, the Settings row and what is kept. */
     {
       const { page, errors } = await openPage(browser, srv.url);
       await page.evaluate(() => KCT.App.newGame(77, 1));
       await page.click('#seat0 .tag.you');
       await page.waitForSelector('#table > .panel #panelForced');
       const before = await page.evaluate(() => ({ on: document.getElementById('panelForced').checked, text: document.querySelector('#table > .panel').textContent }));
-      expect('popup: the Human tag\'s popup shows Forced plays, off', !before.on && before.text.includes('Forced plays'), before);
-      await page.click('#table > .panel .pswitch');
+      expect('popup: the Human tag\'s popup shows the Forced plays checkbox, off', !before.on && before.text.includes('Auto-play single options'), before);
+      await page.click('#table > .panel .pcheck');
       const after = await page.evaluate(() => ({ on: KCT.App.app.ui.forced, row: document.getElementById('setForced').checked, kept: JSON.parse(localStorage.getItem('kct.settings')).forced, open: !!document.querySelector('#table > .panel') }));
-      expect('popup: the switch turns it on, in Settings too, and it is kept', after.on && after.row && after.kept === true, after);
-      expect('popup: stays open after the switch', after.open, after);
+      expect('popup: the checkbox turns it on, in Settings too, and it is kept', after.on && after.row && after.kept === true, after);
+      expect('popup: stays open after the checkbox', after.open, after);
       await page.reload();
       const reload = await page.evaluate(() => ({ on: KCT.App.app.ui.forced, row: document.getElementById('setForced').checked }));
       expect('reload: Forced plays is still on', reload.on && reload.row, reload);
