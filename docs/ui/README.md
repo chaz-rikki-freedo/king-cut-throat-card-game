@@ -9,8 +9,8 @@ This wiki names every area of the King Cut-Throat interface and every part insid
 | [Vocabulary](vocabulary.md) | The name, code anchor and text kind of each area and part. |
 | [Game moments](moments.md) | The names of the steps of a hand, and what the action bar asks at each step. |
 | [UI plan](plan.md) | Where the replay, seed, backup and theme features go in the interface, in phases. |
-| [Feedback](feedback.md) | Draft. The optional feedback module: vibration, sound and event parallax cues, moments of interest, variety, and what is dropped when cues collide. |
-| [Feedback contract](feedback-contract.md) | Draft. How the game and the feedback module talk: the moments, batches, control messages, loading and versioning. |
+| [Feedback](feedback.md) | The optional feedback module: vibration, sound and event parallax cues, moments of interest, variety, and what is dropped when cues collide. |
+| [Feedback contract](feedback-contract.md) | How the game and the feedback module talk: the moments, batches, control messages, loading and versioning. |
 | [Table depth](depth.md) | How high each card sits over the felt, its shadow, the touch lift, the Table depth setting and the tuning panel (`!dev parallax`). |
 | [Colors](colors.md) | The color families and tokens, the rules that keep colors apart, the checker, and theme packs. The [palette page](palette.html) shows them (development only). |
 
