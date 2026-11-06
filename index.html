@@ -907,21 +907,23 @@ window.kctTheme = (() => {
   const packs = JSON.parse(document.getElementById('themePacks').textContent);
   const root = document.documentElement, names = new Set();
   for (const group of [packs.felts, packs.colors]) for (const p of Object.values(group)) for (const k of Object.keys(p.tokens)) names.add(k);
-  const css = getComputedStyle(root), defaults = {};
-  for (const k of names) defaults[k] = css.getPropertyValue(k).trim();
+  const css = getComputedStyle(root), base = {};
+  for (const k of names) base[k] = css.getPropertyValue(k).trim();
+  const defaultFelt = 'winter', defaults = 2;
   function apply(felt, colors) {
-    const f = packs.felts[felt] ? felt : 'classic', c = packs.colors[colors] ? colors : '';
+    const f = packs.felts[felt] ? felt : defaultFelt, c = packs.colors[colors] ? colors : '';
     const t = Object.assign({}, packs.felts[f].tokens, c ? packs.colors[c].tokens : {});
     for (const k of names) { if (t[k]) root.style.setProperty(k, t[k]); else root.style.removeProperty(k); }
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t['--felt-edge'] || defaults['--felt-edge']);
+    if (meta) meta.setAttribute('content', t['--felt-edge'] || base['--felt-edge']);
     return { felt: f, colors: c };
   }
-  const tokenOf = (felt, k) => (packs.felts[felt] && packs.felts[felt].tokens[k]) || defaults[k];
+  const tokenOf = (felt, k) => (packs.felts[felt] && packs.felts[felt].tokens[k]) || base[k];
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem('kct.settings') || 'null'); } catch (e) {  }
-  apply(saved && saved.felt, saved && saved.colors);
-  return { packs, apply, tokenOf };
+  const current = saved && typeof saved === 'object' && saved.defaults === defaults;
+  apply(current ? saved.felt : defaultFelt, saved && saved.colors);
+  return { packs, apply, tokenOf, defaultFelt, defaults };
 })();
 </script>
 </head>
@@ -1031,7 +1033,7 @@ window.kctTheme = (() => {
         <div class="set-row set-row-wide"><span class="set-text"><span class="set-name" id="setFeltName">Felt</span><span class="set-desc">The color of the table: the classic green, or a season.</span></span>
           <div class="felt-grid" id="setFelt" role="radiogroup" aria-labelledby="setFeltName"></div></div>
         <label class="set-row"><span class="set-text"><span class="set-name">Color-blind safe colors</span><span class="set-desc">Names, modes and the selection stay apart with red-green color blindness. Bots and modes change color.</span></span><input class="sw" type="checkbox" id="setColorBlind"></label>
-        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Tilt: the table also shifts a little as you tilt your phone, or with the mouse. Off: the classic flat shadows.</span></span>
+        <div class="set-row"><span class="set-text"><label class="set-name" for="setDepth">Table depth (beta)</label><span class="set-desc">Still: each card casts a shadow from its height, and a card in your hand lifts as you touch it. Tilt: the table also shifts a little as you tilt your phone, or with the mouse. Off: the classic flat shadows.</span></span>
           <select id="setDepth"><option value="still">Still</option><option value="tilt">Tilt</option><option value="off">Off</option></select></div>
         <p class="k-hint set-note" id="setDepthNote" hidden></p>
       </div>      <h3 class="set-head" id="setFeedbackHead" hidden>Sound and touch</h3>
@@ -1082,7 +1084,7 @@ window.kctTheme = (() => {
 <noscript><p style="padding:16px">This game needs JavaScript.</p></noscript>
 <script>
 'use strict';
-const BUILD = Object.freeze({ commit: 'a5c9b9e', date: '2026-11-06' });
+const BUILD = Object.freeze({ commit: 'db4b79e', date: '2026-11-06' });
 const Rules = (() => {
   const SUITS = Object.freeze(['S', 'H', 'D', 'C']);
   const SYMBOL = Object.freeze({ S: '♠', H: '♥', D: '♦', C: '♣' });
@@ -5276,7 +5278,7 @@ const Depth = (() => {
     if (x && x.v && typeof x.v === 'object') for (const k of keys) if (valid(k, x.v[k])) v[k] = x.v[k];
     return { open: !!(x && x.open), folded: !!(x && x.folded), k: x && typeof x.k === 'string' ? x.k : '', v };
   }
-  let tab = read(), mode = 'still', speed = 'normal', preview = false;
+  let tab = read(), mode = 'off', speed = 'normal', preview = false;
   const keep = () => { try { if (tab.open || Object.keys(tab.v).length) sessionStorage.setItem(KEY, JSON.stringify(tab)); else sessionStorage.removeItem(KEY); } catch (e) {  } };
   const num = k => tab.v[k] !== undefined ? tab.v[k] : DEPTH[k].def;
   const liftMs = (s, still) => still || s === 'instant' || (s === 'fast' && !num('fastMotion')) ? 0 : num('liftMs');
@@ -5297,7 +5299,7 @@ const Depth = (() => {
     syncPanel();
     kick();
   }
-  function setMode(m) { mode = MODES.includes(m) ? m : 'still'; apply(); return mode; }
+  function setMode(m) { mode = MODES.includes(m) ? m : 'off'; apply(); return mode; }
   function motion(s) { if (s === speed) return; speed = s; apply(); }
   function orient(beta, gamma, angle) {
     const a = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
@@ -5535,7 +5537,9 @@ const App = (() => {
   const HUMAN = 0;
   const JOKER_FLIP_TEXT = Object.freeze({ '': 'Redeal', S: 'Spades', H: 'Hearts', D: 'Diamonds', C: 'Clubs', random: 'Random' });
   const MEMORY_STANDARD = Object.freeze({ trumps: false, kings: false, turned: false, voids: false, showTurned: true, showDiscards: true, showPlays: true });
-  const HOUSE_DEFAULTS = Object.freeze({ mediatorLead: true, politePlay: true, jokerFlip: '' });
+  const MEMORY_DEFAULT = Object.freeze({ trumps: true, kings: true, turned: true, voids: true, showTurned: true, showDiscards: true, showPlays: true });
+  const HOUSE_DEFAULTS = Object.freeze({ mediatorLead: true, politePlay: false, jokerFlip: '' });
+  const DEPTH_DEFAULT = 'off';
   const HOUSE =  (Object.assign({}, HOUSE_DEFAULTS));
   const app = {
     state: null,
@@ -5543,7 +5547,7 @@ const App = (() => {
     dyn:  (null),
     said:  ({}),
     sdSkip: false,
-    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: 'classic', colors: '', depth: 'still', memory:  (Object.assign({}, MEMORY_STANDARD)), houseRules: HOUSE,
+    ui: { selected: new Set(), selKey: '', speed: 'normal', autoplay: false, allowSeatAI: false, forced: false, personas: [null, null, null], tunes: [null, null, null], swapped: false, endButtons: '', felt: Theme.defaultFelt, colors: '', depth: DEPTH_DEFAULT, memory:  (Object.assign({}, MEMORY_DEFAULT)), houseRules: HOUSE,
       scoreHold:  ({}) },
     wave: { n: null, wasOpenAtStart: false, practice: false, result: null },
     humanSeatWasAutoplayed: false,
@@ -5877,21 +5881,21 @@ const App = (() => {
   }
   const AFTER = '<p>The page reloads. There is no undo.</p>';
   async function askTableReset() {
-    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Standard and the felt to Classic, with Color-blind safe colors off and Table depth at Still. ' +
-      'Mediator picks the Showdown lead and Polite Play turn on, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
+    if (!await ask({ title: 'Reset the Table tab?', text: '<p>Table memory goes back to Full help and the felt to Winter, with Color-blind safe colors and Table depth off. ' +
+      'Mediator picks the Showdown lead turns on, Polite Play turns off, and Turned-up Joker goes back to Redeal: house rules apply from your next game. ' +
       (feedbackOn ? 'Vibration, Sound and Sound in replays turn off. ' : '') + 'Your progress stays.</p>', ok: 'Reset', cancel: 'Cancel', danger: true })) return;
     tableReset();
   }
   function tableReset() {
     Logger.log('TABLE_RESET', {});
     Moments.control('reset');
-    setMemoryAll(MEMORY_STANDARD);
+    setMemoryAll(MEMORY_DEFAULT);
     Object.assign(app.houseRules, HOUSE_DEFAULTS);
     $('setMediatorLead').checked = app.houseRules.mediatorLead;
     $('setJokerFlip').value = app.houseRules.jokerFlip;
     $('setPolitePlay').checked = app.houseRules.politePlay;
-    setTheme('classic', '');
-    setDepth('still');
+    setTheme(Theme.defaultFelt, '');
+    setDepth(DEPTH_DEFAULT);
     closePanel();
     saveSettings();
     draw([]);
@@ -8395,7 +8399,7 @@ const App = (() => {
     $('setTests').innerHTML = html;
   }
   function saveSettings() {
-    settingsStore.save({ seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, depth: app.ui.depth, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
+    settingsStore.save({ defaults: Theme.defaults, seats: app.seats, logging: Logger.enabled, felt: app.ui.felt, colors: app.ui.colors, depth: app.ui.depth, memory: Object.assign({}, app.ui.memory), mediatorLead: app.houseRules.mediatorLead, politePlay: app.houseRules.politePlay, jokerFlip: app.houseRules.jokerFlip, forced: app.ui.forced });
   }
   function loadSettings() {
     const x = settingsStore.load();
@@ -8418,6 +8422,13 @@ const App = (() => {
     if (typeof x.politePlay === 'boolean') app.houseRules.politePlay = x.politePlay;
     if (typeof x.forced === 'boolean') app.ui.forced = x.forced;
     if (typeof x.jokerFlip === 'string' && (x.jokerFlip === '' || Engine.JOKER_FLIPS.includes(x.jokerFlip))) app.houseRules.jokerFlip = x.jokerFlip;
+    if (x.defaults !== Theme.defaults) {
+      Object.assign(app.ui.memory, MEMORY_DEFAULT);
+      app.houseRules.politePlay = HOUSE_DEFAULTS.politePlay;
+      app.ui.felt = Theme.defaultFelt;
+      app.ui.depth = DEPTH_DEFAULT;
+      saveSettings();
+    }
   }
   let feedbackOn = false;
   function feedbackReady( e) {
@@ -9542,7 +9553,7 @@ const SelfTest = (() => {
       Depth.setMode('off'); const onOff = Depth.on(); Depth.setMode('still'); Depth.motion('instant'); const onInstant = Depth.on(); Depth.motion('normal');
       seen.push(String(onOff), String(onInstant));
       Depth.setMode(was);
-      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, an unknown mode is Still; the motion adds no height in Off or at Instant', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'still', 'false', 'false']);
+      eq('Table depth: Off has no class, Still depth, Tilt depth and tilt, an unknown mode is Off; the motion adds no height in Off or at Instant', seen, ['off', '', 'still', 'depth', 'tilt', 'depth tilt', 'off', 'false', 'false']);
       eq('a reading turns with the screen: upright, and turned 90, 180 and 270 degrees',
         [0, 90, 180, 270, -90].map(a => Depth.orient(10, 4, a)), [{ x: 4, y: 10 }, { x: 10, y: -4 }, { x: -4, y: -10 }, { x: -10, y: 4 }, { x: -10, y: 4 }]);
       eq('a tilt inside the dead zone is 0, past the full tilt is 1, and the sign stays',
