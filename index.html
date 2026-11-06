@@ -1038,11 +1038,23 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .depth .card.sheen::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:var(--dp-sheen);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) no-repeat;background-size:300% 100%;animation:dp-sheen var(--dp-sheen-ms) ease-out both}
 @keyframes dp-sheen{from{background-position:100% 0}to{background-position:0 0}}
 @media (prefers-reduced-motion:reduce){.depth .card.sheen::after{animation:none;display:none}}
-/* Tilt (html.tilt): the script writes each moving plane's translate on that element alone (Depth's paint), on the
-   screen's frames (tiltHz a second) and only when it moves a quarter pixel: the panels, the trick area, each played card's slot (a higher
-   card shifts more) and your hand. Each is its own layer, so a move costs no style for the rest of the table, no
-   paint and no raster. No transition or animation: either costs the page more than a write each frame. Shadows stay. */
-.tilt .table .seat,.tilt .table .me,.tilt .table .trick,.tilt .table .trick .slot.win{will-change:translate}
+/* The felt's light: one soft key light over the table, under the panels and the trick. In Tilt it slides a little
+   (lightShift): the table answers a tilt with light, not movement. The focus (the trick's winner) carries a glint, a
+   soft band across its face, with a little shade away from it, that slides with the tilt; at rest it runs corner to
+   corner, clear of the rank and suit. */
+.felt-light,.dp-glint{display:none}
+.depth .felt-light{display:block;position:absolute;inset:0;z-index:0;border-radius:inherit;overflow:hidden;pointer-events:none}
+.depth .felt-light i{position:absolute;inset:-25%;opacity:var(--dp-light);background:radial-gradient(ellipse 45% 40% at 50% 38%,rgba(255,255,255,.12),transparent)}
+.depth .dp-glint{display:block;position:absolute;left:-50%;top:-50%;width:200%;height:200%;pointer-events:none;opacity:var(--dp-glint);background:linear-gradient(115deg,rgba(0,0,0,.14) 30%,transparent 44%,rgba(255,255,255,.55) 50%,transparent 56%,rgba(0,0,0,.14) 70%)}
+/* Tilt (html.tilt): the script writes each moving part's translate on that element alone (Depth's paint), on the
+   screen's frames (tiltHz a second) and only when it moves half a pixel (the felt's light: lightStep): the felt's light, and the focus (the winner's
+   slot, which also leans, and its glint). The panels and the trick area move only when a tuning gives them a shift
+   (html.dp-panels, html.dp-trick). Each moving part is its own layer, so a move costs no style for the rest of the
+   table, no paint and no raster. No transition or animation: either costs the page more than a write each frame.
+   Shadows stay. */
+.tilt .felt-light i,.tilt .dp-glint{will-change:translate}
+.tilt .table .trick .slot.win{will-change:translate,rotate}
+.dp-panels .table .seat,.dp-panels .table .me,.dp-trick .table .trick{will-change:translate}
 /* '!dev parallax': the tuning panel, a strip of two rows over the header (your hand and the trick stay in view), for
    the tab. Folded, only its Depth tab shows, in the bottom right corner, clear of the menu button. */
 .depth-dev{position:fixed;left:0.5rem;top:0.5rem;z-index:95;width:min(21rem,calc(100vw - 1rem));display:flex;flex-direction:column;gap:0.25rem;padding:0.25rem 0.375rem;background:linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)),var(--felt-edge);color:var(--ink);border:1px solid rgba(255,255,255,.12);border-radius:0.625rem;box-shadow:0 0.375rem 1.125rem rgba(0,0,0,.45);font-size:0.75rem}
@@ -1150,6 +1162,7 @@ window.kctTheme = (() => {
     </div>
   </section>
   <main class="table" id="table" hidden>
+    <div class="felt-light" aria-hidden="true"><i id="feltLight"></i></div>
     <section class="seat seat-west" id="seat1"></section>
     <section class="center" id="center"></section>
     <section class="seat seat-east" id="seat2"></section>
@@ -5218,7 +5231,8 @@ const Render = (() => {
       : '<span class="c-tl">' + c.rank + sym + '</span><span class="c-mid">' + sym + '</span><span class="c-br">' + c.rank + sym + '</span>';
     /* Every King is tagged: the card that scores when it wins a trick. */
     const king = !tag && !c.isJoker && c.rank === 'K' ? '<span class="c-tag king">KING</span>' : '';
-    const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '');
+    const extra = (tag ? '<span class="c-tag">' + tag + '</span>' : '') + king + (o.isNew ? '<span class="c-new">NEW</span>' : '') +
+      (o.glint ? '<i class="dp-glint" aria-hidden="true"></i>' : '');
     if (o.button) {
       return '<button type="button" class="' + cls.join(' ') + '" data-card="' + escHTML(id) + '"' + (o.disabled ? ' disabled' : '') + (o.inert ? ' aria-disabled="true"' : '') + ' aria-label="' + escHTML(name) + '" title="' + escHTML(name) + '">' + inner + extra + '</button>';
     }
@@ -5585,7 +5599,8 @@ const Render = (() => {
       const at = plays.findIndex(x => x.player === p), z = at >= 0 ? at + 1 : plays.length + 1;
       if (!v.activePlayers.includes(p)) { html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + '" style="z-index:' + z + '"></div>'; continue; }
       const play = plays[at];
-      const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [] }) : '<div class="empty"></div>';
+      /* The winner is the focus: it carries Table depth's glint (hidden in Off). */
+      const card = play ? cardHTML(play.card, v.trump, { cls: ctx.newCards.has(play.card) ? ['enter'] : [], glint: winner === p }) : '<div class="empty"></div>';
       const about = p === v.seat ? 'About your card' : 'About ' + nameOf(v, p) + '\'s card';
       html += '<div data-seat="' + p + '" class="slot slot-' + posOf(v, p) + (winner === p ? ' win' : '') + (tap ? infoAttrs('slot', about, p) : '"') + ' style="z-index:' + z + '">' + card + '</div>';
     }
@@ -6694,11 +6709,14 @@ const Moments = (() => {
    (the classic table: none of this applies), Still or Tilt. Every value is
    in DEPTH, one place; the CSS reads them as --dp-* custom properties under
    the html element's depth class. It never reads or changes a game.
-   Tilt (html.tilt) also moves each plane a little as you tilt the device,
-   or with the mouse on a computer: one vector, from -1 to 1 on each axis,
-   and each plane's shift is a DEPTH value, written as that element's own
-   translate (a GPU layer), so a frame costs no style, paint or raster
-   for the rest of the table. Shadows stay as they are. The sensor is used only in Tilt, never at load otherwise;
+   A soft light lies on the felt, and the trick's winner (the focus) carries
+   its own light, a band across its face. Tilt (html.tilt) answers a tilt of
+   the device, or the mouse on a computer, with light first: one vector,
+   from -1 to 1 on each axis, slides the felt's light, and the focus shifts,
+   leans and moves its light. The table, the panels and the trick area stay
+   (their shifts are 0, for tuning). Each moving part is its own translate
+   (a GPU layer), so a frame costs no style, paint or raster for the rest of
+   the table. Shadows stay as they are. The sensor is used only in Tilt, never at load otherwise;
    where the browser asks first (iOS), a tap asks. The angle when Tilt
    starts is level, and level then follows the grip (driftSec). The vector
    rests at 0 at Instant, with reduced motion, while a menu, Settings or a
@@ -6759,12 +6777,23 @@ const DEPTH = /** @type {Readonly<Record<string, DepthKey>>} */ (Object.freeze({
   /* While cards move (a deal, a play, a sweep), Tilt eases down to this share of itself and back after: the moving
      cards have the stage, and the page's time goes to them and to their sounds. */
   motionCalm: { def: 0.33, min: 0, max: 1, step: 0.01, unit: '', group: 'Tilt input', name: 'During card motion', js: true },
-  /* Tilt: each plane's shift at full tilt, over its parent's. A negative value moves it the other way. The table
-     itself stays, and your hand moves with its panel. The played cards shift cardShift over the trick area, and the
-     winner, higher, shifts cardShift × winZ / trickZ. */
-  panelShift: { def: 0.15, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
-  trickShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area', js: true },
-  cardShift: { def: 0.3, min: -1.5, max: 1.5, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Played cards', js: true }
+  /* Tilt answers with light first. The table, the panels and the trick area barely move: a tilt slides the felt's
+     light (lightShift) and nothing else, so the table reads as lit, not as sliding. Movement is for what matters now:
+     the focus, the trick's winner, shifts over the trick (focusShift), leans with the tilt (focusTilt, at most) and
+     carries its own light (glint, glintShift): a white card shows light as shade, so the face darkens a little away
+     from a soft bright band, and the band brightens the ink it crosses. A negative shift moves a part the other way.
+     panelShift and trickShift are 0: each plane moved costs the frame. */
+  light: { def: 0.5, min: 0, max: 1, step: 0.05, unit: '', group: 'Light', name: 'Felt light' },
+  lightShift: { def: 2, min: -4, max: 4, step: 0.125, unit: 'rem', group: 'Light', name: 'Felt light travel', js: true },
+  /* The felt's light moves in steps this size (px): it is soft, so a step doesn't show, and each move costs the frame
+     (the browser rechecks what overlaps it). 3 px moves it about a sixth as often as half pixels. */
+  lightStep: { def: 3, min: 0.5, max: 8, step: 0.5, unit: 'px', group: 'Light', name: 'Felt light step', js: true },
+  glint: { def: 0.6, min: 0, max: 1, step: 0.05, unit: '', group: 'Light', name: 'Focus glint' },
+  glintShift: { def: 1.5, min: -4, max: 4, step: 0.125, unit: 'rem', group: 'Light', name: 'Glint travel', js: true },
+  focusShift: { def: 0.25, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Focus', name: 'Focus shift', js: true },
+  focusTilt: { def: 2.5, min: -6, max: 6, step: 0.25, unit: 'deg', group: 'Focus', name: 'Focus lean', js: true },
+  panelShift: { def: 0, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Panels', js: true },
+  trickShift: { def: 0, min: -1, max: 1, step: 0.025, unit: 'rem', group: 'Tilt planes', name: 'Trick area and its cards', js: true }
 }));
 const Depth = (() => {
   const KEY = 'kct-depth', MODES = ['off', 'still', 'tilt'];
@@ -6801,6 +6830,9 @@ const Depth = (() => {
     for (const [p, v] of Object.entries(vars())) root.style.setProperty(p, v);
     root.classList.toggle('depth', mode !== 'off' && !preview);
     root.classList.toggle('tilt', mode === 'tilt' && !preview);
+    /* A plane is its own layer only while a tuning gives it a shift: an unmoved layer still costs memory. */
+    root.classList.toggle('dp-panels', mode === 'tilt' && !preview && !!num('panelShift'));
+    root.classList.toggle('dp-trick', mode === 'tilt' && !preview && !!num('trickShift'));
     listen(mode === 'tilt');
     syncPanel();
     kick();
@@ -6912,13 +6944,14 @@ const Depth = (() => {
      it changes. Nothing else on the table is touched. Render redraws the trick and the hand, so each draw asks again
      (repaint). */
   let remPx = 16;
-  /** The planes and their shift (rem) at full tilt, each over its parent's. */
-  function planes() {
-    const tz = num('trickZ') || 1, out = /** @type {[Element, number][]} */ ([]);
+  /** The moving parts and their shift (rem) at full tilt, each over its parent's: the felt's light, the planes (0 by
+      default, so untouched), and the focus (the trick's winner) with its glint. w: the winner's slot, or null. */
+  function planes(/** @type {Element | null} */ w) {
+    const out = /** @type {[Element, number][]} */ ([]);
+    const light = document.getElementById('feltLight'); if (light) out.push([light, num('lightShift')]);
     for (const id of ['seat1', 'seat2', 'seat0']) { const e = document.getElementById(id); if (e) out.push([e, num('panelShift')]); }
-    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift') + num('cardShift')]);
-    /* Only the winner, higher than the rest, shifts more: every layer moved costs the frame. */
-    const w = document.querySelector('#center .trick .slot.win'); if (w) out.push([w, num('cardShift') * (num('winZ') / tz - 1)]);
+    const tr = document.querySelector('#center .trick'); if (tr) out.push([tr, num('trickShift')]);
+    if (w) { out.push([w, num('focusShift')]); const g = w.querySelector('.dp-glint'); if (g) out.push([g, num('glintShift')]); }
     return out;
   }
   /** @param {boolean} [force] write even when the vector is unchanged (the table was redrawn) */
@@ -6926,11 +6959,21 @@ const Depth = (() => {
     const x = Math.round(v.x * 100) / 100, y = Math.round(v.y * 100) / 100;
     if (!force && x === shown.x && y === shown.y) return;
     shown = { x, y };
-    const still = x === 0 && y === 0;
-    for (const [el, k] of planes()) {
-      /* Half pixels: a plane that moved less keeps its place, and isn't touched. */
-      const t = still ? '' : Math.round(x * k * remPx * 2) / 2 + 'px ' + Math.round(y * k * remPx * 2) / 2 + 'px', h = /** @type {HTMLElement} */ (el);
+    const still = x === 0 && y === 0, w = /** @type {HTMLElement | null} */ (document.querySelector('#center .trick .slot.win'));
+    for (const [el, k] of planes(w)) {
+      const h = /** @type {HTMLElement} */ (el);
+      /* A part with no shift is never written (only cleared, once, if a tuning moved it). */
+      if (!k && !h.style.translate) continue;
+      /* Half pixels (the felt's light: lightStep): a part that moved less keeps its place, and isn't touched. */
+      const q = el.id === 'feltLight' ? num('lightStep') : 0.5;
+      const t = still || !k ? '' : Math.round(x * k * remPx / q) * q + 'px ' + Math.round(y * k * remPx / q) * q + 'px';
       if (h.style.translate !== t && !(t === '0px 0px' && !h.style.translate)) h.style.translate = t === '0px 0px' ? '' : t;
+    }
+    /* The focus leans with the tilt, about the axis across it, at most focusTilt degrees at full tilt. */
+    if (w) {
+      const a = num('focusTilt'), deg = Math.round(a * Math.min(1, Math.hypot(x, y)) * 10) / 10;
+      const r = still || !deg ? '' : -y + ' ' + x + ' 0 ' + deg + 'deg';
+      if (w.style.rotate !== r) w.style.rotate = r;
     }
   }
   /** After each draw: the redrawn trick and hand take the present shift. */
