@@ -830,7 +830,7 @@ on the phone itself. See [the contract: Sound readout](feedback-contract.md#soun
 - Sound plays on the audio thread. A busy main thread can only delay when a sound starts, and `LATE_MS` drops a sound that starts too late.
 - The sounds render only while Sound isn't Off, one preset at a time, never during a game moment. Rendering uses an `OfflineAudioContext`, so it needs no tap. A preset that fails isn't tried again on that page load.
 - **Measured:** in headless Chromium on a server, the lab rendered all 32 of its archetypes in 751 ms: 22 ms each at the median, 61 ms at most. A phone is slower, so each render runs in its own idle slot, and no single render may take more than `RENDER_BUDGET_MS`. Required presets render first, then the optional ones the cue table names.
-- The playing `AudioContext` is created or resumed on the first tap.
+- The playing `AudioContext` is created on the first tap, and every later tap brings it back if the browser stopped it (see [Each tap](#3-each-tap)).
 - Sounds are scheduled on `audioContext.currentTime`, not on extra `setTimeout`s.
 
 ## Order of operations
@@ -851,9 +851,22 @@ The module's side, from loading to a cue playing. The game's side, building and 
 4. When Sound changes from Off to a level, rendering starts then, if it hasn't already.
 5. On a `theme` message for a new felt, the module renders that palette's presets the same way. Until each one is ready, the [fallbacks](#fallbacks) apply.
 
-### 3. The first tap
+### 3. Each tap
 
-A one-time `pointerdown` listener runs on the first tap anywhere on the page. If Sound isn't Off, it creates or resumes the playing `AudioContext`. A change of the Sound setting is itself a tap, so it does the same.
+A `pointerdown` and `keydown` listener runs on every tap or key press anywhere on the page. If Sound isn't Off:
+
+- **The first tap** creates the playing `AudioContext`. A change of the Sound setting is itself a tap, so it does the same.
+- **Every later tap** checks that context. A browser stops it when the page hides, the phone locks, or a call, an alarm or another app takes the audio (Safari reports `interrupted`), and starts it again only from a tap. Without this check, the sound stopped until the app was closed. The check costs one read of the context's state and clock:
+
+| The context at a tap | What the tap does |
+|---|---|
+| Running, its clock moving | Nothing |
+| Suspended or interrupted | Resumes it, inside the tap |
+| Still stopped more than `REVIVE_GAP_MS` (500 ms) after that resume | Replaces it with a new context, made inside the tap |
+| Running, but its clock has stood still for more than 1 s (a phone can leave it so after an interruption) | Replaces it |
+| Closed | Replaces it |
+
+Replacing stops the old context's voices and closes it. The sounds are `AudioBuffer`s that belong to no context, so nothing renders again. When the page shows again, the module also tries a resume without a tap, which works where the browser allows it. The sound readout (`!dev sound`) shows each resume and replacement as an `audio` line, and its state line counts the replacements (`revived`).
 
 ### 4. When a batch arrives
 

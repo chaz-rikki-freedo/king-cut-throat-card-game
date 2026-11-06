@@ -6630,6 +6630,7 @@ const Moments = (() => {
     if (kind === 'beats') return at + (d.retry ? 'retry ' : 'beats ') + (d.beats || []).map((/** @type {any} */ b) => b.beat + (b.cards > 1 ? '×' + b.cards : '') + ' ' + ahead(b.ahead) + ' ' + b.sound).join(', ');
     if (kind === 'moment') return at + (d.anchor || '?') + (d.beat ? ' (beat)' : '') + ' ' + (d.types || []).join('+') + ' → ' + (d.cue || 'no cue') + ' ' + (d.beat && d.sound === 'off' ? 'by beats' : d.sound) + (d.ahead ? ' ' + ahead(d.ahead) : '');
     if (kind === 'log') return at + 'log ' + d.kind + ' ' + JSON.stringify(d.data || {});
+    if (kind === 'audio') return at + 'audio ' + d.action + ' (' + d.why + ') → ' + d.context;
     return at + kind;
   }
   /** The state line: the module's sound channel, the motion and the facts the Controller adds. */
@@ -6639,7 +6640,7 @@ const Moments = (() => {
     if (!s) return 'Sound: no module · ' + reduced + ' · ' + readFacts();
     return 'Sound ' + s.sound + ' · context ' + s.context + (s.rate ? ' ' + s.rate + ' Hz' : '') + (s.latency !== null ? ' · latency ' + s.latency + ' ms' : '') +
       ' · ' + s.ready + ' sounds' + (s.failed ? ', ' + s.failed + ' failed' : '') + (s.dealReady ? '' : ', deal rendering') +
-      (typeof s.trains === 'number' ? ' · trains ' + s.trains + ' (' + s.warm + ' ready, ' + s.mixed + ' mixed)' : '') + ' · ' + (s.activated ? 'tapped' : 'no tap yet') +
+      (typeof s.trains === 'number' ? ' · trains ' + s.trains + ' (' + s.warm + ' ready, ' + s.mixed + ' mixed)' : '') + (s.revived ? ' · revived ' + s.revived : '') + ' · ' + (s.activated ? 'tapped' : 'no tap yet') +
       ' · ' + reduced + ' · ' + readFacts();
   }
   let read0 = 0;
