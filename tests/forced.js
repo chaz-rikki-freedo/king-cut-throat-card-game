@@ -64,7 +64,7 @@ const PLAY = `
       await page.click('#seat0 .tag.you');
       await page.waitForSelector('#table > .panel #panelForced');
       const before = await page.evaluate(() => ({ on: document.getElementById('panelForced').checked, text: document.querySelector('#table > .panel').textContent }));
-      expect('popup: the Human tag\'s popup shows Forced plays, off', !before.on && before.text.includes('Forced plays'), before);
+      expect('popup: the Human tag\'s popup shows the Forced plays checkbox, off', !before.on && before.text.includes('Auto-play your only legal card'), before);
       await page.click('#table > .panel .pcheck');
       const after = await page.evaluate(() => ({ on: KCT.App.app.ui.forced, row: document.getElementById('setForced').checked, kept: JSON.parse(localStorage.getItem('kct.settings')).forced, open: !!document.querySelector('#table > .panel') }));
       expect('popup: the checkbox turns it on, in Settings too, and it is kept', after.on && after.row && after.kept === true, after);

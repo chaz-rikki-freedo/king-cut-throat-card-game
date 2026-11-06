@@ -883,15 +883,14 @@ body{--card-big:calc(var(--cw)*1.5);--card-normal:var(--cw);--card-small:var(--c
 .panel p{margin:0.25rem 0;line-height:1.4;text-wrap:pretty}
 .panel .psub{display:block;margin:0.5rem 0 0.125rem;font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .panel .pnote{color:var(--muted);font-size:0.75rem}
-/* A checkbox in a popup (Forced plays, in the Human tag's): past a rule, the box beside its name, then a short line
-   under the name. The box uses the Settings switch's colors, and gold with a mark when on. */
-.panel .pcheck{display:grid;grid-template-columns:1rem minmax(0,1fr);column-gap:0.5rem;row-gap:0.125rem;align-items:center;margin:0.625rem 0 0;padding-top:0.625rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
-.panel .pcheck input{appearance:none;-webkit-appearance:none;grid-row:1;width:1rem;height:1rem;margin:0;border-radius:0.25rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
+/* A checkbox in a popup (Forced plays, in the Human tag's): past a rule, the box beside its name.
+   The box uses the Settings switch's colors, and gold with a mark when on. */
+.panel .pcheck{display:grid;grid-template-columns:1rem minmax(0,1fr);column-gap:0.5rem;align-items:center;margin:0.625rem 0 0;padding-top:0.625rem;border-top:1px solid rgba(255,255,255,.12);cursor:pointer}
+.panel .pcheck input{appearance:none;-webkit-appearance:none;width:1rem;height:1rem;margin:0;border-radius:0.25rem;background:var(--set-switch);border:1px solid var(--set-switch-edge);position:relative;cursor:pointer;transition:background .15s,border-color .15s}
 .panel .pcheck input:checked{background:var(--gold);border-color:var(--gold)}
 .panel .pcheck input:checked::before{content:'';position:absolute;left:0.3125rem;top:0.125rem;width:0.25rem;height:0.5rem;border:solid var(--gold-ink);border-width:0 0.125rem 0.125rem 0;transform:rotate(45deg)}
 .panel .pcheck input:focus-visible{outline:0.125rem solid var(--gold);outline-offset:0.125rem}
-.panel .pcheck b{grid-row:1;grid-column:2;font-weight:600;line-height:1.25}
-.panel .pcheck span{grid-row:2;grid-column:2;color:var(--muted);font-size:0.75rem;line-height:1.35}
+.panel .pcheck b{font-weight:600;line-height:1.25}
 .panel .pcheck:hover input:not(:checked){border-color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.panel .pcheck input{transition:none}}
 .seat .seat-head .seat-name{flex:none;overflow:visible}
@@ -8116,7 +8115,7 @@ const App = (() => {
         }
         /* Forced plays: a checkbox under the text, while you play a game (not in the replay viewer). */
         if (tag === 'you' && app.mode && !watch) return [title, p1(text) + '<label class="pcheck"><input type="checkbox" id="panelForced"' + (app.ui.forced ? ' checked' : '') + '>' +
-          '<b>Forced plays</b><span>Your only legal card plays itself.</span></label>'];
+          '<b>Auto-play your only legal card</b></label>'];
         return [title, p1(text)];
       }
     }
