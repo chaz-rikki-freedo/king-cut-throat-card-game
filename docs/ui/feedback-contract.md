@@ -138,7 +138,7 @@ Sent on the same event, with `moments` empty and a `control` field:
 
 | `control` | When the game sends it | What the module does |
 |---|---|---|
-| `cancel` | A new state version, **Next hand**, Exit, a new game, a resume, a jump in the replay viewer. `scope: 'game'` for a new game, a resume or a jump; `scope: 'step'` otherwise. | Clears armed cues and stops sounds not yet started. With `scope: 'game'`, also clears its memory. |
+| `cancel` | A new state version, **Next hand**, Exit, a new game, a resume, a jump in the replay viewer. `scope: 'game'` for a new game, a resume or a jump; `scope: 'step'` otherwise. | Clears armed cues and stops sounds not yet started. With `scope: 'game'`, also clears its memory and forgets the newest version it has heard, since the new game, resume or jump counts its versions again. |
 | `reset` | **Reset this tab** in Settings → Look | Sets its settings back to Off |
 | `speed` | The speed changes, with `speed: 'instant'` or another value | At Instant, cancels and stops a running pattern or motion |
 | `theme` | At load, after `kct:feedback-ready`, and on every felt change, with `felt: 'classic'`, `'spring'`, `'summer'`, `'fall'` or `'winter'` | Switches to that felt's [palette](feedback.md#theme-palettes) |
