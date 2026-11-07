@@ -966,10 +966,13 @@ function status() {
 
 /* ---- Control messages ---- */
 /* Every cancel stops what is scheduled but not started. A new game (scope 'game') also forgets the Showdown
-   voice and the last part each channel played; a step (scope 'step', such as Next hand) keeps the gaps. */
+   voice, the last part each channel played and the newest version heard: a new game, a resume or a jump in the replay
+   viewer counts its versions again from where it is, so keeping the old one would drop every message as stale until
+   the new versions passed it. A step (scope 'step', such as Next hand) keeps the gaps and the version. */
 function cancel(scope) {
   stopScheduled();
   if (scope !== 'game') return;
+  state.version = -1;
   state.showdown = false;
   memory = newMemory();
   drop.vibrate.reset();
